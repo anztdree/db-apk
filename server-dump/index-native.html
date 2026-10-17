@@ -1,0 +1,261 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>DragonBall</title>
+    <meta name="viewport"
+        content="width=device-width,initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="full-screen" content="true" />
+    <meta name="screen-orientation" content="portrait" />
+    <meta name="x5-fullscreen" content="true" />
+    <meta name="360-fullscreen" content="true" />
+    <style>
+        html,
+        body {
+            -ms-touch-action: none;
+            background: #888888;
+            padding: 0;
+            border: 0;
+            margin: 0;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div style="margin: auto;width: 100%;height: 100%;" class="egret-player" data-entry-class="Main"
+        data-orientation="portrait" data-scale-mode="showAll" data-frame-rate="60" data-content-width="750"
+        data-content-height="1334" data-show-paint-rect="false" data-multi-fingered="2" data-show-fps="false"
+        data-show-log="false" data-show-fps-style="x:0,y:0,size:12,textColor:0xffffff,bgAlpha:0.9">
+    </div>
+    <script>
+        window["Log_Clean"] = true;
+        window["debug"] = false;
+        window["CacheNum"] = 20;
+        window["reportBattlleLog"] = "http://log.sjflaregame.com:10000/error/battle/client";
+        window["privacyUrl"] = "http://www.parajoymobile.com/privacy_en.html";
+        var thirdParams = null; //第三方sdk的参数
+        var loginServer = null; //登录服
+        var clientParams = null; //透传参数
+
+        var getLoginServer = function () {
+            return loginServer;
+        }
+        var loadScript = function (list, callback) {
+            var loaded = 0;
+            var loadNext = function () {
+                loadSingleScript(list[loaded], function () {
+                    loaded++;
+                    if (loaded >= list.length) {
+                        callback();
+                    } else {
+                        loadNext();
+                    }
+                })
+            };
+            loadNext();
+        };
+
+        var loadSingleScript = function (src, callback) {
+            var s = document.createElement('script');
+            s.async = false;
+            s.src = src;
+            s.addEventListener('load', function () {
+                s.parentNode.removeChild(s);
+                s.removeEventListener('load', arguments.callee, false);
+                callback();
+            }, false);
+            document.body.appendChild(s);
+        };
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', './manifest.json?v=' + Math.random(), true);
+        xhr.addEventListener("load", function () {
+            var manifest = JSON.parse(xhr.response);
+            var list = manifest.initial.concat(manifest.game);
+            loadScript(list, function () {
+                /**
+                 * {
+                 * "renderMode":, //Engine rendering mode, "canvas" or "webgl"
+                 * "audioType": 0 //Use the audio type, 0: default, 2: web audio, 3: audio
+                 * "antialias": //Whether the anti-aliasing is enabled in WebGL mode, true: on, false: off, defaults to false
+                 * "calculateCanvasScaleFactor": //a function return canvas scale factor
+                 * }
+                 **/
+
+                window["loadJsonFunc"] = function (path) {
+                    return RES.getRes(path);
+                }
+                window["refreshPage"] = function () {
+                    egret.ExternalInterface.call("refresh", "refresh");
+                    window["show18Login"] = clientParams["show18Login"];
+                    window["show18Home"] = clientParams["show18Home"];
+                    window["sdkNativeChannel"] = clientParams["sdkNativeChannel"];
+                    window["showCurChannel"] = clientParams["showCurChannel"];
+                }
+                egret.ExternalInterface.addCallback("refresh", function (msg) {
+                    window.location.reload();
+                });
+                egret.ExternalInterface.addCallback("startGame", function (msg) {
+                    var json = JSON.parse(msg);
+                    if (json.thirdParams && json.thirdParams != "") {
+                        thirdParams = JSON.parse(json.thirdParams);
+                        window["osType"] = thirdParams.osType;
+                    }
+                    loginServer = json.loginServer;
+                    window["gameIcon"] = json.thirdChannel;
+                    if (json.clientParams && json.clientParams != "") {
+                        clientParams = JSON.parse(json.clientParams);
+                        window["hideList"] = clientParams["hideList"];
+                        window["gameIcon"] = clientParams["gameIcon"];
+                        window["supportLang"] = clientParams["supportLang"];
+                        window["battleAudio"] = clientParams["battleAudio"];
+                        // window["showUserCenterSdk"] = clientParams["showUserCenterSdk"];
+                        // window["showContact"] = clientParams["showContact"];
+                        // window["switchAccount"] = clientParams["switchAccount"];
+                        window["sdkNativeChannel"] = clientParams["sdkNativeChannel"];
+                        window["showCurChannel"] = clientParams["showCurChannel"];
+                    }
+                    if (window["osType"]) {
+                        window["version"] = json.version + " for " + window["osType"];
+                    } else {
+                        window["version"] = json.version;
+                    }
+                    window["versionConfig"] = json.versionConfig;
+                    window["debugLanguage"] = json.language;
+                    egret.runEgret({
+                        renderMode: "webgl",
+                        audioType: 0,
+                        calculateCanvasScaleFactor: function (context) {
+                            var backingStore = context.backingStorePixelRatio ||
+                                context.webkitBackingStorePixelRatio ||
+                                context.mozBackingStorePixelRatio ||
+                                context.msBackingStorePixelRatio ||
+                                context.oBackingStorePixelRatio ||
+                                context.backingStorePixelRatio || 1;
+                            return (window.devicePixelRatio || 1) / backingStore;
+                        }
+                    });
+                });
+                egret.ExternalInterface.call("startGame", "get Sdk Channel");
+
+            });
+        });
+        xhr.send(null);
+    </script>
+    <script>
+        var checkSDK = function () {
+            egret.ExternalInterface.call("changeView", "change view");
+            return true;
+        }
+        var getSdkLoginInfo = function () {
+            var sdkData = thirdParams.data;
+            if (sdkData && sdkData.securityCode) { 
+                // 这是配合海贼、乱斗的登录服务器
+                return {sdk:sdkData.sdk,nickName:sdkData.nickname,userId:sdkData.userid,security:sdkData.securityCode};
+            }
+            return thirdParams;
+        }
+
+        var checkFromNative = function () {
+            // 增加这个方法，支付的时候全部都只能一个一个买（不能设置数量）
+            return true;
+        }
+        var paySdk = function (data) {
+            data.power = data.money;
+            if (data.h5payParam) {
+                // 越南渠道特有的处理
+                data.serverName = data.serverId;
+            }
+            egret.ExternalInterface.call("pei", JSON.stringify(data));
+        }
+        var switchUser = function () {
+            egret.ExternalInterface.call("refresh", "switch usr");
+        };
+        //facebook 分享 serverId    roleName  extra  需要把这三个字段传一下  extra 可以为空
+        var giveLikeSdk = function (data) {
+            egret.ExternalInterface.call("giveLike", JSON.stringify(data));
+        };
+        //客服中心
+        var contactSdk = function () {
+            egret.ExternalInterface.call("contact", "contact");
+        };
+
+        //切换账户 贪玩en
+        var switchAccountSdk = function () {
+            egret.ExternalInterface.call("switchAccount", "switchAccount");
+        };
+
+        //fb 点赞
+        var fbGiveLiveSdk = function () {
+            egret.ExternalInterface.call("fbGiveLive", "fbGiveLive");
+        };
+
+        //用户中心
+        var userCenterSdk = function () {
+            egret.ExternalInterface.call("userCenter", "userCenter");
+        };
+        //领取礼包
+        var gifBagSdk = function () {
+            egret.ExternalInterface.call("gifBag", "gifBag");
+        };
+
+        var report2Sdk = function (data) {
+            data.powerNum = data.moneyNum;
+            egret.ExternalInterface.call("report2Third", JSON.stringify(data));
+        };
+        var gameChapterFinish = function (lessonId) {
+            if (thirdParams && thirdParams.sdkType == "PP") {
+                var data = {
+                    dataType: 12,
+                    level: lessonId
+                };
+                egret.ExternalInterface.call("report2Third", JSON.stringify(data));
+            }
+        }
+        var openShopPage = function () {
+            if (thirdParams && thirdParams.sdkType == "PP") {
+                var data = {
+                    dataType: 13
+                };
+                egret.ExternalInterface.call("report2Third", JSON.stringify(data));
+            }
+        }
+        var gameLevelUp = function (level) {
+            if (thirdParams && thirdParams.sdkType == "PP") {
+                var data = {
+                    dataType: 11,
+                    level: level
+                };
+                egret.ExternalInterface.call("report2Third", JSON.stringify(data));
+            }
+        }
+        var tutorialFinish = function () {
+            if (thirdParams && thirdParams.sdkType == "PP") {
+                var data = {
+                    dataType: 14
+                };
+                egret.ExternalInterface.call("report2Third", JSON.stringify(data));
+            }
+        }
+        var reload = function () {
+            egret.ExternalInterface.call("refresh", "reload game");
+        };
+
+        var changeLanguage = function (lang) {
+            egret.ExternalInterface.call("changeLanguage", lang);
+            window.location.reload();
+        }
+        var openURL = function (url) {
+            egret.ExternalInterface.call("openURL", url);
+        }
+
+        var open = function (url, target) {
+            egret.ExternalInterface.call("openURL", url);
+        }
+    </script>
+</body>
+
+</html>
