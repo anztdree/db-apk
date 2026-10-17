@@ -122,7 +122,8 @@ Format file terenkripsi:
 - Kunci asli = `bytes[32:48] XOR "onepiecedecryptk"`
 - Payload = **XXTEA varian** (delta `0x9E3779B9`, satu pass, fungsi MX kustom)
   — sumber: `cointhreat...customreading.java` (`nationalcommunitymissing()` = dekripsi)
-- Implementasi dekriptor Python: **`decrypter/onepiece_decrypt.py`** — berfungsi 100%
+- Dekriptor Python dibuat dengan port eksak algoritme di atas (simulasi `uint32` Java) —
+  **berfungsi 100%** (artefak riset lokal, lihat §10)
 
 ### 3c. Enkripsi #3 — Kunci runtime native
 
@@ -145,7 +146,7 @@ Format file terenkripsi:
 
 ### Fase 2 — Runtime JS (index-native.html)
 
-`index-native.html` (disimpan di `server-dump/`) melakukan:
+`index-native.html` (file CDN asli, disimpan di artefak riset lokal) melakukan:
 
 ```js
 xhr('./manifest.json') → daftar script (manifest.initial + manifest.game)
@@ -300,8 +301,10 @@ Implementasi TEA (port eksak dari main.min.js — klasik **XXTEA**):
 // MX = (s>>>5 ^ l<<2) + (l>>>3 ^ s<<4) ^ (p^l) + (key[3&d^e] ^ s)
 // Output: Base64
 ```
-Port JS lengkap ada di **`prototest/test_verify.js`** (repo ini) — termasuk `strToLongs`
-(little-endian), `longToStr`, Base64, dan flow handshake-nya.
+Port ini sudah diuji roundtrip encrypt/decrypt konsisten dengan implementasi asli game.
+
+> Catatan: skrip bukti & dekriptor adalah artefak riset lokal (tidak disertakan di repo
+> ini — lihat §10).
 
 ### 5d. API Surface — 60+ Tipe & 200+ Action
 
@@ -414,7 +417,7 @@ Sumber: `resource/json/errorDefine.json` (362 kode). Kode penting:
 
 ## 6. Uji Protokol Live (Bukti Nyata)
 
-Dilakukan saat riset (prototest/socket.io-client v2.1.0, sama seperti klien game):
+Dilakukan saat riset (socket.io-client v2.1.0 — versi sama persis dengan klien game):
 
 **a) Probe HTTP endpoint socket.io** (`curl`):
 ```
@@ -440,8 +443,8 @@ error namespace socket.io (`server error`) — meski dengan header Origin/Refere
 **d) Port 510 (`loginWebPort`)**: HTTPS-nya menjawab `{"code":404,"msg":"没有开通"}`
 ("belum dibuka") → port web memang tidak aktif; hanya 610 (native) yang dipakai.
 
-**e) Kunci TEA "verification"**: roundtrip encrypt/decrypt terbukti konsisten di
-`prototest/test_verify.js` (port eksak dari kode game).
+**e) Kunci TEA "verification"**: roundtrip encrypt/decrypt terbukti konsisten
+(dengan port eksak dari kode game).
 
 > Untuk pengujian lebih jauh (loginGame/GetServerList nyata) diperlukan akun SDK yang
 > valid — tidak dilakukan agar tidak menyalahgunakan server yang sekarat.
@@ -515,26 +518,22 @@ error namespace socket.io (`server error`) — meski dengan header Origin/Refere
 
 ## 10. Artefak & Tools Riset
 
-### Di repo ini
+Repo ini sengaja hanya berisi **dokumentasi (README.md) + APK asli** — semua artefak
+riset disimpan terpisah sebagai catatan kerja:
+
 ```
-├── README.md                      ← dokumen ini
-├── DB-Local.apk                   ← APK asli (Git LFS)
-├── decrypter/
-│   ├── onepiece_decrypt.py        ← dekriptor XXTEA "onepiece" (berfungsi 100%)
-│   └── Decryptor.java             ← versi Java (referensi)
-├── prototest/                     ← bukti uji protokol live
-│   ├── test_verify.js             ← port TEA "verification" + handshake
-│   ├── test_raw.js                ← logger paket mentah socket.io
-│   └── test_serverlist.js         ← uji handler.process GetServerList
-└── server-dump/                   ← setting_BS_Android.bin (terdekripsi),
-                                     index-native.html, manifest.json
+repo ini (github.com/anztdree/db-apk)
+├── README.md        ← dokumen ini (satu-satunya dokumentasi)
+└── DB-Local.apk     ← APK asli (Git LFS)
 ```
 
-### Cara pakai decrypter
-```bash
-python3 decrypter/onepiece_decrypt.py <file_terenkripsi> <output>
-# contoh: pschent_full_tired.bin → ZIP berisi seluruh kode game
-```
+### Artefak riset lokal (di luar repo)
+| Artefak | Isi |
+|---|---|
+| Dekriptor XXTEA `onepiece` (Python + Java) | dekripsi ZIP kode game, berfungsi 100% |
+| Skrip uji protokol (Node/socket.io-client v2.1.0) | port TEA `"verification"`, logger paket mentah, uji `handler.process` |
+| `server-dump/` | setting server terdekripsi, `index-native.html`, `manifest.json`, `game.min.js` |
+| Kode game terdekripsi | main.min.js (4,7 MB, 1.897 class) + battlelogic + 434 JSON + aset |
 
 ### Toolchain yang dipakai untuk bedah
 androguard (manifest) · jadx 1.5.1 (Java decompile) · capstone + pyelftools
@@ -555,4 +554,5 @@ androguard (manifest) · jadx 1.5.1 (Java decompile) · capstone + pyelftools
   `verifyEnable` berbeda, 60+ tipe / 200+ action, battle deterministik berbasis seed.
 - **Server backend masih hidup** (login.popoh5.com:610 merespons socket.io handshake
   penuh, meski rate-limit) — jendela waktu untuk preservasi masih terbuka.
-- Semua temuan terdokumentasi + skrip bukti tersedia di repo ini.
+- Semua temuan terdokumentasi lengkap di README ini — pondasi untuk rencana
+  standalone mode selanjutnya.
