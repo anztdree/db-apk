@@ -285,10 +285,21 @@ Setelah setting terbaca, `LaunchActivity.dishbesideshockey()` memutuskan jalur b
      `<preloadDir>/https/dragonh5cdn.popoh5.com/bs/`
      (skema penamaan: buang nama file dari URL, `://` → `/`, `:` → `#0A` —
      konvensi yang dipakai juga oleh mesin Egret Native untuk memetakan URL→file lokal).
-   - Isi paket = ZIP: `index-native.html`, `manifest.json`, `js/*.js`, `resource/…` —
-     **identik dengan isi CDN** (kita bandingkan langsung).
+   - Isi paket (terverifikasi dengan dekriptor buatan sendiri) = ZIP **741 entri**: `js/*.js` (**14 file** —
+     TANPA `ThinkingAnalyticsSDK`) + `resource/…` (`default.res.json`, `default.res-en.json`,
+     `default.thm.json`, `gameEui.json`, `json/` **434 config**, `language/` **7 bahasa**,
+     `assets/`).
+     ⚠️ **TIDAK mengandung `index-native.html` maupun `manifest.json`** — kedua file
+     bootstrap itu **tidak pernah ada di APK** dan selalu diambil dari URL game (server).
+     Hash JS bawaan juga lebih lama dari yang ditunjuk `manifest.json` CDN
+     (mis. bawaan `main.min_7eae4d6e.js` vs CDN `main.min_777039fc.js`) —
+     unduhan update pertama (`all.zip`) yang menyediakan versi baru.
    - Sukses → set `decodeBinFinish=true`.
-6. Jalur IP-filter (Fase 3) memakai varian `z=true`: paket **pertama** (`voyage_fancy_radius`)
+6b. Isi paket kedua `voyage_fancy_radius.bin` (terverifikasi) = ZIP **161 entri** — build
+     **varian berbeda** (TypeScript/fairygui: `assets_ts/configs/*.json`, `fairygui.min`,
+     `promise.min`, `rawinflate.min`, `main.min_8c078fc0.js`). Bukan mirror build utama —
+     ini build cadangan untuk jalur maintenance/IP-filter.
+7. Jalur IP-filter (Fase 3) memakai varian `z=true`: paket **pertama** (`voyage_fancy_radius`)
    diekstrak **langsung ke `preloadDir`** (tanpa sub-folder URL) dan **tanpa** men-set flag.
 
 ### Fase 5 — Hot update (cek versi & unduh patch) — pohon keputusan eksak
@@ -324,22 +335,28 @@ lalu lanjut ke MainActivity.
 hanya untuk progress bar (bukan keputusan).
 
 **Hasil uji live saat riset (re-cek ulang terkonfirmasi)**: APK bawa base `110` / res `11220`;
-server menyediakan `base.version = 110` (sama) dan `resource.version = 11389` (lebih baru) dengan
+server menyediakan `base.version = 110` (sama → `base.zip` **tidak diunduh**) dan
+`resource.version = 11389` (lebih baru) dengan
 `upgrade.json` = `{"11389": "11389_11390.zip", "11388": "11388_11390.zip", …, "all": "all.zip"}`
-→ sistem mendukung **patch inkremental** dan **paket penuh**; instalasi baru akan mengunduh patch
-sekitar 250 KB.
+→ sistem mendukung **patch inkremental** dan **paket penuh**.
+⚠️ Untuk **instalasi baru**: res lokal `11220` **tidak ada** sebagai key di `upgrade.json`
+(key hanya 11386–11389) → `patchFile = null` → fallback **`all.zip` ±19,4 MB**.
+Patch ±250 KB hanya berlaku untuk instalasi yang sudah berada di res 11386–11389.
+(`all.zip` terverifikasi isinya: `js/` 11 file versi baru + `resource/` penuh + `resource.version` = `11390` —
+652 entri.)
 
 ### Fase 6 — MainActivity: runtime Egret Native
 
 `MainActivity.onCreate()` menerima extra `preloadPath`, lalu:
 
 1. **Pre-init**: baca ulang `vvcc.bin` (→ `versionConfig` untuk JS), `infoinfo.bin` (→ `vvcc_tc.bin` bila ada `|`), `vc_obb` bila OBB ada.
-2. **Keputusan NATIVE vs WEBVIEW** (logika eksak dari kode):
+2. **Keputusan EgretNative vs WebView mandiri** (logika eksak dari kode):
    ```java
-   nativeMode = !(Build.VERSION.SDK_INT >= webVer)   // field "gangclothing"
-   // webVer TIDAK ADA di setting bin (default -1) → SDK_INT >= -1 selalu…
-   // …perhatian: cek kode = webVer > 0 && webVer >= API → tanpa webVer = false
-   //   → nativeMode = !false = TRUE → SELALU jalur NATIVE (Egret Native + V8)
+   isWebMode   = (webVer > 0 && webVer >= Build.VERSION.SDK_INT)  // method mSdkParams
+   nativeMode  = !isWebMode
+   // webVer TIDAK ADA di setting bin (default -1) → isWebMode = false
+   //   → nativeMode = TRUE → SELALU jalur EgretNativeAndroid (libegret.so),
+   //     bukan WebView mandiri ("jsbind") yang hanya untuk varian webVer tertentu.
    ```
    - **NATIVE** (kasus nyata): dibuat `EgretNativeAndroid` — perlu cek **GLES 2.0**
      (`reqGlEsVersion >= 0x20000`; gagal → Toast "This device does not support OpenGL ES 2.0.").
@@ -351,7 +368,12 @@ sekitar 250 KB.
    config.showFPS = false;  config.fpsLogTime = -1;  config.clearCache = false;
    config.loadingTimeout = 0;          // 0 = tanpa timeout → hang, bukan crash
    config.preloadPath = mPreloadPath;  // cache root konten game
-   config.disableNativeRender = (nativeRender <= 0);  // flag dari setting bin
+   config.disableNativeRender = (nativeRender <= 0);
+   // ⚠️ TERVERIFIKASI: setting produksi TIDAK punya field "nativeRender" → default -1
+   //    → disableNativeRender = TRUE → parameter "nativeRender: NO" dikirim ke libegret.so.
+   //    Kedua engine TERTANAM di .so (namespace C++ egret::nativeRender::customRender +
+   //    GLES + V8, 1733 string V8) dan pilihan engine = saklar dari setting bin —
+   //    yang berarti saklar ini KENDALI PENUH kita di standalone mode (§9).
    ```
 4. **Daftarkan 13 jembatan ExternalInterface** (JS↔Java):
    `changeView, changeLanguage, refresh, startGame, pei, giveLike, contact, report2Third, openURL, switchAccount, userCenter, startTsGame, sendLog`
@@ -424,7 +446,8 @@ JS  (index-native.html, setelah 15 script termuat):
 
 ### Fase 8 — Boot engine → layar login
 
-`index-native.html` (dari CDN `url`) berjalan di dalam V8:
+`index-native.html` — **selalu diunduh dari `url` game (server); tidak ada salinannya di APK** —
+berjalan di dalam runtime Egret Native (`libegret.so`):
 
 ```js
 window["Log_Clean"]=true; window["debug"]=false; window["CacheNum"]=20;
@@ -518,16 +541,16 @@ login tampil. (Kolom "Bila gagal" = gejala yang dilihat user; detail di 4.11.)
 | 5 | `assets/game/vvcc.bin` | di dalam APK | **onepiece/XXTEA** | Fase 4 | peta 1.944 nama file (asli → obfuscated); dikirim juga ke JS sebagai `versionConfig` | "read_version_config_error" → berhenti |
 | 6 | `assets/game/vvcc_tc.bin` | di dalam APK | **onepiece/XXTEA** | Fase 4 (bila `infoinfo` ada `\|`) | peta kedua (139 entri) untuk paket kedua | tidak fatal |
 | 7 | `vc_obb` (dari `main.<vc>.com.db.local.obb`) | OBB expansion | — | Fase 4 (bila OBB ada) | peta nama tambahan | tidak fatal (kasus normal: tanpa OBB) |
-| 8 | paket kode `pschent_full_tired.bin` (9,4 MB) | di dalam APK | **onepiece/XXTEA → ZIP** | Fase 4 (sekali, flag `decodeBinFinish`) | kode game: index-native.html, manifest.json, 15 JS, resource kecil → diekstrak ke `<preloadDir>/<urlDir>/` | gagal dekrip → tidak ada file lokal → JS dimuat dari jaringan (atau hang) |
-| 9 | paket kode `voyage_fancy_radius.bin` (1,2 MB) | di dalam APK | **onepiece/XXTEA → ZIP** | Fase 4 varian IP-filter | build kedua, diekstrak langsung ke `preloadDir` | — (jalur alternatif saja) |
+| 8 | paket kode `pschent_full_tired.bin` (9,4 MB) | di dalam APK | **onepiece/XXTEA → ZIP** | Fase 4 (sekali, flag `decodeBinFinish`) | kode game: **14 JS + resource penuh** (TANPA `index-native.html`/`manifest.json` — lihat #16) → diekstrak ke `<preloadDir>/<urlDir>/` | gagal dekrip → JS/resource harus semuanya dari jaringan (atau hang) |
+| 9 | paket kode `voyage_fancy_radius.bin` (1,2 MB) | di dalam APK | **onepiece/XXTEA → ZIP** | Fase 4 varian IP-filter | build varian TS/fairygui (161 entri), diekstrak langsung ke `preloadDir` | — (jalur alternatif saja) |
 | 10 | `assets/game/base.version` = `110` | di dalam APK (fallback) | teks polos | Fase 5 | versi kode lokal | fallback tanpa masalah |
 | 11 | `assets/game/resource.version` = `11220` | di dalam APK (fallback) | teks polos | Fase 5 | versi resource lokal | fallback tanpa masalah |
 | 12 | `{update}/base.version` & `resource.version` | CDN hot-update | teks polos | Fase 5 (setiap peluncuran mode 1) | keputusan unduh patch | "404" → dialog; bukan angka → dialog network fail |
 | 13 | `{update}/upgrade.json` | CDN hot-update | teks polos | Fase 5 (bila patch res perlu) | peta patch inkremental `<lokal>_<remote>.zip` | gagal → fallback `all.zip` |
 | 14 | `{update}/size.json` | CDN hot-update | teks polos | Fase 5 | ukuran unduhan (progress bar saja) | gagal → progress tak akurat, lanjut |
 | 15 | `{update}/base.zip` / `all.zip` / `*_*.zip` | CDN hot-update | ZIP polos | Fase 5 (bila versi beda) | konten game terbaru | gagal → dialog "Download … Zip Fail" → berhenti |
-| 16 | `index-native.html` + `manifest.json` | `{url}` (CDN) atau cache lokal | polos | Fase 6–8 | bootstrap JS di V8 | cache lokal dari #8; bila keduanya gagal → hang/crash JS |
-| 17 | 15 file JS (daftar Fase 8) | `{url}/js/…` atau cache lokal | polos | Fase 8 | engine Egret + kode game | salah satu gagal → tidak sampai `runEgret` → layar loading selamanya |
+| 16 | `index-native.html` + `manifest.json` | `{url}` (server, **WAJIB ada — tidak ada salinan di APK**) | polos | Fase 6–8 | bootstrap JS runtime | tidak ada di cache lokal → bila server gagal → hang di layar loading |
+| 17 | 15 file JS (daftar Fase 8) | `{url}/js/…` atau cache lokal (union paket bawaan + `all.zip`) | polos | Fase 8 | engine Egret + kode game | salah satu gagal → tidak sampai `runEgret` → layar loading selamanya |
 | 18 | `default.res.json` (7.844 entri) + `default.thm.json` + `gameEui.json` | `{url}/resource/…` atau cache lokal | polos | Fase 8 (Main) | indeks resource & tema UI | grup `preload`/`login` gagal → layar login tak tampil |
 | 19 | grup resource `preload` + `login` (±251 item) | `{url}/resource/assets/…` | polos | Fase 8 | gambar/suara booting & login | timeout RES → hang di loading |
 | 20 | `resource/properties/serversetting.json` | `{url}/resource/properties/` | polos | Fase 8–9 (hanya bila `getLoginServer()` kosong) | fallback alamat login (web) | tidak dipakai di APK native |
@@ -872,7 +895,10 @@ error namespace socket.io (`server error`) — meski dengan header Origin/Refere
 3. ❌ ~~`testMode: 3` sebagai saklar matikan update~~ — **TERKOREKSI**: mode 3 = **layar kosong** (MainActivity tidak init apa-apa, Fase 3). Jangan pakai.
 4. `jsonB64Map` dinonaktifkan (`project_name = DragonBall`) → tidak ada kebutuhan struktur `json.gz` khusus.
 5. Ekstraksi pertama dijalankan **sekali** (flag `decodeBinFinish`) dari paket bawaan APK —
-   artinya konten dasar selalu ada lokal walau server mati; server hanya perlu menjawab versi sama.
+   artinya **14 JS + resource** selalu ada lokal walau server mati. Yang **TIDAK punya salinan
+   lokal** dan WAJIB tersedia di server setiap peluncuran hanya **4 file kecil**:
+   `index-native.html`, `manifest.json`, `serversetting.json` (+ `setting_BS_Android.bin`
+   di config server). Inilah permukaan serangan minimal standalone.
 
 ### 9.2 Arsitektur target
 
@@ -921,17 +947,23 @@ rusak, kita tahu PASTI lapisan mana yang salah — tidak menebak-nebak.
 
 > Tanpa tahap ini, semua tahap lain tidak punya bahan baku. **Kerjakan pertama kali.**
 
-| Unduh | Dari | Tujuan arsip |
-|---|---|---|
-| `setting_BS_Android.bin` (raw) + hasil dekrip | `configus…/bs/db/android/` | cadangan config otak |
-| `base.version`, `resource.version`, `size.json`, `upgrade.json` | `dragonh5cdn…/bs/upgrade/` | state update |
-| `base.zip` (±31 MB), `all.zip` (±19 MB), `11389_11390.zip` | `dragonh5cdn…/bs/upgrade/` | konten penuh + patch |
-| `index-native.html`, `manifest.json`, 15 file JS | `dragonh5cdn…/bs/` + `js/` | bootstrap |
-| `resource/default.res.json`, `resource/properties/serversetting.json`, grup `preload`+`login` (±251 file) | `dragonh5cdn…/bs/resource/…` | indeks + aset booting |
-| (ideal) seluruh 7.844 entri resource | `dragonh5cdn…/bs/resource/assets/…` | mirror penuh (bisa menyusul) |
+| Unduh | Dari | Tujuan arsip | Status riset |
+|---|---|---|---|
+| `setting_BS_Android.bin` (raw) + hasil dekrip | `configus…/bs/db/android/` | cadangan config otak | ✅ sudah diambil |
+| `base.version` (`110`), `resource.version` (`11389`), `size.json`, `upgrade.json` | `dragonh5cdn…/bs/upgrade/` | state update | ✅ sudah diambil |
+| `all.zip` (±19,4 MB — 652 entri: 11 JS versi baru + resource penuh) | `dragonh5cdn…/bs/upgrade/` | **sumber utama mirror JS + resource** | ✅ sudah diambil |
+| `base.zip` (±31 MB) | `dragonh5cdn…/bs/upgrade/` | cadangan konten base versi CDN | ⬜ belum |
+| `index-native.html` (10,8 KB), `manifest.json` (533 B) | `dragonh5cdn…/bs/` | bootstrap (tidak ada di APK!) | ✅ sudah diambil |
+| `serversetting.json` (73 B) | `dragonh5cdn…/bs/resource/properties/` | fallback alamat login | ✅ sudah diambil |
+| (cadangan) 4 JS yang tidak ada di `all.zip` (`tween`, `assetsmanager`, `dragonBones`, `default.thm`) | dari paket bawaan APK (`pschent_full_tired.bin`, hash sama dgn manifest) | melengkapi 15 JS | ✅ ada di paket bawaan |
+
+**Aturan konsistensi mirror (KRITIS — mencegah force close):**
+- JS = **union** `all.zip` (11 file, hash baru) + paket bawaan (4 file hash lama yang tak berubah)
+  → tepat 15 file sesuai `manifest.json`. Jangan campur file dari snapshot waktu berbeda.
+- Resource = union paket bawaan + `all.zip` (nama file mengikuti peta `vvcc.bin`, jangan regenerasi).
 
 ✅ **Kriteria lolos**: jumlah file & ukuran tercatat; checksum; arsip di ≥2 tempat.
-Uji kembali jumlah JS dari manifest = 15.
+Uji kembali: 15 JS dari manifest semuanya ada di mirror.
 
 #### Tahap B — Replika config server (Fase 1–2 dari alur boot)
 
@@ -996,11 +1028,11 @@ Lengkapi server statis dengan mirror 1:1 (file disalin apa adanya dari arsip Tah
 **tanpa mengubah satu byte pun**):
 
 ```
-/bs/index-native.html            ← salinan asli
-/bs/manifest.json                ← salinan asli (15 JS)
-/bs/js/*.js                      ← 15 file salinan asli
-/bs/resource/default.res.json    ← salinan asli (7.844 entri)
-/bs/resource/properties/serversetting.json
+/bs/index-native.html            ← salinan asli (WAJIB — tidak ada di APK)
+/bs/manifest.json                ← salinan asli, 15 JS (WAJIB — tidak ada di APK)
+/bs/js/*.js                      ← 15 file: union all.zip (11) + paket bawaan (4)
+/bs/resource/default.res.json    ← salinan asli (7.844 entri; dari paket bawaan/all.zip)
+/bs/resource/properties/serversetting.json  ← salinan asli (WAJIB — fallback login)
 /bs/resource/assets/…            ← aset grup preload + login dulu, sisanya menyusul
 /bs/upgrade/base.version         ← tulis "110"  (SAMA dengan bawaan APK)
 /bs/upgrade/resource.version     ← tulis "11220" (SAMA dengan bawaan APK)
@@ -1009,9 +1041,15 @@ Lengkapi server statis dengan mirror 1:1 (file disalin apa adanya dari arsip Tah
 /bs/upgrade/base.zip, all.zip    ← salinan asli (cadangan bila versi dinaikkan nanti)
 ```
 
-> Kunci trik Tahap D: version files diset **sama dengan bawaan APK** (110 / 11220) →
-> jalur Fase 5 selalu memilih cabang "最新资源文件，无需更新" → tidak ada unduhan →
-> nol risiko patch salah. Zip asli tetap diarsip untuk kebutuhan nanti.
+> **Dua kunci trik Tahap D:**
+> 1. Version files diset **sama dengan bawaan APK** (110 / 11220) → jalur Fase 5 selalu
+>    memilih cabang "最新资源文件，无需更新" → tidak ada unduhan → nol risiko patch salah.
+>    Zip asli tetap diarsip untuk kebutuhan nanti.
+> 2. Setelah boot pertama sukses, **cache lokal device sudah berisi 14 JS + resource**
+>    (hasil ekstraksi bawaan). Request yang benar-benar menyentuh server tiap peluncuran
+>    tinggal ±6 file kecil: setting bin, 2 version files, `index-native.html`,
+>    `manifest.json`, `serversetting.json`. Sisanya dilayani native dari cache.
+>    (Mirror lengkap tetap dipasang sebagai jaring pengaman cold-cache.)
 
 ✅ **Kriteria lolos Tahap D**: app boot **sampai layar login tampil**, tanpa satu pun
 request ke domain asli (buktikan dari access log + `adb logcat` tidak ada DNS keluar).
@@ -1070,10 +1108,10 @@ repo ini (github.com/anztdree/db-apk)
 ### Artefak riset lokal (di luar repo)
 | Artefak | Isi |
 |---|---|
-| Dekriptor XXTEA `onepiece` (Python + Java) | dekripsi ZIP kode game, berfungsi 100% |
+| Dekriptor XXTEA `onepiece` (Python + Java) | dekripsi ZIP kode game, berfungsi 100% — sudah dipakai ulang untuk memverifikasi `pschent_full_tired.bin` (741 entri), `voyage_fancy_radius.bin` (161 entri), `vvcc.bin` (1.944), `vvcc_tc.bin` (139) |
 | Skrip uji protokol (Node/socket.io-client v2.1.0) | port TEA `"verification"`, logger paket mentah, uji `handler.process` |
-| `server-dump/` | setting server terdekripsi, `index-native.html`, `manifest.json`, `game.min.js` |
-| Kode game terdekripsi | main.min.js (4,7 MB, 1.897 class) + battlelogic + 434 JSON + aset |
+| `server-dump/` | setting server terdekripsi, `index-native.html`, `manifest.json`, `serversetting.json`, `base.version`/`resource.version`/`size.json`/`upgrade.json`, `all.zip` (652 entri) |
+| Kode game terdekripsi | main.min.js (4,7 MB, 1.897 class) + battlelogic + 434 JSON + aset (versi paket bawaan) |
 
 ### Toolchain yang dipakai untuk bedah
 androguard (manifest) · jadx 1.5.1 (Java decompile) · capstone + pyelftools
@@ -1094,9 +1132,21 @@ androguard (manifest) · jadx 1.5.1 (Java decompile) · capstone + pyelftools
   `verifyEnable` berbeda, 60+ tipe / 200+ action, battle deterministik berbasis seed.
 - **Server backend masih hidup** (login.popoh5.com:610 merespons socket.io handshake
   penuh, meski rate-limit) — jendela waktu untuk preservasi masih terbuka.
-- **Alur depan (boot → layar login) terbedah TOTAL** (§4): 21 item config terinventarisasi
-  (4.10), peta titik gagal dipisah antara "cuma dialog/hang" vs "risiko force close" (4.11).
-  Koreksi penting: `testMode: 3` = layar kosong — bukan opsi aman.
+- **Alur depan (boot → layar login) terbedah TOTAL & terverifikasi ulang baris-per-baris**
+  (§4): 21 item config terinventarisasi (4.10), peta titik gagal dipisah antara "cuma
+  dialog/hang" vs "risiko force close" (4.11). Koreksi penting: `testMode: 3` = layar
+  kosong — bukan opsi aman.
+- **Temuan verifikasi ulang (baru):**
+  - `index-native.html`, `manifest.json`, `serversetting.json` **TIDAK ada di APK** —
+    3 file bootstrap ini wajib tersedia di server setiap peluncuran (permukaan minimal
+    standalone); 14 JS + resource tetap ada lokal dari ekstraksi paket bawaan.
+  - JS mirror tepat = **union** paket bawaan (14) + `all.zip` (11) → 15 file sesuai
+    manifest CDN; instalasi baru mengunduh `all.zip` ±19,4 MB (bukan patch 250 KB).
+  - Saklar engine render (`nativeRender`) TIDAK diset di setting produksi → param
+    `nativeRender: NO` ke `libegret.so` — dan karena sumbernya setting bin, saklar ini
+    kendali penuh standalone (§9.1).
+  - Paket `voyage_fancy_radius.bin` = build varian TS/fairygui (161 entri), dipakai
+    jalur IP-filter/maintenance — bukan mirror build utama.
 - Rencana standalone tersusun ulang **bertahap mengikuti alur boot** (§9): Tahap A snapshot →
   B replika config → C patch APK + uji Fase 1–5 → D replika CDN sampai layar login →
   E/F server game (menyusul, socket diabaikan dulu). Setiap tahap punya kriteria verifikasi
