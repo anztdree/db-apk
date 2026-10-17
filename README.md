@@ -2,7 +2,7 @@
 
 > **Repo**: `github.com/anztdree/db-apk` — dokumentasi lengkap hasil bedah APK, alur aplikasi, dan komunikasi server ↔ aplikasi.
 > **Status**: ✅ Bongkar APK selesai · ✅ Alur aplikasi terpetakan mendalam · ✅ Protokol server↔aplikasi terbedah & teruji live
-> **Rencana standalone mode**: ⏸️ ditunda — disusun menyusul berdasarkan hasil bedah kode (lihat §9 catatan dasar).
+> **Rencana standalone mode**: ✅ tersusun lengkap (§9) — patch minimal + roadmap S0–S5.
 
 > ⚠️ **Disclaimer**: Dokumen ini murni untuk tujuan riset/preservasi game yang backend-nya mendekati mati.
 > Semua kunci/rahasia di bawah **memang tertanam di dalam klien** (bukan hasil serangan ke server).
@@ -15,12 +15,12 @@
 1. [Identitas Aplikasi](#1-identitas-aplikasi)
 2. [Arsitektur Teknis](#2-arsitektur-teknis)
 3. [Sistem Enkripsi 3 Lapis (Semua Terpecahkan)](#3-sistem-enkripsi-3-lapis-semua-terpecahkan)
-4. [Alur Aplikasi Mendalam (End-to-End)](#4-alur-aplikasi-mendalam-end-to-end)
+4. [Alur Aplikasi Mendalam (End-to-End, Fase 0–9)](#4-alur-aplikasi-mendalam-end-to-end)
 5. [Bedah Komunikasi Server ↔ Aplikasi](#5-bedah-komunikasi-server--aplikasi)
 6. [Uji Protokol Live (Bukti Nyata)](#6-uji-protokol-live-bukti-nyata)
 7. [Hasil Ekstraksi: Kode, Data, Aset](#7-hasil-ekstraksi-kode-data-aset)
 8. [Infrastruktur Server & Status](#8-infrastruktur-server--status)
-9. [Catatan Dasar Menuju Standalone Mode](#9-catatan-dasar-menuju-standalone-mode)
+9. [Rencana Standalone Mode](#9-rencana-standalone-mode)
 10. [Artefak & Tools Riset](#10-artefak--tools-riset)
 11. [Kesimpulan](#11-kesimpulan)
 
@@ -134,13 +134,27 @@ Format file terenkripsi:
 
 ## 4. Alur Aplikasi Mendalam (End-to-End)
 
-### Fase 1 — Bootstrap Native (Java) — DETAIL LENGKAP
+### Fase 0 — LaunchActivity dimulai (channel `"BS"` hardcoded)
 
-#### 1a. File config yang DIBAWA di dalam APK (`assets/`)
+`LaunchActivity.onCreate()` (terverifikasi di DEX, baris ±1029):
+
+```java
+setContentView(R.layout.launch_new);
+getWindow().addFlags(FLAG_KEEP_SCREEN_ON);   // layar tetap nyala
+// channel dikode-kan PERMANEN di dalam APK:
+cointhreat...seventygenom.hardlinerspare.cointhreat("BS");   // channel = "BS"
+```
+
+→ Karena itulah Fase 1 membaca **`assets/config_BS.properties`** (bukan `config.properties` default).
+Pesan progres yang terlihat user (dari `strings.xml`): `read_cfg` (membaca config) → `decompressing` (membongkar) → `check_update` (cek update).
+
+### Fase 1 — Baca config bawaan APK (`assets/`)
+
+#### Tabel file config yang DIBAWA di dalam APK (`assets/`)
 
 | File | Isi | Peran |
 |---|---|---|
-| `config.properties` (channel default) | `EntryPoint1` = Base64 `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` | kandidat server config |
+| `config.properties` (channel default) | `EntryPoint1` = Base64 `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` | kandidat server config (varian `_debug` juga ada untuk tiap EntryPoint) |
 | `config_BS.properties` (channel BS/aktif) | `EntryPoint1` = Base64 `https://configus.sjmobilegame.com/bs/db/android`<br>`EntryPoint2` = Base64 `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android` | kandidat server config (2 URL fallback) |
 | `supplierconfig.json` | `{"supplier":{"vivo":{"appid":"100215079"}, "xiaomi":{}, "huawei":{}, "oppo":{}}}` | app ID SDK OEM China |
 | `QHinfo` | teks: `http://qsdk.t4game.com` | endpoint QuickGame SDK |
@@ -148,74 +162,47 @@ Format file terenkripsi:
 | `game/infoinfo.bin` | teks: `voyage_fancy_radius\|pschent_full_tired` | nama paket kode bawaan (dipisah `\|`) |
 | `game/base.version` | teks: `110` | versi kode bawaan |
 | `game/resource.version` | teks: `11220` | versi resource bawaan |
-| `game/vvcc.bin` | **onepiece-encrypted** → JSON 1.944 entri `{path_asli: path_obfuscated}` | peta nama file resource |
-| `game/vvcc_tc.bin` | **onepiece-encrypted** → JSON 139 entri | peta nama file (subset teamwork) |
+| `game/vvcc.bin` | **onepiece-encrypted** → JSON 1.944 entri `{path_asli: path_obfuscated}` | peta nama file resource (contoh: `/image/en/bitMapFont/activity1.png → /absorb_sialoid/missile_eighth.png`) |
+| `game/vvcc_tc.bin` | **onepiece-encrypted** → JSON 139 entri | peta nama file (subset, dibaca bila `infoinfo.bin` mengandung `\|`) |
 | `game/pschent_full_tired.bin` (9,4 MB) | **onepiece-encrypted** → ZIP kode game lengkap | paket kode #1 |
 | `game/voyage_fancy_radius.bin` (1,2 MB) | **onepiece-encrypted** → ZIP build kedua | paket kode #2 |
 | `game/*` lainnya (33 file total) | PNG/JPG polos (nama acak), .data, .bin, .version | aset & metadata |
 
-#### 1b. Rantai download config saat app dibuka (urutan persis + pola URL)
+Cara kerja: loop `i = 1..3` membaca property `EntryPoint<i>` dari `config_<channel>.properties`, setiap nilai di-**Base64.decode** → daftar URL server config. Semua EntryPoint **dicoba berurutan** (EntryPoint1 → 2 → ...) hingga unduhan sukses.
 
-Semua langkah dieksekusi `LaunchActivity` (kode decompiled, terverifikasi):
+### Fase 2 — Unduh `setting_BS_Android.bin` (wajib setiap kali app dibuka)
 
 ```
-LANGKAH 1 — Bangun daftar kandidat config server
-   baca assets/config.properties + config_BS.properties
-   → untuk i in 1..3: kumpulkan property "EntryPoint<i>" (ada 1..2)
-   → Base64.decode tiap entry → URL config server
-
-LANGKAH 2 — Unduh setting global (wajib)
-   GET {entrypoint}/setting_{channel}_Android.bin?rnd=<Math.random>
-       → file nyata: setting_BS_Android.bin
-   retry maks 10x, timeout eksponensial: 5s, 10s, 30s, ...
-   → XOR-decrypt kunci "DragonBall" (field binKeyData = "DragonBall".getBytes(UTF-8))
-   → parse JSON → simpan ke mSdkParams (tabel field: §1c)
-   Jika key "Android<versionCode>" ada → config per-versi app (nested); jika tidak →
-   pakai root JSON (kasus nyata: root flat, key "Android1" tidak ada)
-
-LANGKAH 3 — Unduh config per-package (opsional)
-   GET {entrypoint}/{packageName dengan "."→"_"}.bin?rnd=<Math.random>
-       → file nyata: com_db_local.bin
-   retry maks 3x
-   ✦ VERIFIKASI LIVE: file ini 404 (TIDAK ADA di server produksi) → dilewati
-     dengan anggun (fungsi return true bila download gagal, app lanjut)
-
-LANGKAH 4 — Baca paket kode bawaan
-   assets/game/infoinfo.bin → "voyage_fancy_radius|pschent_full_tired"
-   cek OBB expansion: main.<versionCode>.<package>.obb di getObbDir()
-   proses vvcc.bin (dekripsi onepiece) → peta nama file resource
-
-LANGKAH 5 — Cek versi hot-update (dua sumber lokal)
-   lokal  : file <destDir>/base.version & <destDir>/resource.version
-            (hasil instalasi sebelumnya); fallback assets/game/*.version
-   remote : GET {update}/base.version?rnd=<Math.random>      (retry 3)
-            GET {update}/resource.version?rnd=<Math.random>   (retry 3)
-   → remote "404" → tampil "Server base.version is Not Exist" & berhenti
-
-LANGKAH 6 — Unduh size.json (untuk progress bar)
-   GET {update}/size.json?rnd=<Math.random>
-   → {"base": ukuran_base.zip, "<resVer>": ukuran_patch, "all": ukuran_all.zip}
-
-LANGKAH 7 — Pilih & unduh paket update
-   ┌─ base.version lokal ≠ remote → GET {update}/base.zip?v=<ver>  (31 MB)
-   ├─ resource.version beda → cek GET {update}/upgrade.json?rnd
-   │     upgrade.json = PETA PATCH INKREMENTAL:
-   │     {"11389":"11389_11390.zip", "11388":"11388_11390.zip", ...,
-   │      "all":"all.zip"}
-   │     → key cocok dgn versi LOKAL → unduh patch {localVer}_{remoteVer}.zip (~250 KB)
-   │     → tidak ada key cocok → unduh {update}/all.zip?v=<ver> (19 MB)
-   └─ semua versi sama → langsung lanjut tanpa download
-
-LANGKAH 8 — Muat game URL ke runtime
-   pilih URL dari mSdkParams (logika §1d) → index-native.html → Fase 2
+GET {EntryPoint}/setting_{channel}_Android.bin?rnd=<Math.random()>
+  → https://configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin
+retry maks 10×, timeout = 5 × n! detik  (5 s, 10 s, 30 s, 120 s, 10 mnt, 1 jam, ...)
+→ XOR-decrypt kunci "DragonBall" → parse JSON → simpan ke mSdkParams
 ```
 
-#### 1c. Tabel lengkap field `setting_*.bin` (dibaca LaunchActivity → `mSdkParams`)
+**Semantik kegagalan (penting untuk standalone!):**
+
+| Kondisi | Perilaku kode | Efek ke user |
+|---|---|---|
+| Download gagal total (10× retry) | `return true` → **LANJUT** | field `mSdkParams` tetap default (`mode = 0`) → dialog **"check_network"** → berhenti di layar loading |
+| Download sukses, dekrip/parse gagal | `return false` → **FATAL** | dialog **"unknown_error"** |
+
+> Artinya: **config server harus terjangkau di setiap peluncuran** — tidak ada cache setting bin offline. Ini titik kunci standalone mode (§9).
+
+Selanjutnya config per-package:
+```
+GET {EntryPoint}/com_db_local.bin?rnd=...   (packageName "com.db.local" dengan "." → "_")
+retry maks 3×
+✦ VERIFIKASI LIVE: file ini 404 di server produksi → diabaikan dengan anggun, app lanjut
+```
+
+Prioritas kunci mode di JSON: `"Android<versionCode>"` (nested) > `"testMode"` (root). Kasus nyata: root flat dengan `testMode: 1` (key `Android1` tidak ada).
+
+#### Tabel lengkap field `setting_*.bin` (dibaca LaunchActivity → `mSdkParams`)
 
 | Key JSON | Tipe | Disimpan sebagai | Fungsi |
 |---|---|---|---|
 | `Android<versionCode>` | objek | mode container | config per-versi app (nested); prioritas di atas testMode |
-| `testMode` | int | mode | **1** = server produksi (`url`), **2** = server test (`tsUrl`/`tsLoginServer`), 3 = alur SDK alternatif, 4 = varian khusus |
+| `testMode` | int | mode | **1** = server produksi (`url`), **2** = server test (`tsUrl`/`tsLoginServer`), 3 = lewati hot update, 4 = URL TS debug |
 | `webVer` | int | webVer | threshold: bila Android API ≥ nilai → pakai varian web (`webUrl`) |
 | `nativeRender` | int | — | flag render native |
 | `url` | string | gameUrlNative | **URL game yang dimuat runtime** (index-native.html) |
@@ -243,77 +230,142 @@ LANGKAH 8 — Muat game URL ke runtime
 | `unityGameSdkLogin` | bool | — | flag alur login SDK Unity |
 | `checkGoogleTicketUrl` | string | — | verifikasi ticket Google Play |
 | `gameLanguage` | string | — | bahasa paksa |
+| `nativeUnzipJson` | bool | — | bila true: native kirim `jsonDecodeB64Map` (gzip) ke JS |
 
-#### 1d. Logika pemilihan URL (mode & varian)
+### Fase 3 — Dispatch mode (semantik persis dari kode)
+
+Setelah setting terbaca, `LaunchActivity.dishbesideshockey()` memutuskan jalur berdasarkan `mode`:
+
+| Kondisi | Perilaku |
+|---|---|
+| mode **0** (default/gagal) | dialog **"check_network"**, **BERHENTI** |
+| mode **1** (`testMode:1` — kasus nyata) | alur penuh: ekstraksi → hot update → MainActivity |
+| mode **2** (`testMode:2`, server uji) | seperti 1, tapi URL memakai varian `ts*`; native mengirim `loginServer` = string `"null"` ke JS |
+| mode **3** | **LEWATI SELURUH HOT UPDATE** → langsung ke MainActivity (hanya teruskan `preloadPath`) |
+| mode **4** | MainActivity memuat URL TS hardcode — Base64 terenkode di MainActivity: `http://tool.egret-labs.org/Weiduan/game/index.html` (URL debug Egret!) |
+| **IP filter cocok** (`blackWhiteL` / `blackWhiteLNetSegment`) | **LEWATI hot update** → langsung ke MainActivity |
+
+> Implikasi standalone: men-set `testMode: 3` di setting bin yang kita kelola = **saklar untuk mematikan seluruh mekanisme hot-update** (berguna untuk memakai paket bawaan APK apa adanya).
+
+### Fase 4 — Ekstraksi paket kode bawaan (mode 1/2)
+
+1. Baca `assets/game/infoinfo.bin` → `voyage_fancy_radius|pschent_full_tired`
+   — bila ada `|`, pakai nama **setelah** tanda itu (`pschent_full_tired`) sebagai paket aktif.
+2. Bila file tidak ada → `"info file not found"` → berhenti (dialog).
+3. Cek OBB expansion: `main.<versionCode>.com.db.local.obb` di `getObbDir()`; bila ada → baca juga `vc_obb` (peta nama tambahan).
+4. Dekripsi `vvcc.bin` (onepiece) → peta `{path_asli → nama_obfuscated}` (1.944 entri, sudah terbukti terdekripsi 100%).
+5. Unzip paket kode dari assets ke **preload dir** = `getExternalFilesDir("")` + folder yang diturunkan dari URL game (protokol & host dijadikan nama folder).
+6. Baca `vvcc_tc.bin` bila `infoinfo.bin` mengandung `|` → varian peta kedua.
+
+### Fase 5 — Hot update (cek versi & unduh patch)
+
+```
+LOKAL  : <preloadDir>/<urlDir>/base.version & resource.version
+         (fallback: assets/game/base.version = 110, resource.version = 11220)
+REMOTE : GET {update}/base.version?rnd=...      (retry 3)
+         GET {update}/resource.version?rnd=...  (retry 3)
+→ remote "404" → dialog "Server base.version/resource.version is Not Exist" → berhenti
+```
+
+Keputusan unduh:
+
+| Perbandingan | Aksi |
+|---|---|
+| `base.version` lokal ≠ remote | unduh `{update}/base.zip?v=<ver>` (±31 MB) |
+| `resource.version` lokal ≠ remote | bila lokal KOSONG → `{update}/all.zip?v=<base><res>`; bila ada → baca `{update}/upgrade.json?rnd=` → pilih patch `<lokalVer>_<remoteVer>.zip` (±250 KB); tak ada key cocok → `all.zip` (±19 MB) |
+| semua sama | tanpa download, langsung lanjut |
+
+`{update}/size.json?rnd=` → `{"base": 31015076, "11389": 252562, ..., "all": 19385098}` — hanya untuk progress bar.
+
+Setelah zip terunduh & diekstrak: file di `<preloadDir>/.../image` dan `.../image_merge` **dinama-ulang** memakai peta `vvcc.bin` / `vc_obb` (path asli → nama obfuscated) supaya cocok dengan penamaan aset bawaan APK.
+
+**Hasil uji live saat riset**: APK bawa base `110` / res `11220`; server menyediakan `resource.version = 11389` dengan `upgrade.json` berisi peta patch `{"11389": "11389_11390.zip", "11388": "11388_11390.zip", ..., "all": "all.zip"}` → sistem mendukung **patch inkremental** dan **paket penuh**.
+
+### Fase 6 — MainActivity: runtime Egret Native
+
+`MainActivity.onCreate()` menerima extra `preloadPath`, lalu:
+
+1. **Pre-init**: baca ulang `vvcc.bin` (→ `versionConfig` untuk JS), `infoinfo.bin` (→ `vvcc_tc.bin` bila ada `|`), `vc_obb` bila OBB ada.
+2. **Setup `EgretNativeAndroid`** (`org.egret.egretnativeandroid` — pembungkus **`libegret.so`** yang meng-embed **mesin V8**):
+   ```
+   config.showFPS = false;  config.fpsLogTime = -1;  config.clearCache = false;
+   config.loadingTimeout = 0;          // 0 = tanpa timeout → hang, bukan crash
+   config.preloadPath = mPreloadPath;  // cache root konten game
+   ```
+3. **Daftarkan 13 jembatan ExternalInterface** (JS↔Java):
+   `changeView, changeLanguage, refresh, startGame, pei, giveLike, contact, report2Third, openURL, switchAccount, userCenter, startTsGame, sendLog`
+4. `initialize(gameUrl)` — bila gagal → Toast **"Initialize native failed."** (fallback WebView: `webView.loadUrl(gameUrl)` bila runtime native tidak tersedia).
+5. Inisialisasi SDK channel bila channel aktif & mode bukan 3/4: QuickGame `init(productCode)` + `showFloatView` + `QuickGameManager.onCreate`.
+
+Pemilihan `gameUrl` & login (logika eksak dari `mSdkParams`):
 
 ```java
-// mSdkParams (obfuscated: cointhreat...ironoriginhoblike):
-gameUrl()   = (mode == 2) ? (apiLevel ≥ webVer ? tsWebUrl : tsUrl)
-                           : (apiLevel ≥ webVer ? webUrl    : url)
+gameUrl()     = (mode == 2) ? (apiLevel ≥ webVer ? tsWebUrl : tsUrl)
+                             : (apiLevel ≥ webVer ? webUrl    : url)
 loginNative() = (loginPort > 0) ? format("%s:%d", loginServer, loginPort)   // :610
                                 : loginServer
 loginWeb()    = (mode == 2) ? tsLoginServer
             : (loginWebPort > 0) ? format("%s:%d", loginServer, loginWebPort) // :510
                                  : loginServer
 ```
+
 Nilai nyata (`testMode: 1`, tanpa `webVer`) → native memuat
 `https://dragonh5cdn.popoh5.com/bs/index-native.html?v=202109150935` dan login
 `https://login.popoh5.com:610`. ✓ cocok dengan hasil live test.
 
-#### 1e. Hot update — verifikasi live saat riset
+### Fase 7 — Handshake `startGame` (native ↔ JS)
 
-| Item | APK (lokal) | CDN (server) | Keputusan app |
-|---|---|---|---|
-| `base.version` | `110` | `110` | sama → **tidak** unduh base.zip |
-| `resource.version` | `11220` | `11389` | **beda** → cek upgrade.json → patch `11220_11390.zip`? |
+Runtime native memuat `gameUrl` → JS mulai berjalan; keduanya berjumpa di handshake ini:
 
-Isi live `size.json`: `{"base": "31015076", "11389": 252562, "11388": 252562, ..., "all": 19385098}`
-Isi live `upgrade.json`: `{"11389": "11389_11390.zip", "11388": "11388_11390.zip", ..., "all": "all.zip"}`
+```
+JS  (index-native.html, setelah semua script termuat):
+    egret.ExternalInterface.call("startGame", "get Sdk Channel")   ← MINTA data
 
-> Kunci versi di `size.json`/`upgrade.json` bergerak bersama `resource.version` server —
-> sistem mendukung **patch inkremental** (±250 KB) dan **paket penuh** all.zip (±19 MB).
-
-#### 1f. Serahkan ke MainActivity
-
-Semua hasil config (`mSdkParams`) → `MainActivity` → muat `gameUrl()` di runtime Egret
-Native (V8) → payload `startGame` (lihat Fase 2) → game JS hidup.
-
-### Fase 2 — Runtime JS (index-native.html)
-
-`index-native.html` (file CDN asli, disimpan di artefak riset lokal) melakukan:
-
-```js
-xhr('./manifest.json') → daftar script (manifest.initial + manifest.game)
-loadScript(...) semuanya → window["loadJsonFunc"] = RES.getRes
-egret.ExternalInterface.addCallback("startGame", function(msg){
-    json = JSON.parse(msg)                 // dikirim native
-    loginServer = json.loginServer         // ← URL login server disuntik NATIVE
-    thirdParams = json.thirdParams         // {sdk, nickname, userid, securityCode}
-    clientParams = json.clientParams       // hideList, supportLang, dll
-    egret.runEgret({renderMode:"webgl"})   // ← game mulai
-})
-egret.ExternalInterface.call("startGame", "get Sdk Channel")  // minta data ke native
+NATIVE (MainActivity, handler "startGame"):
+    susun JSON → callExternalInterface("startGame", json)          ← BALAS
 ```
 
-**Poin penting**: URL `loginServer:610` TIDAK di-hardcode di JS — native menyuntikkannya lewat event `startGame` (dari `setting_*.bin` hasil XOR). Native menyusunnya sebagai `String.format("%s:%d", loginServer, loginPort)` → `https://login.popoh5.com:610` (versi web game pakai `loginWebPort` → `:510`).
+**Payload lengkap yang dikirim native → JS:**
 
-### Fase 3 — Jembatan JS ↔ Native (egret.ExternalInterface)
-
-| Arah | Nama | Fungsi |
+| Key | Nilai nyata | Sumber |
 |---|---|---|
-| native→JS | `startGame` | loginServer, thirdParams (data login SDK), clientParams, versi |
-| native→JS | `refresh` | reload game / switch user |
-| JS→native | `pei` | **pembayaran** (QuickSDK; `data.power = data.money`) |
-| JS→native | `report2Third` | laporan event ke SDK channel (level up, chapter, tutorial, shop) |
-| JS→native | `giveLike` / `fbGiveLive` | share/like Facebook |
-| JS→native | `contact` / `userCenter` / `gifBag` | customer service, user center, gift code |
-| JS→native | `switchAccount` / `changeLanguage` / `openURL` | utilitas |
+| `packageName` | `com.db.local` | aplikasi |
+| `language` | bahasa tersimpan | SharedPreferences |
+| `loginServer` | **`https://login.popoh5.com:610`** | `format("%s:%d", loginServer, loginPort)` dari setting bin |
+| `loginKey` | (bila ada) | setting bin |
+| `screenSize` | `{"width":720,"height":<terhitung>}` | ukuran layar aktual |
+| `version` | **`110.11220`** | `<baseVersion>.<resVersion>` dari preload dir (fallback assets) |
+| `versionConfig` | isi `vvcc.bin` (peta nama file) | assets |
+| `versionConfigObb` | isi `vc_obb` (bila ada) | OBB |
+| `thirdParams` | JSON login SDK | QuickGame |
+| `thirdChannel` | channel ikon/nama | setting/gameIcon |
+| `clientParams` | `{"hideList":["1.99",...], ...}` | setting bin |
 
-Juga di-inject oleh HTML: `window.checkSDK`, `window.getSdkLoginInfo`, `window.getAppId`,
-`window.serverList`, `window.supportLang`, `window.hideList`, `window.reportBattlleLog`,
-`window.reload`, `window.clipboardData`, dll — semua dipakai main.min.js.
+> Catatan penting: meta-data `project_name = "DragonBall"` di manifest membuat native **TIDAK** mengirim `jsonB64Map`/`jsonDecodeB64Map` (jalur injeksi JSON offline Egret Native dinonaktifkan) → semua JSON config game dimuat lewat jalur RES/CDN biasa.
 
-### Fase 4 — Login & Masuk Game (dari main.min.js)
+**Sisi JS** menerima JSON lalu menyuntik global: `loginServer`, `thirdParams`, `clientParams` → `window.hideList`, `window.supportLang`, `window.gameIcon`, `window.battleAudio`, `window.sdkNativeChannel`, `window.showCurChannel`, `window.version`, `window.versionConfig`, lalu `egret.runEgret({renderMode:"webgl"})`.
+
+### Fase 8 — Boot engine → layar login
+
+`index-native.html` (dari CDN `url`) berjalan di dalam V8:
+
+```js
+window["Log_Clean"]=true; window["debug"]=false; window["CacheNum"]=20;
+window["reportBattlleLog"]="http://log.sjflaregame.com:10000/error/battle/client";
+window["privacyUrl"]="http://www.parajoymobile.com/privacy_en.html";
+xhr('./manifest.json?v=' + Math.random())
+  → loadScript(manifest.initial + manifest.game)   // 14 file JS berurutan
+  → window["loadJsonFunc"] = RES.getRes
+  → pasang callback "startGame" → panggil native (Fase 7)
+  → egret.runEgret({renderMode:"webgl"})
+```
+
+Setelah itu engine Egret: `Main` (entry class) → muat `default.res.json` + `default.thm.json` → preload → scene booting → **layar login**.
+
+> **`resource/properties/serversetting.json`** hanya dipakai di jalur H5 murni (bila `window.getLoginServer()` kosong — mis. main lewat browser WeChat). Di APK, `loginServer` selalu disuntik native (Fase 7) → file ini praktis tak terpakai di runtime APK.
+
+### Fase 9 — Login & Masuk Game (dari main.min.js)
+
 
 > ⚠️ Catatan jujur: seluruh alur di bawah ini hasil **analisis kode** (dapat dipercaya —
 > nama class/method nyata), tetapi **belum diuji end-to-end** karena butuh akun SDK valid.
@@ -635,25 +687,102 @@ error namespace socket.io (`server error`) — meski dengan header Origin/Refere
 
 ---
 
-## 9. Catatan Dasar Menuju Standalone Mode
+## 9. Rencana Standalone Mode
 
-> ⏸️ **Rencana lengkap ditunda** (permintaan owner) — ini temuan dasar dari hasil bedah
-> yang paling relevan saat nanti disusun:
+> ⚠️ **KARAKTER APK**: ini **native game**, bukan wrapper WebView. Runtime = `libegret.so`
+> (Egret Native) yang meng-embed **mesin V8** + `runtime-dex.jar`, terikat ketat ke Java
+> lewat **13 jembatan ExternalInterface**. Satu file hilang, satu JSON rusak, atau satu
+> URL salah → exception/segfault → **force close**. Maka prinsip rencana ini:
+> **patch seminimal mungkin, dan jangan pernah menyentuh kode native.**
 
-1. **Battle deterministik** — server kirim `_battleId + _battleResult + _rightTeam + _rand`
-   (seed). Klien punya mesin battle penuh. Server standalone "cukup" menghitung hasil
-   dengan logika yang sama → animasi klien tetap jalan.
-2. **Login origin dibangun ke klien**: `loginGame` + password `game_origin` + auto-login
-   dari localStorage → server sendiri sangat mungkin tidak butuh SDK asli.
-3. **`testMode: 1`** di setting server + server uji `tsLoginServer` (`118.24.68.91:7003`)
-   menandakan tooling test/dev pernah ada.
-4. **Semua data game lokal** (434 JSON + 7 bahasa + battleRecord per-level) → klien bisa
-   boot sampai layar login tanpa server; yang butuh server = gameplay (enterGame & seterusnya).
-5. **CDN masih hidup** → aset/kode bisa dimirror sekarang sebelum mati.
-6. Blokir: `hideList` harga IAP, TiViCloud recharge, dan channel-SDK report — semuanya
-   bisa di-bypass/di-mock di server standalone.
+### 9.1 Keputusan desain (kenapa patch minimal)
 
----
+| Layer | Keputusan | Alasan |
+|---|---|---|
+| `libegret.so` + `runtime-dex.jar` | ❌ **JANGAN disentuh** | V8 + JSB + `NativeKey` (`5ce4b0e76844477`) hidup di dalamnya; tidak ada yang perlu diubah di sana |
+| Java `LaunchActivity` / `MainActivity` | ❌ JANGAN diubah | Semua URL/endpoint datang dari `setting_*.bin` — Java sudah "dependency-inject" lewat config |
+| `assets/config_BS.properties` | ✅ **satu-satunya patch di APK** | Channel `"BS"` hardcoded (Fase 0) → `EntryPoint1` di file inilah satu-satunya titik kontrol |
+| `setting_BS_Android.bin` (server kita) | ✅ kontrol penuh | XOR `DragonBall` sudah terpecahkan — kita bisa menulis JSON sendiri |
+| Kode JS game (CDN) | ✅ boleh dimodifikasi bebas | File JS di CDN **polos** (tidak terenkripsi); paket `.bin` terenkripsi hanya bawaan APK |
+| Aset/resource | ✅ mirror apa adanya | Nama file mengikuti peta `vvcc.bin` — jangan regenerasi nama acak sendiri |
+
+**Fakta pendukung (semua terverifikasi):**
+
+1. **`cleartextTrafficPermitted = true`** (`res/xml/network_security_config.xml`, `base-config`) + `usesCleartextTraffic=true` → server kita cukup **HTTP polos**, tidak perlu TLS/sertifikat.
+2. `loginServer` **disuntik native** ke JS lewat event `startGame` (bukan hardcode di JS) → cukup ubah setting bin.
+3. `testMode: 3` mematikan seluruh hot update → opsi "tanpa CDN" bila dibutuhkan.
+4. `jsonB64Map` dinonaktifkan (`project_name = DragonBall`) → tidak ada kebutuhan struktur `json.gz` khusus.
+
+### 9.2 Arsitektur target
+
+```
+                        ┌──────────────────────────────────────────────┐
+                        │             SERVER STANDALONE                │
+                        │        (1 mesin, HTTP saja, LAN/VPS)         │
+                        └──────────────────────────────────────────────┘
+                              │
+  APK patched                 │
+  (1 file diubah:     ──────► ├─ /bs/db/android/setting_BS_Android.bin  ← config server
+   EntryPoint1)              │    { testMode:1, url, update, loginServer → server ini }
+                             │
+                             ├─ /bs/index-native.html + manifest.json + 14 JS  ← static mirror
+                             │    (+ default.res.json, aset bila tidak lewat zip)
+                             │
+                             ├─ /bs/upgrade/{ base.version, resource.version,   ← hot update
+                             │              size.json, upgrade.json, base.zip, all.zip }
+                             │
+                             └─ :610  socket.io v2 emulator                     ← game server
+```
+
+Tiga komponen:
+
+1. **Config server** — file statis `setting_BS_Android.bin` ter-XOR `DragonBall` (isi: lihat Fase 2).
+2. **Static host** — mirror `index-native.html`, `manifest.json`, 14 file JS, version files, `size.json`, `upgrade.json`, `base.zip`, `all.zip`.
+3. **Game server** — emulator socket.io v2 (endpoint minimal dulu: login → server list → enter game), data simpanan JSON/SQLite.
+
+### 9.3 Opsi implementasi APK
+
+| Opsi | Cara | Penilaian |
+|---|---|---|
+| **A — rekomendasi** | Patch `assets/config_BS.properties` → `EntryPoint1 = http://<server-kita>/bs/db/android`, lalu zip ulang assets + zipalign + apksigner | Satu titik perubahan; tidak menyentuh `resources.arsc`/`.so` |
+| B — DNS/hosts redirect | Arahkan domain asli ke server kita | ❌ Gagal: 3 domain kunci memakai **HTTPS** (`configus`, `dragonh5cdn`, `login.popoh5.com`) → sertifikat palsu ditolak Android; user-CA tidak dipercaya default Android 7+ |
+| C — patch smali | Edit URL/hardcode di smali | Cadangan saja — lebih invasif; tidak diperlukan bila Opsi A cukup |
+
+Catatan re-sign: versi lama harus **di-uninstall dulu** (signature beda); jangan menaikkan `targetSdk`; jangan mengaktifkan `android:debuggable`.
+
+### 9.4 Roadmap bertahap
+
+| Fase | Pekerjaan | Kriteria selesai |
+|---|---|---|
+| **S0 — Mirror total** ⚠️ URGENT (server asli masih hidup) | Unduh & arsipkan: `setting_BS_Android.bin` (raw), `base.version`, `resource.version`, `size.json`, `upgrade.json`, `base.zip`, `all.zip`, `index-native.html`, `manifest.json`, 14 file JS | Arsip terverifikasi (jumlah file + ukuran). **Jendela waktu ini bisa tutup kapan saja** |
+| **S1 — Config sendiri + patch APK** | Host `setting_BS_Android.bin` sendiri (XOR `DragonBall`); patch & re-sign APK (Opsi A); `url`/`update`/`loginServer` diarahkan ke server sendiri | App boot dari server sendiri **sampai layar login** (offline/LAN) |
+| **S2 — Static mirror penuh** | Sajikan seluruh konten CDN dari server sendiri | Game load 100% dari server sendiri, tanpa menyentuh domain asli |
+| **S3 — Game server inti** | socket.io v2 + `loginGame` (Origin, password `game_origin`) + `GetServerList` + `SaveHistory` + `enterGame` + `SaveUserEnterInfo` | Login → pilih server → masuk Home |
+| **S4 — Battle & gameplay** | `startBattle`/`checkBattleResult`: server kirim `_battleId/_battleResult/_rand`; jalankan `battlelogic.min.js` di Node sebagai engine server (kode sama dengan klien → determinisme terjaga) | Battle dungeon/arena berjalan penuh + reward |
+| **S5 — Fitur sosial (opsional)** | chat, guild, team dungeon, ranking | Sesuai kebutuhan |
+
+### 9.5 Risiko force close & mitigasi
+
+| # | Risiko | Gejala | Mitigasi |
+|---|---|---|---|
+| 1 | `setting bin` dekrip/parse gagal | dialog `unknown_error` | Uji XOR+JSON dengan script dekripsi **sebelum** deploy |
+| 2 | Config server tak terjangkau saat peluncuran | dialog `check_network` | Server harus selalu on; field `mode` default int = 0 |
+| 3 | `manifest.json` / JS 404 di CDN sendiri | hang (loadingTimeout=0 = tunggu selamanya) atau crash V8 | Mirror jumlah file **persis**; uji setiap URL di manifest |
+| 4 | `vvcc.bin` / `infoinfo.bin` hilang dari assets | `read_version_config_error` / `info file not found` (berhenti) | Jangan otak-atik `assets/game/*` |
+| 5 | Zip update buatan sendiri tidak cocok peta `vvcc` | RES gagal load → exception JS → force close | Selalu pakai `base.zip`/`all.zip` resmi hasil S0 — jangan zip ulang aset dengan nama sendiri |
+| 6 | Mode diset salah (0/2) | `check_network` / `loginServer` = string `"null"` | Selalu `testMode: 1` (atau `3` bila ingin tanpa hot update) |
+| 7 | Signature / versionCode bentrok | install gagal / data lama bertabrakan | Uninstall dulu; `versionCode` jangan diturunkan |
+| 8 | Anti-tamper (`libgavesec`/TiViCloud) | crash saat startup bila APK diutak-atik besar-besaran | Patch minimal = tidak memicu; jangan strip SDK |
+| 9 | `update` masih menunjuk CDN asli saat S1 | config campur aduk / patch asli menimpa konten | Segera arahkan `update` ke server sendiri (atau pakai `testMode: 3`) |
+
+### 9.6 Yang TIDAK perlu dikerjakan
+
+- Dekripsi ulang `pschent_full_tired.bin` untuk runtime — paket bawaan dipakai apa adanya; runtime memuat JS dari CDN (server kita).
+- Re-implement engine Egret/V8 — `libegret.so` asli tetap jalan.
+- Urusan TLS/domain — `cleartextTrafficPermitted=true` membuat HTTP cukup.
+- Menulis ulang battle engine dari nol — `battlelogic.min.js` bisa jalan di Node (S4).
+
+> **Kriteria sukses akhir**: HP fisik (atau emulator) memasang APK hasil patch, terhubung ke server standalone di LAN (tanpa internet), menyelesaikan login Origin (`game_origin`), dan menuntaskan satu battle dungeon penuh.
 
 ## 10. Artefak & Tools Riset
 
@@ -693,5 +822,7 @@ androguard (manifest) · jadx 1.5.1 (Java decompile) · capstone + pyelftools
   `verifyEnable` berbeda, 60+ tipe / 200+ action, battle deterministik berbasis seed.
 - **Server backend masih hidup** (login.popoh5.com:610 merespons socket.io handshake
   penuh, meski rate-limit) — jendela waktu untuk preservasi masih terbuka.
-- Semua temuan terdokumentasi lengkap di README ini — pondasi untuk rencana
-  standalone mode selanjutnya.
+- Rencana standalone mode tersusun lengkap (§9): patch **satu file** config di APK
+  + server standalone HTTP (config/CDN/socket.io), roadmap S0–S5, tabel risiko
+  force-close & mitigasinya. **Langkah paling mendesak: S0 (mirror total) selagi
+  server asli masih hidup.**
