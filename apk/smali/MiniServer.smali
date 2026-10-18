@@ -247,9 +247,7 @@
 
     if-ne v2, v3, :ready
 
-    invoke-virtual {v1}, Ljava/lang/String;->length()I
-
-    move-result v0
+    const/4 v0, 0x1
 
     invoke-virtual {v1, v0}, Ljava/lang/String;->substring(I)Ljava/lang/String;
 

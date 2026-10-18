@@ -30,11 +30,17 @@ Sumber berlapis resolve():
 
 ## Pelajaran penting (JANGAN diulang)
 
-**Force close test1 & test2:** `MiniServer.handle` tertulis `.method private static` padahal
-dipanggil lintas class oleh `ConnRun` → `IllegalAccessError` di koneksi pertama → FATAL EXCEPTION →
-proses mati. **Method yang dipanggil lintas class WAJIB `public`.**
-Selain itu: exception tak tertangkap di thread mana pun membunuh seluruh proses — makanya semua
-titik masuk dibungkus `try/catch Throwable`, termasuk `ConnRun.run()`.
+1. **FC test1 & test2:** `MiniServer.handle` tertulis `.method private static` padahal
+   dipanggil lintas class oleh `ConnRun` → `IllegalAccessError` di koneksi pertama → FATAL
+   EXCEPTION → proses mati. **Method yang dipanggil lintas class WAJIB `public`.**
+   Selain itu: exception tak tertangkap di thread mana pun membunuh seluruh proses — makanya
+   semua titik masuk dibungkus `try/catch Throwable`, termasuk `ConnRun.run()`.
+2. **404 semua request (test3):** di `parsePath`, buang `/` depan tertulis
+   `substring(length)` (hasil: string kosong) padahal maksudnya `substring(1)` → SEMUA
+   request dianggap malformed → 404 → game fallback ke CDN (EntryPoint2).
+   **Smali tulisan tangan WAJIB diuji logikanya** (port ke bahasa lain + jalankan kasus
+   request nyata) sebelum dirilis. Kasus uji wajib: setting bin `?rnd=`, `all.zip?v=`,
+   path `/`, traversal `..`, request rusak.
 
 ## Isi folder ini
 
