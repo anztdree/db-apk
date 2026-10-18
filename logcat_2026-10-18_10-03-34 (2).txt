@@ -1,0 +1,397 @@
+[2026-10-18 10:03:14.855 Uid(value=10673):18872:18872 I/com.db.local]
+Using generational CollectorTypeCMC GC.
+
+[2026-10-18 10:03:14.901 Uid(value=10673):18872:18872 D/nativeloader]
+Load libstats_jni.so using APEX ns com_android_os_statsd for caller /apex/com.android.os.statsd/javalib/framework-statsd.jar: ok
+
+[2026-10-18 10:03:14.901 Uid(value=10673):18872:18872 D/CompatibilityChangeReporter]
+Compat change id reported: 171979766; UID 10673; state: DISABLED
+
+[2026-10-18 10:03:14.904 Uid(value=10673):18872:18872 D/os.SingleLiceFactory]
+using android.graphics.IGraphicLice$DefaultImpl@ee47d4c instead of com.transsion.typeface.TypefaceLiceFactory  from android.graphics.IGraphicLice
+
+[2026-10-18 10:03:14.904 Uid(value=10673):18872:18872 D/os.LiceInfo]
+instance successfully. com.transsion.graphics.GraphicLice@a3eb195 from android.graphics.IGraphicLice
+
+[2026-10-18 10:03:14.912 Uid(value=10673):18872:18872 D/nativeloader]
+Configuring clns-4 for other apk /data/app/~~SwJ2FTZJiBiq7MEQv2NQQw==/com.db.local-qa7Aaran2W7jV2Kz6N0xhg==/base.apk. target_sdk_version=30, uses_libraries=, library_path=/data/app/~~SwJ2FTZJiBiq7MEQv2NQQw==/com.db.local-qa7Aaran2W7jV2Kz6N0xhg==/lib/arm64:/data/app/~~SwJ2FTZJiBiq7MEQv2NQQw==/com.db.local-qa7Aaran2W7jV2Kz6N0xhg==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.db.local
+
+[2026-10-18 10:03:14.922 Uid(value=10673):18872:18872 V/GraphicsEnvironment]
+ANGLE Developer option for 'com.db.local' set to: 'default'
+
+[2026-10-18 10:03:14.922 Uid(value=10673):18872:18872 V/GraphicsEnvironment]
+Neither updatable production driver nor prerelease driver is supported.
+
+[2026-10-18 10:03:14.923 Uid(value=10673):18872:18872 I/LoadedApk]
+No resource references to update in package com.transsion.theme.icon
+
+[2026-10-18 10:03:14.924 Uid(value=10673):18872:18872 D/NetworkSecurityConfig]
+Using Network Security Config from resource network_security_config debugBuild: false
+
+[2026-10-18 10:03:14.924 Uid(value=10673):18872:18872 D/NetworkSecurityConfig]
+Using Network Security Config from resource network_security_config debugBuild: false
+
+[2026-10-18 10:03:14.938 Uid(value=10673):18872:18872 W/com.facebook.UserSettingsManager]
+Please set a value for AutoLogAppEventsEnabled. Set the flag to TRUE if you want to collect app install, app launch and in-app purchase events automatically. To request user consent before collecting data, set the flag value to FALSE, then change to TRUE once user consent is received. Learn more: https://developers.facebook.com/docs/app-events/getting-started-app-events-android#disable-auto-events.
+
+[2026-10-18 10:03:14.938 Uid(value=10673):18872:18872 W/com.facebook.UserSettingsManager]
+You haven't set a value for AdvertiserIDCollectionEnabled. Set the flag to TRUE if you want to collect Advertiser ID for better advertising and analytics results. To request user consent before collecting data, set the flag value to FALSE, then change to TRUE once user consent is received. Learn more: https://developers.facebook.com/docs/app-events/getting-started-app-events-android#disable-auto-events.
+
+[2026-10-18 10:03:14.968 Uid(value=10673):18872:18893 D/nativeloader]
+Configuring clns-5 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~zLNcUDB0-D7hSLz9-MxWTQ==/com.google.android.gms-GbsSr_WAYaGvUEtFkrIkgg==/lib/arm64:/data/app/~~zLNcUDB0-D7hSLz9-MxWTQ==/com.google.android.gms-GbsSr_WAYaGvUEtFkrIkgg==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+
+[2026-10-18 10:03:14.974 Uid(value=10673):18872:18893 D/nativeloader]
+Configuring clns-6 for other apk /apex/com.android.extservices/javalib/android.ext.adservices.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~zLNcUDB0-D7hSLz9-MxWTQ==/com.google.android.gms-GbsSr_WAYaGvUEtFkrIkgg==/lib/arm64:/data/app/~~zLNcUDB0-D7hSLz9-MxWTQ==/com.google.android.gms-GbsSr_WAYaGvUEtFkrIkgg==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+
+[2026-10-18 10:03:14.975 Uid(value=10673):18872:18893 D/nativeloader]
+InitApexLibraries:
+  com_android_appsearch: libicing.so
+  com_android_art: libartservice.so
+  com_android_conscrypt: libjavacrypto.so
+  com_android_extservices: libtflite_support_classifiers_native.so
+  com_android_mediaprovider: libpdfclient.so
+  com_android_os_statsd: libstats_jni.so
+  com_android_tethering: libandroid_net_connectivity_com_android_net_module_util_jni.so:libandroid_net_connectivity_com_android_net_module_util_jni_CommonConnectivityJni.so:libcrypto_httpengine.so:libframework-connectivity-jni.so:libframework-connectivity-tiramisu-jni.so:libhttpengine.so:libservice-connectivity.so:libservice-thread-jni.so
+
+[2026-10-18 10:03:14.978 Uid(value=10673):18872:18893 D/nativeloader]
+Configuring clns-7 for other apk /system/framework/com.android.location.provider.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~zLNcUDB0-D7hSLz9-MxWTQ==/com.google.android.gms-GbsSr_WAYaGvUEtFkrIkgg==/lib/arm64:/data/app/~~zLNcUDB0-D7hSLz9-MxWTQ==/com.google.android.gms-GbsSr_WAYaGvUEtFkrIkgg==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+
+[2026-10-18 10:03:14.981 Uid(value=10673):18872:18893 D/nativeloader]
+Configuring clns-8 for other apk /system/framework/com.android.media.remotedisplay.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~zLNcUDB0-D7hSLz9-MxWTQ==/com.google.android.gms-GbsSr_WAYaGvUEtFkrIkgg==/lib/arm64:/data/app/~~zLNcUDB0-D7hSLz9-MxWTQ==/com.google.android.gms-GbsSr_WAYaGvUEtFkrIkgg==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+
+[2026-10-18 10:03:14.986 Uid(value=10673):18872:18893 D/nativeloader]
+Configuring clns-9 for other apk /data/app/~~zLNcUDB0-D7hSLz9-MxWTQ==/com.google.android.gms-GbsSr_WAYaGvUEtFkrIkgg==/base.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~zLNcUDB0-D7hSLz9-MxWTQ==/com.google.android.gms-GbsSr_WAYaGvUEtFkrIkgg==/lib/arm64:/data/app/~~zLNcUDB0-D7hSLz9-MxWTQ==/com.google.android.gms-GbsSr_WAYaGvUEtFkrIkgg==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+
+[2026-10-18 10:03:14.996 Uid(value=10673):18872:18872 D/os.SingleLice]
+instance successfully. com.transsion.scrollshot.v1.ScrollShotImplLice@e63ce5b from com.transsion.scrollshot.ScrollShotImplLiceFactory
+
+[2026-10-18 10:03:14.996 Uid(value=10673):18872:18872 D/os.SingleLiceFactory]
+instance successfully. com.transsion.scrollshot.v1.ScrollShotImplLice@e63ce5b from android.view.IViewLice
+
+[2026-10-18 10:03:14.996 Uid(value=10673):18872:18872 D/os.LiceInfo]
+instance successfully. com.transsion.view.ViewLice@ec0c6f8 from android.view.IViewLice
+
+[2026-10-18 10:03:15.003 Uid(value=10673):18872:18872 D/os.SingleLice]
+instance successfully. com.transsion.freeform.v1.FreeformLice@45eebc2 from com.transsion.freeform.FreeformLiceFactory
+
+[2026-10-18 10:03:15.003 Uid(value=10673):18872:18872 D/os.SingleLiceFactory]
+instance successfully. com.transsion.freeform.v1.FreeformLice@45eebc2 from com.android.internal.IInternalViewLice
+
+[2026-10-18 10:03:15.004 Uid(value=10673):18872:18872 D/os.SingleLice]
+instance successfully. com.transsion.whitenavigation.v1.WhiteNavigationLice@24badd3 from com.transsion.whitenavigation.WhiteNavigationLiceFactory
+
+[2026-10-18 10:03:15.005 Uid(value=10673):18872:18872 D/os.SingleLiceFactory]
+instance successfully. com.transsion.whitenavigation.v1.WhiteNavigationLice@24badd3 from com.android.internal.IInternalViewLice
+
+[2026-10-18 10:03:15.006 Uid(value=10673):18872:18872 D/os.SingleLice]
+instance successfully. com.transsion.screenshothelper.v1.ScreenShotHelperImplLice@d617d10 from com.transsion.screenshothelper.ScreenShotHelperImplLiceFactory
+
+[2026-10-18 10:03:15.006 Uid(value=10673):18872:18872 D/os.SingleLiceFactory]
+instance successfully. com.transsion.screenshothelper.v1.ScreenShotHelperImplLice@d617d10 from com.android.internal.IInternalViewLice
+
+[2026-10-18 10:03:15.006 Uid(value=10673):18872:18872 D/os.LiceInfo]
+instance successfully. com.transsion.internal.InternalViewLice@fd5009 from com.android.internal.IInternalViewLice
+
+[2026-10-18 10:03:15.007 Uid(value=10673):18872:18872 I/WhiteNavigationLice]
+Modify naviBarColor to 0xFFF0F0F0, and windowBackgroundColor is -328966   /windowIsTranslucent:false
+
+[2026-10-18 10:03:15.024 Uid(value=10673):18872:18892 W/FeatureFlagsImplExport]
+java.lang.NoClassDefFoundError: Class not found using the boot class loader; no stack trace available
+
+[2026-10-18 10:03:15.073 Uid(value=10673):18872:18872 V/LaunchActivity]
+onStart
+
+[2026-10-18 10:03:15.073 Uid(value=10673):18872:18881 D/ActivityThreadLice]
+received OSMessage 110001
+
+[2026-10-18 10:03:15.074 Uid(value=10673):18872:18881 D/ActivityThreadLice]
+send OSMessage 110001 to [-1]
+
+[2026-10-18 10:03:15.075 Uid(value=10673):18872:18881 D/OSServiceManager]
+update local os service os.activity from null to android.os.BinderProxy@769740b
+
+[2026-10-18 10:03:15.076 Uid(value=10673):18872:18872 V/LaunchActivity]
+onResume
+
+[2026-10-18 10:03:15.078 Uid(value=10673):18872:18872 D/MultiLinkManager]
+smart_link is not supported
+
+[2026-10-18 10:03:15.089 Uid(value=10673):18872:18872 I/SurfaceFactory]
+[static] sSurfaceFactory = com.transsion.rt.SurfaceFactoryImpl@5c4a973
+
+[2026-10-18 10:03:15.111 Uid(value=10673):18872:18872 V/LaunchActivity]
+onPause
+
+[2026-10-18 10:03:15.164 Uid(value=10673):18872:18872 I/gralloc4]
+register: id=2ed000187b6
+
+[2026-10-18 10:03:15.165 Uid(value=10673):18872:18872 E/ion]
+ioctl c0044901 failed with code -1: Inappropriate ioctl for device
+
+[2026-10-18 10:03:15.301 Uid(value=10673):18872:18892 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:15.318 Uid(value=10673):18872:18888 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:15.323 Uid(value=10673):18872:18895 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:15.445 Uid(value=10673):18872:18893 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:15.564 Uid(value=10673):18872:18895 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:15.594 Uid(value=10673):18872:18892 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:15.819 Uid(value=10673):18872:18892 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:15.900 Uid(value=10673):18872:18888 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported post request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:16.036 Uid(value=10673):18872:18872 V/LaunchActivity]
+onResume
+
+[2026-10-18 10:03:16.036 Uid(value=10673):18872:18872 D/MultiLinkManager]
+smart_link is not supported
+
+[2026-10-18 10:03:16.044 Uid(value=10673):18872:18942 V/LaunchActivity]
+客户端配置文件服务器地址: http://127.0.0.1:28110/bs/db/android
+
+[2026-10-18 10:03:16.045 Uid(value=10673):18872:18942 V/LaunchActivity]
+配置文件Url: http://127.0.0.1:28110/bs/db/android/setting_BS_Android.bin?rnd=0.650023
+
+[2026-10-18 10:03:16.057 Uid(value=10673):18872:18872 I/gralloc4]
+register: id=2ed000187bc
+
+[2026-10-18 10:03:16.143 Uid(value=10673):18872:18908 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:16.143 Uid(value=10673):18872:18892 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:16.144 Uid(value=10673):18872:18946 I/MiniServer]
+200 bs/db/android/setting_BS_Android.bin
+
+[2026-10-18 10:03:16.145 Uid(value=10673):18872:18893 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:16.187 Uid(value=10673):18872:18942 V/LaunchActivity]
+配置文件Url: http://127.0.0.1:28110/bs/db/android/com_db_local.bin?rnd=0.621345
+
+[2026-10-18 10:03:16.224 Uid(value=10673):18872:18961 I/MiniServer]
+404 bs/db/android/com_db_local.bin
+
+[2026-10-18 10:03:16.227 Uid(value=10673):18872:18942 V/ReadUtil]
+url=http://127.0.0.1:28110/bs/db/android/com_db_local.bin?rnd=0.621345,response code:404
+
+[2026-10-18 10:03:16.228 Uid(value=10673):18872:18942 V/LaunchActivity]
+客户端配置文件服务器地址: http://127.0.0.1:28110/bs/db/android
+
+[2026-10-18 10:03:16.228 Uid(value=10673):18872:18942 V/LaunchActivity]
+配置文件Url: http://127.0.0.1:28110/bs/db/android/setting_BS_Android.bin?rnd=0.177328
+
+[2026-10-18 10:03:16.299 Uid(value=10673):18872:18963 I/MiniServer]
+200 bs/db/android/setting_BS_Android.bin
+
+[2026-10-18 10:03:16.302 Uid(value=10673):18872:18942 V/LaunchActivity]
+配置文件Url: http://127.0.0.1:28110/bs/db/android/com_db_local.bin?rnd=0.330505
+
+[2026-10-18 10:03:16.328 Uid(value=10673):18872:18966 I/MiniServer]
+404 bs/db/android/com_db_local.bin
+
+[2026-10-18 10:03:16.332 Uid(value=10673):18872:18942 V/ReadUtil]
+url=http://127.0.0.1:28110/bs/db/android/com_db_local.bin?rnd=0.330505,response code:404
+
+[2026-10-18 10:03:16.371 Uid(value=10673):18872:18892 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:16.384 Uid(value=10673):18872:18893 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported post request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:16.425 Uid(value=10673):18872:18942 V/LaunchActivity]
+本地配置文件vc、vc_ts读取结束
+
+[2026-10-18 10:03:16.426 Uid(value=10673):18872:18942 V/LaunchActivity]
+CurrentMode: 1
+
+[2026-10-18 10:03:16.426 Uid(value=10673):18872:18942 V/LaunchActivity]
+当前网络IP: 0.0.0.0
+
+[2026-10-18 10:03:16.426 Uid(value=10673):18872:18942 V/LaunchActivity]
+IsFilterIP: false
+
+[2026-10-18 10:03:16.426 Uid(value=10673):18872:18942 V/LaunchActivity]
+当前网络IP: 0.0.0.0
+
+[2026-10-18 10:03:16.427 Uid(value=10673):18872:18942 V/DecodeUtil]
+开始处理bin文件：pschent_full_tired
+
+[2026-10-18 10:03:16.430 Uid(value=10673):18872:18942 D/DecodeUtil]
+decodeBinFinish: false
+
+[2026-10-18 10:03:16.574 Uid(value=10673):18872:18942 V/DecodeUtil]
+开始解压bin文件
+
+[2026-10-18 10:03:16.600 Uid(value=10673):18872:18892 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:17.375 Uid(value=10673):18872:18942 V/DecodeUtil]
+bin文件解压完成
+
+[2026-10-18 10:03:17.376 Uid(value=10673):18872:18942 V/GameUpdateUtil]
+开始检查更新
+
+[2026-10-18 10:03:17.377 Uid(value=10673):18872:18942 V/GameUpdateUtil]
+baseVersionLocal：110
+
+[2026-10-18 10:03:17.377 Uid(value=10673):18872:18942 V/GameUpdateUtil]
+resVersionLocal：11220
+
+[2026-10-18 10:03:17.377 Uid(value=10673):18872:18942 V/GameUpdateUtil]
+baseVersionRemoteUrl：http://127.0.0.1:28110/upgrade/base.version?rnd=0.623748
+
+[2026-10-18 10:03:17.409 Uid(value=10673):18872:19045 I/MiniServer]
+200 upgrade/base.version
+
+[2026-10-18 10:03:17.412 Uid(value=10673):18872:18942 V/GameUpdateUtil]
+baseVersionRemote：110
+
+[2026-10-18 10:03:17.412 Uid(value=10673):18872:18942 V/GameUpdateUtil]
+resVersionRemoteUrl：http://127.0.0.1:28110/upgrade/resource.version?rnd=0.530033
+
+[2026-10-18 10:03:17.437 Uid(value=10673):18872:19061 I/MiniServer]
+200 upgrade/resource.version
+
+[2026-10-18 10:03:17.440 Uid(value=10673):18872:18942 V/GameUpdateUtil]
+resVersionRemote：11390
+
+[2026-10-18 10:03:17.467 Uid(value=10673):18872:19062 I/MiniServer]
+200 upgrade/upgrade.json
+
+[2026-10-18 10:03:17.500 Uid(value=10673):18872:19066 I/MiniServer]
+200 upgrade/size.json
+
+[2026-10-18 10:03:17.505 Uid(value=10673):18872:18942 V/GameUpdateUtil]
+开始更新 resZip
+
+[2026-10-18 10:03:17.505 Uid(value=10673):18872:18942 V/GameUpdateUtil]
+更新资源路径: http://127.0.0.1:28110/upgrade/all.zip?v=11011390
+
+[2026-10-18 10:03:17.639 Uid(value=10673):18872:18872 I/gralloc4]
+register: id=2ed000187bd
+
+[2026-10-18 10:03:20.533 Uid(value=10673):18872:19067 I/MiniServer]
+200 upgrade/all.zip
+
+[2026-10-18 10:03:20.661 Uid(value=10673):18872:18942 W/System.err]
+java.net.ProtocolException: unexpected end of stream
+
+[2026-10-18 10:03:20.662 Uid(value=10673):18872:18942 W/System.err]
+	at com.android.okhttp.internal.http.Http1xStream$FixedLengthSource.read(Http1xStream.java:398)
+
+[2026-10-18 10:03:20.663 Uid(value=10673):18872:18942 W/System.err]
+	at com.android.okhttp.okio.RealBufferedSource$1.read(RealBufferedSource.java:372)
+
+[2026-10-18 10:03:20.663 Uid(value=10673):18872:18942 W/System.err]
+	at java.io.InputStream.read(InputStream.java:218)
+
+[2026-10-18 10:03:20.663 Uid(value=10673):18872:18942 W/System.err]
+	at cointhreat.cointhreat.cointhreat.reweavingsiamesedpropertylessnesses.feedtonight$cointhreat.ironoriginhoblike(SourceFile:9)
+
+[2026-10-18 10:03:20.663 Uid(value=10673):18872:18942 W/System.err]
+	at cointhreat.cointhreat.cointhreat.reweavingsiamesedpropertylessnesses.feedtonight$cointhreat.nationalcommunitymissing(SourceFile:8)
+
+[2026-10-18 10:03:20.663 Uid(value=10673):18872:18942 W/System.err]
+	at com.zhuhuan.game.LaunchActivity.dishbesideshockey(SourceFile:128)
+
+[2026-10-18 10:03:20.663 Uid(value=10673):18872:18942 W/System.err]
+	at com.zhuhuan.game.LaunchActivity.ironoriginhoblike(SourceFile:132)
+
+[2026-10-18 10:03:20.663 Uid(value=10673):18872:18942 W/System.err]
+	at com.zhuhuan.game.LaunchActivity$singersmooth$seventygenom.run(SourceFile:1)
+
+[2026-10-18 10:03:20.664 Uid(value=10673):18872:18942 W/System.err]
+	at java.lang.Thread.run(Thread.java:1571)
+
+[2026-10-18 10:03:20.664 Uid(value=10673):18872:18942 V/GameUpdateUtil]
+更新的资源下载完成
+
+[2026-10-18 10:03:20.682 Uid(value=10673):18872:18872 D/CompatibilityChangeReporter]
+Compat change id reported: 171228096; UID 10673; state: ENABLED
+
+[2026-10-18 10:03:20.699 Uid(value=10673):18872:18872 E/Dialog]
+show dialog view = DecorView@5f16a99[LaunchActivity]
+
+[2026-10-18 10:03:20.718 Uid(value=10673):18872:18872 E/Dialog]
+show dialog view = DecorView@15066a4[LaunchActivity]
+
+[2026-10-18 10:03:20.756 Uid(value=10673):18872:18872 I/gralloc4]
+register: id=2ed000187be
+
+[2026-10-18 10:03:20.790 Uid(value=10673):18872:18872 I/gralloc4]
+register: id=2ed000187bf
+
+[2026-10-18 10:03:20.796 Uid(value=10673):18872:18872 I/gralloc4]
+register: id=2ed000187c0
+
+[2026-10-18 10:03:20.801 Uid(value=10673):18872:18872 I/gralloc4]
+register: id=2ed000187c1
+
+[2026-10-18 10:03:20.805 Uid(value=10673):18872:18872 I/gralloc4]
+register: id=2ed000187c2
+
+[2026-10-18 10:03:20.852 Uid(value=10673):18872:18872 I/gralloc4]
+register: id=2ed000187c3
+
+[2026-10-18 10:03:22.108 Uid(value=10673):18872:18872 V/LaunchActivity]
+onPause
+
+[2026-10-18 10:03:22.340 Uid(value=10673):18872:18908 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:22.495 Uid(value=10673):18872:18872 I/gralloc4]
+unregister: id=2ed000187bc
+
+[2026-10-18 10:03:22.496 Uid(value=10673):18872:18872 I/gralloc4]
+unregister: id=2ed000187bd
+
+[2026-10-18 10:03:22.496 Uid(value=10673):18872:18872 I/gralloc4]
+unregister: id=2ed000187b6
+
+[2026-10-18 10:03:22.502 Uid(value=10673):18872:18872 I/gralloc4]
+unregister: id=2ed000187c1
+
+[2026-10-18 10:03:22.504 Uid(value=10673):18872:18872 I/gralloc4]
+unregister: id=2ed000187c3
+
+[2026-10-18 10:03:22.506 Uid(value=10673):18872:18872 V/LaunchActivity]
+onStop
+
+[2026-10-18 10:03:22.508 Uid(value=10673):18872:19105 I/gralloc4]
+unregister: id=2ed000187c0
+
+[2026-10-18 10:03:22.508 Uid(value=10673):18872:19105 I/gralloc4]
+unregister: id=2ed000187be
+
+[2026-10-18 10:03:22.508 Uid(value=10673):18872:19105 I/gralloc4]
+unregister: id=2ed000187c2
+
+[2026-10-18 10:03:22.509 Uid(value=10673):18872:19105 I/gralloc4]
+unregister: id=2ed000187bf
+
+[2026-10-18 10:03:22.558 Uid(value=10673):18872:18892 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:22.776 Uid(value=10673):18872:18892 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:30.421 Uid(value=10673):18872:18893 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-18 10:03:30.708 Uid(value=10673):18872:18893 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported post request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
