@@ -54,6 +54,27 @@ Sumber berlapis resolve():
    **Fix test5:** `EntryPoint2` & `EntryPoint2_debug` = URL lokal yang sama dengan
    `EntryPoint1`. Tanpa mengubah aturan aplikasi sama sekali.
    **Pelajaran metodologi: selalu minta/bedah HAR (atau logcat) sebelum menebak.**
+4. **all.zip terpotong (test5, dibuktikan HAR+logcat user lalu direproduksi di lab):**
+   logcat: `I/MiniServer: 200 upgrade/all.zip` (server SELESAI menulis seluruh
+   19.385.098 B — `logReq` dipanggil setelah `respond`) lalu **128 ms** kemudian klien:
+   `java.net.ProtocolException: unexpected end of stream` di
+   `okhttp Http1xStream$FixedLengthSource.read` = EOF padahal Content-Length belum
+   terpenuhi. HAR: entri all.zip `200 OK` + `Content-Length: 19385098` tapi body tidak
+   pernah sampai utuh ke klien.
+   **Akar (terbaca dari smali, bukan teori):** `readLine` membaca byte-per-byte dan
+   berhenti di baris pertama request → ±200 B sisa header request tetap tertinggal di
+   antrean terima socket server → `close()` dengan data belum terbaca memicu TCP
+   **RST** (bukan FIN) → ekor data response yang masih di buffer klien/in-flight
+   dimusnahkan.
+   **Lab** (`rstlab/lab.py`, replika semantik 1:1, header request persis HAR, klien
+   lambat ±13 MB/s seperti perangkat): logika lama TERPOTONG 3/3 (kurang 427–558 KB,
+   `Connection reset by peer`); logika baru UTUH 3/3 tepat 19.385.098 B. Klien cepat
+   kadang utuh karena menang race — di perangkat (klien menulis ke disk) selalu rugi.
+   **Fix test6 (2 titik di `handle`, tanpa mengubah hal lain):**
+   (a) setelah membaca baris pertama, habiskan sisa header sampai baris kosong/EOF
+   (mencegah RST);
+   (b) `shutdownOutput()` sebelum `close()` (data antrean kirim dikirim dengan FIN
+   normal).
 
 ## Isi folder ini
 
@@ -61,6 +82,7 @@ Sumber berlapis resolve():
 |---|---|
 | `smali/MiniServer.smali` | Server mini (start, run/accept-loop, handle, resolve, respond, log) |
 | `smali/ConnRun.smali` | Runnable per-koneksi (pemanggil handle) |
+| `rstlab/lab.py` | Lab pembuktian RST (replika 1:1 semantik MiniServer + klien header persis HAR) |
 | `mirror/bs/db/android/setting_BS_Android.bin` | Versi penyambung (XOR "DragonBall", hanya url+update lokal) |
 | `make_setting_bin.py` | Generator penyambung dari file asli (bukti transform 1:1) |
 

@@ -20,7 +20,7 @@
 .end method
 
 .method public static handle(Ljava/net/Socket;)V
-    .locals 6
+    .locals 7
 
     :try_all
     const/4 v1, 0x0
@@ -33,10 +33,29 @@
 
     move-result-object v0
 
+    move-object v6, v0
+
     invoke-static {v0}, Lcom/db/local/MiniServer;->readLine(Ljava/io/InputStream;)Ljava/lang/String;
 
     move-result-object v0
 
+    # fix test6: habiskan sisa header request sampai baris kosong/EOF,
+    # agar close() mengirim FIN (bukan RST) dan tidak memusnahkan data response
+    :drain_loop
+
+    invoke-static {v6}, Lcom/db/local/MiniServer;->readLine(Ljava/io/InputStream;)Ljava/lang/String;
+
+    move-result-object v5
+
+    if-eqz v5, :drain_done
+
+    invoke-virtual {v5}, Ljava/lang/String;->length()I
+
+    move-result v5
+
+    if-nez v5, :drain_loop
+
+    :drain_done
     if-eqz v0, :bad
 
     invoke-static {v0}, Lcom/db/local/MiniServer;->parsePath(Ljava/lang/String;)Ljava/lang/String;
@@ -91,6 +110,10 @@
 
     :close_it
     :try_close
+    # fix test6: shutdownOutput dulu agar data yang masih dalam antrean kirim
+    # dikirim dengan FIN normal sebelum socket ditutup
+    invoke-virtual {p0}, Ljava/net/Socket;->shutdownOutput()V
+
     invoke-virtual {p0}, Ljava/net/Socket;->close()V
 
     :try_close_end
