@@ -7,6 +7,8 @@
 # static fields
 .field private static APP:Landroid/content/Context;
 
+.field private static DEADLINE:J
+
 .field private static started:Z
 
 
@@ -409,11 +411,11 @@
 
     move-result-object v1
 
-    if-eqz v1, :assets_only
+    if-eqz v1, :null_ret
 
     new-instance v2, Ljava/io/File;
 
-    const-string v3, "mirror"
+    const-string v3, "server"
 
     invoke-direct {v2, v1, v3}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
 
@@ -425,7 +427,7 @@
 
     move-result v2
 
-    if-eqz v2, :assets_only
+    if-eqz v2, :null_ret
 
     new-instance v2, Ljava/io/FileInputStream;
 
@@ -438,41 +440,6 @@
     invoke-virtual {v2}, Ljava/io/FileInputStream;->close()V
 
     return-object v0
-
-    :assets_only
-    sget-object v0, Lcom/db/local/MiniServer;->APP:Landroid/content/Context;
-
-    if-eqz v0, :null_ret
-
-    invoke-virtual {v0}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
-
-    move-result-object v0
-
-    new-instance v1, Ljava/lang/StringBuilder;
-
-    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
-
-    const-string v2, "mirror/"
-
-    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    invoke-virtual {v1, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-    move-result-object v1
-
-    invoke-virtual {v0, v1}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
-
-    move-result-object v0
-
-    invoke-static {v0}, Lcom/db/local/MiniServer;->readAll(Ljava/io/InputStream;)[B
-
-    move-result-object v1
-
-    invoke-virtual {v0}, Ljava/io/InputStream;->close()V
-
-    return-object v1
 
     :null_ret
     const/4 v0, 0x0
@@ -598,6 +565,12 @@
 
     sput-object v0, Lcom/db/local/MiniServer;->APP:Landroid/content/Context;
 
+    # test7: gerbang siap — ekstraksi seed ke Android/data/files/server SINKRON
+    # (di thread utama, sebelum server bind) agar request pertama pasti dilayani
+    # dari path server lokal resmi. Di dalamnya ada try/catch + cap waktu.
+
+    invoke-static {v0}, Lcom/db/local/MiniServer;->bootstrapSync(Landroid/content/Context;)V
+
     new-instance v1, Lcom/db/local/MiniServer;
 
     invoke-direct {v1}, Lcom/db/local/MiniServer;-><init>()V
@@ -619,6 +592,253 @@
     return-void
 
     .catch Ljava/lang/Throwable; {:try_all .. :try_all_end} :catch_all
+.end method
+
+.method public static bootstrapSync(Landroid/content/Context;)V
+    .locals 8
+
+    :try_all
+    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
+
+    move-result-wide v0
+
+    const-wide/16 v2, 0x1f40
+
+    add-long/2addr v0, v2
+
+    sput-wide v0, Lcom/db/local/MiniServer;->DEADLINE:J
+
+    invoke-virtual {p0}, Landroid/content/Context;->getExternalFilesDir(Ljava/lang/String;)Ljava/io/File;
+
+    move-result-object v0
+
+    if-eqz v0, :fail
+
+    new-instance v1, Ljava/io/File;
+
+    const-string v2, "server"
+
+    invoke-direct {v1, v0, v2}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    invoke-virtual {v1}, Ljava/io/File;->mkdirs()Z
+
+    invoke-virtual {p0}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
+
+    move-result-object v2
+
+    const-string v3, "mirror"
+
+    invoke-static {v2, v3, v1}, Lcom/db/local/MiniServer;->copyDir(Landroid/content/res/AssetManager;Ljava/lang/String;Ljava/io/File;)I
+
+    move-result v0
+
+    new-instance v1, Ljava/lang/StringBuilder;
+
+    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v2, "bootstrap: "
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v1, v0}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+
+    const-string v2, " file disalin"
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v0
+
+    const-string v1, "MiniServer"
+
+    invoke-static {v1, v0}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+
+    goto :fin
+
+    :fail
+    const-string v0, "MiniServer"
+
+    const-string v1, "bootstrap: storage eksternal null"
+
+    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+
+    :fin
+    :try_all_end
+    return-void
+
+    :catch_all
+    move-exception v0
+
+    return-void
+
+    .catch Ljava/lang/Throwable; {:try_all .. :try_all_end} :catch_all
+.end method
+
+.method public static copyDir(Landroid/content/res/AssetManager;Ljava/lang/String;Ljava/io/File;)I
+    .locals 9
+
+    const/4 v8, 0x0
+
+    :try_all
+    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
+
+    move-result-wide v0
+
+    sget-wide v2, Lcom/db/local/MiniServer;->DEADLINE:J
+
+    cmp-long v4, v0, v2
+
+    if-lez v4, :wd_ok
+
+    return v8
+
+    :wd_ok
+    invoke-virtual {p0, p1}, Landroid/content/res/AssetManager;->list(Ljava/lang/String;)[Ljava/lang/String;
+
+    move-result-object v0
+
+    if-eqz v0, :ret
+
+    array-length v1, v0
+
+    if-lez v1, :is_file
+
+    const/4 v1, 0x0
+
+    :loop_kids
+    array-length v2, v0
+
+    if-ge v1, v2, :ret
+
+    aget-object v2, v0, v1
+
+    new-instance v3, Ljava/lang/StringBuilder;
+
+    invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
+
+    invoke-virtual {v3, p1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    const-string v4, "/"
+
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v3, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v3}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v3
+
+    new-instance v4, Ljava/io/File;
+
+    invoke-direct {v4, p2, v2}, Ljava/io/File;-><init>(Ljava/io/File;Ljava/lang/String;)V
+
+    invoke-static {p0, v3, v4}, Lcom/db/local/MiniServer;->copyDir(Landroid/content/res/AssetManager;Ljava/lang/String;Ljava/io/File;)I
+
+    move-result v5
+
+    add-int/2addr v8, v5
+
+    add-int/lit8 v1, v1, 0x1
+
+    goto :loop_kids
+
+    :is_file
+    invoke-static {}, Ljava/lang/System;->currentTimeMillis()J
+
+    move-result-wide v0
+
+    sget-wide v2, Lcom/db/local/MiniServer;->DEADLINE:J
+
+    cmp-long v4, v0, v2
+
+    if-lez v4, :wd_ok2
+
+    return v8
+
+    :wd_ok2
+    invoke-virtual {p2}, Ljava/io/File;->exists()Z
+
+    move-result v0
+
+    if-nez v0, :ret
+
+    invoke-virtual {p2}, Ljava/io/File;->getParentFile()Ljava/io/File;
+
+    move-result-object v0
+
+    if-eqz v0, :mk_ok
+
+    invoke-virtual {v0}, Ljava/io/File;->mkdirs()Z
+
+    :mk_ok
+    new-instance v0, Ljava/io/File;
+
+    new-instance v1, Ljava/lang/StringBuilder;
+
+    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+
+    invoke-virtual {v1, p2}, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+
+    const-string v2, ".tmp"
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-direct {v0, v1}, Ljava/io/File;-><init>(Ljava/lang/String;)V
+
+    invoke-virtual {p0, p1}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
+
+    move-result-object v1
+
+    new-instance v2, Ljava/io/FileOutputStream;
+
+    invoke-direct {v2, v0}, Ljava/io/FileOutputStream;-><init>(Ljava/io/File;)V
+
+    const/16 v3, 0x2000
+
+    new-array v3, v3, [B
+
+    :loop_copy
+    invoke-virtual {v1, v3}, Ljava/io/InputStream;->read([B)I
+
+    move-result v4
+
+    const/4 v5, -0x1
+
+    if-eq v4, v5, :copy_done
+
+    const/4 v5, 0x0
+
+    invoke-virtual {v2, v3, v5, v4}, Ljava/io/FileOutputStream;->write([BII)V
+
+    goto :loop_copy
+
+    :copy_done
+    invoke-virtual {v2}, Ljava/io/FileOutputStream;->close()V
+
+    invoke-virtual {v1}, Ljava/io/InputStream;->close()V
+
+    invoke-virtual {v0, p2}, Ljava/io/File;->renameTo(Ljava/io/File;)Z
+
+    move-result v0
+
+    if-eqz v0, :ret
+
+    add-int/lit8 v8, v8, 0x1
+
+    :ret
+    return v8
+
+    :catch_all
+    move-exception v0
+
+    return v8
+
+    .catch Ljava/lang/Throwable; {:try_all .. :ret} :catch_all
 .end method
 
 

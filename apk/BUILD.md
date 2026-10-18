@@ -20,10 +20,24 @@ LaunchActivity.onCreate
                  ├─ GET /bs/index-native.html, /bs/manifest.json, /bs/js/* (15 file)
                  └─ path lain → 404 (persis perilaku server asli, mis. com_db_local.bin)
 
-Sumber berlapis resolve():
-  1. Android/data/com.db.local/files/mirror/<path>   (slot konten tambahan, override assets)
-  2. assets/mirror/<path>                             (sumber kebenaran saat install)
-  3. 404
+Sumber baca `resolve()` — test7, SATU lapis (arahan owner: "baca bukan keluar lagi"):
+  Android/data/com.db.local/files/server/<path>  →  404
+  (seed `assets/mirror/` BUKAN sumber baca; hanya sumber ekstraksi bootstrap)
+
+Gerbang siap (gated startup, test7):
+  LaunchActivity.onCreate
+    → MiniServer.start(ctx):
+        1. bootstrapSync: ekstraksi assets/mirror/** → files/server/** SINKRON
+           (salin-jika-belum-ada → override manual tidak pernah ditimpa;
+            tmp+rename atomik → mustahil file setengah jalan;
+            cap 8 detik + try/catch Throwable → tanpa FC/ANR)
+        2. BARU thread server bind 127.0.0.1:28110
+  → request pertama game pasti dilayani dari path server resmi.
+    Run pertama +1–3 detik (tertutup splash bawaan game); run berikutnya <0,1 detik.
+  Pola ini MENGIKUTI pola aplikasi asli: app sendiri memakai
+  Android/data/com.db.local/files/game/ sebagai preloadPath (DecodeUtil
+  mengekstrak assets game/*.bin ke situ, bukti smali) — folder server/ = sibling
+  dengan pola yang sama.
 ```
 
 - Semua method `MiniServer`/`ConnRun` dibungkus `try/catch Throwable` → **kode tambahan mustahil membuat force close**.
@@ -80,9 +94,10 @@ Sumber berlapis resolve():
 
 | File | Fungsi |
 |---|---|
-| `smali/MiniServer.smali` | Server mini (start, run/accept-loop, handle, resolve, respond, log) |
+| `smali/MiniServer.smali` | Server mini (start, bootstrapSync+copyDir, run/accept-loop, handle, resolve, respond, log) |
 | `smali/ConnRun.smali` | Runnable per-koneksi (pemanggil handle) |
 | `rstlab/lab.py` | Lab pembuktian RST (replika 1:1 semantik MiniServer + klien header persis HAR) |
+| `rstlab/lab_bootstrap.py` | Lab uji logika bootstrap 6 kasus (port setia dari smali) |
 | `mirror/bs/db/android/setting_BS_Android.bin` | Versi penyambung (XOR "DragonBall", hanya url+update lokal) |
 | `make_setting_bin.py` | Generator penyambung dari file asli (bukti transform 1:1) |
 
@@ -109,7 +124,8 @@ Tool: `smali.jar` + `baksmali.jar` (JesusFreke/smali 2.5.x), `uber-apk-signer-1.
      (= base64 dari `http://127.0.0.1:28110/bs/db/android`).
      WAJIB ketiganya: aplikasi mengunduh dari semua EntryPoint berurutan dan unduhan
      TERAKHIR yang dipakai (Pelajaran 3).
-   - Tambahkan `assets/mirror/` (23 file dari `../server/`):
+   - Tambahkan `assets/mirror/` (26 file: 23 asli dari `../server/` + 3 panenan
+     test7 — lihat `../server/VERIFIKASI.md` bagian panenan):
      - `mirror/bs/db/android/setting_BS_Android.bin` ← pakai **penyambung** dari folder ini
      - `mirror/upgrade/{base.version, resource.version, size.json, upgrade.json, all.zip}`
      - `mirror/bs/{index-native.html, manifest.json, js/…}` (15 file JS)
@@ -121,16 +137,18 @@ Tool: `smali.jar` + `baksmali.jar` (JesusFreke/smali 2.5.x), `uber-apk-signer-1.
    java -jar uber-apk-signer.jar -a kerja.apk       # zipalign + sign v1/v2/v3
    ```
 5. **Verifikasi wajib sebelum rilis** (semua harus ✅):
-   - `baksmali d` classes2.dex hasil → `.method public static handle` ✔
-   - 23 file `assets/mirror/` ada, ukuran cocok dengan `../server/` ✔
+   - `baksmali d` classes2.dex hasil → `bootstrapSync`/`copyDir` ada, `resolve` TANPA `getAssets` ✔
+   - 26 file `assets/mirror/` ada, SHA `all.zip` + 3 panenan cocok `../server/VERIFIKASI.md` ✔
    - `config_BS.properties` decode → EntryPoint1 lokal ✔
    - `lib/arm64-v8a/libegret.so`, `lib/armeabi-v7a/libegret.so` utuh ✔
    - signature verified v1+v2+v3 ✔
 
 ## Alur yang diharapkan saat dijalankan
 
-1. Buka app → server mini hidup (logcat `MiniServer`).
-2. Game baca `config_BS.properties` → minta `setting_BS_Android.bin?rnd=` → **200**.
+1. Buka app → **bootstrap sinkron** (logcat `MiniServer: bootstrap: N file disalin`;
+   run pertama 26, run berikutnya 0) → server bind → baru game jalan.
+2. Game baca `config_BS.properties` → minta `setting_BS_Android.bin?rnd=` → **200**
+   (dilayani dari `files/server/`).
 3. Cek versi: `base.version` (110), `resource.version` (11390 > 11220 bawaan).
 4. Unduh `all.zip` ±19,4 MB (baru instal → fallback `all.zip`, bukan patch).
 5. Ekstraksi → muat `index-native.html` → `manifest.json` → 15 JS → layar login.

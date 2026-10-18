@@ -71,3 +71,18 @@ Server saat panen melayani `resource.version` = **11390** (riset sebelumnya: 113
 `all.zip` yang diunduh berisi `resource.version` = **11390** juga → **set konsisten**.
 Konsekuensi perilaku aplikasi (instalasi baru): lokal 11220 → unduh `all.zip` → lokal jadi 11390 →
 bukaan berikutnya: remote 11390 == lokal 11390 → **tidak ada unduhan lagi**.
+
+## Panenan tambahan test7 (CDN asli masih hidup, dicek 2026-10-18)
+
+Diambil 1:1 dari `https://dragonh5cdn.popoh5.com/bs/...` dan dimasukkan ke seed APK:
+
+| File | Ukuran (B) | SHA-256 |
+|---|---|---|
+| `bs/resource/properties/clientversion.json` | 38 | `1a30202ae3fe93a5007ef52f12cf6c05e7dd2d6ebaa05f8441c406e523b88f90` |
+| `bs/resource/properties/serversetting.json` | 73 | `ef54efdcd4f8855b07079237303c4b49cc16e4c8ce5aeaf76ca49482aeb6c4e3` |
+| `bs/resource/assets/image/public/sound/sound_click.mp3` | 1.585 | `8a089e126327e8a76b4de63430ff73f232c904db2aacad578c9b253d19227c96` |
+
+Catatan: 5 file lain yang diminta game di tahap login (`Telegram_png`, `Instagram_png`,
+`Discord_png`, `Logo18+Full_png`, `denglujiemianxuanzhejiemiannew21_png`) ternyata
+**404 JUGA di server asli** (dicek langsung) → dibiarkan 404 = perilaku asli 1:1.
+Server login `login.popoh5.com` port 610 & 510: TCP masih HIDUP (dicek 2026-10-18).
