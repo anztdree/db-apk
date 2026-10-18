@@ -3,7 +3,9 @@
 > Aturan utama proyek: **ikuti aturan APLIKASI, bukan aturan sendiri.**
 > Semua file dari server diambil **1:1 asli tanpa mengubah isi** (lihat `../server/VERIFIKASI.md`).
 > Hanya ada **2 titik alamat** yang diarahkan ke server lokal:
-> 1. `EntryPoint1` di `assets/config_BS.properties`
+> 1. `EntryPoint1` **+ `EntryPoint2` + `EntryPoint2_debug`** di `assets/config_BS.properties`
+>    (semua EntryPoint = URL lokal yang sama — lihat Pelajaran 3: unduhan EntryPoint
+>    TERAKHIR yang dipakai aplikasi)
 > 2. Field `url` + `update` di `setting_BS_Android.bin` (versi "penyambung")
 
 ## Arsitektur
@@ -41,6 +43,17 @@ Sumber berlapis resolve():
    **Smali tulisan tangan WAJIB diuji logikanya** (port ke bahasa lain + jalankan kasus
    request nyata) sebelum dirilis. Kasus uji wajib: setting bin `?rnd=`, `all.zip?v=`,
    path `/`, traversal `..`, request rusak.
+3. **"2 server" untuk setting bin (test4, dibuktikan HAR user):** server lokal sudah
+   benar (200, 561 B) tapi game tetap pakai CDN. Aturan APLIKASI di `LaunchActivity`:
+   ia mengunduh `setting_BS_Android.bin` **dan** `com_db_local.bin` (nama = packageName,
+   titik→underscore) dari **SETIAP EntryPoint berurutan** (EP1 → EP2 → …), dan
+   **buffer unduhan TERAKHIR yang dipakai** — field `worktopichardtails:[B` tertimpa
+   terus. Jadi EP2 masih ke server asli ⇒ config CDN SELALU menang walau EP1 lokal 200.
+   Catatan: `com_db_local.bin` 404 itu NORMAL — server asli pun 404 `NoSuchKey`
+   (XML COS 452 B, bukti HAR) — dan aplikasi menganggapnya sukses (lanjut EP berikut).
+   **Fix test5:** `EntryPoint2` & `EntryPoint2_debug` = URL lokal yang sama dengan
+   `EntryPoint1`. Tanpa mengubah aturan aplikasi sama sekali.
+   **Pelajaran metodologi: selalu minta/bedah HAR (atau logcat) sebelum menebak.**
 
 ## Isi folder ini
 
@@ -69,10 +82,11 @@ Tool: `smali.jar` + `baksmali.jar` (JesusFreke/smali 2.5.x), `uber-apk-signer-1.
    java -jar smali.jar a smali -o classes2.dex
    ```
 3. **Siapkan assets** (zip-level, tanpa apktool):
-   - Ganti `assets/config_BS.properties`:
-     `EntryPoint1=aHR0cDovLzEyNy4wLjAuMToyODExMC9icy9kYi9hbmRyb2lk`
-     (= base64 dari `http://127.0.0.1:28110/bs/db/android`)
-     EntryPoint2 & EntryPoint2_debug **tetap asli** (fallback online).
+   - Ganti `assets/config_BS.properties` — **EntryPoint1, EntryPoint2, EntryPoint2_debug
+     SEMUANYA** = `aHR0cDovLzEyNy4wLjAuMToyODExMC9icy9kYi9hbmRyb2lk`
+     (= base64 dari `http://127.0.0.1:28110/bs/db/android`).
+     WAJIB ketiganya: aplikasi mengunduh dari semua EntryPoint berurutan dan unduhan
+     TERAKHIR yang dipakai (Pelajaran 3).
    - Tambahkan `assets/mirror/` (23 file dari `../server/`):
      - `mirror/bs/db/android/setting_BS_Android.bin` ← pakai **penyambung** dari folder ini
      - `mirror/upgrade/{base.version, resource.version, size.json, upgrade.json, all.zip}`
