@@ -1,150 +1,136 @@
-# Rencana 1.0.2 — SDK & Login Server Lokal (Roadmap README §9 Tahap E)
+# Rencana 1.0.2 — SDK Lokal (QuickGame SDK, qsdk.t4game.com)
 
-> **Posisi awal**: 1.0.1 stabil (rilis default) = boot → unduh/ekstraksi → layar login → login SDK → engine jalan,
-> dengan CDN 100% lokal. Yang masih ke internet = **perilaku asli** yang kebetulan masih hidup:
-> `qsdk.t4game.com` (SDK), `login.popoh5.com:510` (SDK login), `login.popoh5.com:610` (login server socket.io), telemetry.
+> **Arah user (2026-10-19)**: *"ada SDK sebelum menyentuh loginserver.. artinya lebih baik
+> 100% fokus pada SDK ini"* → **1.0.2 = HANYA lapisan SDK.** `loginchecknative` (:510) dan
+> login server (:610) **tetap perilaku asli** (online, tak disentuh) → dipindah ke **1.0.3**.
 >
-> **Tujuan 1.0.2**: lapisan SDK + login server **dijawab mini server lokal**, tanpa mengubah satu byte klien/game.
-> Telemetry (appsflyer/facebook) **tidak masuk lingkup** — tidak memengaruhi fungsi.
+> **Posisi awal**: 1.0.1 stabil (rilis default) = boot → update → layar login → login SDK →
+> engine jalan, dengan CDN 100% lokal. Urutan bukti HAR: setelah file game selesai, request
+> pertama yang keluar justru **SDK** (`qsdk/system/init`), baru `:510`.
 
 ---
 
 ## 0. Disiplin (sama dengan 1.0.1 — tidak berubah)
 
 1. **Redirection murni**: hanya ganti ALAMAT via mekanisme aplikasi sendiri; klien & pola client-server 100% utuh.
-2. **Bukti dulu, implementasi kemudian**: semua respons yang disimulasikan HARUS panenan asli (atau hasil bedah protokol), bukan karangan.
+2. **Bukti dulu, implementasi kemudian**: semua respons yang disimulasikan HARUS panenan asli, bukan karangan.
 3. **Satu fase = satu build test** (test10, test11, …), lulus kriteria verifikasi baru lanjut.
 4. `check_invoke_regs.py` wajib lulus sebelum SETIAP build (Pelajaran 5).
 
 ---
 
-## 1. Bukti baru (riset 2026-10-19, langsung dari smali original + HAR test9)
+## 1. Bukti baru (bedah smali SDK `com/quickgame/android/sdk/`, 2026-10-19)
 
-### 1a. Alamat SDK login (:510) BERSUMBER dari setting bin — milik kita
+### 1a. Alamat SDK = file asset `QHinfo` — BUKAN kode, BUKAN setting bin
 
-Rantai bukti smali (original `classes.dex`, obfuscated):
+- `assets/QHinfo` = **22 B plaintext**: `http://qsdk.t4game.com` (satu-satunya string t4game
+  di seluruh APK — diverifikasi scan semua entry zip).
+- Rantai pembaca (smali original):
+  ```
+  QuickGameManager.initThirdDataSDK():
+    bindcommunist/singersmooth.cointhreat(ctx, "QHinfo")   // baca asset → String
+    bindcommunist/cointhreat.seventygenom[0] = <hasil>      // array 1 elemen (clinit: {""})
+  ```
+- `bindcommunist/cointhreat.cointhreat(path, params)` menyusun URL dengan
+  `String.format("%s%s", ACCESS_URLS[idx], path)` → **base + path digabung langsung**
+  (base tanpa trailing slash; path selalu diawali `/v1/`).
 
-```
-LaunchActivity (parser JSON setting bin):
-  "loginServer"   → ironoriginhoblike.customreading     (String host)
-  "loginPort"     → ironoriginhoblike.hoboismrelationbelow (int)
-  "loginWebPort"  → ironoriginhoblike.tidyleadership    (int)
-  "tsLoginServer" → ironoriginhoblike.gangclothing      (override mode-2/test)
+> **Implikasi**: mengganti isi `QHinfo` = kelas perubahan yang SAMA dengan preseden
+> `config_BS.properties` (1.0.1) — **ganti nilai asset config, nol baris kode**.
+> Nilai redirect: `http://127.0.0.1:28110/qsdk` → semua request SDK menjadi
+> `/qsdk/v1/…` (pemisahan path bersih dari mirror CDN).
 
-ironoriginhoblike.seventygenom()  // = base URL SDK web
-  = String.format(Locale.ENGLISH, "%s:%d", loginServer, loginWebPort)
+### 1b. Kontrak HTTP SDK (dari `bindcommunist/cointhreat.cointhreat()`)
 
-nationalcommunitymissing (SDK login runner):
-  url = String.format("%s/loginchecknative?%sos=Android&sdk=%s",
-                      seventygenom(), query(uid,usermode,username,token,…), "BS")
-  → dibuktikan logcat test9: "sdk登录验证url:https://login.popoh5.com:510/loginchecknative?uid=…"
-```
-
-### 1b. Alamat login server (:610) JUGA dari setting bin
-
-`MainActivity` menyuntik `loginServer` + `loginPort` ke JS → logcat test9:
-`JS:INFO:serverurl:https://login.popoh5.com:610` (= `loginServer`:`loginPort`).
-
-> **Implikasi**: mengubah NILAI `loginServer` / `loginPort` / `loginWebPort` di setting bin
-> (satu file yang memang sudah kita ganti arahnya — preseden `url` + `update` di 1.0.1)
-> otomatis mengarahkan seluruh lapisan SDK + login server ke mini server.
-> **Tidak ada kode yang disentuh.** Inilah jalan redirection murni untuk 1.0.2.
-
-### 1c. Cleartext ke 127.0.0.1 diizinkan (tanpa menyentuh manifest)
-
-- `res/xml/network_security_config.xml` original: `base-config cleartextTrafficPermitted` (= true —
-  wajib, karena config server original pun HTTP).
-- Preseden terbukti: test9 sukses `http://127.0.0.1:28110/...` dari stack native.
-- JS/socket.io jalan di runtime native yang sama → cleartext `http://127.0.0.1` diperbolehkan.
-
-### 1d. Panenan respons nyata (sudah disimpan di `docs/panenan-1.0.2/`)
-
-| File | Endpoint | Ukuran | Sifat |
-|---|---|---|---|
-| `qsdk_v1_system_init.json` | POST `qsdk/v1/system/init` | 1.139 B | konfigurasi SDK statis (payTypes kosong, productConfig) |
-| `qsdk_v1_system_getNotice.json` | POST `qsdk/v1/system/getNotice` | 83 B | `{"result":true,"data":[],…}` — trivial statis |
-| `qsdk_v1_user_registerVisitor.json` | POST `qsdk/v1/user/registerVisitor` | 3.266 B | `authToken` @-encoded (format sama dgn token di query logincheck) |
-| `qsdk_v1_auth_getUserInfo.json` | POST `qsdk/v1/auth/getUserInfo` | 280 B | profil akun SDK (nickName, regIp, lastLoginTime) — panenan ke-4, diekstrak dari HAR h3 2026-10-18 |
-| `loginchecknative.json` | GET `:510/loginchecknative?…` | 228 B | `{"code":0,…,"loginToken":"…","sign":"…",…}` |
-
-### 1e. :610 = socket.io v2 (engine.io) — HIDUP hari ini
-
-Probe ulang 2026-10-19: handshake `96:0{"sid":…,"upgrades":["websocket"],"pingInterval":25000,…}2:40` sukses.
-- `loginClient` dibuat dengan `verifyEnable=false` (README §5a) → **tidak butuh handshake XXTEA** untuk tahap ini.
-- engine.io: client polling dulu; upgrade websocket bersifat OPSIONAL — bila upgrade gagal, client **tetap polling**
-  (HTTP murni) → server polling-only di MiniServer CUKUP secara desain.
-- Rate-limit per IP pada koneksi berulang (terbukti §6 README) → recon cukup 1 sesi.
-
----
-
-## 2. Fase R — Recon (peran Anda; **prioritas — jendela waktu server terbatas**)
-
-**Anda (1 sesi bermain penuh, seperti biasa, dengan capture HAR + logcat):**
-1. Buka app → tunggu update → login SDK → **masuk sampai lobby, main 3–5 menit**
-   (biar loginClient/mainClient/chatClient/dungeonClient sempat connect).
-2. Keluar → stop capture → push ke `log/` dengan nama jelas (mis. `2026_10_20_sesi_game.har` + logcat).
-
-**Saya (bedah):**
-- Ekstrak transport :610 yang nyata dipakai (polling di HAR? websocket?).
-- Panen `loginGame` / `GetServerList` (params + respons) + ack berikutnya; simpan ke `docs/panenan-1.0.2/`.
-- Petakan urutan event sampai `enterGame`; identifikasi titik yang butuh main-server (verify XXTEA).
-
-**Kriteria lolos**: semua endpoint & payload nyata tersimpan; SHA panenan tercatat;
-keputusan transport (:610) berbasis bukti, bukan asumsi.
-
-*(✅ SELESAI 2026-10-19, di luar Fase R: panen file fisik CDN dilakukan langsung — `base.zip`
-31.015.076 B (file pondasi base v110), 4 delta zip `113XX_11390.zip` @252.562 B, dan snapshot kedua
-`all.zip` state CDN terkini (11389) — semua terarsip di repo. Detail: README §9.4 Tahap A.)*
-
----
-
-## 3. Fase P — Prototipe test10 (implementasi mini server)
-
-### P1 — Setting bin: ganti 3 nilai (byte-preserving, alat `make_setting_bin.py`)
-
-| Field | Nilai 1.0.1 (asli) | Nilai 1.0.2 |
+| Aspek | Bukti smali | Konsekuensi untuk MiniServer |
 |---|---|---|
-| `loginServer` | `https://login.popoh5.com` | `http://127.0.0.1` |
-| `loginPort` | `610` | `28110` |
-| `loginWebPort` | `510` | `28110` |
+| Stack | `java.net.URL.openConnection()` → `HttpURLConnection` (UA Dalvik — cocok HAR) | Cleartext `http://127.0.0.1` diizinkan (preseden test9, stack sama) |
+| Metode | POST, `setUseCaches(false)` | Route POST |
+| Header | `Content-Type: application/x-www-form-urlencoded`, `Content-Length: <len>` | MiniServer **wajib drain body** per Content-Length sebelum menjawab (Pelajaran 6) |
+| Body | `sv=v2&data=<urlencoded base64>` (bukti `req_*.txt`) | Tidak perlu di-parse — cukup dibuang |
+| Sukses | HTTP 200 → `singersmooth.nationalcommunitymissing(InputStream)` = baca semua byte → `org.json.JSONObject` | 200 + body JSON; Content-Type respons diabaikan |
+| Gagal | 3 percobaan → SDK menyusun sendiri `{"result":false,"error":"Connection failed…"}` | 404 route tak dikenal = perilaku server mati (aman, terdokumentasi) |
+| Cabang khusus | base berisi `summertimegame/topgame/springgame` → path Google Play verify | Base kita tidak mengandung itu → jalur standar |
 
-`url`/`update`/field lain **tidak disentuh**. Validasi: dekrip-ulang = JSON valid;
-diff field-per-field vs 1.0.1 = hanya 3 nilai itu. (Port tunggal 28110; pemisahan endpoint via PATH.)
+### 1c. Permukaan API SDK: 33 path di kode; 4 yang pernah terpanggil NYATA
 
-### P2 — MiniServer (smali, classes2.dex): routing tambahan by-path
+Dari HAR test9 + h3 (asli), hanya 4 endpoint SDK yang benar-benar dipanggil:
+
+| # | Path | Kapan | Panenan RAW |
+|---|---|---|---|
+| 1 | `POST /v1/system/init` | tiap peluncuran (setelah file game siap) | 764 B, sha256 `a6ab4470…` |
+| 2 | `POST /v1/system/getNotice` | tiap peluncuran | 55 B, sha256 `424866f4…` |
+| 3 | `POST /v1/user/registerVisitor` | peluncuran pertama (akun tamu) | 2.345 B, sha256 `95e8d974…` |
+| 4 | `POST /v1/auth/getUserInfo` | situasional (terpanggil di sesi h3) | 280 B, sha256 `dfc72556…` |
+
+- 29 path lain (bind/pay/lupa password/FB-event/`postGooglePlayVerify`, dst.) = dipicu aksi UI
+  khusus → **di luar lingkup test10** (404 = perilaku server mati; SDK punya pesan error bawaan).
+- ⚠️ **Celah bukti**: `/v1/user/autoLogin` (`QuickGameSdkService`) dan `/v1/user/ckRegVistor`
+  — kandidat kuat **peluncuran kedua** (kredensial tersimpan), belum pernah terekam HAR.
+  Ditutup oleh **Fase R0** di bawah. (Catatan: `loginchecknative` :510 tetap online → token
+  replay panenan divalidasi server asli; token test9 terbukti diterima `code 0`.)
+
+### 1d. Panenan RAW 1:1 (`docs/panenan-1.0.2/`)
+
+Semua file = **byte persis respons asli** (koreksi: versi lama pretty-printed — kini diganti RAW).
+Lampiran bukti kontrak request: `req_init.txt`, `req_getNotice.txt`, `req_registerVisitor.txt`,
+`req_getUserInfo.txt` (format `sv=v2&data=…`), `req_loginchecknative_url.txt` (query penuh :510).
+
+---
+
+## 2. Fase R0 — Recon peluncuran kedua (peran Anda, ±2 menit, TANPA build)
+
+1. App **1.0.1 yang SUDAH terinstall** — jangan diinstall ulang.
+2. Nyalakan capture HAR + logcat, lalu **buka app** (peluncuran kedua), tunggu sampai layar
+   login SDK tampil, stop capture, push ke `log/` (nama jelas, mis. `2026_10_20_secondlaunch.har`).
+3. Tujuan: (a) bila ada `autoLogin`/`ckRegVistor` → panen respons aslinya; (b) bila TIDAK ada
+   request SDK baru → lingkup 4 route terbukti cukup.
+
+**Kriteria lolos**: setiap request SDK peluncuran kedua punya respons terpanen (atau bukti nol
+request baru). Tanpa ini, build test10 tidak dimulai (disiplin: bukti dulu).
+
+---
+
+## 3. Fase P — Prototipe test10
+
+### P1 — APK: satu file data berubah
+
+| File | Isi 1.0.1 | Isi 1.0.2 |
+|---|---|---|
+| `assets/QHinfo` (22 B) | `http://qsdk.t4game.com` | `http://127.0.0.1:28110/qsdk` (26 B) |
+
+Yang lain TIDAK disentuh (config_BS.properties, setting bin, smali kode — semuanya persis 1.0.1).
+
+### P2 — MiniServer (smali, classes2.dex): +4 route by-path
 
 ```
-/loginchecknative          GET  → JSON panenan (uid/username di-echo dari query; token diterima apa adanya)
-/qsdk/v1/system/init       POST → panenan statis
-/qsdk/v1/system/getNotice  POST → panenan statis
-/qsdk/v1/user/registerVisitor POST → panenan statis
-/socket.io/?EIO=3&transport=polling  → engine.io polling minimal:
-    handshake 96:0{...} → 40 (connect) → 42["handler.process",{type:"user",action:"loginGame"},ack]
-    → ack panenan; GetServerList → ack panenan (serverItem.url/chaturl/dungeonurl → http://127.0.0.1:28110/…)
-    → SaveHistory/SaveUserEnterInfo/SaveLanguage → ack ret 0; ping/pong 2↔3
-Semua endpoint lain → perilaku 1.0.1 (file mirror 1:1) — TIDAK BERUBAH.
+POST /qsdk/v1/system/init         → panenan RAW 764 B
+POST /qsdk/v1/system/getNotice    → panenan RAW 55 B
+POST /qsdk/v1/user/registerVisitor → panenan RAW 2.345 B
+POST /qsdk/v1/auth/getUserInfo    → panenan RAW 280 B
+  (drain body request per Content-Length sebelum menjawab — Pelajaran 6;
+   HTTP 200 + Content-Length + body; log tiap request)
+Semua path lain → perilaku 1.0.1 (mirror 1:1) — TIDAK BERUBAH.
 ```
-
-Catatan desain: engine.io polling = HTTP GET/POST biasa → implementasi smali realistis
-(envelope `4X`, bukan websocket). Upgrade websocket dari klien akan gagal → klien lanjut polling
-(perilaku standar engine.io). **Keputusan final tetap menunggu bukti Fase R.**
 
 ### P3 — Verifikasi sebelum rilis test10
-- `check_invoke_regs.py` lulus (source + hasil baksmali dex final).
-- Lab: curl handshake socket.io; simulasi klien polling; diff setting bin dekrip-ulang.
-- Zip diff vs 1.0.1: hanya `classes2.dex` + `setting_BS_Android.bin` + META-INF.
+
+- `check_invoke_regs.py` lulus (source + baksmali dex final).
+- Lab: curl POST keempat route → byte-identik panenan (sha256 sama).
+- Zip diff vs 1.0.1: hanya `classes2.dex` + `assets/QHinfo` + META-INF.
 
 ---
 
-## 4. Fase T — Uji perangkat bertahap
+## 4. Fase T — Uji perangkat test10
 
-| Build | Target | Kriteria lolos |
-|---|---|---|
-| test10 | SDK + loginGame + GetServerList lokal | layar **pilih server** tampil; HAR: **nol byte** ke internet sejak app start (setelah cache hangat) |
-| test11 (opsional) | enterGame + data awal | lobby tampil; bila ternyata wajib main-server → STOP, batas aman 1.0.2 = pilih server |
+**Kriteria lolos**:
+1. HAR: **nol request** ke `qsdk.t4game.com`; 4 route dijawab `127.0.0.1` dengan 200.
+2. Layar login SDK tampil normal (init → getNotice → registerVisitor lokal).
+3. `loginchecknative` MASIH ke `login.popoh5.com:510` asli (perilaku 1.0.1, tidak berubah) dan `code 0`.
+4. Peluncuran kedua juga normal (sesuai bukti R0).
 
-**Batas jujur 1.0.2**: main/chat/dungeon server (verify XXTEA + 200+ action gameplay) = **1.0.3**,
-dikerjakan per-modul setelah 1.0.2 stabil. Uji total: mode pesawat setelah cache hangat.
+**Catatan jujur**: dengan 1.0.2, app tetap butuh internet untuk `:510` (+telemetry noise).
+Itu disengaja — satu lapisan per rilis, diagnosis pasti.
 
 ---
 
@@ -152,17 +138,27 @@ dikerjakan per-modul setelah 1.0.2 stabil. Uji total: mode pesawat setelah cache
 
 | # | Risiko | Mitigasi |
 |---|---|---|
-| 1 | Server asli mati sebelum recon | **Fase R diprioritaskan**; probe harian oleh saya. File fisik CDN 100% sudah diarsip (2026-10-19, termasuk bukti CDN pernah rollback 11390→11389) |
-| 2 | `enterGame` menuntut main-server | Batas 1.0.2 = layar pilih server (tetap bernilai: SDK & login lokal penuh) |
-| 3 | Respons SDK berisi data dinamis (authToken, IP) | Replay netral terbukti cukup — klien hanya meneruskan ke layanan KITA |
-| 4 | Rate-limit :610 saat recon | 1 sesi capture, tanpa pengulangan |
-| 5 | VerifyError kelas baru smali | `check_invoke_regs.py` wajib + pola instruksi terbukti |
-| 6 | Event socket.io dikarangan | HANYA dari capture Fase R; tanpa bukti → tidak diimplement |
+| 1 | Peluncuran kedua memanggil `autoLogin`/`ckRegVistor` yang belum ada routenya | **Fase R0 wajib sebelum build**; panenan ditambah sebelum test10 |
+| 2 | `:510` suatu saat menolak token replay (kadaluarsa) | Terlihat jelas di logcat/HAR (`loginchecknative` code ≠ 0) → bukti baru → 1.0.3 (login server lokal) dipercepat |
+| 3 | VerifyError kelas smali baru | `check_invoke_regs.py` wajib + pola instruksi terbukti |
+| 4 | Body POST tidak didrain → koneksi rusak (keluarga bug test6) | Drain per Content-Length; lab curl POST sebelum rilis |
+| 5 | Endpoint SDK tak terduga (aksi UI khusus user) | 404 = perilaku server mati; SDK menampilkan pesan bawaan; terdokumentasi di luar lingkup |
 
 ---
 
 ## 6. Definisi selesai 1.0.2
 
-1. App dari nol (uninstall → install) sampai **layar pilih server** tanpa satu pun request ke domain asli
-   (bukti HAR kosong + logcat MiniServer lengkap).
-2. Panenan & bukti terarsip di repo; BUILD.md + README diperbarui; rilis `1.0.2` jadi default.
+1. Dari app start sampai login SDK sukses (`code 0`), **satu-satunya traffic internet** =
+   `:510/loginchecknative` (+ noise telemetry non-fungsional). Nol byte ke `qsdk.t4game.com`.
+2. Panenan & bukti terarsip di repo; README/BUILD.md diperbarui; rilis `1.0.2` terbit.
+
+---
+
+## 7. 1.0.3 — Login server lokal (roadmap, BUKAN lingkup kini)
+
+Bukti sudah terkumpul sebelumnya dan tetap valid:
+- `loginServer`/`loginPort`/`loginWebPort` bersumber dari **setting bin** (sudah kita kuasai,
+  byte-preserving) → redirect `:510`+`:610` tanpa sentuh kode.
+- `:610` = engine.io v2 (handshake terbukti hidup); `loginClient` tanpa XXTEA.
+- Butuh **Fase R besar** (sesi main penuh) untuk panen `loginGame`/`GetServerList` sebelum
+  implementasi — jadwal menyusul setelah test10 stabil.
