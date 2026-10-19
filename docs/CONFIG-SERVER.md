@@ -117,6 +117,60 @@ Bukti replay: respons `init`/`getNotice` byte-identik antar sesi; auth guest sta
 
 ---
 
+## 5. Audit menyeluruh config (2026-10-19, pra-build test10) — SEMUA kemungkinan sumber config diperiksa
+
+> Pemicu: arah owner *"pastikan lagi config SDK, mungkin ada yang terlewat"*.
+> Metode: APK asli SHA `3650cbe5…` dibedah habis — string table kedua dex
+> (androguard `DalvikVMFormat`) + grep biner + xref `const-string`/`AssetManager->open`
+> + meta-data manifest + grep 4 native lib `.so` + isi `assets/runtime-dex.jar`.
+
+### 5a. Hasil: peta lengkap SEMUA file config di APK (aktif & tidak)
+
+| File | Isi | Dibaca oleh | Status |
+|---|---|---|---|
+| `assets/QHinfo` (22 B) | `http://qsdk.t4game.com` | `QuickGameManager.initThirdDataSDK` (SATU-SATUNYA pemanggil) | ✅ **AKTIF** — satu-satunya sumber URL SDK; bukti: string `t4game`/`qsdk` = **0** di kedua dex & semua `.so` |
+| `assets/config_BS.properties` (396 B) | 4 kunci EntryPoint | `LaunchActivity.ironoriginhoblike` via pola `config_%s.properties` | ✅ **AKTIF** — channel **"BS" di-hardcode** `LaunchActivity.onCreate` (`const-string 'BS'`) |
+| `assets/config.properties` (208 B) | 2 kunci EntryPoint → base64 `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` | method yang SAMA, cabang **IF/ELSE** ketika channel kosong | ⛔ **NONAKTIF** (fallback build tanpa channel — channel "BS" selalu ter-set; HAR perangkat: 0 request ke dragon) |
+| `assets/quickgame_sdk/channel_id.txt` | channelId SDK | `feedtonight.nationalcommunitymissing` (GameSDKImpl init) | ❌ **TIDAK ADA di APK** → fallback meta-data `channelId` (juga tiada) → `"default"` |
+| `assets/supplierconfig.json` (136 B) | appid vivo 100215079 | **tidak ada referensi** di dex maupun `.so` | ⛔ config mati (bawaan template channel) |
+| `assets/adjust_config.properties` | config Adjust SDK | `Adjust ActivityHandler.readConfigFile` | ❌ TIDAK ADA → cuma log "not read", tak berpengaruh |
+| `assets/game/infoinfo.bin` (38 B) | `voyage_fancy_radius\|pschent_full_tired` | LaunchActivity/MainActivity (preload engine) | lokal murni — manifest asset game, BUKAN config server |
+| `assets/runtime-dex.jar` | 175 kelas egret runtime | ClassLoader dinamis | tanpa URL game (hanya resolver DNS publik `119.29.29.29` untuk socket.io) |
+| `libegret.so` / `libgavesec.so` ×2 ABI | native engine | — | **BERSIH**: 0 string `t4game`/`qsdk`/`QHinfo`/`popoh5`/`config_BS`/`loginServer` |
+
+### 5b. Konfirmasi alur IF/ELSE config_%s.properties (bukti gabungan smali + HAR)
+
+```
+LaunchActivity.onCreate:
+  invoke-super onCreate          ← sisipan MiniServer.start() tepat setelah baris ini
+  const-string v0, 'BS'          ← channel HARDCODE, selalu ter-set
+  seventygenom.customreading = "BS"
+
+LaunchActivity.ironoriginhoblike:
+  if channel tidak kosong → kandidat = [ config_BS.properties ]   (config.properties TIDAK ikut)
+  else                    → kandidat = [ config.properties ]       (fallback)
+  → Properties.load(kandidat) → loop EntryPoint1..3 (+_debug) → unduh setting_<pkg>_Android.bin
+```
+
+Bukti silang HAR 1.0.1 (perangkat): `setting_BS_Android.bin` diambil **2× dari 127.0.0.1**
+(EP1+EP2, keduanya lokal) dan **0 request** ke `dragon.sjmobilegame.com` → cabang fallback
+tidak pernah jalan → dokumentasi lama TEPAT, tidak ada jalur config yang bocor.
+
+### 5c. Implikasi praktis
+
+1. **Config SDK lengkap = QHinfo saja.** Tidak ada file kedua. Mengganti base SDK = edit
+   1 file 1 baris (repo: `apk/QHinfo`; perangkat: repack karena asset). 5 endpoint
+   `mirror/qsdk/v1/…` = config respons (file fisik, bisa diedit di perangkat).
+2. **Ingin set channelId SDK?** Buat file `assets/quickgame_sdk/channel_id.txt` (atau
+   `server/quickgame_sdk/channel_id.txt` untuk versi perangkat via mirror) — SDK membacanya
+   kalau ada, tanpa perlu ubah kode.
+3. **`config.properties` JANGAN ikut diarahkan** — tidak terbaca pada build BS; keberadaannya
+   tidak berpengaruh. Tidak perlu dipanen (fallback build lain, server `lzceshi` kemungkinan
+   sudah mati).
+4. **`supplierconfig.json` dibiarkan apa adanya** (1:1 original) — config mati, aman.
+
+---
+
 ## Yang TIDAK boleh dilanggar saat mengedit
 
 1. **Set konsisten**: `manifest.json` ↔ 15 file `js/` ↔ `resource.version` ↔ isi `all.zip`
