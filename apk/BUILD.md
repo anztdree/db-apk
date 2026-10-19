@@ -225,6 +225,13 @@ SHA-256 APK final: `a946ef6cc2d710e3b8812d836f654da42ec1f572370ef9f715e7ba3487c7
 
 ## test10 — SDK lokal 100% file fisik (config server asli, nol route hardcode)
 
+> **BASE BUILD (koreksi arah owner, 2026-10-19)**: lanjutkan **DARI APK RELEASE 1.0.1**
+> (asset GitHub `DB-Local-1.0.1.apk`, SHA `a946ef6c…` — terverifikasi sama dengan build test9),
+> **BUKAN dari APK asli mentah**. Semua pekerjaan 1.0.1 (sisipan LaunchActivity, classes2.dex
+> test9, config_BS 4 kunci, mirror 23 file) sudah ADA di dalam APK release ini — jangan
+> dibangun ulang dari nol; cukup terapkan 4 delta di bawah. `classes.dex` di dalam release
+> (SHA `e45b3044…`) **tidak pernah disentuh** — byte-identik ke semua test berikutnya.
+
 **Arah owner (2026-10-19)**: *perlu file fisik config server — di akhir bisa bebas edit
 endpoint maupun config; config-nya config server asli, bukan buatan.* Kebetulan arsitektur
 MiniServer sudah file-driven (`resolve()` = path request → file), jadi rencana P2 lama
