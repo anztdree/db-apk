@@ -556,6 +556,50 @@ koreksi bukan karena bentuknya salah, tapi karena mesinnya nihil (§6a).
 
 ---
 
+## 11. FILE FISIK YANG "SEBENARNYA" — TIGA LOKASI
+(arah owner: *"127.0.0.1:28110/qsdk bukan alamat SDK sebenarnya"* + *"API/socket pasti punya
+file fisik asli yang tersembunyi"* — dua-duanya benar, dijawab tuntas di sini)
+
+### 11a. Alamat — diluruskan
+
+- **Alamat SDK SEBENARNYA** = `http://qsdk.t4game.com` (22 B — QHinfo asli release 1.0.1;
+  audit per-entry commit `a2f7ace`; HAR memang mengirim ke sana).
+- `http://127.0.0.1:28110/qsdk` (27 B) = **target flip buatan kita** — bukan alamat asli,
+  belum seharusnya diterapkan. Working tree `apk/QHinfo` masih memuat versi prematur
+  `e6e8ad4d` (koreksi tes10 pending — memang belum dikoreksi). Kolom "Tahap SDK" di §10b
+  menampilkan target flip itu; supaya tak disalahpahami: itu ALAMAT TUJUAN, bukan alamat asli.
+
+### 11b. Tiga lokasi file fisik
+
+| Lokasi | Ada apa di sana | Kita pegang? |
+|---|---|---|
+| 1. **Server asli** (`qsdk.t4game.com`) | kode API + database + config server mereka = **DAPUR** | ❌ TIDAK pernah ikut ke kita — yang keluar dari sana hanya RESPONS; yang bisa kita lakukan = mengamati (HAR) |
+| 2. **APK** (sisi klien) | `assets/QHinfo` (22 B asli) + **classes.dex SDK** = file fisik "tersembunyi" yang sesungguhnya di sisi kita: di dalamnya KONTRAK API lengkap — path endpoint, format request (`sv`/`data`/`sign` MD5), skema respons (kelas `model.*` parser), logika `loginTypes`, konstanta `error.id`, encoding `authToken @NN@` | ✅ **PUNYA** — dibedah via baksmali. Hasil ekstraksi `/tmp/smali_out` hilang saat sandbox reset, tapi itu hanya HASIL ekstraksi: APK base (`a946ef6c`, asset release) + resep BUILD.md + toolchain Maven Central = bisa dibedah ulang kapan saja (sudah pernah dua kali) |
+| 3. **Perangkat kita** | `files/server/qsdk/*` + `qgsdk_accounts.json` | 🔨 file KITA — lahir saat mesin siap + flip (meniru PERAN server, bukan meniru file server) |
+
+### 11c. Bukti dapur server = HASIL HITUNGAN, bukan file yang dilayani
+
+- Endpoint yang sama, jawaban berbeda per perangkat: 2 device → 2 akun tamu lama berbeda
+  (`isNewUser:0`); `getUserInfo` → `lastDev`/`lastLoginTime`/`regIp` berubah;
+  `registerUser` → respons mengikuti username+password di request.
+- File murni TIDAK bisa bersikap begini (file = byte yang sama tiap kali dilayani).
+- **Kecuali dua**: `getNotice` (55 B, identik 3 sesi) = perilaku file murni bahkan di
+  server asli; `init` (764 B, hanya `requestIp` berubah) = nyaris file config murni.
+  Intuisi owner BENAR sampai ke server mereka: kemungkinan besar `init` di sana juga
+  dibaca dari config file mereka sendiri — tapi file itu tidak bisa diambil; yang bisa
+  diamati hanya isinya yang terkirim (panenan) dan kontraknya (smali). Server asli
+  sendiri CAMPURAN file + hitungan — persis tabel statis-vs-dinamis §7b.
+
+### 11d. Akibat desain (mengunci arah)
+
+Setengah dari pasangan API (sisi server) tidak bisa diambil → kita **TULIS ULANG
+MESINNYA**, bukan mengambil file servernya. Kontrak dikunci ke file fisik yang KITA
+pegang: **smali SDK = otoritatif** (skema `model.*`, konstanta `error.id`, algo `@NN@`
+tinggal dibalik — bukan ditebak), **panenan = verifikasi**. Akibatnya pilihan bentuk
+menjadi natural: statis → file fisik; dinamis → mesin hitung.
+
+---
+
 ## Yang TIDAK boleh dilanggar saat mengedit
 
 1. **Set konsisten**: `manifest.json` ↔ 15 file `js/` ↔ `resource.version` ↔ isi `all.zip`
