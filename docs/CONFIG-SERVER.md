@@ -403,6 +403,116 @@ eksekusinya melompat (mesin belum ada). Materi dipakai ulang saat mesin siap.
 
 ---
 
+## 9. CARA KERJA GABUNGAN: OTAK (config) × MESIN (akun) saat runtime
+(2026-10-19, arah owner: *"mesin itu gimana, kalau digabung dengan config tadi cara kerjanya jadi gimana?"*)
+
+### 9a. Satu kalimat
+
+**OTAK memutuskan, MESIN mengeksekusi, ROUTER yang menjodohkan.**
+Config tanpa mesin = instruksi tanpa tangan (keadaan hari ini). Mesin tanpa config =
+tangan tanpa perintah (tidak tahu harus menyediakan apa). Digabung, keduanya menjadi
+satu "server SDK" utuh yang kebetulan tinggal di dalam APK sendiri.
+
+### 9b. Tiga titik sambungan mereka
+
+| # | Titik sambung | Otak bilang | Mesin terima |
+|---|---|---|---|
+| 1 | `QHinfo` (Lapis 1) | "bicaralah ke `http://127.0.0.1:28110/qsdk`" | SEMUA trafik SDK mendarat di ROUTER MiniServer |
+| 2 | respons `init` (Lapis 2) | `loginTypes ["1","13"]`, `regMailVerify:0`, `payTypes:[]`, `version:"empty"` | **daftar tugas mesin terkunci**: hanya registerVisitor, registerUser, loginByName, getUserInfo |
+| 3 | ROUTER (per path) | `/v1/system/*` = konten statis otak (file editable) | `/v1/user/*` + `/v1/auth/*` = pekerjaan dinamis mesin |
+
+Poin 2 adalah inti pertanyaan ini: **config bukan pajangan — ia menuliskan daftar
+pekerjaan mesin**. Karena otak asli hanya menyalakan 2 metode login dan mematikan
+semua fitur lain (§6c), mesin CUKUP 3 handler dinamis + 2 file statis. Delapan
+endpoint dorman (§6d) tak pernah perlu handler.
+
+### 9c. Alur satu peluncuran (jalur TAMU) dari awal ke akhir
+
+```
+[APK start]
+   │ MiniServer hidup dulu (127.0.0.1:28110)   ← syarat urutan startup
+   ▼
+SDK baca QHinfo ──► "server SDK = APK-nya sendiri"
+   ▼
+POST /qsdk/v1/system/init ──► ROUTER ──► FILE CONFIG (otak, editable)
+   ◄── loginTypes ["1","13"], regMailVerify:0, version "empty", …
+   ▼
+SDK bangun UI login: hanya [Tamu] + [Email]      ← keputusan OTAK
+   ▼ (user tidak apa-apa → tamu auto)
+POST /v1/user/registerVisitor {deviceId,…} ──► ROUTER ──► MESIN
+   │ 1. PARSER : decode sv/data/sign → deviceId
+   │ 2. STORE  : qgsdk_accounts.json — deviceId ini dikenal?
+   │      dikenal → pakai akun lama (isNewUser:0)  ← persis server asli (panenan: 2 device = 2 tamu lama)
+   │      asing   → GENERATOR: uid 8 digit + username 2huruf-8digit + token + authToken @NN@
+   │ 3. STORE  : tulis pemetaan baru (persisten antar restart)
+   │ 4. BUILDER: JSON sesuai skema parser SDK (model.*) → dibalas
+   ▼
+POST /v1/auth/getUserInfo ──► MESIN → profil sesi (lastDev/lastLoginTime di-generate)
+   ▼
+SDK serah uid+token ke game ──► game konek loginserver (popoh5:510)
+   = mesin ke-3, ranah 1.0.3 — DI LUAR batas tahap ini (§7e)
+```
+
+### 9d. Jalur EMAIL — dan kenapa jalan TANPA server email
+
+```
+POST /v1/user/registerUser {username, password MD5} ──► MESIN
+   1. PARSER  : ambil username + password
+   2. STORE   : username sudah dipakai? → error.id (konstanta dari kode SDK, bukan karangan)
+   3. GENERATOR: uid baru → STORE tulis akun email
+   4. BUILDER : result:true, isNewUser:1, uid, token
+```
+TIDAK ADA langkah email sama sekali — karena OTAK bilang `regMailVerify=0`
+(config server asli, §6e). Panenan membuktikan `registerUser` asli sukses tanpa
+interaksi email apa pun. Inilah "keuntungan dari sana" yang dimaksud owner.
+
+### 9e. Peluncuran ke-2 — ingatan itu STORE, bukan kebetulan
+
+Device sama → PARSER baca deviceId sama → STORE hit → akun tamu SAMA persis
+(uid sama, username sama) → `isNewUser:0`. Ini meniru satu-satunya perilaku server
+asli yang terbukti di panenan: **fingerprint device → akun tamu persisten**.
+Uninstall = store hilang (getFilesDir) = tamu baru — konsekuensi dikenal (§8b).
+
+### 9f. Tabel kendali: setiap field config → akibatnya ke mesin
+
+| Config (otak) | Nilai sekarang | Akibat ke mesin |
+|---|---|---|
+| `QHinfo` | (setelah flip) `127.0.0.1:28110/qsdk` | semua request tiba di router kita |
+| `loginTypes` | `["1","13"]` | mesin WAJIB 4 jalur: registerVisitor, registerUser, loginByName, getUserInfo — dan CUMA itu |
+| `loginTypes` diubah +8 (Google) | jangan dulu | mesin harus tumbuh handler `postGooglePlayVerify` dll. — jalurnya tak pernah terobservasi panenan |
+| `regMailVerify` | `0` | mesin TIDAK perlu `sendCodeByEmail`; jika diubah `1` → SDK sendiri menuntut kode email → mesin harus tumbuh handler itu |
+| `version.*` | `"empty"` | mesin tidak perlu endpoint cek-update |
+| `payTypes` / `payFast` | `[]` | mesin tidak perlu endpoint pembayaran |
+| `nodes.*` | `0` semua | menu terkait disembunyikan SDK → endpoint terkait tetap dorman |
+| `guestShowBind` | `1` | UI menampilkan ajakan bind tamu→akun; jalur bind TIDAK pernah terobservasi di panenan → endpoint-nya harus diidentifikasi dari smali SEBELUM mesin dijanjikan bisa bind |
+| `getNotice` | statis 3 sesi | cukup file statis |
+
+Baris `loginTypes` + `regMailVerify` = alasan mesin sekecil ini CUKUP:
+**otak mengecilkan mesin, bukan membesarkannya.**
+
+### 9g. Aturan main gabungan (pelajaran QHinfo prematur, diulang di sini)
+
+1. **Jangan nyalakan fitur di config yang mesinnya belum ada.** Persis kasus
+   `e6e8ad4d`: endpoint diarahkan duluan, mesin nihil. Aturan sama berlaku per
+   field — edit `loginTypes`/`regMailVerify` hanya SETELAH handler-nya ada.
+2. **Skema respons tetap terkunci ke parser SDK** (`model.*` baksmali = otoritatif):
+   config mengubah KONTEN (nilai field), bukan BENTUK (field apa saja yang wajib ada).
+3. **Panenan tetap alat VERIFIKASI**, bukan pola: respons mesin dibandingkan
+   STRUKTUR-nya dengan panenan; byte-identik justru TIDAK diharapkan — isi yang
+   berbeda adalah tanda mesin benar-benar bekerja.
+
+### 9h. Ringkasan satu paragraf
+
+Digabung, "config + mesin" = satu server SDK pribadi di dalam APK. Config (file
+editable) memberi tahu SDK ke mana bicara (QHinfo), metode login apa yang tampil
+(loginTypes), dan fitur apa yang nyala (productConfig/nodes) — dan justru karena
+config aslinya hemat, daftar tugas mesin jadi pendek: 2 file statis + 3 handler
+dinamis (parse → lookup/generate → build). Otak tidak bisa jalan tanpa tangan
+(keadaan sekarang); tangan tidak tahu bekerja tanpa otak. Keduanya baru terasa
+"local rasa online" ketika QHinfo di-flip PERSIS setelah mesin siap (§8d).
+
+---
+
 ## Yang TIDAK boleh dilanggar saat mengedit
 
 1. **Set konsisten**: `manifest.json` ↔ 15 file `js/` ↔ `resource.version` ↔ isi `all.zip`
