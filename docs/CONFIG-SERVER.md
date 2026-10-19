@@ -697,6 +697,51 @@ Owner memperlihatkan isi `qsdk_v1_user_registerUser.json` (uid `28505968`, usern
 
 ---
 
+## 13. TEKNOLOGI SERVER ASLI — TERUNGKAP DARI HEADER HAR
+(arah owner: *"'init' itu cuma gerbang — apakah init.js atau init.json? ataukah SDK ini
+harus config api PHP, PHP Express, Node.js, atau gimana — anda asal bikin cuma jadi
+sampah nanti"*)
+
+### 13a. Fakta header (2 HAR berbeda, semua endpoint qsdk, konsisten)
+
+| Header | Nilai | Arti |
+|---|---|---|
+| `X-Powered-By` (resp) | **PHP/5.4.37** | **server asli = PHP** (rilis 2014, sudah lama EOL — tipikal backend SDK Tiongkok) |
+| `Content-Type` (resp) | `text/json` | gaya PHP (standar modern = `application/json`) |
+| `Transfer-Encoding` (resp) | `chunked` | respons **di-generate kode**, bukan file statis murni |
+| `Content-Type` (req) | `application/x-www-form-urlencoded` | body POST = form (`sv`/`data`/`sign`) |
+| `User-Agent` (req) | `Dalvik/2.1.0` | SDK pakai HTTP client bawaan Android |
+
+### 13b. Jawaban pertanyaan owner
+
+1. **`init` BUKAN file** (`init.js`/`init.json`) — di server asli ia **endpoint API PHP**
+   yang membaca config mereka + menyuntik `requestIp` per request. Bukti: `requestIp`
+   berubah antar sesi (file tidak bisa begini), `X-Powered-By: PHP`, `chunked`.
+   Jadi "gerbang" yang benar: **init = pintu yang MENYERAHKAN config**, bukan config itu
+   sendiri — dan isi yang diserahkan itulah yang kita panen sebagai config.
+2. **Haruskah versi lokal pakai PHP / Express / Node? TIDAK.** SDK bicara **kontrak HTTP
+   murni**: POST form → 200 → JSON sesuai skema `model.*`. SDK tidak pernah membaca
+   header server — `Content-Type` pun diabaikannya (aturan edit #3). Teknologi penjawab
+   bebas; yang dihakimi adalah BODY-nya.
+3. **Pilihan teknologi lokal = MiniServer smali yang SUDAH ADA di APK** (keputusan
+   §8: standalone 1 APK). PHP/Node tidak bisa hidup di dalam APK — memaksakan runtime
+   baru justru jalur "asal bikin jadi sampah" (APK bengkak, dependensi baru, melanggar
+   keputusan standalone).
+4. **Bentuk lokal `init`**: file config editable (isi 764 B panenan) + **SATU field yang
+   dihitung mesin**: `requestIp` (= IP klien; di lokal = `127.0.0.1`). Sisanya = byte
+   config asli. Gerbangnya tetap gerbang — cuma penerangnya yang jadi milik kita.
+
+### 13c. Guard anti-sampah
+
+- **Hakim tunggal = parser SDK sendiri** (`model.*`): skema salah → SDK menolak → build
+  gagal di uji → sampah tidak sempat menyebar.
+- **Verifikasi = HAR baru**: tahap `test10-revisi` → semua trafik SDK ke
+  `qsdk.t4game.com`; setelah mesin siap + flip → `200` + skema benar dari `127.0.0.1`.
+- Header server TIDAK perlu disamakan (SDK mengabaikannya) → tidak ada imitasi HAR di
+  sini sama sekali; yang dibangun murni dari kontrak smali + file config panenan.
+
+---
+
 ## Yang TIDAK boleh dilanggar saat mengedit
 
 1. **Set konsisten**: `manifest.json` ↔ 15 file `js/` ↔ `resource.version` ↔ isi `all.zip`
