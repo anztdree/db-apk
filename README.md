@@ -8,6 +8,11 @@
 > Semua kunci/rahasia di bawah **memang tertanam di dalam klien** (bukan hasil serangan ke server).
 > Jangan gunakan untuk kegiatan ilegal (cheat, bot ekonomi, penyalahgunaan server).
 
+> ## 📦 STATUS RILIS — **1.0.1 STABIL** (rilis default)
+> **`DB-Local-1.0.1.apk`** = build test9 (byte-identik; SHA-256 `a946ef6cc2d710e3b8812d836f654da42ec1f572370ef9f715e7ba3487c70b8e`) — **teruji di perangkat** (HAR+logcat): boot → unduh & ekstraksi → layar login → **login SDK sukses** → engine Egret jalan.
+> Arsitektur: **redirection murni** — endpoint CDN diarahkan ke mini server `127.0.0.1:28110` via mekanisme config aplikasi sendiri (`config_BS.properties` + setting bin); konten file 1:1 (23 file, gerbang siap-dulu); APK & pola client-server asli 100% utuh.
+> Masih ke internet (perilaku asli, layanan masih hidup): `login.popoh5.com:510/:610`, `qsdk.t4game.com`, telemetry → dijadwalkan jadi **1.0.2** (rencana: [`docs/RENCANA-1.0.2.md`](docs/RENCANA-1.0.2.md)).
+
 ---
 
 ## Daftar Isi
