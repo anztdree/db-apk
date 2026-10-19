@@ -670,6 +670,31 @@ kasus `e6e8ad4d`). Yang wajib cocok hanya dua: **STRUKTUR** (skema dari smali) d
 **PERILAKU** (tamu sama antar-restart, register baru sukses, profil sesi konsisten) —
 dan verifikasinya memakai **HAR BARU dari build lokal**, bukan HAR lama (§8d).
 
+### 12e. Verifikasi tambahan dari isi panenan `registerUser` (diposting owner: *"file ini cuma jiplakan isinya, bukan isi config"*)
+
+Owner memperlihatkan isi `qsdk_v1_user_registerUser.json` (uid `28505968`, username
+`hahepa9291@iconcubic.com`). **Tesis benar** — dan isinya memberi verifikasi bernilai:
+
+1. **BUKAN config — terkonfirmasi.** Semua field = identitas/sesi SATU registrasi
+   (uid, username, token, bindInfo). Config SDK = hanya `init` + `getNotice` (§12a).
+   File ini TIDAK masuk build `test10-revisi` (§3 proposal); perannya = arsip verifikasi.
+2. **Peta bid ↔ loginTypes TERKONFIRMASI silang** — `bindInfo` memuat 12 tipe bind yang
+   bid-nya SAMA dengan kode `loginTypes` (§6d): `bindFB 6`, `bindGameCenter 7`,
+   `bindGoogle 8`, `bindNaver 9`, `bindTwitter 10`, `bindLine 11`,
+   **`bindEmail 13`** (= loginTypes `"13"` Email), `bindVK 14`, `signApple 16`,
+   `bindPlay 17`, `bd94hi 18`, `bdhw 19`. Pada akun email baru:
+   `bindEmail {isBind:1, bid:13, buid:<uid>}` — 11 tipe lain `isBind:0`.
+3. **Semantik field**: `username` registerUser = alamat email itu sendiri (pola
+   `2huruf+8digit` khusus TAMU); `isGuest:0` (email) vs tamu `isGuest:1`;
+   `isNewUser:1` (registrasi baru) vs panenan `registerVisitor` `isNewUser:0` (tamu lama);
+   `checkRealName:0` (tanpa alur real-name).
+4. **`token` DAN `authToken` sama-sama encoding `@NN@`** (panjang berbeda) → satu
+   algoritma XOR, dua paket → tugas pembalikan §8c mencakup keduanya.
+5. **Konsekuensi mesin (fase berikutnya)**: respons `registerUser` mesin = nilai **BARU**
+   dalam skema penuh ini — uid di-generate, username = email yang didaftar, bindInfo
+   `bindEmail {isBind:1, bid:13, buid:<uid>}` + 11 tipe lain `isBind:0`, token/authToken
+   dari algoritma `@NN@` hasil pembalikan smali. **Bukan nilai file ini.**
+
 ---
 
 ## Yang TIDAK boleh dilanggar saat mengedit
