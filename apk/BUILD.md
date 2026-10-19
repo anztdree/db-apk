@@ -277,3 +277,32 @@ gagal bila tidak; Android/data ikut bersih → bootstrap 28 file segar) → inst
 jalankan 2× → kirim HAR + logcat ke `log/`.
 
 **Panduan edit endpoint/config pasca-install**: lihat [`../docs/CONFIG-SERVER.md`](../docs/CONFIG-SERVER.md).
+
+---
+
+### test10 REBUILD segar (2026-10-19, arah owner: "rebuild dari APK release")
+
+- **Base**: asset release GitHub `DB-Local-1.0.1.apk` SHA `a946ef6c…` (bukan APK asli mentah).
+- **Kelengkapan panenan dikonfirmasi owner** (*"di repo log itu sudah capture SDK lengkap"*):
+  keempat HAR di sejarah repo (termasuk 2 yang terhapus: `2026_10_18_10_02_07.har`,
+  `2026_10_18_11_03_22.har`) dipindai total → SEMUA request SDK yang pernah nyata = tepat
+  5 endpoint (init, getNotice, registerVisitor, registerUser, getUserInfo). `autoLogin`/
+  `ckRegVistor` tidak pernah muncul di capture mana pun → set mirror 5 file = LENGKAP.
+  Verifikasi tambahan: respons getUserInfo dari HAR terhapus byte-identik panenan repo
+  (sha256 `dfc72556…`).
+- **Toolchain diunduh ulang** pasca-reset (Maven Central + GitHub): smali/baksmali 2.5.2
+  (+ antlr 3.5.2, antlr-runtime 3.5.2, stringtemplate 3.2.1, dexlib2 2.5.2, util 2.5.2,
+  guava 27.1-android, jcommander 1.64, jsr305 3.0.2) + uber-apk-signer 1.3.0; java 21.
+- **Gerbang**: `check_invoke_regs.py` BERSIH di smali sumber.
+- **classes2.dex** hasil assemble = 6.316 B SHA `6e1f1e0f…` — **byte-identik assemble
+  sesi lalu** (smali 2.5.2 deterministik; fix drain POST terbawa dari sumber repo).
+- **Verifikasi rilis rebuild** (identik pola build pertama): zip diff vs 1.0.1 =
+  3.687/3.692 entry byte-identik; berubah hanya `classes2.dex` (6.020→6.316 B),
+  `assets/QHinfo` (22→27 B), 3 file META-INF (re-sign); +5 entry `mirror/qsdk/…`
+  (sha256 diekstrak balik = panenan 5/5); `classes.dex` byte-identik (`e45b3044…`);
+  zipalign + signature v1+v2+v3 verified (keystore debug BARU, CN=Android Debug,
+  exp 2044).
+- **SHA-256 APK final rebuild** (`DB-Local-offline-test10.apk`):
+  `e6e8ad4d2ff7f09ddd0d59260096e76149080201155dfa91fb839e5bc5125608`
+- Fungsional = identik build pertama (`bebddbf5…`); yang beda hanya metadata zip + keystore
+  → prosedur pasang tetap: **UNINSTALL dulu** semua versi lama.
