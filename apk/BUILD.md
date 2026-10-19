@@ -220,3 +220,53 @@ SHA-256 APK final: `a946ef6cc2d710e3b8812d836f654da42ec1f572370ef9f715e7ba3487c7
 **Cara pasang (WAJIB)**: **UNINSTALL dulu test8** (Android/data bersih → bootstrap
 23 file segar) → install test9 → jalankan → kirim logcat ke `log/`
 (HAR bila sudah lolos tahap unduhan).
+
+---
+
+## test10 — SDK lokal 100% file fisik (config server asli, nol route hardcode)
+
+**Arah owner (2026-10-19)**: *perlu file fisik config server — di akhir bisa bebas edit
+endpoint maupun config; config-nya config server asli, bukan buatan.* Kebetulan arsitektur
+MiniServer sudah file-driven (`resolve()` = path request → file), jadi rencana P2 lama
+("5 route hardcode di smali") **DIBATALKAN** dan diganti pendekatan yang lebih murni:
+
+**Perubahan test9 → test10** (diff zip terverifikasi — 3.687/3.697 entry byte-identik):
+1. **`assets/QHinfo`** (config ASLI aplikasi, satu-satunya string t4game di APK):
+   `http://qsdk.t4game.com` (22 B) → `http://127.0.0.1:28110/qsdk` (27 B).
+   Semua request SDK jadi `127.0.0.1:28110/qsdk/v1/…` (base+path concat, kontrak kode asli).
+2. **+5 file fisik respons SDK** (panenan RAW byte 1:1, sha256 cocok `docs/panenan-1.0.2/`):
+   `assets/mirror/qsdk/v1/system/init` (764 B), `…/system/getNotice` (55 B),
+   `…/user/registerVisitor` (2.345 B), `…/user/registerUser` (2.397 B),
+   `…/auth/getUserInfo` (280 B). **Endpoint = nama file** — MiniServer menjawab
+   path mana pun yang punya file; TANPA route hardcode; TANPA perubahan `resolve()`.
+3. **`classes2.dex`** — SATU perbaikan (Pelajaran 6 untuk POST): `handle()` kini menangkap
+   header `Content-Length` saat drain (case-insensitive, helper `parseCL` dengan
+   try/catch sendiri) lalu **menghabiskan body POST per Content-Length sebelum memilih
+   response**. Bukti HAR `sdk_register.har`: SDK POST mengirim `Content-Length: 1249`.
+   Tanpa ini, close() dengan body belum terbaca → RST → response musnah.
+   **Lab `rstlab/lab_post.py`** (replika semantik 1:1, body asli 1.249 B, response
+   panenan 764 B): semantik lama **0/6** (BrokenPipe saat kirim = IOException jalur
+   gagal SDK), semantik baru **6/6 utuh tanpa error**.
+4. `classes.dex` **byte-identik** (sisipan LaunchActivity tak tersentuh);
+   AndroidManifest byte-identik; setting bin & `config_BS.properties` byte-identik test9.
+
+**Verifikasi rilis test10** (semua ✅):
+- `check_invoke_regs.py` BERSIH di sumber smali DAN hasil baksmali dex final
+  (`handle` `.registers 11`; `parseCL` static 1 arg; semua invoke ≤ aturan register).
+- zip diff vs 1.0.1: +5 file `mirror/qsdk/…`; berubah hanya `classes2.dex` (6.020→6.316 B),
+  `assets/QHinfo` (22→27 B), 3 file META-INF (re-sign). `classes.dex` byte-identik.
+- 5 file `mirror/qsdk/…` diekstrak balik dari APK final: sha256 = panenan (5/5 OK).
+- signature v1+v2+v3 verified; zipalign verified.
+- SHA-256 APK final (`DB-Local-offline-test10.apk`):
+  `bebddbf5d854d57c19dba7a91eaa57da019ff557823a8db73c0503005eae7342`
+
+**Kriteria lolos uji perangkat test10** (per `docs/RENCANA-1.0.2.md` §4): HAR menunjukkan
+nol request ke `qsdk.t4game.com`; 5 endpoint SDK dijawab `127.0.0.1` 200; layar login SDK
+normal; `loginchecknative` tetap ke `login.popoh5.com:510` asli `code 0`; peluncuran kedua
+normal (bila muncul `autoLogin` 404 → panen respons asli → test11).
+
+**Cara pasang (WAJIB)**: **UNINSTALL dulu 1.0.1/test9** (keystore debug baru beda → instal
+gagal bila tidak; Android/data ikut bersih → bootstrap 28 file segar) → install test10 →
+jalankan 2× → kirim HAR + logcat ke `log/`.
+
+**Panduan edit endpoint/config pasca-install**: lihat [`../docs/CONFIG-SERVER.md`](../docs/CONFIG-SERVER.md).

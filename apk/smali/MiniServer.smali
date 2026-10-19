@@ -22,7 +22,7 @@
 .end method
 
 .method public static handle(Ljava/net/Socket;)V
-    .locals 7
+    .locals 10
 
     :try_all
     const/4 v1, 0x0
@@ -41,8 +41,14 @@
 
     move-result-object v0
 
+    const/4 v7, 0x0
+
     # fix test6: habiskan sisa header request sampai baris kosong/EOF,
     # agar close() mengirim FIN (bukan RST) dan tidak memusnahkan data response
+    # fix test10 (Pelajaran 6): tangkap Content-Length saat drain header
+    # (bukti HAR sdk_register.har: POST SDK mengirim header "Content-Length: 1249"),
+    # lalu habiskan body POST per Content-Length sebelum memilih response —
+    # close() dengan body belum terbaca memicu RST yang memusnahkan response
     :drain_loop
 
     invoke-static {v6}, Lcom/db/local/MiniServer;->readLine(Ljava/io/InputStream;)Ljava/lang/String;
@@ -51,6 +57,23 @@
 
     if-eqz v5, :drain_done
 
+    invoke-virtual {v5}, Ljava/lang/String;->toLowerCase()Ljava/lang/String;
+
+    move-result-object v8
+
+    const-string v9, "content-length:"
+
+    invoke-virtual {v8, v9}, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
+
+    move-result v8
+
+    if-eqz v8, :not_cl
+
+    invoke-static {v5}, Lcom/db/local/MiniServer;->parseCL(Ljava/lang/String;)I
+
+    move-result v7
+
+    :not_cl
     invoke-virtual {v5}, Ljava/lang/String;->length()I
 
     move-result v5
@@ -58,6 +81,24 @@
     if-nez v5, :drain_loop
 
     :drain_done
+
+    # habiskan body POST per Content-Length (byte-per-byte, body SDK kecil ±1.3 KB;
+    # EOF = berhenti) sebelum memilih response
+    :body_loop
+
+    if-lez v7, :no_body
+
+    invoke-virtual {v6}, Ljava/io/InputStream;->read()I
+
+    move-result v5
+
+    if-ltz v5, :no_body
+
+    add-int/lit8 v7, v7, -0x1
+
+    goto :body_loop
+
+    :no_body
     if-eqz v0, :bad
 
     invoke-static {v0}, Lcom/db/local/MiniServer;->parsePath(Ljava/lang/String;)Ljava/lang/String;
@@ -157,6 +198,35 @@
 
     :catch_all
     return-void
+
+    .catch Ljava/lang/Throwable; {:try_all .. :try_all_end} :catch_all
+.end method
+
+.method private static parseCL(Ljava/lang/String;)I
+    .locals 2
+
+    :try_all
+    const/16 v0, 0xf
+
+    invoke-virtual {p0, v0}, Ljava/lang/String;->substring(I)Ljava/lang/String;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Ljava/lang/String;->trim()Ljava/lang/String;
+
+    move-result-object v0
+
+    invoke-static {v0}, Ljava/lang/Integer;->parseInt(Ljava/lang/String;)I
+
+    move-result v0
+
+    :try_all_end
+    return v0
+
+    :catch_all
+    const/4 v0, 0x0
+
+    return v0
 
     .catch Ljava/lang/Throwable; {:try_all .. :try_all_end} :catch_all
 .end method

@@ -37,8 +37,8 @@
 
 > **Implikasi**: mengganti isi `QHinfo` = kelas perubahan yang SAMA dengan preseden
 > `config_BS.properties` (1.0.1) — **ganti nilai asset config, nol baris kode**.
-> Nilai redirect: `http://127.0.0.1:28110/qsdk` → semua request SDK menjadi
-> `/qsdk/v1/…` (pemisahan path bersih dari mirror CDN).
+> Nilai redirect: `http://127.0.0.1:28110/qsdk` (**27 B** — koreksi hitung; semua request
+> SDK menjadi `/qsdk/v1/…`, pemisahan path bersih dari mirror CDN).
 
 ### 1b. Kontrak HTTP SDK (dari `bindcommunist/cointhreat.cointhreat()`)
 
@@ -106,35 +106,53 @@ Capture user (`sdk_register.har`, sampai `:510` `code:0`) melengkapi bukti alur 
 
 | File | Isi 1.0.1 | Isi 1.0.2 |
 |---|---|---|
-| `assets/QHinfo` (22 B) | `http://qsdk.t4game.com` | `http://127.0.0.1:28110/qsdk` (26 B) |
+| `assets/QHinfo` (22 B) | `http://qsdk.t4game.com` | `http://127.0.0.1:28110/qsdk` (27 B) |
 
 Yang lain TIDAK disentuh (config_BS.properties, setting bin, smali kode — semuanya persis 1.0.1).
 
-### P2 — MiniServer (smali, classes2.dex): +5 route by-path
+### P2 — GANTI DESAIN (keputusan 2026-10-19, arah owner: file fisik config server)
+
+Rencana lama (route hardcode di smali) **DIBATALKAN**. Owner minta endpoint & config berupa
+**file fisik yang bisa diedit bebas** dan isi config harus **config server asli**. MiniServer
+sudah file-driven (`resolve()`: path request → `files/server/<path>` → fallback
+`assets/mirror/<path>` → 404), jadi cukup:
 
 ```
-POST /qsdk/v1/system/init          → panenan RAW 764 B
-POST /qsdk/v1/system/getNotice     → panenan RAW 55 B
-POST /qsdk/v1/user/registerVisitor → panenan RAW 2.345 B
-POST /qsdk/v1/user/registerUser    → panenan RAW 2.397 B
-POST /qsdk/v1/auth/getUserInfo     → panenan RAW 280 B
-  (drain body request per Content-Length sebelum menjawab — Pelajaran 6;
-   HTTP 200 + Content-Length + body; log tiap request)
-Semua path lain → perilaku 1.0.1 (mirror 1:1) — TIDAK BERUBAH.
++5 file fisik di mirror (panenan RAW byte 1:1, endpoint = nama file):
+  mirror/qsdk/v1/system/init          ← qsdk_v1_system_init.json          764 B  a6ab4470…
+  mirror/qsdk/v1/system/getNotice     ← qsdk_v1_system_getNotice.json       55 B  424866f4…
+  mirror/qsdk/v1/user/registerVisitor ← qsdk_v1_user_registerVisitor.json 2.345 B  95e8d974…
+  mirror/qsdk/v1/user/registerUser    ← qsdk_v1_user_registerUser.json    2.397 B  c4105fb9…
+  mirror/qsdk/v1/auth/getUserInfo     ← qsdk_v1_auth_getUserInfo.json      280 B  dfc72556…
+TANPA route hardcode; TANPA perubahan resolve(). Menambah endpoint baru =
+menambah file; mengganti respons = menimpa file; semua bisa di perangkat
+(Android/data/…/files/server/) tanpa build ulang → docs/CONFIG-SERVER.md.
 ```
 
-### P3 — Verifikasi sebelum rilis test10
+SMT smali yang tersisa HANYA fix drain body POST (Pelajaran 6 diperluas ke body):
+`handle()` menangkap `Content-Length` saat drain header (case-insensitive, helper
+`parseCL` dgn try/catch sendiri) lalu menghabiskan body per Content-Length sebelum
+memilih response. Bukti HAR: SDK POST mengirim `Content-Length: 1249`.
+Lab `apk/rstlab/lab_post.py` (body asli 1.249 B, respons panenan 764 B):
+semantik lama **0/6** (BrokenPipe saat kirim = IOException jalur gagal SDK),
+semantik baru **6/6 utuh tanpa error**.
 
-- `check_invoke_regs.py` lulus (source + baksmali dex final).
-- Lab: curl POST keempat route → byte-identik panenan (sha256 sama).
-- Zip diff vs 1.0.1: hanya `classes2.dex` + `assets/QHinfo` + META-INF.
+### P3 — Verifikasi sebelum rilis test10 — SEMUA ✅ (realisasi 2026-10-19)
+
+- `check_invoke_regs.py` lulus di source smali DAN baksmali dex final.
+- Lab POST: lama 0/6 vs baru 6/6 (tabel di atas).
+- Zip diff vs 1.0.1: 3.687/3.697 entry byte-identik; berubah hanya `classes2.dex`
+  (6.020→6.316 B), `assets/QHinfo` (22→27 B), META-INF; +5 file `mirror/qsdk/…`
+  (sha256 diekstrak balik dari APK final = panenan, 5/5 OK); `classes.dex` byte-identik.
+- Sign v1+v2+v3 + zipalign verified. SHA-256:
+  `bebddbf5d854d57c19dba7a91eaa57da019ff557823a8db73c0503005eae7342`
 
 ---
 
 ## 4. Fase T — Uji perangkat test10
 
 **Kriteria lolos**:
-1. HAR: **nol request** ke `qsdk.t4game.com`; 4 route dijawab `127.0.0.1` dengan 200.
+1. HAR: **nol request** ke `qsdk.t4game.com`; 5 endpoint SDK dijawab `127.0.0.1` dengan 200.
 2. Layar login SDK tampil normal (init → getNotice → registerVisitor lokal).
 3. `loginchecknative` MASIH ke `login.popoh5.com:510` asli (perilaku 1.0.1, tidak berubah) dan `code 0`.
 4. Peluncuran kedua juga normal (sesuai bukti R0).
