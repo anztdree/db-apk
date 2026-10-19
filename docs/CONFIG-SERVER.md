@@ -600,6 +600,52 @@ menjadi natural: statis → file fisik; dinamis → mesin hitung.
 
 ---
 
+## 12. SYARAT KEPERCAYAAN LOCAL RUNNING — tesis owner sebagai kriteria penerimaan
+(arah owner: *"qsdk.t4game.com alamat yg benar; kalau config SDK dapat dipanen dari server
+asli maka baru bisa local running ke 127.0.0.1:28110/qsdk; kalau config ga dapat, local
+running = bohong, path flip = sampah"*)
+
+### 12a. Tesis diterima — dengan satu pemerkasaan
+
+Tesis benar: **flip tanpa panenan asli = bohong.** Pemerkasaannya: yang bisa dipanen dari
+server asli ada DUA jenis, dan masing-masing cara panennya beda:
+
+1. **CONFIG** (`init`, `getNotice`) — di server mereka pun berperilaku file (§11c) →
+   bisa dipanen **byte-exact** → sudah dilakukan.
+2. **RESPONS AKUN** (`registerVisitor`, `registerUser`, `getUserInfo`) — di server asli
+   pun **hasil hitungan**, bukan config → yang bisa dipanen = **KONTRAKnya** (skema +
+   perilaku per-device), bukan byte-nya. Memaksakan replay byte-nya justru bentuk
+   bohong yang lain: satu identitas untuk semua perangkat (kesalahan prematur `e6e8ad4d`).
+
+### 12b. Checklist syarat "local jujur" — status hari ini
+
+| # | Syarat | Status | Bukti di repo |
+|---|---|---|---|
+| 1 | Config `init` dipanen dari server asli | ✅ **SUDAH** | `docs/panenan-1.0.2/qsdk_v1_system_init.json`; mirror 764 B — sha256 `a6ab4470…`; byte-identik antar sesi (hanya `requestIp` berubah) |
+| 2 | `getNotice` dipanen | ✅ **SUDAH** | 55 B — sha256 `424866f4…`; identik 3 sesi |
+| 3 | Kontrak endpoint akun (skema + perilaku) | ✅ **SUDAH** | panenan `registerVisitor` 2345 B / `registerUser` 2397 B / `getUserInfo` 280 B + `req_*.txt`; skema otoritatif = smali `model.*` |
+| 4 | **MESIN** akun per-device | ❌ **BELUM — nol** | blueprint saja (§7c/§8b) |
+| 5 | Koreksi tes10 (QHinfo kembali 22 B `qsdk.t4game.com`) | ⏳ pending | working tree `apk/QHinfo` masih 27 B prematur |
+| 6 | Flip QHinfo → `127.0.0.1:28110/qsdk` | ⛔ **TAHAN** | baru boleh SETELAH #4 selesai (§8d) |
+| 7 | Verifikasi HAR baru (tamu sama antar-restart, register email baru, getUserInfo konsisten) | ⏳ setelah build | HAR = alat verifikasi, bukan sumber |
+
+**Menurut kriteria owner sendiri: syarat "config dapat" = TERPENUHI (1–3 ✅).
+Yang belum ada = mesin (#4) — dan mesin memang bukan sesuatu yang dipanen,
+sesuatu yang DIBANGUN.**
+
+### 12c. Konsekuensi tesis (diterima sebagai aturan main)
+
+1. Jika #4 tidak pernah selesai → flip TIDAK BOLEH dilakukan → QHinfo tetap
+   `qsdk.t4game.com` → **tidak ada yang bohong, tidak ada sampah** (koreksi tes10
+   mengembalikan keadaan jujur ini).
+2. Path `127.0.0.1:28110/qsdk` menjadi sampah HANYA dalam satu keadaan: dipakai saat
+   mesinnya nihil — kasus `e6e8ad4d`. Bukan path-nya yang salah; **urutannya yang salah**.
+3. Config panenan = snapshot kondisi server hari ini (channel BS, country ID, versi ini).
+   Untuk standalone offline itu justru target yang benar: config tidak akan berubah lagi
+   karena tidak ada server luar yang menyalakannya.
+
+---
+
 ## Yang TIDAK boleh dilanggar saat mengedit
 
 1. **Set konsisten**: `manifest.json` ↔ 15 file `js/` ↔ `resource.version` ↔ isi `all.zip`
