@@ -513,6 +513,49 @@ dinamis (parse → lookup/generate → build). Otak tidak bisa jalan tanpa tanga
 
 ---
 
+## 10. PRINSIP PONDASI UNTUK TAHAP SDK: server = FILE FISIK
+(arah owner: *"seharusnya ada config yang mengatur — seperti pada pondasi terdapat file fisik server"*)
+
+### 10a. Prinsip yang sudah terbukti di pondasi
+
+MiniServer `resolve()`: request apa pun → cari `files/server/<path>` → fallback
+`assets/mirror/<path>` → tidak ada = 404. **Semua yang dijawab server = file fisik;
+mengedit file = mengedit server.** Bootstrap menyalin asset → files/server sekali di
+awal; override manual tidak pernah ditimpa (desain test7).
+
+### 10b. Peta pondasi ↔ tahap SDK — peran file fisik yang setara
+
+| Peran | Pondasi (game — ✅ jalan sejak 1.0.1) | Tahap SDK (saat mesin siap + flip) |
+|---|---|---|
+| Penentu ALAMAT (asset APK; repack utk edit) | `config_BS.properties` → EntryPoint1/2 = `127.0.0.1:28110/bs/db/android` | `QHinfo` → `http://127.0.0.1:28110/qsdk` (27 B) |
+| **Config runtime server** (file editable di perangkat) | `files/server/bs/db/android/setting_BS_Android.bin` (XOR DragonBall) | `files/server/qsdk/v1/system/init` (JSON editable: `loginTypes`, `regMailVerify`, …) |
+| Respons statis lain | `files/server/bs/*`, `files/server/upgrade/*` | `files/server/qsdk/v1/system/getNotice` |
+| MEMORI server (file fisik juga) | — (konten tidak butuh ingatan) | `qgsdk_accounts.json` (dir privat app): peta `deviceId → akun tamu` + akun email |
+| Dihitung, bukan file | — | `registerVisitor`/`registerUser`/`getUserInfo`/`loginByName` = **output mesin** |
+
+Kalau dibandingkan: `init` bagi SDK = persis `setting_BS_Android.bin` bagi game —
+config server yang sudah jadi file fisik yang bisa diedit di perangkat, dengan
+resolve() yang sama.
+
+### 10c. Kenapa file config SDK BELUM ada di perangkat hari ini
+
+`QHinfo` masih `qsdk.t4game.com` → trafik SDK **belum pernah mampir** ke MiniServer →
+`files/server/qsdk/*` belum terbentuk (tidak ada yang memintanya). File-file itu baru
+ter-copy (bootstrap) dan hidup saat: **mesin siap + QHinfo di-flip** (§8d). Lima file
+`assets/mirror/qsdk/` dari rebuild prematur `e6e8ad4d` = contoh wujud fisiknya — masuk
+koreksi bukan karena bentuknya salah, tapi karena mesinnya nihil (§6a).
+
+### 10d. Batas jujur prinsip file
+
+1. Tiga endpoint dinamis **tidak mungkin file murni** — server asli menghitung
+   respons dari isi request (bukti §7a: guest per-device, profil per-sesi, register
+   membaca request). Yang tetap fisik: SEMUA config statis + memori mesin (store).
+2. Opsional (bila ingin 100% file): ubah 1 method smali `initThirdDataSDK` agar
+   `QHinfo` ikut aturan resolve (`files/server/QHinfo` dulu → fallback asset).
+   Tidak wajib — QHinfo cukup diset sekali saat flip, dan +kode = +risiko.
+
+---
+
 ## Yang TIDAK boleh dilanggar saat mengedit
 
 1. **Set konsisten**: `manifest.json` ↔ 15 file `js/` ↔ `resource.version` ↔ isi `all.zip`
