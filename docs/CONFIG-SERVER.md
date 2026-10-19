@@ -169,6 +169,119 @@ tidak pernah jalan → dokumentasi lama TEPAT, tidak ada jalur config yang bocor
    sudah mati).
 4. **`supplierconfig.json` dibiarkan apa adanya** (1:1 original) — config mati, aman.
 
+> ⚠️ Arahan titik 1 di atas (mirror/qsdk sebagai file respons) telah **diperbarui owner** →
+> lihat **§6a**.
+
+---
+
+## 6. Peta config lengkap DUA LAPIS (2026-10-19, arah owner: "full config harus jelas" untuk local rasa online)
+
+### 6a. Koreksi arah (peringatan keras owner)
+
+**HAR = alat VERIFIKASI, bukan pola untuk ditiru.** Isi verifikasi HAR (4 capture owner):
+
+| Layer | Trafik nyata di HAR | Status terverifikasi |
+|---|---|---|
+| Konten game (CDN pondasi) | `127.0.0.1:28110` → `bs/db/*`, `upgrade/*` | ✅ sudah running LOKAL (sejak 1.0.1) |
+| SDK | `qsdk.t4game.com` (init, getNotice, registerVisitor/registerUser, getUserInfo) | ⏳ endpoint **MASIH di server asli** |
+| Loginserver game | `login.popoh5.com:510` | masih server asli → ranah **1.0.3** |
+
+Akibat koreksi: file `mirror/qsdk/` hasil replay HAR + perubahan `QHinfo` 22→27 B pada
+rebuild `e6e8ad4d` = **salah arah, tidak dipakai**; koreksi build menyusul keputusan owner.
+Tujuan akhir yang dikonfirmasi owner: **local rasa online beneran** → semua config harus jelas
+(dokumen ini), bukan tiruan hitam-putih.
+
+### 6b. Lapis 1 — file config fisik di APK (lokal, isi asli apa adanya)
+
+| File | Isi asli | Status |
+|---|---|---|
+| `assets/QHinfo` 22 B | `http://qsdk.t4game.com` | ✅ AKTIF — satu-satunya penentu base URL SDK |
+| `assets/config_BS.properties` 257 B | EntryPoint1/2 = `http://127.0.0.1:28110/bs/db/android` | ✅ AKTIF — server konten game (lokal, terbukti) |
+| `assets/config.properties` 208 B | EntryPoint1 = `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` | ⛔ NONAKTIF (fallback else-branch) |
+| `assets/supplierconfig.json` 136 B | vivo appid 100215079; xiaomi/huawei/oppo kosong | ⛔ config mati (0 referensi) |
+| `assets/quickgame_sdk/channel_id.txt` | **TIDAK ADA** → channelId = `"default"` | bisa dibuat kapan saja tanpa kode |
+| `assets/adjust_config.properties` | TIDAK ADA | tidak berpengaruh |
+
+### 6c. Lapis 2 — config RUNTIME server = respons `POST /v1/system/init` (isi asli penuh)
+
+Inilah "config server" sesungguhnya — dikirim `qsdk.t4game.com` tiap startup
+(request: `sv=v2` + `data`=base64 JSON fingerprint device + `sign`=MD5). Isi 1:1 panenan:
+
+```json
+{
+ "result": true,
+ "data": {
+  "payTypes": [],
+  "version": {"versionName":"empty","versionNo":"empty","versionUrl":"empty",
+              "updateTime":"empty","isMust":"empty","updateTips":"empty"},
+  "productConfig": {
+   "useServiceCenter":"0","isShowFloat":"0","showShare":"1","title":"","logo":"",
+   "useSms":"0","skinStyle":"0","serviceInfo":"","guestShowBind":1,"single_play":0,
+   "adZhifuSwt":0,"noticeNode":0,"regMailVerify":0,"pycenttype":0,"onGoToPUrl":0,
+   "onGoToPUrlData":"","trashTime":0,"noFirebaseLog":0,"logEvtReport":0
+  },
+  "otherpayType": 2, "payFast": [], "isNotGift": 0, "showShare": "1",
+  "requestIp": "182.9.2.96", "showDiscount": 0,
+  "nodes": {"deleteAccount":0,"serverInfo":0,"oneYeaerTips":0,"removeEmail":0},
+  "loginTypes": ["1","13"],
+  "countryCode": "ID", "first_install": 0
+ },
+ "error": {"id": 0, "message": ""}
+}
+```
+
+Arti field yang mengatur perilaku (nilai asli game ini):
+
+| Field | Nilai asli | Arti |
+|---|---|---|
+| `loginTypes` | `["1","13"]` | **GOVERNOR metode login** (lihat 6d) |
+| `version.*` | semua `"empty"` | tidak ada paksaan update |
+| `productConfig.regMailVerify` | `0` | **register email TANPA verifikasi** |
+| `productConfig.guestShowBind` | `1` | tamu diminta bind akun |
+| `productConfig.isShowFloat` / `useServiceCenter` / `useSms` / `skinStyle` | `0/0/0/0` | float menu, CS, SMS, tema = mati |
+| `nodes.deleteAccount/removeEmail` | `0` | menu hapus akun & email disembunyikan |
+| `payTypes`/`payFast` | `[]` | pembayaran tidak aktif |
+
+### 6d. Bukti kode: bagaimana `loginTypes` mengatur login/register (baksmali classes.dex)
+
+`com.quickgame.android.sdk.model.e` men-parse `loginTypes`, lalu cek per metode dengan
+`loginTypes.toString().contains("N")`:
+
+| Tipe | Jalur | Efek (bukti kode/panenan) |
+|---|---|---|
+| **1** | inti (bukan flag) | **Tamu/Visitor** — auto `POST /v1/user/registerVisitor`, payload = fingerprint device SAJA (stateless) |
+| **13** | inti (bukan flag) | **Akun Email** — `registerUser` (username + password MD5), `loginByName`, `sendCodeByEmail` |
+| 6 | flag `model.e` | Facebook — **default jika loginTypes hilang**: log `"missing loginTypes，only show default fb login"` |
+| 8 / 17 | flag + `GoogleApiAvailability` (`"support google login"`) | Google / Play Games |
+| 9,10,11,12,14 | flag `model.e` | HW/VK/Twitter/Line/Naver dst. (resource `hw_vk_login`, `tomato_login_line`, … ada di APK) |
+
+Rantai lengkap: startup → baca `QHinfo` → `POST init` → server kirim config →
+`LoginFragment` (`sdk/f/a/d.smali`) bangun UI sesuai `loginTypes` → tamu auto
+`registerVisitor` / email `registerUser`→ sesi via `getUserInfo`
+(`authToken` encoding `@NN@` XOR + uid).
+
+Endpoint dorman di kode (tidak aktif utk game ini, baru hidup jika config menyuruh):
+`ckRegVistor`, `findPassByEmail`, `getServerAgreement`, `userLoginByOtherSdk`,
+`postGooglePlayVerify`, `fbShareEvent`, `setGameRoleInfo`, `jianchaLayLx`.
+
+### 6e. Keuntungan terkonfirmasi: register TANPA verifikasi email
+
+`regMailVerify=0` adalah **config server asli** (bukan buatan) → `registerUser` cukup
+`username` + `password(MD5)` — **tidak butuh server email sama sekali**. Panenan membuktikan:
+respons `registerUser` sukses langsung `result:true, isNewUser:1, uid, token`.
+→ saat tahap "local rasa online", registrasi akun lokal jalan penuh tanpa dependensi email.
+
+### 6f. Persiapan tahap "local rasa online" (BELUM dieksekusi — menunggu owner)
+
+1. `QHinfo` diputar ke MiniServer (1 baris, keputusan owner kapan pun).
+2. 5 respons endpoint (`init`, `getNotice`, `registerVisitor`, `registerUser`, `getUserInfo`)
+   menjadi file config yang bisa diedit — sumber asli: HAR panenan di `log/`
+   (verifikasi silang 5/5 byte-identik antar capture, termasuk HAR terhapus).
+3. Catatan replay-safety: `getNotice` statis penuh (3 sesi identik); `init` hanya
+   `countryCode`/`requestIp` berubah; `registerVisitor`/`registerUser`/`getUserInfo`
+   memuat identitas sesi (uid/token) → satu identitas utk semua perangkat sampai
+   loginserver (1.0.3) menangani dinamika akun.
+
 ---
 
 ## Yang TIDAK boleh dilanggar saat mengedit
