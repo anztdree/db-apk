@@ -189,3 +189,34 @@ di luar yang terbukti. Seluruh audit forensik vs APK original (SHA `3650cbe5…`
 **Cara pasang (WAJIB)**: **UNINSTALL dulu APK lama** (Android/data ikut terhapus → bootstrap
 bersih 23 file; signature debug baru berbeda dari build lama) → install test8 → jalankan →
 kirim HAR + logcat ke `log/`.
+
+---
+
+## test9 — fix VerifyError (penyebab FC test7 & test8)
+
+**Penyebab FC test7 & test8** (bukti logcat perangkat `log/logcat_2026-10-19_08-17-34.txt`):
+`java.lang.VerifyError` — verifier ART menolak kelas `MiniServer`: method `bootstrapSync`
+offset 0x9 = `invoke-virtual {p0}` ke `Context.getExternalFilesDir(String)`
+**tanpa register argumen String** (butuh 2 register: this + String, walau null).
+Kelas ditolak saat load → FC di `LaunchActivity.onCreate` ±0,5 dtk, sebelum splash,
+sebelum request pertama. Aplikasi tidak pernah jalan — konsep redirection/gerbang
+tidak terbantahkan oleh dua FC ini (bootstrapSync rusak sejak test7, byte-identik).
+
+**Pelajaran 5**: smali/baksmali TIDAK memverifikasi bytecode; hanya verifier ART
+perangkat yang menolak. Wajib jalankan `python3 check_invoke_regs.py smali/*.smali`
+sebelum SETIAP build (jumlah register tiap invoke vs signature, bounds register,
+validitas pN, pairing move-result). Checker menangkap persis bug ini pada smali lama,
+dan BERSIH pada smali test9 maupun hasil baksmali dex final.
+
+**Perubahan test8 → test9**: HANYA `classes2.dex` — satu instruksi:
+`const/4 v7, 0x0` + `invoke-virtual {p0, v7}, ...getExternalFilesDir(...)`
+(pola identik dengan `resolve()` yang terbukti verify+run sejak test6).
+Diff zip vs test8: **3.688/3.692 entry byte-identik**; berubah hanya `classes2.dex`
+(6020 B, SHA `44339d7d…`) + 3 file META-INF (re-sign). config_BS 4 kunci, setting bin
+692 B, 23 file mirror, `classes.dex`, AndroidManifest — semuanya byte-identik test8.
+
+SHA-256 APK final: `a946ef6cc2d710e3b8812d836f654da42ec1f572370ef9f715e7ba3487c70b8e`
+
+**Cara pasang (WAJIB)**: **UNINSTALL dulu test8** (Android/data bersih → bootstrap
+23 file segar) → install test9 → jalankan → kirim logcat ke `log/`
+(HAR bila sudah lolos tahap unduhan).

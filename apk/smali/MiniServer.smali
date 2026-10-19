@@ -646,7 +646,12 @@
 
     sput-wide v0, Lcom/db/local/MiniServer;->DEADLINE:J
 
-    invoke-virtual {p0}, Landroid/content/Context;->getExternalFilesDir(Ljava/lang/String;)Ljava/io/File;
+    # fix test9: getExternalFilesDir butuh 2 register (this + String).
+    # Sebelumnya hanya {p0} -> VerifyError di verifier ART (offset 0x9),
+    # kelas ditolak, aplikasi FC di onCreate (test7 & test8).
+    const/4 v7, 0x0
+
+    invoke-virtual {p0, v7}, Landroid/content/Context;->getExternalFilesDir(Ljava/lang/String;)Ljava/io/File;
 
     move-result-object v0
 
