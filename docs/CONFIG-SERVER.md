@@ -284,6 +284,71 @@ respons `registerUser` sukses langsung `result:true, isNewUser:1, uid, token`.
 
 ---
 
+## 7. MESIN yang belum ada (2026-10-19, arah owner: "ada otak tapi mesin gak ada, gimana mau running — jangan asal implementasi")
+
+### 7a. Diagnosis: MiniServer hari ini = pemutar file statis
+
+MiniServer in-APK (`127.0.0.1:28110`, resolve `path → files/server → assets/mirror → 404`)
+**cukup** untuk Lapis 1 (konten game — terbukti 1.0.1) tapi **TIDAK cukup** untuk SDK
+"local rasa online", karena 3 endpoint akun bersifat DINAMIS. Bukti dari panenan:
+
+1. **Server asli mengingat tamu per perangkat** — `registerVisitor` dari dua perangkat
+   berbeda (`389050BAB…` vs `2F188C67…`) dibalas dua akun tamu lama berbeda
+   (`pt88098516`/uid 28503874 vs `cz90406643`/uid 28486093), keduanya `isNewUser:0`
+   → server memetakan **fingerprint device → akun tamu persisten** (lookup/create).
+2. **`getUserInfo` = profil per sesi** — `lastDev` (perangkat peminta), `lastLoginTime`,
+   `regIp` di-generate server, bukan data mati.
+3. **`registerUser` membaca permintaan** — username + password(MD5) dari request → akun
+   baru (uid baru). File statis = semua registrasi balik akun yang sama = bukan register.
+
+### 7b. Tabel kebutuhan per endpoint: statis vs dinamis
+
+| Endpoint | File statis cukup? | Yang HARUS dihitung mesin |
+|---|---|---|
+| `/v1/system/init` | ✅ YA — config murni (otak) | — |
+| `/v1/system/getNotice` | ✅ YA — statis 3 sesi | — |
+| `/v1/user/registerVisitor` | ❌ | lookup fingerprint→akun tamu; buat baru bila tak dikenal (uid, username pola `2 huruf+8 digit`, token, authToken) |
+| `/v1/user/registerUser` | ❌ | ambil username+password dari request → uid baru, `isNewUser:1`, simpan; tolak username duplikat (error.id) |
+| `/v1/auth/getUserInfo` | ❌ | baca uid+authToken dari request → profil akun itu + `lastDev` perangkat peminta |
+| (dorman) `loginByName` | ❌ | cek kredensial dari store (untuk login email di kemudian hari) |
+
+### 7c. Lima komponen mesin yang belum ada (semua = nol hari ini)
+
+1. **Parser POST** — baca `sv`/`data`/`sign`, decode base64 → JSON (ambil `deviceId`,
+   `serialNum`, `username`, `password`, `uid`, `authToken`). Saat ini body cuma
+   di-drain (fix classes2.dex), TIDAK pernah di-parse.
+2. **Store akun** — file persisten di dir privat app (mis. `getFilesDir()/qgsdk_accounts.json`):
+   peta `deviceId → akun tamu` + daftar akun email (username, hash, uid, token).
+   Hilang saat uninstall (konsekuensi dikenal).
+3. **Generator identitas** — uid unik (8 digit), username tamu (pola panenan:
+   `cz90406643`, `pt88098516` = 2 huruf + 8 digit), token MD5-like, dan **encoding
+   authToken `@NN@`** (XOR — algoritma persisnya harus dibalik dari fungsi encode SDK
+   di smali, satu fungsi; mesin harus menghasilkan format yang SDK itu sendiri decode).
+4. **Builder respons** — susun JSON per skema yang SDK harapkan. Sumber skema =
+   **kode parser SDK sendiri** (kelas `model.*` hasil baksmali — otoritatif);
+   panenan = verifikasi bahwa skema itu benar (bukan pola untuk ditiru buta).
+5. **Router cerdas** — `/v1/system/*` → file config statis (otak, editable);
+   `/v1/user/*` + `/v1/auth/*` → mesin (dinamis). Static mirror TETAP untuk game content.
+
+### 7d. Di mana mesin tinggal — dua opsi
+
+| Opsi | Isi | Plus | Minus |
+|---|---|---|---|
+| **B. Mesin di dalam APK** (rekomendasi) | perluas MiniServer (classes2.dex) dgn modul akun kecil (satu kelas: parse→logic→build→store) | benar-benar offline on-device, tanpa PC; konsisten dgn arsitektur proyek (MiniServer sudah in-APK, QHinfo cukup 1 baris) | kerja smali/DEX nyata; butuh disiplin build seperti sebelumnya |
+| **C. Mesin di luar** (PC/HP lain sbg server) | server config+akun (Python/Node), QHinfo menunjuk IP LAN | mudah dibangun/di-debug | butuh mesin hidup = bukan "local" murni; QHinfo perlu IP eksternal |
+
+### 7e. Batas tahap ini (jangan overshoot)
+
+- Mesin tahap SDK = **5 endpoint SDK saja**. Setelah SDK login, GAME bicara ke
+  loginserver sendiri (`login.popoh5.com:510`) → itu mesin berbeda, ranah **1.0.3**.
+- Urutan sehat: (1) balik tes10 ke arah benar → (2) mesin akun + QHinfo flip →
+  (3) uji 2 peluncuran: tamu sama antar-restart, register email baru sukses,
+  getUserInfo konsisten → (4) baru loginserver 1.0.3.
+- Kasus error (`username` sudah ada → `error.id`): nilai id diambil dari konstanta
+  error di kode SDK (baksmali), bukan dikarang.
+
+---
+
 ## Yang TIDAK boleh dilanggar saat mengedit
 
 1. **Set konsisten**: `manifest.json` ↔ 15 file `js/` ↔ `resource.version` ↔ isi `all.zip`
