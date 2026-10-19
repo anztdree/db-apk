@@ -742,6 +742,33 @@ sampah nanti"*)
 
 ---
 
+## 14. RUMUS GANDA OWNER — kalimat yang mengikat semua
+(arah owner: *"percuma saya bilang seperti di awal — file config dapat gak punya mesin
+untuk gerakin; atau juga bisa dapat config tapi sampah"*)
+
+| | **MESIN hidup** | **MESIN nihil** |
+|---|---|---|
+| **CONFIG benar** (panenan asli, skema smali) | ✅ **TUJUAN**: local rasa online beneran | Keadaan config HARI INI: otak lengkap, tangan nihil = **percuma sementara** — bukan gagal, tapi BELUM |
+| **CONFIG sampah** (jiplak / karangan) | bohong licik: tidak selalu ditolak parser — bisa "nyala salah" (fitur mati menyala, identitas palsu, tamu kembar semua device) | kasus `e6e8ad4d`: alamat mati + replay = **sampah** — sudah diadili dan dibuang dari rencana build |
+
+**Dua guard supaya tidak pernah jatuh ke kotak yang salah lagi:**
+
+1. **Anti-sampah** — config HANYA dari panenan server asli (`init` + `getNotice`,
+   sha256 tercatat); skema HANYA dari smali `model.*`; hakim akhir = parser SDK
+   sendiri; HAR baru = verifikasi. `init` = gerbang PHP mereka (§13) → versi lokal =
+   file config asli + 1 field dihitung mesin (`requestIp`).
+2. **Anti-percuma** — urutan terkunci (§12b): mesin dibangun DULU (fondasi sudah ada:
+   drain fix terpasang; `@NN@` dibalik dari smali; `error.id` dari smali; skema penuh
+   `bindInfo` dari §12e) → uji HAR baru → BARU flip. Flip tanpa mesin = dilarang;
+   mesin tanpa config benar = tidak akan lulus hakim parser.
+
+**Posisi hari ini di matriks**: config ✅ benar · mesin ❌ nihil → *percuma sementara*.
+Jalan keluar sudah jelas: (1) proposal `test10-revisi` = bersih-bersih sampah
+(menunggu persetujuan), (2) bangun mesin (§7c/§8b), (3) baru flip — dan matriks
+berpindah ke kotak ✅.
+
+---
+
 ## Yang TIDAK boleh dilanggar saat mengedit
 
 1. **Set konsisten**: `manifest.json` ↔ 15 file `js/` ↔ `resource.version` ↔ isi `all.zip`
