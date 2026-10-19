@@ -349,6 +349,60 @@ MiniServer in-APK (`127.0.0.1:28110`, resolve `path → files/server → assets/
 
 ---
 
+## 8. KEPUTUSAN FINAL: STANDALONE — semua mesin dalam 1 APK (arah owner 2026-10-19)
+
+> Owner: *"saya cuma punya Android, dan ini proyek rencana STANDALONE apk — artinya semua
+> mesin server kalau bisa dalam 1 apk ini"*. → **Opsi C (mesin luar/LAN) DITOLAK.
+> Opsi B (mesin dalam APK) DIKUNCI.**
+
+### 8a. Arsitektur 1-APK tiga mesin bertingkat
+
+| Mesin | Status | Letak | Tugas |
+|---|---|---|---|
+| 1. MiniServer statis | ✅ ada | classes2.dex | konten game (`bs/db`, `upgrade`) + file config SDK (`/v1/system/*`) |
+| 2. **Mesin akun SDK** | 🔨 akan dibangun | classes2.dex (modul baru) | `/v1/user/*` + `/v1/auth/*` dinamis: parse POST → store → generate → build respons |
+| 3. Mesin loginserver game | ⏳ 1.0.3 | classes2.dex | pengganti `login.popoh5.com:510` |
+
+`QHinfo` akhir = `http://127.0.0.1:28110/qsdk` (27 B) — **flip dilakukan BERSAMAAN dengan
+mesin siap**, tidak sebelum itu (pelajaran: jangan arahkan endpoint ke server yang mesinnya
+belum ada). Catatan jujur: QHinfo 27 B + 5 file panenan pada rebuild lama `e6e8ad4d` =
+versi **prematur** dari keadaan akhir ini — arahnya ternyata benar untuk standalone, tapi
+eksekusinya melompat (mesin belum ada). Materi dipakai ulang saat mesin siap.
+
+### 8b. Blueprint mesin akun (dalam classes2.dex)
+
+- **Input**: body POST (`sv`/`data`/`sign`) → decode base64 → JSON
+  (`deviceId`, `serialNum`, `username`, `password`, `uid`, `authToken`)
+- **Store**: `getFilesDir()/qgsdk_accounts.json` — peta `deviceId → akun tamu`
+  (persisten antar restart, dikenali seperti server asli) + daftar akun email
+  (username, hash, uid, token). Hilang saat uninstall (konsekuensi dikenal).
+- **Generator**: uid 8 digit; username tamu pola `2 huruf + 8 digit` (`cz90406643`,
+  `pt88098516`); token MD5-like; **authToken encoding `@NN@`** — algoritma dibalik dari
+  fungsi encode SDK di smali (mesin wajib menghasilkan format yang SDK-nya sendiri decode).
+- **Builder**: JSON sesuai skema **kode parser SDK** (`model.*` baksmali = otoritatif);
+  panenan = verifikasi skema. `lastDev`/`lastLoginTime` di-generate dari request nyata.
+- **Router MiniServer ditingkatkan**: `/v1/system/*` → file statis (otak, editable);
+  `/v1/user/*`,`/v1/auth/*` → mesin; sisanya → mirror game content (perilaku lama utuh).
+
+### 8c. Persiapan teknis pra-koding (reverse dari SDK, bukan karangan)
+
+1. Balik algoritma `@NN@` (fungsi encode authToken di smali SDK).
+2. Ambil konstanta `error.id` (username duplikat, dll.) dari kode SDK.
+3. Daftar field wajib tiap respons dari kelas parser `model.*` (cross-check panenan).
+
+### 8d. Rencana build & uji (disiplin: satu fase = satu build test)
+
+1. Tulis mesin (smali) → assemble classes2.dex → `check_invoke_regs` bersih.
+2. QHinfo flip 27 B + file config `mirror/qsdk/v1/system/{init,getNotice}`.
+3. zip + zipalign + sign v1/v2/v3 → **test10 standalone**.
+4. Uji perangkat (HAR baru = VERIFIKASI): (a) init/getNotice terlayani lokal;
+   (b) tamu → uid SAMA antar restart; (c) register email baru → `isNewUser:1`,
+   uid baru; (d) `getUserInfo` konsisten; (e) uninstall→install = store reset (dikenal).
+5. SDK hijau penuh → baru mesin loginserver (**1.0.3**). Offline total =
+   setelah 1.0.3 (game sendiri masih panggil popoh5 di tahap SDK).
+
+---
+
 ## Yang TIDAK boleh dilanggar saat mengedit
 
 1. **Set konsisten**: `manifest.json` ↔ 15 file `js/` ↔ `resource.version` ↔ isi `all.zip`
