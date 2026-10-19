@@ -64,6 +64,7 @@ nationalcommunitymissing (SDK login runner):
 | `qsdk_v1_system_init.json` | POST `qsdk/v1/system/init` | 1.139 B | konfigurasi SDK statis (payTypes kosong, productConfig) |
 | `qsdk_v1_system_getNotice.json` | POST `qsdk/v1/system/getNotice` | 83 B | `{"result":true,"data":[],…}` — trivial statis |
 | `qsdk_v1_user_registerVisitor.json` | POST `qsdk/v1/user/registerVisitor` | 3.266 B | `authToken` @-encoded (format sama dgn token di query logincheck) |
+| `qsdk_v1_auth_getUserInfo.json` | POST `qsdk/v1/auth/getUserInfo` | 280 B | profil akun SDK (nickName, regIp, lastLoginTime) — panenan ke-4, diekstrak dari HAR h3 2026-10-18 |
 | `loginchecknative.json` | GET `:510/loginchecknative?…` | 228 B | `{"code":0,…,"loginToken":"…","sign":"…",…}` |
 
 ### 1e. :610 = socket.io v2 (engine.io) — HIDUP hari ini
@@ -91,7 +92,9 @@ Probe ulang 2026-10-19: handshake `96:0{"sid":…,"upgrades":["websocket"],"ping
 **Kriteria lolos**: semua endpoint & payload nyata tersimpan; SHA panenan tercatat;
 keputusan transport (:610) berbasis bukti, bukan asumsi.
 
-*(Opsional sambil online: panen `base.zip` ±31 MB cadangan dari CDN — Tahap A item yang masih ⬜.)*
+*(✅ SELESAI 2026-10-19, di luar Fase R: panen file fisik CDN dilakukan langsung — `base.zip`
+31.015.076 B (file pondasi base v110), 4 delta zip `113XX_11390.zip` @252.562 B, dan snapshot kedua
+`all.zip` state CDN terkini (11389) — semua terarsip di repo. Detail: README §9.4 Tahap A.)*
 
 ---
 
@@ -149,7 +152,7 @@ dikerjakan per-modul setelah 1.0.2 stabil. Uji total: mode pesawat setelah cache
 
 | # | Risiko | Mitigasi |
 |---|---|---|
-| 1 | Server asli mati sebelum recon | **Fase R diprioritaskan**; probe harian oleh saya |
+| 1 | Server asli mati sebelum recon | **Fase R diprioritaskan**; probe harian oleh saya. File fisik CDN 100% sudah diarsip (2026-10-19, termasuk bukti CDN pernah rollback 11390→11389) |
 | 2 | `enterGame` menuntut main-server | Batas 1.0.2 = layar pilih server (tetap bernilai: SDK & login lokal penuh) |
 | 3 | Respons SDK berisi data dinamis (authToken, IP) | Replay netral terbukti cukup — klien hanya meneruskan ke layanan KITA |
 | 4 | Rate-limit :610 saat recon | 1 sesi capture, tanpa pengulangan |

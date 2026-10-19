@@ -957,10 +957,19 @@ rusak, kita tahu PASTI lapisan mana yang salah — tidak menebak-nebak.
 | `setting_BS_Android.bin` (raw) + hasil dekrip | `configus…/bs/db/android/` | cadangan config otak | ✅ sudah diambil |
 | `base.version` (`110`), `resource.version` (`11389`), `size.json`, `upgrade.json` | `dragonh5cdn…/bs/upgrade/` | state update | ✅ sudah diambil |
 | `all.zip` (±19,4 MB — 652 entri: 11 JS versi baru + resource penuh) | `dragonh5cdn…/bs/upgrade/` | **sumber utama mirror JS + resource** | ✅ sudah diambil |
-| `base.zip` (±31 MB) | `dragonh5cdn…/bs/upgrade/` | cadangan konten base versi CDN | ⬜ belum |
+| `base.zip` (31.015.076 B — 2.616 entri, 61.009.087 B uncompressed, base v110: 15 JS versi base + resource/assets 2.279 file + resource/json 311 file) | `dragonh5cdn…/bs/upgrade/` | **FILE PONDASI sebelum SDK** — konten base versi CDN, tidak pernah diunduh di alur normal (hanya bila `baseVersionLocal < 110`) | ✅ diambil 2026-10-19 (sha256 `31dedf27…`) |
+| 4 delta zip `11386_11390.zip` … `11389_11390.zip` (masing-masing 252.562 B; **isi 4 file identik** — quirk CDN) | `dragonh5cdn…/bs/upgrade/` | patch 11389→11390 = `default.res-en.json` + `teamDungeon.json` + `resource.version` (persis 3 entri yang beda antar all.zip) | ✅ diambil 2026-10-19 |
+| snapshot kedua `all.zip` — state CDN per 2026-10-19: `resource.version` MUNDUR ke `11389`, all.zip 19.385.101 B (bertentangan dgn `size.json` sendiri: 19.385.098) | `dragonh5cdn…/bs/upgrade/` | arsip riwayat versi (bukti CDN berubah/rollback) | ✅ diarsip di `server/arsip-cdn-11389/` |
+| respons API `qsdk/v1/auth/getUserInfo` (280 B, POST) | HAR h3 2026-10-18 | panenan endpoint SDK ke-4 | ✅ `docs/panenan-1.0.2/` |
 | `index-native.html` (10,8 KB), `manifest.json` (533 B) | `dragonh5cdn…/bs/` | bootstrap (tidak ada di APK!) | ✅ sudah diambil |
 | `serversetting.json` (73 B) | `dragonh5cdn…/bs/resource/properties/` | fallback alamat login | ✅ sudah diambil |
 | (cadangan) 4 JS yang tidak ada di `all.zip` (`tween`, `assetsmanager`, `dragonBones`, `default.thm`) | dari paket bawaan APK (`pschent_full_tired.bin`, hash sama dgn manifest) | melengkapi 15 JS | ✅ ada di paket bawaan |
+
+> **Temuan 2026-10-19 (penting):** CDN asli ternyata SUDAH BERUBAH — `resource.version` mundur 11390→11389,
+> `all.zip` diganti (+3 B: beda persis 3 entri — `resource.version`, `default.res-en.json`, `teamDungeon.json`)
+> dan kini TIDAK COCOK dgn `size.json` miliknya sendiri. Snapshot 11390 kita = kondisi koheren yang terbukti
+> jalan end-to-end di perangkat (test9) dan tidak lagi tersedia di CDN. Ini membuktikan urgensi arsip: server
+> bisa berubah sewaktu-waktu tanpa pengumuman.
 
 **Aturan konsistensi mirror (KRITIS — mencegah force close):**
 - JS = **union** `all.zip` (11 file, hash baru) + paket bawaan (4 file hash lama yang tak berubah)
