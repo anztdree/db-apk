@@ -565,9 +565,11 @@ file fisik asli yang tersembunyi"* — dua-duanya benar, dijawab tuntas di sini)
 - **Alamat SDK SEBENARNYA** = `http://qsdk.t4game.com` (22 B — QHinfo asli release 1.0.1;
   audit per-entry commit `a2f7ace`; HAR memang mengirim ke sana).
 - `http://127.0.0.1:28110/qsdk` (27 B) = **target flip buatan kita** — bukan alamat asli,
-  belum seharusnya diterapkan. Working tree `apk/QHinfo` masih memuat versi prematur
-  `e6e8ad4d` (koreksi tes10 pending — memang belum dikoreksi). Kolom "Tahap SDK" di §10b
-  menampilkan target flip itu; supaya tak disalahpahami: itu ALAMAT TUJUAN, bukan alamat asli.
+  belum seharusnya diterapkan. **Koreksi tes10 = SELESAI (build `test10-revisi`)**: working
+  tree `apk/QHinfo` ditulis ulang = 22 B asli (byte-exact dari release 1.0.1, sha256
+  `f56163f0…`) dan APK revisi TIDAK memuat flip (QHinfo tetap `qsdk.t4game.com`). Kolom
+  "Tahap SDK" di §10b menampilkan target flip itu; supaya tak disalahpahami: itu ALAMAT
+  TUJUAN (masa depan, setelah mesin), bukan alamat asli.
 
 ### 11b. Tiga lokasi file fisik
 
@@ -625,9 +627,9 @@ server asli ada DUA jenis, dan masing-masing cara panennya beda:
 | 2 | `getNotice` dipanen | ✅ **SUDAH** | 55 B — sha256 `424866f4…`; identik 3 sesi |
 | 3 | Kontrak endpoint akun (skema + perilaku) | ✅ **SUDAH** | **Sumber = smali SDK** (classes.dex: path, `sv`/`data`/`sign` MD5, kelas `model.*`) — panenan 3 endpoint (2345/2397/280 B + `req_*.txt`) = **VERIFIKASI kontrak**, bukan sumbernya (lihat 12d) |
 | 4 | **MESIN** akun per-device | ❌ **BELUM — nol** | blueprint saja (§7c/§8b) |
-| 5 | Koreksi tes10 (QHinfo kembali 22 B `qsdk.t4game.com`) | ⏳ pending | working tree `apk/QHinfo` masih 27 B prematur |
+| 5 | Koreksi tes10 (QHinfo kembali 22 B `qsdk.t4game.com`) | ✅ **SELESAI** | build **`test10-revisi`** (disetujui owner; SHA APK `8f3e5597…`): repo `apk/QHinfo` = 22 B asli `f56163f0…`; APK revisi = 1.0.1 + classes2.dex drain fix + re-sign SAJA — 0 entry qsdk, QHinfo byte sama; 5 replay HAR di-`git rm` dari repo |
 | 6 | Flip QHinfo → `127.0.0.1:28110/qsdk` | ⛔ **TAHAN** | baru boleh SETELAH #4 selesai (§8d) |
-| 7 | Verifikasi HAR baru (tamu sama antar-restart, register email baru, getUserInfo konsisten) | ⏳ setelah build | HAR = alat verifikasi, bukan sumber |
+| 7 | Verifikasi HAR baru (tamu sama antar-restart, register email baru, getUserInfo konsisten) | ⏳ setelah uji perangkat owner | build `test10-revisi` sudah terbit; HAR baru = alat verifikasi, bukan sumber |
 
 **Menurut kriteria owner sendiri: syarat "config dapat" = TERPENUHI (1–3 ✅).
 Yang belum ada = mesin (#4) — dan mesin memang bukan sesuatu yang dipanen,

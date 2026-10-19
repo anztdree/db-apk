@@ -306,3 +306,65 @@ jalankan 2× → kirim HAR + logcat ke `log/`.
   `e6e8ad4d2ff7f09ddd0d59260096e76149080201155dfa91fb839e5bc5125608`
 - Fungsional = identik build pertama (`bebddbf5…`); yang beda hanya metadata zip + keystore
   → prosedur pasang tetap: **UNINSTALL dulu** semua versi lama.
+
+---
+
+## test10-revisi — KOREKSI e6e8ad4d (disetujui owner "yaa setuju", 2026-10-19)
+
+> **Status**: koreksi atas build prematur `e6e8ad4d` (flip QHinfo 27 B saat mesin nihil +
+> 5 replay byte HAR). Sesuai [`../docs/PROPOSAL-test10-revisi.md`](../docs/PROPOSAL-test10-revisi.md)
+> (DISETUJUI owner): HAR = alat verifikasi saja — tidak ada byte HAR dalam build; SDK tetap
+> ke server asli sampai mesin akun selesai (flip ditahan, §12b #6); satu fase = satu build.
+
+**Base**: release GitHub `DB-Local-1.0.1.apk` SHA `a946ef6c…` (diunduh ulang pasca-reset,
+SHA diverifikasi). **Delta vs 1.0.1 — HANYA 2 hal**:
+
+1. `classes2.dex` → assemble ulang dari `apk/smali` (test9 + drain fix POST):
+   6.316 B, SHA `6e1f1e0f91ba1274f12fde4157c1fdbc854d198fa9ed628b30a2253c4999e8f6`
+   — **byte-identik assemble sesi-sesi sebelumnya** (smali 2.5.2 deterministik).
+2. META-INF (re-sign, keystore debug baru; CN=Android Debug, exp 2044).
+
+`assets/QHinfo` TIDAK disentuh di APK (di release 1.0.1 memang sudah 22 B asli
+`http://qsdk.t4game.com`, sha256 `f56163f0…`). **TIDAK ada** entry `mirror/qsdk/…`
+di build (0 file qsdk) — 5 replay HAR lama tidak diikutkan; arsip panenan tetap aman
+di `docs/panenan-1.0.2/` sebagai dokumen VERIFIKASI. Di repo, working tree `apk/QHinfo`
+ditulis ulang = 22 B asli (byte-exact diekstrak dari release 1.0.1 itu sendiri) dan
+5 file `apk/mirror/qsdk/v1/…` di-`git rm`.
+
+**Toolchain pulih ke-3 pasca-reset** (jar dari Maven Central — groupId `org.smali`,
+package kode tetap `org.jf.*`; jalankan via classpath karena jar Maven bukan fat-jar):
+`org/smali/smali/2.5.2`, `org/smali/baksmali/2.5.2`, `org/smali/dexlib2/2.5.2`,
+`org/smali/util/2.5.2`, `com/google/guava/guava/27.1-android`, `com/beust/jcommander/1.64`,
+`org/antlr/antlr-runtime/3.5.2`, `org/antlr/antlr/3.5.2`, `org/antlr/stringtemplate/3.2.1`,
+`com/google/code/findbugs/jsr305/3.0.2` + `uber-apk-signer-1.3.0` (GitHub), java 21.
+Panggilan: `java -cp "tools/*" org.jf.smali.Main a <dir> -o classes2.dex` /
+`org.jf.baksmali.Main d -o <dir> classes2.dex`.
+
+**Verifikasi rilis test10-revisi** (semua ✅):
+- `check_invoke_regs.py` BERSIH di smali sumber DAN hasil baksmali dex final.
+- Baksmali dex final: `bootstrapSync`+`copyDir` ada (getAssets di bootstrapSync = ekstraksi
+  seed, wajib); drain fix POST ada (`content-length:` case-insensitive → helper `parseCL` →
+  loop habiskan body per Content-Length sebelum memilih response); `resolve()` =
+  `files/server` → fallback `assets/mirror` → 404 (semantik test8+ yang terbukti).
+  > Catatan jujur: redaksi proposal §5 langkah 2 "(resolve tanpa getAssets)" adalah bahasa
+  > lama era test7 (mirror SATU lapis). Kebenaran yang berlaku = tabel delta §3 proposal +
+  > semantik test8 (`try_assets` dikembalikan) — terbukti oleh SHA dex byte-identik.
+- Zip diff vs 1.0.1: **3.688/3.692 entry byte-identik**; berubah hanya `classes2.dex`
+  (6.020→6.316 B) + 3 file META-INF (re-sign); ADDED/REMOVED = nol; `classes.dex`
+  byte-identik `e45b3044…`; `assets/QHinfo` 22 B `f56163f0…` byte sama; **0 entry qsdk**.
+- zipalign verified; signature verified v1+v2+v3.
+- SHA-256 APK final (`DB-Local-test10-revisi.apk`, 125.262.835 B):
+  `8f3e5597d38b76ac94c4fc7a6e2cfd41b3e59f89ad4550ce8d89e66ad38b152d`
+
+**Penamaan**: release/tag = `test10-revisi`; file APK TANPA awalan `offline-` — nama
+`offline-testN` baru diberikan setelah lulus uji perangkat (aturan proposal §5.4).
+
+**Cara pasang (WAJIB)**: **UNINSTALL dulu** semua versi lama (test10 `e6e8ad4d`/1.0.1 —
+keystore debug beda → instal gagal bila tidak; Android/data ikut bersih → bootstrap segar)
+→ install `DB-Local-test10-revisi.apk` → jalankan → kirim HAR + logcat ke `log/`.
+
+**Uji perangkat yang diharapkan** (proposal §6): konten game jalan lokal (perilaku 1.0.1);
+HAR baru menunjukkan SEMUA trafik SDK menuju `qsdk.t4game.com` dan NOL request ke
+`127.0.0.1:28110/qsdk`; login tamu via server asli sukses (`isNewUser:0`). Catatan jujur:
+pada tahap ini SDK masih butuh internet (server asli) — offline penuh = setelah mesin +
+flip (fase berikutnya), lalu loginserver (1.0.3).

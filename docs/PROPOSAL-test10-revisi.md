@@ -1,6 +1,6 @@
 # PROPOSAL — REBUILD test10 DENGAN CONFIG YANG BENAR (`test10-revisi`)
 
-> **Status: MENUNGGU PERSETUJUAN OWNER** — tidak ada eksekusi sebelum disetujui.
+> **Status: DISETUJUI OWNER (2026-10-19, "yaa setuju") — eksekusi §5 dimulai.**
 >
 > Dasar arah owner (2026-10-19): *"kalau anda perlakukan HAR sebagai verifikasi saja,
 > bukan alat pembuatan config — artinya tes10 bisa di ulangi dengan config yg benar.
@@ -68,11 +68,16 @@ kini terkunci (§6a, §12):
 
 ## 7. Kriteria SELESAI (acceptance)
 
-- [ ] Asset diff vs 1.0.1: **nol perubahan** kecuali META-INF (re-sign); QHinfo byte sama
-- [ ] `classes.dex` byte-identik `e45b3044`; `classes2.dex` = test9 + drain fix, regs bersih
-- [ ] **0 file `qsdk` di mirror** build tree
+- [x] Asset diff vs 1.0.1: **nol perubahan** kecuali `classes2.dex` (delta disengaja §3 —
+      test9+drain fix, 6.316 B `6e1f1e0f…`) + META-INF (re-sign); QHinfo byte sama 22 B
+- [x] `classes.dex` byte-identik `e45b3044`; `classes2.dex` = test9 + drain fix, regs bersih
+- [x] **0 file `qsdk` di mirror** build tree
 - [ ] Uji 1–3 lulus di perangkat owner; HAR baru terlampir di docs sebagai VERIFIKASI
-- [ ] SHA final + tag `test10-revisi` tercatat; docs/§13 diperbarui
+- [x] SHA final + tag `test10-revisi` tercatat; docs/§13 diperbarui
+
+> Eksekusi selesai 2026-10-19 — APK `DB-Local-test10-revisi.apk`
+> SHA `8f3e5597d38b76ac94c4fc7a6e2cfd41b3e59f89ad4550ce8d89e66ad38b152d` terbit di
+> release `test10-revisi`. Sisa satu checkbox = uji perangkat owner (HAR baru).
 
 ## 8. Risiko & mitigasi
 
@@ -85,6 +90,6 @@ kini terkunci (§6a, §12):
 
 ## 9. Persetujuan owner
 
-- [ ] **SETUJU** — eksekusi sesuai §5
+- [x] **SETUJU** — eksekusi sesuai §5 (owner: "yaa setuju", 2026-10-19)
 - [ ] Setuju dengan perubahan: ______________
 - [ ] Tidak setuju — alasan: ______________
