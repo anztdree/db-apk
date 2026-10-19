@@ -152,3 +152,40 @@ Tool: `smali.jar` + `baksmali.jar` (JesusFreke/smali 2.5.x), `uber-apk-signer-1.
 3. Cek versi: `base.version` (110), `resource.version` (11390 > 11220 bawaan).
 4. Unduh `all.zip` ±19,4 MB (baru instal → fallback `all.zip`, bukan patch).
 5. Ekstraksi → muat `index-native.html` → `manifest.json` → 15 JS → layar login.
+
+---
+
+## test8 — redirection murni (kondisi terbukti test6 + gerbang siap + audit fix)
+
+**Prinsip**: hanya ganti ARAH endpoint lewat mekanisme config asli aplikasi; tidak ada logika baru
+di luar yang terbukti. Seluruh audit forensik vs APK original (SHA `3650cbe5…`):
+3.663/3.666 entry byte-identik; kode berubah = 1 sisipan 7 baris di LaunchActivity.
+
+**Perubahan test7 → test8** (diff zip terverifikasi):
+1. **Hapus 3 file panenan** (`clientversion.json`, `serversetting.json`, `sound_click.mp3`)
+   → mirror kembali **23 file terbukti test6** (SHA 22/23 cocok VERIFIKASI.md;
+   1 yang beda = setting bin, memang disengaja karena redirection).
+2. **`config_BS.properties` restore 4 kunci** persis original
+   (EntryPoint1, EntryPoint1_debug, EntryPoint2, EntryPoint2_debug — test7 kehilangan
+   `EntryPoint1_debug`), semua nilai → `http://127.0.0.1:28110/bs/db/android`
+   (lihat `config_BS.properties` di folder ini).
+3. **`setting_BS_Android.bin` byte-preserving**: dibuat dari panenan asli `../server/configus/…`
+   dengan substitusi TEPAT 2 substring (`url` + `update`); 711 → 692 B; field lain byte-asli.
+4. **`MiniServer.resolve()`**: fallback assets dikembalikan (semantik test6 yang terbukti):
+   `files/server` → `assets/mirror` → 404. Menutup risiko 404 palsu bila salinan bootstrap
+   belum tuntas (perangkat lambat). Sumber byte identik → tak terlihat oleh aplikasi.
+5. **Gerbang siap-dulu tetap** (bootstrapSync → bind → baru app jalan; salin-jika-belum-ada,
+   atomik, cap 8 s) + fix test6 (drain header + shutdownOutput) tetap.
+
+**Verifikasi rilis test8** (semua ✅):
+- diff zip vs test7: −3 panenan; berubah hanya `classes2.dex`, `config_BS.properties`,
+  `setting_BS_Android.bin`, META-INF (re-sign). Sisanya byte-identik.
+- dex final = assemble sumber repo; baksmali: `try_assets` + `mirror/` + `bootstrapSync` +
+  `shutdownOutput` + bind `127.0.0.1:28110` ✔
+- `classes.dex` byte-identik test7 (sisipan LaunchActivity tak tersentuh) ✔
+- `AndroidManifest.xml` byte-identik ORIGINAL ✔
+- SHA-256 APK final: `682d284a96ac75b8acb6e6844341c1cf25ecfd905a2cc50b0a64d09c69ad6c6b`
+
+**Cara pasang (WAJIB)**: **UNINSTALL dulu APK lama** (Android/data ikut terhapus → bootstrap
+bersih 23 file; signature debug baru berbeda dari build lama) → install test8 → jalankan →
+kirim HAR + logcat ke `log/`.

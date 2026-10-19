@@ -427,7 +427,7 @@
 
     move-result v2
 
-    if-eqz v2, :null_ret
+    if-eqz v2, :try_assets
 
     new-instance v2, Ljava/io/FileInputStream;
 
@@ -440,6 +440,44 @@
     invoke-virtual {v2}, Ljava/io/FileInputStream;->close()V
 
     return-object v0
+
+    # test8: fallback assets (semantik test6 yang terbukti di perangkat) —
+    # dipakai hanya bila file belum tersalin di Android/data/files/server.
+    # Sumber byte identik dengan seed, tak terlihat oleh aplikasi.
+    :try_assets
+    sget-object v0, Lcom/db/local/MiniServer;->APP:Landroid/content/Context;
+
+    if-eqz v0, :null_ret
+
+    invoke-virtual {v0}, Landroid/content/Context;->getAssets()Landroid/content/res/AssetManager;
+
+    move-result-object v0
+
+    new-instance v1, Ljava/lang/StringBuilder;
+
+    invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+
+    const-string v2, "mirror/"
+
+    invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v1, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v1
+
+    invoke-virtual {v0, v1}, Landroid/content/res/AssetManager;->open(Ljava/lang/String;)Ljava/io/InputStream;
+
+    move-result-object v0
+
+    invoke-static {v0}, Lcom/db/local/MiniServer;->readAll(Ljava/io/InputStream;)[B
+
+    move-result-object v1
+
+    invoke-virtual {v0}, Ljava/io/InputStream;->close()V
+
+    return-object v1
 
     :null_ret
     const/4 v0, 0x0
