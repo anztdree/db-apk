@@ -623,7 +623,7 @@ server asli ada DUA jenis, dan masing-masing cara panennya beda:
 |---|---|---|---|
 | 1 | Config `init` dipanen dari server asli | ✅ **SUDAH** | `docs/panenan-1.0.2/qsdk_v1_system_init.json`; mirror 764 B — sha256 `a6ab4470…`; byte-identik antar sesi (hanya `requestIp` berubah) |
 | 2 | `getNotice` dipanen | ✅ **SUDAH** | 55 B — sha256 `424866f4…`; identik 3 sesi |
-| 3 | Kontrak endpoint akun (skema + perilaku) | ✅ **SUDAH** | panenan `registerVisitor` 2345 B / `registerUser` 2397 B / `getUserInfo` 280 B + `req_*.txt`; skema otoritatif = smali `model.*` |
+| 3 | Kontrak endpoint akun (skema + perilaku) | ✅ **SUDAH** | **Sumber = smali SDK** (classes.dex: path, `sv`/`data`/`sign` MD5, kelas `model.*`) — panenan 3 endpoint (2345/2397/280 B + `req_*.txt`) = **VERIFIKASI kontrak**, bukan sumbernya (lihat 12d) |
 | 4 | **MESIN** akun per-device | ❌ **BELUM — nol** | blueprint saja (§7c/§8b) |
 | 5 | Koreksi tes10 (QHinfo kembali 22 B `qsdk.t4game.com`) | ⏳ pending | working tree `apk/QHinfo` masih 27 B prematur |
 | 6 | Flip QHinfo → `127.0.0.1:28110/qsdk` | ⛔ **TAHAN** | baru boleh SETELAH #4 selesai (§8d) |
@@ -643,6 +643,32 @@ sesuatu yang DIBANGUN.**
 3. Config panenan = snapshot kondisi server hari ini (channel BS, country ID, versi ini).
    Untuk standalone offline itu justru target yang benar: config tidak akan berubah lagi
    karena tidak ada server luar yang menyalakannya.
+
+### 12d. Sumber kontrak endpoint akun — diluruskan (pertanyaan owner: *"registerUser, registerVisitor dapat dari config asli atau cuma HAR? isinya disamakan ke HAR?"*)
+
+**Jawaban: dari KODE SDK, bukan dari HAR.** Kode SDK = `classes.dex` (file fisik asli di APK,
+dibedah baksmali). Di dalamnya sudah ada SEMUA yang dibutuhkan untuk mengenali kedua
+endpoint: path-nya, cara membangun request (`sv=v2` + `data` base64 JSON + `sign` MD5),
+dan skema respons (kelas parser `model.*`) — itu kontrak **otoritatif**.
+
+Peran panenan 3 endpoint (registerVisitor 2345 B, registerUser 2397 B, getUserInfo 280 B)
+= **VERIFIKASI saja**: membuktikan (a) skema smali yang kita baca benar, (b) perilaku
+server asli yang kita desain ke mesin itu nyata (`isNewUser:0` per device yang dikenal,
+`isNewUser:1` untuk register baru, profil sesi dinamis).
+
+**Isi respons mesin TIDAK akan disamakan ke HAR:**
+
+| Field | Sumber nilainya |
+|---|---|
+| `uid`, `username` tamu, `token` | generator mesin — **nilai BARU**; format pola (`2 huruf+8 digit`) = fakta perilaku server asli yang TERVERIFIKASI panenan, bukan byte yang disalin |
+| `authToken` (`@NN@`) | algoritma dari smali SDK (dibalik), bukan byte HAR |
+| `lastDev`, `lastLoginTime`, `regIp` | dihitung dari request nyata saat itu |
+| `isNewUser` | hasil lookup STORE (per-device), bukan angka dari HAR |
+
+Justru **sebaliknya**: jika byte mesin = byte HAR, itu tanda mesin PALSU (replay —
+kasus `e6e8ad4d`). Yang wajib cocok hanya dua: **STRUKTUR** (skema dari smali) dan
+**PERILAKU** (tamu sama antar-restart, register baru sukses, profil sesi konsisten) —
+dan verifikasinya memakai **HAR BARU dari build lokal**, bukan HAR lama (§8d).
 
 ---
 
