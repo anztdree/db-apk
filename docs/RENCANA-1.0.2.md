@@ -60,15 +60,25 @@ Dari HAR test9 + h3 (asli), hanya 4 endpoint SDK yang benar-benar dipanggil:
 |---|---|---|---|
 | 1 | `POST /v1/system/init` | tiap peluncuran (setelah file game siap) | 764 B, sha256 `a6ab4470…` |
 | 2 | `POST /v1/system/getNotice` | tiap peluncuran | 55 B, sha256 `424866f4…` |
-| 3 | `POST /v1/user/registerVisitor` | peluncuran pertama (akun tamu) | 2.345 B, sha256 `95e8d974…` |
+| 3 | `POST /v1/user/registerVisitor` | peluncuran (akun tamu) — request = fingerprint device SAJA (tanpa kredensial tersimpan, bukti dekode `req_registerVisitor.txt`) → auth guest bersifat stateless, respons replay valid tiap peluncuran | 2.345 B, sha256 `95e8d974…` |
 | 4 | `POST /v1/auth/getUserInfo` | situasional (terpanggil di sesi h3) | 280 B, sha256 `dfc72556…` |
+| 5 | `POST /v1/user/registerUser` | registrasi akun baru via UI SDK (capture `sdk_register.har` dari user, 2026-10-19) | 2.397 B, sha256 `c4105fb9…` |
+
+- **Stabilitas replay terbukti**: respons `init` (764 B) dan `getNotice` (55 B) **byte-identik antar sesi**
+  (test9 vs sdk_register) → paling aman direplay. `registerVisitor`/`registerUser` berisi data dinamis
+  (authToken, time) — diterima apa adanya oleh klien, diteruskan ke `:510` yang tetap online (terbukti
+  server asli menerima KEDUA akun: uid 28486093 guest + uid 28505968 registered, `code:0`).
+- Panenan pelengkap: `loginchecknative_usermode0.json` (209 B, `code:0`) — bukti `:510` menerima
+  akun hasil registerUser (cadangan bukti untuk 1.0.3).
 
 - 29 path lain (bind/pay/lupa password/FB-event/`postGooglePlayVerify`, dst.) = dipicu aksi UI
   khusus → **di luar lingkup test10** (404 = perilaku server mati; SDK punya pesan error bawaan).
-- ⚠️ **Celah bukti**: `/v1/user/autoLogin` (`QuickGameSdkService`) dan `/v1/user/ckRegVistor`
-  — kandidat kuat **peluncuran kedua** (kredensial tersimpan), belum pernah terekam HAR.
-  Ditutup oleh **Fase R0** di bawah. (Catatan: `loginchecknative` :510 tetap online → token
-  replay panenan divalidasi server asli; token test9 terbukti diterima `code 0`.)
+- ⚠️ **Celah bukti tersisa (sempit & pulihable)**: `/v1/user/autoLogin` (`QuickGameSdkService`) dan
+  `/v1/user/ckRegVistor` — baru relevan untuk pemulihan sesi **akun terdaftar** (username/password
+  tersimpan). Auth guest (jalur utama) terbukti stateless via registerVisitor. Keputusan (arah user:
+  capture sudah melewati SDK): **R0 digabung ke uji test10** — uji 2 peluncuran dgn capture; bila
+  `autoLogin` muncul & 404, panen respons aslinya sesi singkat via 1.0.1/original (server masih hidup)
+  → route ditambah di test11. Tidak ada bukti yang hilang permanen.
 
 ### 1d. Panenan RAW 1:1 (`docs/panenan-1.0.2/`)
 
@@ -78,16 +88,15 @@ Lampiran bukti kontrak request: `req_init.txt`, `req_getNotice.txt`, `req_regist
 
 ---
 
-## 2. Fase R0 — Recon peluncuran kedua (peran Anda, ±2 menit, TANPA build)
+## 2. Fase R0 — digabung ke uji test10 (keputusan 2026-10-19)
 
-1. App **1.0.1 yang SUDAH terinstall** — jangan diinstall ulang.
-2. Nyalakan capture HAR + logcat, lalu **buka app** (peluncuran kedua), tunggu sampai layar
-   login SDK tampil, stop capture, push ke `log/` (nama jelas, mis. `2026_10_20_secondlaunch.har`).
-3. Tujuan: (a) bila ada `autoLogin`/`ckRegVistor` → panen respons aslinya; (b) bila TIDAK ada
-   request SDK baru → lingkup 4 route terbukti cukup.
-
-**Kriteria lolos**: setiap request SDK peluncuran kedua punya respons terpanen (atau bukti nol
-request baru). Tanpa ini, build test10 tidak dimulai (disiplin: bukti dulu).
+Capture user (`sdk_register.har`, sampai `:510` `code:0`) melengkapi bukti alur SDK: guest
+(registerVisitor) + registrasi (registerUser). Jalur startup terbukti lengkap; celah tinggal
+`autoLogin`/`ckRegVistor` (pemulihan sesi akun terdaftar). Alih-alih capture terpisah:
+- Uji test10 = **2 peluncuran** (pertama + kedua) dengan capture HAR + logcat.
+- Bila peluncuran kedua memanggil `autoLogin` → HAR menunjukkan 404 kita → respons ASLI dipanen
+  lewat sesi singkat 1.0.1/original (masih online) → route ditambah di test11.
+- Bila tidak dipanggil → 5 route terbukti cukup, selesai.
 
 ---
 
@@ -101,13 +110,14 @@ request baru). Tanpa ini, build test10 tidak dimulai (disiplin: bukti dulu).
 
 Yang lain TIDAK disentuh (config_BS.properties, setting bin, smali kode — semuanya persis 1.0.1).
 
-### P2 — MiniServer (smali, classes2.dex): +4 route by-path
+### P2 — MiniServer (smali, classes2.dex): +5 route by-path
 
 ```
-POST /qsdk/v1/system/init         → panenan RAW 764 B
-POST /qsdk/v1/system/getNotice    → panenan RAW 55 B
+POST /qsdk/v1/system/init          → panenan RAW 764 B
+POST /qsdk/v1/system/getNotice     → panenan RAW 55 B
 POST /qsdk/v1/user/registerVisitor → panenan RAW 2.345 B
-POST /qsdk/v1/auth/getUserInfo    → panenan RAW 280 B
+POST /qsdk/v1/user/registerUser    → panenan RAW 2.397 B
+POST /qsdk/v1/auth/getUserInfo     → panenan RAW 280 B
   (drain body request per Content-Length sebelum menjawab — Pelajaran 6;
    HTTP 200 + Content-Length + body; log tiap request)
 Semua path lain → perilaku 1.0.1 (mirror 1:1) — TIDAK BERUBAH.
@@ -138,7 +148,7 @@ Itu disengaja — satu lapisan per rilis, diagnosis pasti.
 
 | # | Risiko | Mitigasi |
 |---|---|---|
-| 1 | Peluncuran kedua memanggil `autoLogin`/`ckRegVistor` yang belum ada routenya | **Fase R0 wajib sebelum build**; panenan ditambah sebelum test10 |
+| 1 | Peluncuran kedua memanggil `autoLogin`/`ckRegVistor` yang belum ada routenya | Auth guest terbukti stateless (registerVisitor); bila `autoLogin` muncul: 404 terlihat di HAR test10 → panen respons asli via 1.0.1 → test11. Pulihable, terdiagnosis jelas |
 | 2 | `:510` suatu saat menolak token replay (kadaluarsa) | Terlihat jelas di logcat/HAR (`loginchecknative` code ≠ 0) → bukti baru → 1.0.3 (login server lokal) dipercepat |
 | 3 | VerifyError kelas smali baru | `check_invoke_regs.py` wajib + pola instruksi terbukti |
 | 4 | Body POST tidak didrain → koneksi rusak (keluarga bug test6) | Drain per Content-Length; lab curl POST sebelum rilis |
