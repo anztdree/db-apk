@@ -1,0 +1,74 @@
+[
+  {
+    "name": "user__registerVisitor",
+    "url": "http://qsdk.t4game.com/v1/user/registerVisitor",
+    "status": 200,
+    "ct": "text/json",
+    "len": 2345,
+    "md5": "ad5fd325275a6aba8fc4613c36ac9c09",
+    "dt": 0.32
+  },
+  {
+    "name": "auth__getUserInfo-guest",
+    "url": "http://qsdk.t4game.com/v1/auth/getUserInfo",
+    "status": 200,
+    "ct": "text/json",
+    "len": 280,
+    "md5": "9841e53b8d64583cd2e6de7fc885d651",
+    "dt": 0.35
+  },
+  {
+    "name": "user__registerUser",
+    "url": "http://qsdk.t4game.com/v1/user/registerUser",
+    "status": 200,
+    "ct": "text/json",
+    "len": 88,
+    "md5": "d1b4afec09f0ebe38aee1d003b92f706",
+    "dt": 0.36
+  },
+  {
+    "name": "auth__getUserInfo-registered",
+    "url": "http://qsdk.t4game.com/v1/auth/getUserInfo",
+    "status": 200,
+    "ct": "text/json",
+    "len": 280,
+    "md5": "cd4917b46bf09a6eda96ac8cb363881c",
+    "dt": 0.31
+  },
+  {
+    "name": "user__loginByName",
+    "url": "http://qsdk.t4game.com/v1/user/loginByName",
+    "status": 200,
+    "ct": "text/json",
+    "len": 2429,
+    "md5": "c01fc87366e2471e6993964d58476f1e",
+    "dt": 0.32
+  },
+  {
+    "name": "game__loginchecknative-guest",
+    "url": "https://login.popoh5.com:510/loginchecknative?uid=28486093&usermode=1&username=cz90406643&token=@154@171@167@170@218@95@189@215@168@129@178@171@170@211@110@170@156@104@166@142@161@205@136@103@159@165@154@173@156@96@165@105@156@167@211@120@177@106@210@199@119@143@130@206@168@203@133@158@160@102@127@154@92@208@173@142@161@158@130@173@206@117@141@99@176@215@157@101@142@150@150@199@121@159@160@209@154@212@108@154@108@101@170@205@131@211@103@162@159@123@135@139@206@163@131@160@160@210@150@155@202@141@209@145@126@165@171@160&appVersion=1&osVersion=31&sourceVersion=20200418&model=itel+S665L&packageName=com.db.local&brand=Itel&os=Android&sdk=BS",
+    "status": 200,
+    "ct": "application/json; charset=utf-8",
+    "len": 195,
+    "md5": "a162e4ab8eb531c9d8d2c6c0c342e247",
+    "dt": 0.69
+  },
+  {
+    "name": "game__loginchecknative-register",
+    "url": "https://login.popoh5.com:510/loginchecknative?uid=28506361&usermode=0&username=vifen44624@juicehour.com&token=@146@174@221@133@188@165@198@150@94@113@169@214@174@153@121@100@127@138@155@188@101@183@136@103@159@165@154@173@156@96@165@105@156@167@211@120@177@106@210@199@119@143@129@148@165@216@166@125@127@160@129@217@124@179@132@108@154@133@130@163@204@171@124@157@136@201@178@99@210@157@217@183@140@159@111@211@157@213@124@129@134@172@171@169@149@207@157@106@128@110@102@169@203@92@137@130@122@219@177@164@205@151@214@174@161@108@163@160&appVersion=1&osVersion=31&sourceVersion=20200418&model=itel+S665L&packageName=com.db.local&brand=Itel&os=Android&sdk=BS",
+    "status": 200,
+    "ct": "application/json; charset=utf-8",
+    "len": 209,
+    "md5": "02bff793f244dd7e38d2b572c822af65",
+    "dt": 0.68
+  },
+  {
+    "name": "game__loginchecknative-login",
+    "url": "https://login.popoh5.com:510/loginchecknative?uid=28506361&usermode=0&username=vifen44624@juicehour.com&token=@146@174@221@133@188@165@198@150@94@113@169@214@174@153@121@100@127@138@155@188@101@183@136@103@159@165@154@173@156@96@165@105@156@167@211@120@177@106@210@199@119@143@130@188@104@221@150@124@141@131@159@142@97@179@107@139@154@177@104@157@168@155@150@151@130@206@174@156@155@132@181@200@169@172@170@213@122@215@140@141@173@121@155@180@119@211@107@134@119@163@127@132@191@171@101@166@138@203@154@147@215@160@155@211@108@110@129@160&appVersion=1&osVersion=31&sourceVersion=20200418&model=itel+S665L&packageName=com.db.local&brand=Itel&os=Android&sdk=BS",
+    "status": 200,
+    "ct": "application/json; charset=utf-8",
+    "len": 209,
+    "md5": "2ca2e30c4c91933738c017d1ab197a68",
+    "dt": 0.6
+  }
+]

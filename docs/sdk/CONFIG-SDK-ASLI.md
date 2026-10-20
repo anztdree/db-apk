@@ -1,10 +1,11 @@
 # CONFIG SDK ASLI — 1.0.2 (SATU-SATUNYA DOC SDK)
 
-> Status: **CONFIG = KETEMU & TERBUKTI** · **GERBANG 4 (login) = TERBEDAH DARI DEX** (riset 2026-10-20, TANPA implementasi — menunggu keputusan user).
-> Bukti dari **3 sumber independen** yang saling mengunci:
+> Status: **CONFIG = KETEMU & TERBUKTI** · **GERBANG 4 = TERBEDAH + MATERI LIVE LENGKAP 3 MODE (guest/register/login)** (2026-10-20, TANPA implementasi).
+> Prinsip user: **capture = alat bantu saja, bukan acuan pondasi — termasuk login/register/guest.**
+> Pondasi = jawaban ASLI server hidup. Bukti dari **3 sumber independen** yang saling mengunci:
 > 1. **DEX ORIGINAL APK** (DB-Local.apk, sha256 `3650cbe5…`): field mana yang BENAR-BENAR diparse SDK (instruksi, bukan tebakan).
 > 2. **SERVER ASLI HIDUP** (qsdk.t4game.com): panen live respons config → `bukti/panen-live/`.
-> 3. **HAR PERANGKAT** (sesi uji 1.0.2-tes1): alur nyata + bukti leg A ≡ leg B → `bukti/device-har/`.
+> 3. **HAR PERANGKAT** (sesi uji 2026-10-20, `log/sdk.har`): tiket request asli + bukti **leg A ≡ leg B byte-identik 8/8** → `bukti/device-har/` + `bukti/panen-gerbang4/`.
 >
 > ATURAN #1 (dari user, selalu berlaku): **capture ≠ config asli**. HAR = alat bantu petunjuk.
 > Material config = jawaban server asli yang masih hidup. Target: 1.0.2 — config SDK di LOCAL,
@@ -26,10 +27,15 @@ original. **Edit file → langsung efektif.**
 | `config-local/system/getNotice.json` | `POST /v1/system/getNotice` | ✅ FINAL — versi tanpa notice = identik respons server hidup (55 B) |
 | `config-local/system/getAgreement.json` | `POST /v1/system/getAgreement` | ✅ FINAL — semua field kosong = identik respons server hidup (188 B) |
 | `config-local/user/ckRegVistor.json` | `POST /v1/user/ckRegVistor` | ✅ FINAL — `isReged:1` identik respons server hidup |
-| `config-local/user/registerVisitor.json` | `POST /v1/user/registerVisitor` | ⏳ TEMPLATE — format terbukti dari parser dex (bagian 3); **nilai sesi asli diisi dari panen live Tahap 2** |
+| `config-local/user/registerVisitor.json` | `POST /v1/user/registerVisitor` | ✅ FINAL — **materi LIVE Gerbang 4** (sesi guest, 2345 B, leg A≡B) |
+| `config-local/user/registerUser.json` | `POST /v1/user/registerUser` | ✅ FINAL — respons sukses ASLI (satu-kali/state-bound, leg A≡B) |
+| `config-local/user/loginByName.json` | `POST /v1/user/loginByName` | ✅ FINAL — **materi LIVE** (sesi akun, 2429 B) |
+| `config-local/auth/getUserInfo.json` | `POST /v1/auth/getUserInfo` | ✅ FINAL — **materi LIVE** (profil bersesi) |
+| `config-local/game/loginchecknative.json` | `GET <loginServer>/loginchecknative` | ✅ FINAL — format jawaban `code:0` verifikasi game (live, 3 mode lolos) |
 
-Aturan edit lengkap (kunci wajib, rule string, jebakan parser): [`config-local/README.md`](config-local/README.md).
-Peta field-per-field + bukti instruksi dex: bagian 4–8 di doc ini.
+Aturan edit lengkap + sifat sesi (terikat perangkat, dapat diulang, registerUser satu-kali):
+[`config-local/README.md`](config-local/README.md). Peta field-per-field + bukti instruksi dex:
+bagian 4–8 di doc ini.
 
 ---
 
@@ -66,51 +72,60 @@ menuju ke loginserver"*. Seluruh rantai di bawah = bukti instruksi dex original
 
 [2] SDK: POST /v1/user/registerVisitor           (service/dishbesideshockey$…seventygenom.run)
       respon: {"result":true,"data":{"authToken":"…","userData":{…}}}     ← format di 2b
+      ★ MATERI LIVE: 2345 B — uid 28486093, username cz90406643, isGuest 1
+        (tiket sama → sesi SAMA persis = terikat perangkat, dapat diulang)
 
 [3] onLoginFinished(QGUserData, QGUserHolder)    (feedtonight/singersmooth — dex)
       showFloatView(activity)
-      HashMap params PERSIS:
-        uid       = QGUserData.getUid()
-        username  = QGUserData.getUserName()
-        token     = QGUserData.getToken()
-        usermode  = isGuest() ? "1" : "0"
+      HashMap params PERSIS (dipastikan HAR nyata):
+        uid=28486093  username=cz90406643  token=@154@171@…  usermode=1
 
-[4] Thread → GET  <loginServer>/loginchecknative?uid=…&username=…&token=…&usermode=…
-              &osVersion=…&packageName=…&appVersion=…&sourceVersion=…&brand=…&model=…
-              &os=Android&sdk=<versiSDK>          (pursetruechild/nationalcommunitymissing.run)
-      retry 3×; respon JSON:  code==0 → LOLOS lanjut masuk game
-                              code≠0 → msg/message → dialog error
+[4] Thread → GET  https://login.popoh5.com:510/loginchecknative
+              ?uid=…&username=…&token=…&usermode=…
+              &appVersion=1&osVersion=31&sourceVersion=20200418
+              &model=itel+S665L&packageName=com.db.local&brand=Itel&os=Android&sdk=BS
+      retry 3×; respon JSON (TERBUKTI LIVE):  code==0 → LOLOS lanjut masuk game
+                                              code≠0 → msg/message → dialog error
       (log tag asli: "sdk登录验证url" / "sdk登录验证返回")
+
+[4b] JAWABAN loginchecknative ASLI (live, 195 B guest / 209 B akun):
+     {"code":0,"sdk":"BSNative","nickName":"cz90406643",
+      "loginToken":"114b9afe…","userId":"28486093",
+      "sign":"171d4576675f395c4aa53f23c4f321bb","sdkType":"BS","osType":"Android"}
+     — loginToken berubah tiap panggil; sign STABIL per user; code:0 diterima BERULANG
 
 [5] game lanjut: startGame(params: version, thirdParams, language, loginServer, clientParams)
       → engine/game world (socket/web server game asli — di luar config SDK)
 ```
 
-### 2b. Format sesi login `registerVisitor` (parser dex, WAJIB dipenuhi)
+### 2b. Format sesi login (parser dex, WAJIB dipenuhi) — DENGAN MATERI LIVE
 
-Parser: `psalmicvolleyball.cointhreat.cointhreat(String)` → `QGUserData.generateFromJson`:
+Parser: `psalmicvolleyball.cointhreat.cointhreat(String)` → `QGUserData.generateFromJson`.
+Format persis dari respons server hidup (live registerVisitor 2345 B):
 
 ```json
 {"result":true,"data":{
-   "authToken":"…",                    ← WAJIB (getString)
+   "authToken":"@149@121@127@…",      ← WAJIB (getString) — format token obfuscated @…@
    "tips":"",                          ← opsional
    "checkRealName":"0",                ← opsional (default "0")
    "userData":{
-     "uid":"28486093",                 ← WAJIB (getString) — guest per perangkat
-     "username":"Guest_…",             ← WAJIB (getString)
+     "uid":"28486093",                 ← WAJIB — guest per perangkat (angka/str kedua2nya sah)
+     "username":"cz90406643",          ← WAJIB
      "displayUid":"",                  ← opsional (bila kosong → tampil = uid)
-     "token":"…",                      ← WAJIB (getString)
-     "isGuest":"1",                    ← WAJIB (getString "1"/"0")
-     "openType":"",                    ← opsional
-     "isNewUser":0,                    ← opsional (1 = user baru)
-     "isTrash":0,                      ← opsional
-     "bindInfo":null                   ← opsional (objek bind akun)
+     "token":"@154@171@167@…",         ← WAJIB — INI yang dikirim ke loginchecknative
+     "isGuest":1,                      ← WAJIB (respons asli ANGKA; getString → "1")
+     "isNewUser":0,                    ← opsional
+     "mobile":"",                      ← opsional (respons asli mengandung)
+     "bindInfo":{"bindFB":{"isBind":0,"bid":6,"buid":"",…}, …}   ← opsional (respons asli lengkap 12 kanal bind)
    }
  },"error":{"id":0,"message":""}}
 ```
 
 Hilang `authToken` / `userData.uid` / `username` / `token` / `isGuest` → parser exception
-→ login gagal. Inilah template `config-local/user/registerVisitor.json`.
+→ login gagal. File final: `config-local/user/registerVisitor.json` (materi live utuh).
+Format sama untuk `registerUser` (isGuest 0, isNewUser 1) dan `loginByName`
+(isGuest 0 + field opt fbName/pushToken/noLoginLongTime) — ketiganya sudah ada di
+`config-local/user/` dari materi LIVE.
 
 ### 2c. DARI MANA ALAMAT loginserver? — SUDAH DI TANGAN KITA
 
@@ -125,28 +140,34 @@ Fakta kunci (dex `pursetruechild/ironoriginhoblike` + `LaunchActivity`):
    saat diperlukan) diarahkan ke server lokal kita. Tidak ada alamat yang berada di luar
    kendali config.
 
-### 2d. RENCANA local standalone → sukses menuju loginserver (3 tahap, tanpa penerusan permanen)
+### 2d. STATUS local standalone → menuju loginserver (materi 3 mode = LIVE SIAP)
 
 | Tahap | Apa yang lokal | Material | Status |
 |---|---|---|---|
 | **A. Config SDK** | `init` + `getNotice` + `getAgreement` + `ckRegVistor` dijawab MiniServer dari `config-local/` | panen live server hidup | ✅ SIAP |
-| **B. Sesi SDK** | `registerVisitor` dijawab MiniServer: `{authToken, userData{uid,username,token,isGuest:"1"}}` **sesi ASLI per perangkat** | ⏳ butuh 1 capture login dari perangkat user sebagai **tiket** → panen live registerVisitor (metode bertahap yang sudah disepakati) | format ✅ terbukti; nilai ⏳ menunggu tiket |
-| **C. Verifikasi game** | Game mengirim `{uid,username,token,usermode}` (dari sesi Tahap B — **token ASLI hasil panen**, bukan karangan) ke loginchecknative di alamat yang datang dari config game lokal | kombinasi Tahap A+B | rencana siap; verifikasi akhir di perangkat |
+| **B. Sesi SDK (3 mode)** | `registerVisitor` (guest) + `registerUser` (register) + `loginByName` (login) dijawab MiniServer — format & ISI asli | panen live 2026-10-20 dengan tiket request asli APK; leg A≡B 8/8 | ✅ **SIAP** (`config-local/user/`) |
+| **C. Verifikasi game** | Game mengirim `{uid,username,token,usermode}` (sesi ASLI Tahap B) ke loginchecknative di alamat dari config game lokal | loginchecknative live: `code:0` BERULANG utk ketiga mode dgn token asli | ✅ terbukti token asli lolos berulang |
 
-**Kenapa ini BUKAN "jejak kaki" lagi:** request login dibuat oleh APK original sendiri
-(fingerprint perangkat asli), token/uid yang dikirim = token/uid **asli dari server SDK**
-hasil panen live dengan tiket request asli per perangkat — server game memverifikasi
-pasangan asli, bukan tiruan.
+**Kenapa ini BUKAN "jejak kaki":** request login dibuat oleh APK original sendiri
+(fingerprint perangkat asli), token/uid yang dikirim = token/uid ASLI dari server SDK
+(hasil panen live pakai tiket request asli) — server game memverifikasi pasangan ASLI.
+Capture hanya berperan sebagai alat bantu (tiket), sesuai prinsip user.
 
-**Opsi cadangan bila loginchecknative menolak token panen** (mis. sesi diikat waktu/server):
-karena alamat loginserver ada di config game LOCAL (bagian 2c), kita bisa mengarahkan
-endpoint `loginchecknative` ke MiniServer dan menjawab `{"code":0}` — murni keputusan
-config, tanpa penerusan. **Ini OPSI — hanya dieksekusi bila user memutuskan** (menilai
-sendiri risikonya: game world sesudahnya tetap server asli).
+**Fakta penting yang meluruskan rencana:** sesi guest TERIKAT PERANGKAT dan DAPAT
+DIULANG — tiket registerVisitor yang sama → server jawab sesi yang sama persis
+(uid + token identik). loginchecknative menerima token itu berulang kali (code:0 tiap
+panen). Artinya sesi asli di `config-local/user/` adalah tiket sah yang menuju
+loginserver game asli tanpa penerusan.
 
-**Gap yang jujur:** HAR perangkat berhenti di getNotice → belum ada capture respons
-registerVisitor nyata → format sudah terbukti dari parser, ISI token/uid asli menunggu
-Tahap B. Ini satu-satunya bahan yang belum di tangan.
+**Opsi cadangan** (bila suatu saat dibutuhkan): alamat loginserver ada di config game
+LOCAL (bagian 2c) → endpoint `loginchecknative` bisa diarahkan ke MiniServer dan dijawab
+`config-local/game/loginchecknative.json` (`code:0`) — murni keputusan config. **Ini OPSI
+— hanya dieksekusi bila user memutuskan.**
+
+**Catatan registerUser (state-bound):** register sukses hanya SATU kali per guest —
+panen ulang server asli jawab `40008 pengguna ini telah digunakan`. Material sukses
+(2389 B, leg A≡B) tersimpan di `config-local/user/registerUser.json` + bukti di
+`bukti/panen-gerbang4/sukses-sekali__user__registerUser.bin`.
 
 ---
 
@@ -311,25 +332,30 @@ POST base+"/v1/…"  CT: application/x-www-form-urlencoded   body: sv=v2&data=�
 | Kategori | Endpoint |
 |---|---|
 | **system (config)** | `init` ✅ · `getNotice` ✅ · `getAgreement` ✅ · `dmsg` (butuh func_code) · `onNewToken` (push) |
-| **user (sesi/akun)** | `registerVisitor` ✅ format terbukti (bagian 2b) · `registerUser` (state-bound) · `ckRegVistor` ✅ · `autoLogin` (format = registerVisitor, parser sama) · `loginByName` · `userLoginByOtherSdk` · `findPassByEmail` · `sendCodeByEmail` · `actCdKey` · `postGooglePlayVerify` · `getServerAgreement` (butuh agmId) |
-| **auth (aksi akun/bayar/event)** | `getUserInfo` · `createOrder` · `bindMail` · `changePassword` · `cksnslogin` · `fbActInit` · `fbInviteEvent` · `fbLikeEvent` · `fbShareEvent` · `fbUserClaimEvent` · `setGameRoleInfo` · `userBindOtherSdk` · `unBindOtherInfo` · `viewMigCode` · `cUserTrash` · `jianchaLayLx` |
+| **user (sesi/akun)** | `registerVisitor` ✅ **MATERI LIVE** · `registerUser` ✅ sukses asli (satu-kali; panen ulang = 40008) · `ckRegVistor` ✅ · `autoLogin` (format = registerVisitor, parser sama) · `loginByName` ✅ **MATERI LIVE** · `userLoginByOtherSdk` · `findPassByEmail` · `sendCodeByEmail` · `actCdKey` · `postGooglePlayVerify` · `getServerAgreement` (butuh agmId) |
+| **auth (aksi akun/bayar/event)** | `getUserInfo` ✅ **MATERI LIVE** (guest 280 B + terdaftar 280 B) · `createOrder` · `bindMail` · `changePassword` · `cksnslogin` · `fbActInit` · `fbInviteEvent` · `fbLikeEvent` · `fbShareEvent` · `fbUserClaimEvent` · `setGameRoleInfo` · `userBindOtherSdk` · `unBindOtherInfo` · `viewMigCode` · `cUserTrash` · `jianchaLayLx` |
 
-**Yang merupakan CONFIG hanya 3 + 1 sesi**: `init`, `getNotice`, `getAgreement` (semua
-✅ dipanen dari server hidup), dan `registerVisitor` untuk Gerbang 4 (format ✅, nilai
-sesi menunggu panen Tahap B). Sisanya = **aksi berbasis sesi** — bukan config; terbukti:
-uid antar perangkat berbeda (28486093 vs 28505968); replay registerUser → 40008.
+**Yang merupakan CONFIG + SESI utk Gerbang 4 — SEMUA SIAP**: `init`, `getNotice`,
+`getAgreement` (config) + `registerVisitor` (guest), `registerUser` (register),
+`loginByName` (login) + `getUserInfo` — sembilan material di `config-local/`, semuanya
+jawaban ASLI server hidup (bukan capture). Sisanya = aksi berbasis sesi sekunder — bukan
+pondasi login; panen tiketnya menyusul bila diperlukan.
 
 ---
 
-## 11. BUKTI PERANGKAT (HAR sesi uji 1.0.2-tes1 — `bukti/device-har/`)
+## 11. BUKTI PERANGKAT (HAR sesi 2026-10-20 09:12 — `log/sdk.har` + `bukti/panen-gerbang4/`)
+
+Sesi perangkat user (itel S665L, Android 12) lewat 1.0.2-tes1 — **menutup Gerbang 4**:
 
 | Bukti | Nilai |
 |---|---|
-| init leg A (SDK → 127.0.0.1:28110) | 200, 764 B, md5 `06a396d4655a44adf4e101e8519da164` |
-| init leg B (MiniServer → qsdk.t4game.com) | 200, 764 B, **md5 sama → byte-identik** (proxy verbatim terbukti) |
-| getNotice via local | 200, 55 B, md5 `dfc2f19b1273…` = sama dengan panen live, **tanpa leg upstream** (mirror terbukti) |
-| respons init perangkat user | `requestIp:"182.9.2.96"`, `countryCode:"ID"` — gema per-pemanggil; **keduanya tidak dipakai koneksi** (bagian 4a/4c) |
-| Batas capture | sesi berhenti di getNotice → registerVisitor/loginchecknative belum terlihat → Tahap B menunggu tiket |
+| leg A ≡ leg B | **8/8 pasang byte-identik** (init ×3, registerVisitor, registerUser, loginByName, getUserInfo ×2) — proxy verbatim terbukti lagi |
+| GUEST | registerVisitor 2345 B → loginchecknative `uid=28486093&usermode=1` → `code:0` (195 B) |
+| REGISTER | registerUser 2389 B (sukses satu-kali) → loginchecknative `uid=28506361&usermode=0` → `code:0` (209 B) |
+| LOGIN | loginByName 2426 B → loginchecknative `uid=28506361&usermode=0` → `code:0` (209 B) |
+| getUserInfo | guest 280 B (`regType:2`) & terdaftar 280 B (`regType:1`) — profil bersesi |
+| PANEN ULANG LIVE (tiket sama) | registerVisitor → sesi SAMA persis (uid+token identik); loginByName → sesi akun sama; loginchecknative → `code:0` lagi (loginToken baru, sign stabil); registerUser → 40008 (state-bound) |
+| respons init perangkat user | `requestIp:"182.9.2.96"`, `countryCode:"ID"` — gema per-pemanggil; tidak dipakai koneksi |
 
 ---
 
@@ -346,9 +372,10 @@ uid antar perangkat berbeda (28486093 vs 28505968); replay registerUser → 4000
 8. `loginTypes` dibaca dgn `String.contains` atas teks array → tulis persis seperti live
    (`["1","13"]`); `"1"` wajib ada agar login guest tampil.
 9. Content-Type respons live = `text/json` — pertahankan demi kesetiaan.
-10. **Sesi (Gerbang 4):** `registerVisitor` wajib memuat `authToken` +
-    `userData.{uid,username,token,isGuest}` (string) — salah satu hilang = login gagal
-    (bagian 2b). `usermode` dihitung game dari `isGuest`, bukan field terpisah.
+10. **Sesi (Gerbang 4):** `registerVisitor`/`registerUser`/`loginByName` wajib memuat
+    `authToken` + `userData.{uid,username,token,isGuest}` — salah satu hilang = login
+    gagal (bagian 2b). `isGuest` di respons asli berupa ANGKA (1/0) — ikuti format asli.
+    `usermode` dihitung game dari `isGuest`, bukan field terpisah.
 
 ---
 
@@ -356,19 +383,23 @@ uid antar perangkat berbeda (28486093 vs 28505968); replay registerUser → 4000
 
 | Bahan | Isi |
 |---|---|
-| `config-local/` | **THE CONFIG** — 5 file JSON siap-layani + README aturan edit (bagian 0) |
-| `bukti/panen-live/` | 8 respons asli server hidup (init 767 B, getNotice 55 B, getAgreement 188 B, onNewToken 55 B, ckRegVistor 66 B, getUserInfo 75 B, getServerAgreement 104 B, dmsg 108 B) + `_probe-semua.json` + `_meta-panen-live.json` |
-| `bukti/riset-login/` | Dump dex alur login (2026-10-20): parser registerVisitor/autoLogin + loginchecknative (`dump-login-endpoint-parser.txt`), params loginchecknative dari `onLoginFinished` (`dump-onLoginFinished-params.txt`), base URL loginserver dari config game (`dump-loginserver-baseurl.txt`) |
+| `config-local/` | **THE CONFIG** — 10 file JSON siap-layani (system 3 + user 4 + auth 1 + game 1 + README) (bagian 0) |
+| `bukti/panen-gerbang4/` | **Materi LIVE Gerbang 4** (2026-10-20): registerVisitor/loginByName/registerUser-state/getUserInfo ×2/loginchecknative ×3 (`live__*.bin`) + `_meta-panen-live.json` (status/CT/md5/durasi) + `_indeks-tiket.json` + `sukses-sekali__user__registerUser.bin` |
+| `bukti/panen-live/` | 8 respons asli server hidup fase config (init 767 B, getNotice 55 B, getAgreement 188 B, onNewToken 55 B, ckRegVistor 66 B, getUserInfo 75 B, getServerAgreement 104 B, dmsg 108 B) + `_probe-semua.json` + `_meta-panen-live.json` |
+| `bukti/riset-login/` | Dump dex alur login: parser registerVisitor/autoLogin + loginchecknative (`dump-login-endpoint-parser.txt`), params loginchecknative dari `onLoginFinished` (`dump-onLoginFinished-params.txt`), base URL loginserver dari config game (`dump-loginserver-baseurl.txt`) |
 | `bukti/dex-evidence/` | Dump instruksi mentah dex ORIGINAL: `dump-full.txt`, `dump-model.txt`, `xref-fields.txt`, `map-usage-config.txt`, `dump-qgm.txt`, `dump-bind.txt`, `dump-sign.txt`+`dump-md5.txt`, `dump-apply.txt`, `har-inventory.txt` |
 | `bukti/device-har/` | `bukti-leg-A-identik-leg-B.json`, `tiket-request-asli-har.json` (TIKET, bukan config) |
-| `../../log/sdk.har` | HAR lengkap perangkat (26 MB) — sumber bukti device-har/ |
+| `../../log/sdk.har` | HAR sesi perangkat 2026-10-20 (668 KB, 144 entri) — sumber tiket Gerbang 4 |
 
 ## 14. STATUS & BATAS
 
 - ✅ Config SDK asli: KETEMU, terbukti 3 sumber — **tersusun sebagai `config-local/`** (bukan jejak).
 - ✅ Alur update/blok (Fase 1–5): dikuasai LOCAL sejak 1.0.1.
-- ✅ Gerbang 4: **rantai login terbedah penuh dari dex** (bagian 2) — format sesi + params
-  loginchecknative + sumber alamat loginserver (config game, sudah local).
-- ⏳ Tahap B (isi sesi asli registerVisitor): menunggu 1 capture login dari perangkat user
-  sebagai tiket panen live — satu-satunya bahan yang belum di tangan.
+- ✅ Gerbang 4: **rantai login terbedah penuh dari dex + MATERI LIVE 3 MODE** —
+  registerVisitor (guest), registerUser (register), loginByName (login), getUserInfo,
+  loginchecknative (`code:0` berulang) — semuanya jawaban ASLI server hidup, capture
+  hanya alat bantu (tiket), sesuai prinsip user.
+- ✅ Sifat sesi terbukti: terikat perangkat, dapat diulang (registerVisitor/loginByName);
+  registerUser satu-kali (40008 setelah dipakai).
+- ✅ Alamat loginserver game = config game `setting_BS_Android.bin` — SUDAH LOCAL sejak 1.0.1.
 - ⛔ Implementasi build: **DITAHAN sampai user memerintahkan** (riset saja per arahan).

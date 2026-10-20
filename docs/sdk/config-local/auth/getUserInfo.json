@@ -1,0 +1,21 @@
+{
+  "result": true,
+  "data": {
+    "sexType": 0,
+    "nickName": "KdddFRi",
+    "isBindPhone": 0,
+    "phone": "",
+    "lastLoginTime": "1792487546",
+    "lastDev": "2F188C67DC9DA69BE12FB78A66294C4C",
+    "regIp": "182.9.2.54",
+    "regType": "2",
+    "onlineTime": "0",
+    "amount": 0,
+    "useWallet": 0,
+    "currency": "$"
+  },
+  "error": {
+    "id": 0,
+    "message": ""
+  }
+}
