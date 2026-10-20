@@ -1,0 +1,27 @@
+### DAFTAR METODE pursetruechild/ironoriginhoblike
+  <init> ()V
+  cointhreat ()Ljava/lang/String;
+  nationalcommunitymissing ()Z
+  seventygenom ()Ljava/lang/String;
+    SOURCE:     public final String seventygenom()
+        {
+            if (this.cointhreat != 2) {
+                String v0_3;
+                String v0_5 = this.tidyleadership;
+                if (v0_5 <= null) {
+                    v0_3 = this.customreading;
+                } else {
+                    Object[] v3 = new Object[2];
+                    v3[0] = this.customreading;
+                    v3[1] = Integer.valueOf(v0_5);
+                    v0_3 = String.format(java.util.Locale.ENGLISH, "%s:%d", java.util.Arrays.copyOf(v3, 2));
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v0_3, "java.lang.String.format(locale, format, *args)");
+                }
+                return v0_3;
+            } else {
+                return this.gangclothing;
+            }
+        }
+  singersmooth ()Ljava/lang/String;
+
+### CALL-SITE new nationalcommunitymissing(...)

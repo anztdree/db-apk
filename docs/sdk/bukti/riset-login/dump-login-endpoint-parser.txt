@@ -1,0 +1,680 @@
+
+========================================================================
+TARGET: loginchecknative  (1 metode)
+========================================================================
+
+----- Lcointhreat/cointhreat/cointhreat/pursetruechild/nationalcommunitymissing; -> run ()V -----
+    public final void run()
+    {
+        String v1_11 = new StringBuilder();
+        cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v2_23 = this.seventygenom.entrySet().iterator();
+        while (v2_23.hasNext()) {
+            cointhreat.cointhreat.cointhreat.pursetruechild.singersmooth v3_14 = ((java.util.Map$Entry) v2_23.next());
+            cointhreat.cointhreat.cointhreat.pursetruechild.singersmooth v3_16 = ((String) v3_14.getValue());
+            v1_11.append(((String) v3_14.getKey()));
+            v1_11.append("=");
+            v1_11.append(v3_16);
+            v1_11.append("&");
+        }
+        cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v2_2 = this.cointhreat;
+        java.util.Objects.requireNonNull(v2_2);
+        String v6_2 = new java.util.HashMap();
+        int v7 = 0;
+        try {
+            int v8_2 = String.valueOf(android.os.Build$VERSION.SDK_INT);
+            String v9_1 = v2_2.singersmooth;
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v9_1);
+            String v9_2 = v9_1.getApplication();
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v9_2, "mActivity !!.application");
+            String v9_3 = v9_2.getPackageName();
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v9_3, "mActivity !!.application.packageName");
+            boolean v10_5 = v2_2.singersmooth;
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v10_5);
+            boolean v10_6 = v10_5.getApplicationContext();
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v10_6, "mActivity !!.applicationContext");
+            boolean v10_10 = String.valueOf(v10_6.getPackageManager().getPackageInfo(v10_6.getPackageName(), 0).versionCode);
+            cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v2_19 = v2_2.influencecomparisonrestore;
+            v6_2.put("osVersion", v8_2);
+            v6_2.put("packageName", v9_3);
+            v6_2.put("appVersion", v10_10);
+            v6_2.put("sourceVersion", v2_19);
+            int v8_6 = java.net.URLEncoder.encode(android.os.Build.BRAND, "UTF-8");
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v8_6, "URLEncoder.encode(brand, \"UTF-8\")");
+            v6_2.put("brand", v8_6);
+            cointhreat.cointhreat.cointhreat.pursetruechild.singersmooth v3_17 = java.net.URLEncoder.encode(android.os.Build.MODEL, "UTF-8");
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v3_17, "URLEncoder.encode(model, \"UTF-8\")");
+            v6_2.put("model", v3_17);
+        } catch (cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v2_24) {
+            v2_24.printStackTrace();
+        }
+        cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v2_26 = v6_2.entrySet().iterator();
+        while (v2_26.hasNext()) {
+            cointhreat.cointhreat.cointhreat.pursetruechild.singersmooth v3_10 = ((java.util.Map$Entry) v2_26.next());
+            cointhreat.cointhreat.cointhreat.pursetruechild.singersmooth v3_12 = ((String) v3_10.getValue());
+            v1_11.append(((String) v3_10.getKey()));
+            v1_11.append("=");
+            v1_11.append(v3_12);
+            v1_11.append("&");
+        }
+        cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v2_3 = 3;
+        cointhreat.cointhreat.cointhreat.pursetruechild.singersmooth v3_19 = new Object[3];
+        int v4_7 = this.cointhreat.ironoriginhoblike;
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v4_7);
+        v3_19[0] = v4_7.seventygenom();
+        v3_19[1] = v1_11.toString();
+        java.util.Objects.requireNonNull(cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom.hardlinerspare);
+        v3_19[2] = cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom.customreading;
+        String v1_1 = String.format("%s/loginchecknative?%sos=Android&sdk=%s", java.util.Arrays.copyOf(v3_19, 3));
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_1, "java.lang.String.format(format, *args)");
+        cointhreat.cointhreat.cointhreat.pursetruechild.singersmooth v3_2 = this.cointhreat.cointhreat;
+        int v4_2 = new StringBuilder();
+        v4_2.append("sdk\u767b\u5f55\u9a8c\u8bc1url:");
+        v4_2.append(v1_1);
+        int v4_3 = v4_2.toString();
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v3_2, "TAG");
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v4_3, "msg");
+        android.util.Log.v(v3_2, v4_3);
+        cointhreat.cointhreat.cointhreat.pursetruechild.singersmooth v3_3 = this.cointhreat;
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_1, "urlString");
+        int v4_5 = 5;
+        int v8_0 = 0;
+        while(true) {
+            String v9_0 = 0;
+            if (v8_0 >= v2_3) {
+                break;
+            }
+            v8_0++;
+            v4_5 *= v8_0;
+            try {
+                v9_0 = cointhreat.cointhreat.cointhreat.reweavingsiamesedpropertylessnesses.reweavingsiamesedpropertylessnesses.cointhreat(v1_1, (v4_5 * 1000));
+                break;
+            } catch (cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v2_1) {
+                String v11_1 = cointhreat.singersmooth.cointhreat.cointhreat.cointhreat.pursetruechild(v1_1, ":");
+                v11_1.append(v2_1.getMessage());
+                String v11_2 = v11_1.toString();
+                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike("ReadUtil", "TAG");
+                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v11_2, "msg");
+                android.util.Log.v("ReadUtil", v11_2);
+                if (singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.cointhreat(v2_1.getMessage(), "404")) {
+                    break;
+                }
+                v2_1.printStackTrace();
+                v2_3 = 3;
+            }
+        }
+        v3_3.pursetruechild = v9_0;
+        String v1_3 = this.cointhreat.cointhreat;
+        cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v2_5 = cointhreat.singersmooth.cointhreat.cointhreat.cointhreat.worktopichardtails("sdk\u767b\u5f55\u9a8c\u8bc1\u8fd4\u56de\uff1a");
+        v2_5.append(this.cointhreat.pursetruechild);
+        cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v2_6 = v2_5.toString();
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_3, "TAG");
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v2_6, "msg");
+        android.util.Log.v(v1_3, v2_6);
+        String v1_5 = this.cointhreat.pursetruechild;
+        if (v1_5 != null) {
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v1_5);
+            if (v1_5.length() > 0) {
+                v7 = 1;
+            }
+            if (v7 != 0) {
+                try {
+                    cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v2_11 = this.cointhreat.pursetruechild;
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v2_11);
+                    String v1_10 = new org.json.JSONObject(v2_11);
+                } catch (com.zhuhuan.game.MainActivity v0_4) {
+                    v0_4.printStackTrace();
+                    com.zhuhuan.game.MainActivity v0_6 = this.cointhreat.singersmooth;
+                    if ((v0_6 != null) && ((v0_6 instanceof com.zhuhuan.game.MainActivity))) {
+                        ((com.zhuhuan.game.MainActivity) v0_6).customreading();
+                    }
+                    return;
+                }
+                if (v1_10.getInt("code") == 0) {
+                } else {
+                    if (!v1_10.has("msg")) {
+                        if (v1_10.has("message")) {
+                            cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v2_16 = this.cointhreat;
+                            com.zhuhuan.game.MainActivity v0_2 = v1_10.getString("message");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v0_2, "jsonObject.getString(\"message\")");
+                            cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom.cointhreat(v2_16, v0_2);
+                        }
+                        return;
+                    } else {
+                        com.zhuhuan.game.MainActivity v0_3 = this.cointhreat;
+                        String v1_13 = v1_10.getString("msg");
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_13, "jsonObject.getString(\"msg\")");
+                        cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom.cointhreat(v0_3, v1_13);
+                        return;
+                    }
+                }
+            }
+        }
+        com.zhuhuan.game.MainActivity v0_1 = this.cointhreat;
+        String v1_7 = v0_1.singersmooth;
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v1_7);
+        String v1_8 = v1_7.getString(2131492898);
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_8, "mActivity !!.getString(R.string.check_network)");
+
+========================================================================
+TARGET: autoLogin  (2 metode)
+========================================================================
+
+----- Lcom/quickgame/android/sdk/d/e; -> onDetach ()V -----
+    public void onDetach()
+    {
+        super.onDetach();
+        android.util.Log.d("WaitingFragment", "autoLogin onDetach");
+        return;
+    }
+
+----- Lcom/quickgame/android/sdk/service/QuickGameSdkService; -> cointhreat (Ljava/lang/String; Landroid/os/Message;)Lcom/quickgame/android/sdk/psalmicvolleyball/cointhreat; -----
+    public com.quickgame.android.sdk.psalmicvolleyball.cointhreat cointhreat(String p5, android.os.Message p6)
+    {
+        try {
+            boolean v1_2 = new java.util.HashMap();
+            v1_2.put("authToken", p5);
+            com.quickgame.android.sdk.psalmicvolleyball.cointhreat v5_1 = com.quickgame.android.sdk.bindcommunist.cointhreat$seventygenom.cointhreat.cointhreat("/v1/user/autoLogin", com.quickgame.android.sdk.bindcommunist.singersmooth.singersmooth(this, v1_2));
+            String v2_1 = new StringBuilder();
+            v2_1.append("response====");
+            v2_1.append(v5_1.toString());
+            android.util.Log.d("GameSdkService", v2_1.toString());
+        } catch (com.quickgame.android.sdk.psalmicvolleyball.cointhreat v5_4) {
+            com.quickgame.android.sdk.utils.log.QGLog.LogException(v5_4);
+            return 0;
+        }
+        if (!v5_1.getBoolean("result")) {
+            p6.obj = v5_1;
+            return 0;
+        } else {
+            return com.quickgame.android.sdk.psalmicvolleyball.cointhreat.cointhreat(v5_1.getString("data"));
+        }
+    }
+
+========================================================================
+TARGET: registerVisitor  (1 metode)
+========================================================================
+
+----- Lcom/quickgame/android/sdk/service/dishbesideshockey$nationalcommunitymissing$seventygenom; -> run ()V -----
+    public void run()
+    {
+        cointhreat.nationalcommunitymissing.cointhreat.ironoriginhoblike v1_11 = com.quickgame.android.sdk.bindcommunist.cointhreat$seventygenom.cointhreat.cointhreat("/v1/user/registerVisitor", com.quickgame.android.sdk.bindcommunist.singersmooth.singersmooth(this.cointhreat.cointhreat, 0));
+        int v2_1 = v1_11.getBoolean("result");
+        com.quickgame.android.sdk.reweavingsiamesedpropertylessnesses.cointhreat v3_1 = new com.quickgame.android.sdk.reweavingsiamesedpropertylessnesses.cointhreat("com.quickgame.android.sdk.LOGIN_RAND");
+        if (v2_1 == 0) {
+            v3_1.singersmooth = v1_11.toString();
+        } else {
+            cointhreat.nationalcommunitymissing.cointhreat.ironoriginhoblike v1_4 = com.quickgame.android.sdk.psalmicvolleyball.cointhreat.cointhreat(v1_11.getString("data"));
+            if (v1_4 != null) {
+                com.quickgame.android.sdk.service.dishbesideshockey$cointhreat.cointhreat.cointhreat = v1_4;
+                this.cointhreat.cointhreat.seventygenom(14);
+                v3_1.seventygenom = 1;
+            } else {
+            }
+        }
+        cointhreat.nationalcommunitymissing.cointhreat.ironoriginhoblike.cointhreat().reweavingsiamesedpropertylessnesses(v3_1);
+        return;
+    }
+
+========================================================================
+TARGET: loginServer  (2 metode)
+========================================================================
+
+----- Lcom/zhuhuan/game/LaunchActivity; -> worktopichardtails (Ljava/lang/String; I)Z -----
+    public final boolean worktopichardtails(String p10, int p11)
+    {
+        String v0_0 = this.cointhreat;
+        String v1_37 = new StringBuilder();
+        v1_37.append("\u914d\u7f6e\u6587\u4ef6Url: ");
+        v1_37.append(p10);
+        String v1_141 = v1_37.toString();
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v0_0, "TAG");
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_141, "msg");
+        android.util.Log.v(v0_0, v1_141);
+        if (cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike.rewakenssupertoward == null) {
+            java.util.Objects.requireNonNull(singersmooth.mesoamericanhochmagandies.singersmooth.customreading.cointhreat);
+            new singersmooth.mesoamericanhochmagandies.singersmooth.singersmooth(cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike);
+            try {
+                if (cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike.rewakenssupertoward == null) {
+                    cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike.rewakenssupertoward = new cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike();
+                }
+            } catch (boolean v10_1) {
+                throw v10_1;
+            }
+        }
+        String v0_6 = cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike.rewakenssupertoward;
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p10, "urlString");
+        String v1_71 = 5;
+        String v3_25 = 0;
+        while (v3_25 < p11) {
+            v3_25++;
+            v1_71 *= v3_25;
+            try {
+                p10 = cointhreat.cointhreat.cointhreat.reweavingsiamesedpropertylessnesses.reweavingsiamesedpropertylessnesses.seventygenom(p10, (v1_71 * 1000));
+            } catch (String v4_2) {
+                int v6_1 = cointhreat.singersmooth.cointhreat.cointhreat.cointhreat.pursetruechild(p10, ":");
+                v6_1.append(v4_2.getMessage());
+                int v6_2 = v6_1.toString();
+                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike("ReadUtil", "TAG");
+                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v6_2, "msg");
+                android.util.Log.e("ReadUtil", v6_2);
+                v4_2.printStackTrace();
+            }
+            if (!p10) {
+                return 1;
+            } else {
+                try {
+                    String v1_140 = this.worktopichardtails;
+                } catch (boolean v10_4) {
+                    v10_4.printStackTrace();
+                    boolean v10_5 = this.cointhreat;
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v10_5, "TAG");
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike("\u89e3\u6790\u670d\u52a1\u5668\u914d\u7f6e\u6587\u4ef6\u9519\u8bef", "msg");
+                    android.util.Log.e(v10_5, "\u89e3\u6790\u670d\u52a1\u5668\u914d\u7f6e\u6587\u4ef6\u9519\u8bef");
+                    return 0;
+                }
+                if (v1_140 == null) {
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.mesoamericanhochmagandies("binKeyData");
+                    throw 0;
+                } else {
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p10, "srcData");
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_140, "keyData");
+                    Object[] v5_3 = p10.length;
+                    int v6_3 = 0;
+                    while (v6_3 < v5_3) {
+                        p10[v6_3] = ((byte) (p10[v6_3] ^ v1_140[(v6_3 % v1_140.length)]));
+                        v6_3++;
+                    }
+                    String v1_142 = java.nio.charset.StandardCharsets.UTF_8;
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_142, "StandardCharsets.UTF_8");
+                    boolean v10_7 = cointhreat.seventygenom.cointhreat.cointhreat.feedtonight(new String(p10, v1_142));
+                    String v1_143 = this.seventygenom;
+                    if (v1_143 == null) {
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.mesoamericanhochmagandies("mActivity");
+                        throw 0;
+                    } else {
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_143, "activity");
+                        try {
+                            String v1_144 = v1_143.getApplicationContext();
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_144, "context");
+                            String v1_1 = v1_144.getPackageManager().getPackageInfo(v1_144.getPackageName(), 0).versionCode;
+                        } catch (String v1_147) {
+                            v1_147.printStackTrace();
+                            v1_1 = 0;
+                        }
+                        Object[] v5_0 = new Object[1];
+                        v5_0[0] = Integer.valueOf(v1_1);
+                        String v1_4 = String.format(java.util.Locale.ENGLISH, "Android%d", java.util.Arrays.copyOf(v5_0, 1));
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_4, "java.lang.String.format(locale, format, *args)");
+                        if (!v10_7.containsKey(v1_4)) {
+                            if (v10_7.containsKey("testMode")) {
+                                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                                v0_6.cointhreat = v10_7.gangclothing("testMode");
+                            }
+                        } else {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            v0_6.cointhreat = v10_7.gangclothing(v1_4);
+                        }
+                        if (v10_7.containsKey("webVer")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            v0_6.seventygenom = v10_7.gangclothing("webVer");
+                        }
+                        if (v10_7.containsKey("nativeRender")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            v0_6.singersmooth = v10_7.gangclothing("nativeRender");
+                        }
+                        if (v10_7.containsKey("url")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_21 = v10_7.tidyleadership("url");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_21, "jsonObject.getString(\"url\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_21, "url");
+                            v0_6.nationalcommunitymissing = v1_21;
+                        }
+                        if (v10_7.containsKey("webUrl")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_26 = v10_7.tidyleadership("webUrl");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_26, "jsonObject.getString(\"webUrl\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_26, "webUrl");
+                            v0_6.ironoriginhoblike = v1_26;
+                        }
+                        if (v10_7.containsKey("tsUrl")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_31 = v10_7.tidyleadership("tsUrl");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_31, "jsonObject.getString(\"tsUrl\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_31, "tsUrl");
+                            v0_6.feedtonight = v1_31;
+                        }
+                        if (v10_7.containsKey("tsWebUrl")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_35 = v10_7.tidyleadership("tsWebUrl");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_35, "jsonObject.getString(\"tsWebUrl\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_35, "tsWebUrl");
+                            v0_6.worktopichardtails = v1_35;
+                        }
+                        if (v10_7.containsKey("update")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_40 = v10_7.tidyleadership("update");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_40, "jsonObject.getString(\"update\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_40, "update");
+                            v0_6.pursetruechild = v1_40;
+                        }
+                        if (v10_7.containsKey("forceBuild")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_44 = v10_7.tidyleadership("forceBuild");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_44, "jsonObject.getString(\"forceBuild\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_44, "forceBuild");
+                            v0_6.reweavingsiamesedpropertylessnesses = v1_44;
+                        }
+                        if (v10_7.containsKey("noForceBuild")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_48 = v10_7.tidyleadership("noForceBuild");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_48, "jsonObject.getString(\"noForceBuild\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_48, "noForceBuild");
+                            v0_6.dishbesideshockey = v1_48;
+
+----- Lcom/zhuhuan/game/MainActivity; -> hardlinerspare (Lcointhreat/cointhreat/cointhreat/reweavingsiamesedpropertylessnesses/singersmooth; Ljava/lang/String; Ljava/lang/String;)V -----
+    public final void hardlinerspare(cointhreat.cointhreat.cointhreat.reweavingsiamesedpropertylessnesses.singersmooth p17, String p18, String p19)
+    {
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p17, "type");
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p18, "message");
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p19, "jsonStr");
+        String v6_0 = this.cointhreat;
+        cointhreat.cointhreat.cointhreat.pursetruechild.feedtonight.nationalcommunitymissing$cointhreat v7_5 = new StringBuilder();
+        v7_5.append("\u6e38\u620f\u5ba2\u6237\u7aef\u4e8b\u4ef6\uff1a ");
+        v7_5.append(p18);
+        v7_5.append(" -> ");
+        v7_5.append(p19);
+        int v0_10 = v7_5.toString();
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v6_0, "TAG");
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v0_10, "msg");
+        android.util.Log.v(v6_0, v0_10);
+        switch (p17.ordinal()) {
+            case 0:
+                this.runOnUiThread(new cointhreat.cointhreat.cointhreat.feedtonight(this));
+                break;
+            case 1:
+                int v0_74;
+                int v0_67 = this.ironoriginhoblike;
+                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_67);
+                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p19, "message");
+                int v0_68 = v0_67.seventygenom;
+                java.util.Objects.requireNonNull(v0_68);
+                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom.mesoamericanhochmagandies[0], "property");
+                String v3_15 = v0_68.singersmooth;
+                int v0_73 = ((android.content.SharedPreferences) v0_68.cointhreat.getValue()).edit();
+                if (!(p19 instanceof Long)) {
+                    v0_74 = v0_73.putString(v3_15, p19);
+                } else {
+                    v0_74 = v0_73.putLong(v3_15, ((Number) p19).longValue());
+                }
+                v0_74.apply();
+                this.influencecomparisonrestore();
+                break;
+            case 2:
+                int v0_63 = this.ironoriginhoblike;
+                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_63);
+                int v0_64 = v0_63.worktopichardtails;
+                if (v0_64 != 0) {
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_64);
+                    int v0_65 = ((cointhreat.cointhreat.cointhreat.pursetruechild.feedtonight.nationalcommunitymissing) v0_64);
+                    v0_65.singersmooth.logout(v0_65.seventygenom);
+                }
+                this.influencecomparisonrestore();
+                break;
+            case 3:
+                if (!this.gangclothing) {
+                    int v0_8 = new cointhreat.seventygenom.cointhreat.ironoriginhoblike();
+                    try {
+                        StringBuilder v9_1 = this.singersmooth;
+                    } catch (int v0_15) {
+                        v0_15.printStackTrace();
+                    }
+                    if (v9_1 == null) {
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.mesoamericanhochmagandies("mActivity");
+                        throw 0;
+                    } else {
+                        String v15_0 = this.feedtonight;
+                        if (v15_0 == null) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.mesoamericanhochmagandies("mPreloadPath");
+                            throw 0;
+                        } else {
+                            String v13_1 = this.hardlinerspare;
+                            if (v13_1 == null) {
+                                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.mesoamericanhochmagandies("mGameUrl");
+                                throw 0;
+                            } else {
+                                v0_8.put("version", cointhreat.cointhreat.cointhreat.reweavingsiamesedpropertylessnesses.reweavingsiamesedpropertylessnesses.feedtonight(v9_1, v15_0, v13_1));
+                                StringBuilder v9_3 = this.hoboismrelationbelow;
+                                if (v9_3 != null) {
+                                    v0_8.put("versionConfig", v9_3);
+                                }
+                                String v6_10 = this.ironoriginhoblike;
+                                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v6_10);
+                                String v6_11 = v6_10.pursetruechild;
+                                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v6_11);
+                                v0_8.put("thirdParams", v6_11);
+                                if (this.reweavingsiamesedpropertylessnesses() != null) {
+                                    v0_8.put("thirdChannel", this.reweavingsiamesedpropertylessnesses());
+                                }
+                                String v6_14 = this.ironoriginhoblike;
+                                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v6_14);
+                                String v6_15 = v6_14.singersmooth();
+                                v0_8.put("language", v6_15);
+                                cointhreat.seventygenom.cointhreat.ironoriginhoblike v5_10 = this.cointhreat;
+                                StringBuilder v9_5 = new StringBuilder();
+                                v9_5.append("\u5f53\u524d\u8bbe\u7f6e\u7684\u8bed\u8a00\u7248\u672c(web)\uff1a");
+                                v9_5.append(v6_15);
+                                String v6_16 = v9_5.toString();
+                                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v5_10, "TAG");
+                                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v6_16, "msg");
+                                android.util.Log.v(v5_10, v6_16);
+                                cointhreat.seventygenom.cointhreat.ironoriginhoblike v5_11 = this.nationalcommunitymissing;
+                                if (v5_11 == null) {
+                                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.mesoamericanhochmagandies("mSdkParams");
+                                    throw 0;
+                                } else {
+                                    cointhreat.seventygenom.cointhreat.ironoriginhoblike v5_12 = v5_11.cointhreat();
+                                    if (v5_12 != null) {
+                                        v0_8.put("loginServer", v5_12);
+                                    }
+                                    String v3_5 = this.nationalcommunitymissing;
+                                    if (v3_5 == null) {
+                                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.mesoamericanhochmagandies("mSdkParams");
+                                        throw 0;
+                                    } else {
+                                        String v3_6 = v3_5.unnecessarysperrylites;
+                                        if (v3_6 != null) {
+                                            v0_8.put("clientParams", v3_6.toString());
+                                        }
+                                        this.runOnUiThread(new cointhreat.cointhreat.cointhreat.worktopichardtails(this, v0_8));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    String v15_2 = new cointhreat.seventygenom.cointhreat.ironoriginhoblike();
+                    try {
+                        StringBuilder v9_6 = this.singersmooth;
+                    } catch (int v0_61) {
+                        v0_61.printStackTrace();
+                        int v0_62 = this.worktopichardtails;
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_62);
+                        v0_62.callExternalInterface("startGame", v15_2.cointhreat());
+                    }
+                    if (v9_6 == null) {
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.mesoamericanhochmagandies("mActivity");
+                        throw 0;
+                    } else {
+                        StringBuilder v9_7 = v9_6.getApplication();
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v9_7, "mActivity.application");
+                        v15_2.put("packageName", v9_7.getPackageName());
+                        int v0_19 = this.ironoriginhoblike;
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_19);
+                        int v0_20 = v0_19.singersmooth();
+                        v15_2.put("language", v0_20);
+                        String v2_10 = this.cointhreat;
+                        cointhreat.seventygenom.cointhreat.ironoriginhoblike v5_14 = new StringBuilder();
+                        v5_14.append("\u5f53\u524d\u8bbe\u7f6e\u8bed\u8a00\uff1a");
+                        v5_14.append(v0_20);
+                        int v0_21 = v5_14.toString();
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v2_10, "TAG");
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v0_21, "msg");
+                        android.util.Log.d(v2_10, v0_21);
+                        int v0_22 = this.nationalcommunitymissing;
+                        if (v0_22 == 0) {
+
+========================================================================
+TARGET: tsLoginServer  (1 metode)
+========================================================================
+
+----- Lcom/zhuhuan/game/LaunchActivity; -> worktopichardtails (Ljava/lang/String; I)Z -----
+    public final boolean worktopichardtails(String p10, int p11)
+    {
+        String v0_0 = this.cointhreat;
+        String v1_37 = new StringBuilder();
+        v1_37.append("\u914d\u7f6e\u6587\u4ef6Url: ");
+        v1_37.append(p10);
+        String v1_141 = v1_37.toString();
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v0_0, "TAG");
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_141, "msg");
+        android.util.Log.v(v0_0, v1_141);
+        if (cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike.rewakenssupertoward == null) {
+            java.util.Objects.requireNonNull(singersmooth.mesoamericanhochmagandies.singersmooth.customreading.cointhreat);
+            new singersmooth.mesoamericanhochmagandies.singersmooth.singersmooth(cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike);
+            try {
+                if (cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike.rewakenssupertoward == null) {
+                    cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike.rewakenssupertoward = new cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike();
+                }
+            } catch (boolean v10_1) {
+                throw v10_1;
+            }
+        }
+        String v0_6 = cointhreat.cointhreat.cointhreat.pursetruechild.ironoriginhoblike.rewakenssupertoward;
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p10, "urlString");
+        String v1_71 = 5;
+        String v3_25 = 0;
+        while (v3_25 < p11) {
+            v3_25++;
+            v1_71 *= v3_25;
+            try {
+                p10 = cointhreat.cointhreat.cointhreat.reweavingsiamesedpropertylessnesses.reweavingsiamesedpropertylessnesses.seventygenom(p10, (v1_71 * 1000));
+            } catch (String v4_2) {
+                int v6_1 = cointhreat.singersmooth.cointhreat.cointhreat.cointhreat.pursetruechild(p10, ":");
+                v6_1.append(v4_2.getMessage());
+                int v6_2 = v6_1.toString();
+                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike("ReadUtil", "TAG");
+                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v6_2, "msg");
+                android.util.Log.e("ReadUtil", v6_2);
+                v4_2.printStackTrace();
+            }
+            if (!p10) {
+                return 1;
+            } else {
+                try {
+                    String v1_140 = this.worktopichardtails;
+                } catch (boolean v10_4) {
+                    v10_4.printStackTrace();
+                    boolean v10_5 = this.cointhreat;
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v10_5, "TAG");
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike("\u89e3\u6790\u670d\u52a1\u5668\u914d\u7f6e\u6587\u4ef6\u9519\u8bef", "msg");
+                    android.util.Log.e(v10_5, "\u89e3\u6790\u670d\u52a1\u5668\u914d\u7f6e\u6587\u4ef6\u9519\u8bef");
+                    return 0;
+                }
+                if (v1_140 == null) {
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.mesoamericanhochmagandies("binKeyData");
+                    throw 0;
+                } else {
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p10, "srcData");
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_140, "keyData");
+                    Object[] v5_3 = p10.length;
+                    int v6_3 = 0;
+                    while (v6_3 < v5_3) {
+                        p10[v6_3] = ((byte) (p10[v6_3] ^ v1_140[(v6_3 % v1_140.length)]));
+                        v6_3++;
+                    }
+                    String v1_142 = java.nio.charset.StandardCharsets.UTF_8;
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_142, "StandardCharsets.UTF_8");
+                    boolean v10_7 = cointhreat.seventygenom.cointhreat.cointhreat.feedtonight(new String(p10, v1_142));
+                    String v1_143 = this.seventygenom;
+                    if (v1_143 == null) {
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.mesoamericanhochmagandies("mActivity");
+                        throw 0;
+                    } else {
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_143, "activity");
+                        try {
+                            String v1_144 = v1_143.getApplicationContext();
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_144, "context");
+                            String v1_1 = v1_144.getPackageManager().getPackageInfo(v1_144.getPackageName(), 0).versionCode;
+                        } catch (String v1_147) {
+                            v1_147.printStackTrace();
+                            v1_1 = 0;
+                        }
+                        Object[] v5_0 = new Object[1];
+                        v5_0[0] = Integer.valueOf(v1_1);
+                        String v1_4 = String.format(java.util.Locale.ENGLISH, "Android%d", java.util.Arrays.copyOf(v5_0, 1));
+                        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_4, "java.lang.String.format(locale, format, *args)");
+                        if (!v10_7.containsKey(v1_4)) {
+                            if (v10_7.containsKey("testMode")) {
+                                singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                                v0_6.cointhreat = v10_7.gangclothing("testMode");
+                            }
+                        } else {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            v0_6.cointhreat = v10_7.gangclothing(v1_4);
+                        }
+                        if (v10_7.containsKey("webVer")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            v0_6.seventygenom = v10_7.gangclothing("webVer");
+                        }
+                        if (v10_7.containsKey("nativeRender")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            v0_6.singersmooth = v10_7.gangclothing("nativeRender");
+                        }
+                        if (v10_7.containsKey("url")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_21 = v10_7.tidyleadership("url");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_21, "jsonObject.getString(\"url\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_21, "url");
+                            v0_6.nationalcommunitymissing = v1_21;
+                        }
+                        if (v10_7.containsKey("webUrl")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_26 = v10_7.tidyleadership("webUrl");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_26, "jsonObject.getString(\"webUrl\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_26, "webUrl");
+                            v0_6.ironoriginhoblike = v1_26;
+                        }
+                        if (v10_7.containsKey("tsUrl")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_31 = v10_7.tidyleadership("tsUrl");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_31, "jsonObject.getString(\"tsUrl\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_31, "tsUrl");
+                            v0_6.feedtonight = v1_31;
+                        }
+                        if (v10_7.containsKey("tsWebUrl")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_35 = v10_7.tidyleadership("tsWebUrl");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_35, "jsonObject.getString(\"tsWebUrl\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_35, "tsWebUrl");
+                            v0_6.worktopichardtails = v1_35;
+                        }
+                        if (v10_7.containsKey("update")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_40 = v10_7.tidyleadership("update");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_40, "jsonObject.getString(\"update\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_40, "update");
+                            v0_6.pursetruechild = v1_40;
+                        }
+                        if (v10_7.containsKey("forceBuild")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_44 = v10_7.tidyleadership("forceBuild");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_44, "jsonObject.getString(\"forceBuild\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_44, "forceBuild");
+                            v0_6.reweavingsiamesedpropertylessnesses = v1_44;
+                        }
+                        if (v10_7.containsKey("noForceBuild")) {
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.singersmooth(v0_6);
+                            String v1_48 = v10_7.tidyleadership("noForceBuild");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(v1_48, "jsonObject.getString(\"noForceBuild\")");
+                            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v1_48, "noForceBuild");
+                            v0_6.dishbesideshockey = v1_48;

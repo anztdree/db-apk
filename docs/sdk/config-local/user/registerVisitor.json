@@ -1,0 +1,20 @@
+{
+  "result": true,
+  "data": {
+    "authToken": "ISI-DARI-PANEN-LIVE-TAHAP-2",
+    "tips": "",
+    "checkRealName": "0",
+    "userData": {
+      "uid": "ISI-UID-PERANGKAT",
+      "username": "ISI-USERNAME-GUEST",
+      "displayUid": "",
+      "token": "ISI-TOKEN-PERANGKAT",
+      "isGuest": "1",
+      "openType": "",
+      "isNewUser": 0,
+      "isTrash": 0,
+      "bindInfo": null
+    }
+  },
+  "error": { "id": 0, "message": "" }
+}

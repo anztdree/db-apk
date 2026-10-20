@@ -1,0 +1,63 @@
+
+=== <init> (Lcointhreat/cointhreat/cointhreat/pursetruechild/feedtonight/nationalcommunitymissing;)V ===
+    public singersmooth(cointhreat.cointhreat.cointhreat.pursetruechild.feedtonight.nationalcommunitymissing p1)
+    {
+        this.cointhreat = p1;
+        return;
+    }
+
+=== onGooglePlaySub (Ljava/lang/String; Ljava/lang/String; Z Z)V ===
+    public void onGooglePlaySub(String p1, String p2, boolean p3, boolean p4)
+    {
+        return;
+    }
+
+=== onInitFinished (Z)V ===
+    public void onInitFinished(boolean p4)
+    {
+        if (p4 == null) {
+            cointhreat.cointhreat.cointhreat.pursetruechild.feedtonight.nationalcommunitymissing v4_1 = this.cointhreat;
+            v4_1.seventygenom.runOnUiThread(new cointhreat.cointhreat.cointhreat.pursetruechild.feedtonight.cointhreat(v4_1, "init sdk error"));
+        } else {
+            cointhreat.cointhreat.cointhreat.pursetruechild.feedtonight.nationalcommunitymissing v4_2 = this.cointhreat;
+            v4_2.singersmooth.login(v4_2.seventygenom);
+        }
+        return;
+    }
+
+=== onLoginFinished (Lcom/quickgame/android/sdk/bean/QGUserData; Lcom/quickgame/android/sdk/model/QGUserHolder;)V ===
+    public void onLoginFinished(com.quickgame.android.sdk.bean.QGUserData p3, com.quickgame.android.sdk.model.QGUserHolder p4)
+    {
+        cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v3_2;
+        java.util.HashMap v4_0 = this.cointhreat;
+        v4_0.singersmooth.showFloatView(v4_0.seventygenom);
+        java.util.HashMap v4_3 = new java.util.HashMap();
+        v4_3.put("uid", p3.getUid());
+        v4_3.put("username", p3.getUserName());
+        v4_3.put("token", p3.getToken());
+        if (!p3.isGuest()) {
+            v3_2 = "0";
+        } else {
+            v3_2 = "1";
+        }
+        v4_3.put("usermode", v3_2);
+        cointhreat.cointhreat.cointhreat.pursetruechild.seventygenom v3_4 = this.cointhreat.cointhreat;
+        java.util.Objects.requireNonNull(v3_4);
+        singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(v4_3, "dict");
+        Thread v0_5 = v3_4.singersmooth;
+        if (v0_5 != null) {
+            ((com.zhuhuan.game.MainActivity) v0_5).feedtonight(0);
+        }
+        new Thread(new cointhreat.cointhreat.cointhreat.pursetruechild.nationalcommunitymissing(v3_4, v4_3)).start();
+        return;
+    }
+
+=== onLogout ()V ===
+    public void onLogout()
+    {
+        com.zhuhuan.game.MainActivity v0_1 = this.cointhreat.seventygenom;
+        if ((v0_1 instanceof com.zhuhuan.game.MainActivity)) {
+            ((com.zhuhuan.game.MainActivity) v0_1).influencecomparisonrestore();
+        }
+        return;
+    }
