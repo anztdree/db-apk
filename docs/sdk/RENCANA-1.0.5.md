@@ -72,7 +72,13 @@ Parser `psalmicvolleyball.cointhreat` membaca `data` sebagai:
 - **1.0.5-D — SNS/Facebook**: fbActInit/fbShareEvent/fbLikeEvent/fbInviteEvent/fbUserClaimEvent,
   cksnslogin, userLoginByOtherSdk (identitas SNS lokal yang berfungsi)
 
-## 3. Status
+## 3. Status (revisi keputusan user 2026-10-20)
 
 - [x] Fase 0 bukti (dump105 lengkap, kontrak 19 rute terpetakan)
-- [ ] 1.0.5-A  [ ] 1.0.5-B  [ ] 1.0.5-C  [ ] 1.0.5-D
+- [x] 1.0.5-A SELESAI — akun & keamanan penuh (BUILD-1.0.5.md, uji 32/32)
+- [ ] 1.0.5-B: CDK (actCdKey + sesi refresh) & setGameRoleInfo
+- [~] Fase C (revisi user): pembayaran + config via WEBSITE LOKAL
+      (developer config local — order tampil di web, konfirmasi via web;
+       jadi rumah bagi CDK, migcode, order, dan config server)
+- [x] 1.0.5-D DISKIP oleh user: SNS/Facebook (7 endpoint) "tidak perlu karena
+      logis local" — tidak diimplementasi, dicatat agar peta tetap lengkap

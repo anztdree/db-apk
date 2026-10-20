@@ -1,0 +1,10 @@
+{
+  "code": 0,
+  "sdk": "BSNative",
+  "nickName": "{{USERNAME}}",
+  "loginToken": "{{LOGIN_TOKEN}}",
+  "userId": "{{UID}}",
+  "sign": "{{SIGN}}",
+  "sdkType": "BS",
+  "osType": "Android"
+}
