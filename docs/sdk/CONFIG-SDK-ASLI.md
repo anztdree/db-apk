@@ -140,29 +140,27 @@ Fakta kunci (dex `pursetruechild/ironoriginhoblike` + `LaunchActivity`):
    saat diperlukan) diarahkan ke server lokal kita. Tidak ada alamat yang berada di luar
    kendali config.
 
-### 2d. STATUS local standalone → menuju loginserver (materi 3 mode = LIVE SIAP)
+### 2d. STATUS local standalone → menuju gerbang loginserver (KOREKSI: GENERATOR, bukan sisa jejak)
 
 | Tahap | Apa yang lokal | Material | Status |
 |---|---|---|---|
-| **A. Config SDK** | `init` + `getNotice` + `getAgreement` + `ckRegVistor` dijawab MiniServer dari `config-local/` | panen live server hidup | ✅ SIAP |
-| **B. Sesi SDK (3 mode)** | `registerVisitor` (guest) + `registerUser` (register) + `loginByName` (login) dijawab MiniServer — format & ISI asli | panen live 2026-10-20 dengan tiket request asli APK; leg A≡B 8/8 | ✅ **SIAP** (`config-local/user/`) |
-| **C. Verifikasi game** | Game mengirim `{uid,username,token,usermode}` (sesi ASLI Tahap B) ke loginchecknative di alamat dari config game lokal | loginchecknative live: `code:0` BERULANG utk ketiga mode dgn token asli | ✅ terbukti token asli lolos berulang |
+| **A. Config SDK** | `init` + `getNotice` + `getAgreement` + `ckRegVistor` dijawab MiniServer dari `config-local/` | panen live server hidup (acuan format) | ✅ SIAP |
+| **B. Sesi SDK** | `registerVisitor` dijawab MiniServer — **TEMPLATE GENERATOR**: `{{UID}}`/`{{USERNAME}}`/`{{TOKEN}}`/`{{AUTH_TOKEN}}` diisi runtime — **token dibangkitkan BARU** *(koreksi user 2026-10-20: kalau config benar → generate token baru, bukan ambil sisa jejak)* | basis sahnya terbukti dari dex: parser SDK hanya `getString` tanpa validasi isi (`bukti/riset-login/dump-generator-basis.txt`); panen live = acuan FORMAT | ✅ SIAP (tanpa tiket panen) |
+| **C. Verifikasi game** | Game mengirim `{uid,username,token,usermode}` hasil generator ke gerbang **LOKAL** (setting bin `loginServer` → `127.0.0.1:28110` — murni edit config); MiniServer jawab `code:0` bentuk 10 field live | game hanya membaca `getInt("code") == 0` (bukti dex); respons diteruskan JS via startGame | ✅ rencana siap — uji di perangkat |
 
-**Kenapa ini BUKAN "jejak kaki":** request login dibuat oleh APK original sendiri
-(fingerprint perangkat asli), token/uid yang dikirim = token/uid ASLI dari server SDK
-(hasil panen live pakai tiket request asli) — server game memverifikasi pasangan ASLI.
-Capture hanya berperan sebagai alat bantu (tiket), sesuai prinsip user.
+**Kenapa ini sah (BASIS GENERATOR, terbukti — bukan asumsi):** token/authToken adalah
+string OPAQUE di seluruh rantai klien — bean sesi `QGUserData.generateFromJson` dan parser
+sesi hanya `getString` (tanpa cek format/panjang/signature); penyusun request game
+meneruskan token apa adanya; pemeriksaan gerbang game membaca `code` saja. Pemegang
+server-lah yang menentukan nilai token — server lokal = pemegang baru → token BARU sah
+secara struktur. Pola perilaku server asli ditiru: uid stabil per perangkat, token baru
+per sesi, `sign` stabil per uid (bukti panen: register & login uid sama → sign sama).
 
-**Fakta penting yang meluruskan rencana:** sesi guest TERIKAT PERANGKAT dan DAPAT
-DIULANG — tiket registerVisitor yang sama → server jawab sesi yang sama persis
-(uid + token identik). loginchecknative menerima token itu berulang kali (code:0 tiap
-panen). Artinya sesi asli di `config-local/user/` adalah tiket sah yang menuju
-loginserver game asli tanpa penerusan.
-
-**Opsi cadangan** (bila suatu saat dibutuhkan): alamat loginserver ada di config game
-LOCAL (bagian 2c) → endpoint `loginchecknative` bisa diarahkan ke MiniServer dan dijawab
-`config-local/game/loginchecknative.json` (`code:0`) — murni keputusan config. **Ini OPSI
-— hanya dieksekusi bila user memutuskan.**
+**Konsekuensi arah gerbang (konsisten koreksi):** loginserver asli memvalidasi token di
+sisi server (klien tidak pernah mendekode token) → token generate tidak akan lolos di
+sana → alamat gerbang diarahkan LOKAL lewat setting bin (file config yang sudah lokal
+sejak 1.0.1; `copyDir` tidak menimpa file ada → edit bertahan). Jalur lama "gerbang live
+dengan token panen" DIBATALKAN oleh koreksi.
 
 **Catatan registerUser (state-bound):** register sukses hanya SATU kali per guest —
 panen ulang server asli jawab `40008 pengguna ini telah digunakan`. Material sukses

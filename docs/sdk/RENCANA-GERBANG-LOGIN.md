@@ -13,11 +13,13 @@
 
 1. **Target versi = 1.0.2 saja** (basis 1.0.1). 1.0.3/1.0.4 batal.
 2. **Aturan #1:** capture/HAR = **alat bantu/tiket petunjuk, BUKAN acuan pondasi** — berlaku juga
-   untuk login/register/guest mode. Material harus dari **panen live server hidup** dengan request
-   asli APK per perangkat (sudah dikonfirmasi user, termasuk Tahap B).
-3. **Tanpa jembatan (bridge):** server lokal harus **MENJAWAB** config, bukan meneruskan ke
+   untuk login/register/guest mode.
+3. **KOREKSI USER 2026-10-20 (Tahap B):** kalau config benar → **token DIBANGKITKAN BARU
+   secara lokal** (generator), **bukan dipungut dari sisa jejak panen.** Bukti sahnya:
+   token opaque di seluruh rantai klien (bagian 2A).
+4. **Tanpa jembatan (bridge):** server lokal harus **MENJAWAB** config, bukan meneruskan ke
    `qsdk.t4game.com`. Pola jembatan tes1 sudah ditinggalkan.
-4. Config SDK di **LOCAL, bebas diatur user** (edit → langsung efektif, tanpa rebuild).
+5. Config SDK di **LOCAL, bebas diatur user** (edit → langsung efektif, tanpa rebuild).
 
 ---
 
@@ -109,6 +111,33 @@ Bin dan tiket saling mengunci: alamat gerbang 100% bersumber dari setting bin.
 
 ---
 
+## 2A. Basis bukti GENERATOR — kenapa token bisa dibangkitkan baru (bukan sisa jejak)
+
+Koreksi user: *"kalau config benar, artinya kita bisa generate baru token, dan bukan ambil
+dari sisa jejak."* Ini terbukti benar dari dex — token adalah **string opaque di seluruh
+rantai klien**:
+
+| Titik | Pembuktian (dex original) | Konsekuensi |
+|---|---|---|
+| Bean sesi SDK `QGUserData.generateFromJson` | `token` & `authToken` hanya `getString` — disimpan apa adanya; TIDAK ada cek format/panjang/signature | nilai token boleh apa pun |
+| Parser sesi SDK `psalmicvolleyball.cointhreat.cointhreat(String)` | pre-cek hanya input kosong/`[]`/`{}`; field `authToken` = `getString` | generator bebas menentukan isi |
+| Penyusun request gerbang `onLoginFinished` | `HashMap {uid, username, token, usermode}` — langsung dari bean, tanpa transformasi | token generate dikirim apa adanya |
+| Pemeriksaan gerbang game (Runnable `nationalcommunitymissing.run`) | `getInt("code") == 0` → LOLOS; selain itu hanya `msg`/`message` utk dialog; parse-gagal → `customreading()` | jawaban gerbang lokal cukup `code:0` |
+| Konsumen lanjutan `MainActivity.hardlinerspare` | respons gerbang utuh diteruskan ke JS (payload event `startGame`/`startTsGame` + `loginServer` + `loginKey`) | jawaban lokal dipertahankan BENTUK 10 field live, nilai generate |
+
+Polanya juga terbukti dari panen live: `sign` STABIL per uid (register & login uid sama →
+sign sama `912c4ce7…`), `loginToken` BERUBAH per sesi, token antar uid berbeda —
+struktur identitas server asli bisa ditiru perilakunya dengan nilai sendiri.
+Bukti mentah: `bukti/riset-login/dump-generator-basis.txt`.
+
+**Konsekuensi arah gerbang:** loginserver asli (`login.popoh5.com:510`) memvalidasi token
+di sisi SERVER (klien tidak pernah mendekode token) → token generate lokal TIDAK akan
+lolos di sana. Karena alamat gerbang adalah CONFIG (setting bin — sudah lokal sejak 1.0.1),
+**gerbang diarahkan ke server lokal** → satu-satunya jalur yang konsisten dengan
+koreksi user (generate) dan tanpa penerusan. Ini kini JALUR UTAMA (lihat Tahap C).
+
+---
+
 ## 3. Baseline 1.0.1 vs pola jembatan (JANGAN TERTUKAR)
 
 - **1.0.1 (baseline, benar):** config GAME lokal (mirror + upgrade). SDK config **masih internet**
@@ -151,32 +180,37 @@ Bin dan tiket saling mengunci: alamat gerbang 100% bersumber dari setting bin.
   SDK keluar ke qsdk. (getNotice & getAgreement sudah terverifikasi byte-exact
   via HAR perangkat; init dkk. material live 2026-10-20 di `bukti/panen-live/`.)
 
-### Tahap B — Sesi SDK lokal (registerVisitor)
-- **TIKET yang diminta dari user: 1 capture login dari perangkat** (request asli APK)
-  → hasil panen respons live `registerVisitor` per perangkat = material,
-  diisi ke `config-local/user/registerVisitor.json`.
-- Prinsip: capture = alat bantu/tiket (bukan pondasi); yang dipakai sebagai isi jawaban
-  server lokal = **respons live server** terhadap request asli perangkat itu.
+### Tahap B — Sesi SDK lokal = GENERATOR (koreksi user — tanpa tiket panen)
+- `registerVisitor.json` kini **TEMPLATE GENERATOR**: placeholder `{{UID}}`/`{{USERNAME}}`/
+  `{{TOKEN}}`/`{{AUTH_TOKEN}}` diisi MiniServer saat request datang — **token dibangkitkan
+  BARU**, bukan dipungut dari sisa jejak panen.
+- Dasar sahnya (bukti dex, bagian 2A): parser SDK hanya `getString` tanpa validasi isi →
+  nilai token bebas; panen live hanya jadi acuan FORMAT + pola perilaku (uid stabil per
+  perangkat, token baru per sesi, sign stabil per uid).
+- Aturan generate (default, semua diatur user via config — lihat `config-local/README.md`):
+  `UID` persisten per perangkat (bisa dikunci user); `TOKEN`/`AUTH_TOKEN` baru per sesi;
+  `SIGN` = `md5(uid + salt)` mengikuti pola live; `isGuest` sesuai mode.
 - **Kriteria lulus:** `onLoginFinished` terpanggil; HashMap game terisi
-  `{uid, username, token, usermode}` asli perangkat; `sdk登录验证url` mencetak alamat
-  `https://login.popoh5.com:510/loginchecknative?…` dengan token asli.
+  `{uid, username, token, usermode}` HASIL GENERATOR; `sdk登录验证url` mencetak alamat
+  gerbang dengan token generate yang sama.
 
-### Tahap C — Uji gerbang (bukti akhir)
-- Game GET `login.popoh5.com:510/loginchecknative` dengan nilai Tahap B → **code == 0 → masuk game**.
-- Ini satu-satunya titik yang belum ada bukti ujung-ke-ujungnya dari jalur lokal
-  (kesegaran token server-side di sisi loginserver — lihat risiko R1).
-- **Kriteria lulus:** masuk game tanpa dialog error; respons 200 + `code:0` terekam HAR.
+### Tahap C — Uji gerbang LOKAL (bukti akhir)
+- Alamat gerbang = config (setting bin): `loginServer` → `http://127.0.0.1:28110` +
+  `loginWebPort` → `28110` — **MURNI edit config** (dua pilihan eksekusi, keputusan user):
+  (a) edit file external `files/server/bs/db/android/setting_BS_Android.bin`
+  (dekrip XOR → ubah 2 nilai → enkrip balik; `copyDir` tidak menimpa file ada →
+  edit bertahan antar boot); atau (b) mirror bin di APK 1.0.2 dibuat lokal sejak awal.
+- MiniServer menjawab `/loginchecknative` dengan template generator (bentuk 10 field live,
+  `loginToken`/`sign` baru, `userId` = uid generator) → `getInt("code") == 0` → **masuk game**.
+- **Kriteria lulus:** masuk game tanpa dialog error; respons 200 + `code:0` terekam HAR;
+  game lanjut memuat dunia game (JS menerima payload startGame).
 - Log diagnose kalau gagal: tag `sdk登录验证url` / `sdk登录验证返回` (retry 3×).
 
-### Plan B — opsional, HANYA bila Tahap C menolak token panen (keputusan user)
-Murni **edit file config** — tanpa operasi dex:
-- Edit `files/server/bs/db/android/setting_BS_Android.bin` di external storage
-  (dekrip XOR → ubah `loginServer` → `http://127.0.0.1:28110` + `loginWebPort` → `28110` → enkrip balik).
-  `copyDir` 1.0.1 **tidak menimpa** file yang ada → edit bertahan antar boot, dan
-  game menarik bin via HTTP tiap boot → langsung efektif.
-- MiniServer menjawab `/loginchecknative` dengan respons `code:0` hasil panen.
-- Keuntungan: mengubah perilaku tanpa menyentuh APK. Efek samping: gerbang tidak lagi
-  memvalidasi ke server asli (kesadaran penuh user sebelum memilih).
+### Catatan jalur lama (DIBATALKAN oleh koreksi)
+- Jalur lama "gerbang tetap live dengan token panen" TIDAK dipakai lagi: bertentangan
+  dengan koreksi user (bukan sisa jejak) dan token generate memang tidak akan lolos
+  validasi server-side loginserver asli. Panen live tetap bernilai sebagai acuan format
+  & referensi perilaku server (arsip di `bukti/panen-gerbang4/`).
 
 ---
 
@@ -184,12 +218,13 @@ Murni **edit file config** — tanpa operasi dex:
 
 | # | Risiko | Bukti/mitigasi |
 |---|---|---|
-| R1 | loginserver menolak token panen (kesegaran sesi) | Bukti saat ini: loginserver menerima token registerVisitor (guest), registerUser, dan loginByName — 3 token berbeda dalam satu sesi → validasi per-sesi, bukan sekali-seumur. Uji langsung di Tahap C. Kalau ditolak → Plan B (keputusan user). |
-| R2 | SDK memanggil endpoint lain (getUserInfo/registerUser/loginByName/onNewToken/dmsg/getServerAgreement) | Materi live sudah ada di `config-local/` untuk getUserInfo/registerUser/loginByName; onNewToken/dmsg/getServerAgreement tinggal 1 panen bila ternyata dipanggil (pola wrapper sama `{result,data,error}`). |
+| R1' | JS dunia game menolak `loginToken`/`sign` hasil generate | Respons gerbang DITERUSKAN utuh ke JS (bukti: `hardlinerspare` → payload startGame). Mitigasi: bentuk field persis 10 field live + pola `sign` stabil-per-uid + `loginToken` baru-per-sesi (meniru perilaku server asli). Validasi internal JS (main.min.js 4,9 MB) BELUM dibedah → variabel di luar pintu gerbang; bila JS menolak → task lanjutan: bedah main.min.js. |
+| R2 | SDK memanggil endpoint lain (getUserInfo/registerUser/loginByName/onNewToken/dmsg/getServerAgreement) | getUserInfo/registerUser/loginByName sudah ada materi live di `config-local/` (bisa di-generator-kan dengan pola sama bila user mau — keputusan lanjutan); onNewToken/dmsg/getServerAgreement tinggal 1 panen bila ternyata dipanggil (pola wrapper sama). |
 | R3 | `com_db_local.bin` 404 dianggap error | Terbukti aman: 1.0.1 jalan normal dengan 404 itu (fallback ke setting bin). Jangan diperbaiki. |
-| R4 | bootstrapSync menimpa editan user | Terbukti tidak: `copyDir` melewati file yang sudah ada (`exists → skip`) — verifikasi ulang dex. |
+| R4 | bootstrapSync menimpa editan user (termasuk ubahan gerbang lokal) | Terbukti tidak: `copyDir` melewati file yang sudah ada (`exists → skip`) — verifikasi ulang dex. |
 | R5 | Gate gagal → pemain melihat dialog error | Perilaku asli APK (retry 3×); log tag tersedia untuk diagnose Tahap C. |
 | R6 | Salah acuan baseline | Dokumen ini menegaskan: HAR 09:12 = build jembatan (BUKAN 1.0.1); HAR 09:26 = 1.0.1 murni (catatan worklog). |
+| R7 | Konsistensi tipe field | `isGuest` angka di respons asli (getString mengkoersi); `code` harus ANGKA (`getInt`); ikuti bentuk template — sudah diatur README. |
 
 ---
 
@@ -198,6 +233,7 @@ Murni **edit file config** — tanpa operasi dex:
 - Tidak menyentuh isi config server qsdk; tidak menjadikan capture sebagai isi config.
 - Tidak ada bridge/forward dari MiniServer ke internet.
 - Tidak ada replay request keluar; tidak ada penerusan kredensial.
+- Tidak memakai sisa jejak panen sebagai identitas — sesi dibangkitkan baru (koreksi user).
 - Implementasi (build 1.0.2) menunggu **green light** — rencana ini hanya peta.
 
 ---
@@ -205,16 +241,19 @@ Murni **edit file config** — tanpa operasi dex:
 ## 8. Indeks berkas bukti
 
 ```
-docs/sdk/config-local/                  ← THE CONFIG (5+4 file JSON siap-layani)
+docs/sdk/config-local/                  ← THE CONFIG (config statis + template generator)
 docs/sdk/bukti/panen-live/              ← 8 respons asli server hidup (boot)
-docs/sdk/bukti/panen-gerbang4/          ← tiket request asli + respons live 3 mode (gerbang)
-docs/sdk/bukti/riset-login/             ← dump dex: onLoginFinished, parser endpoint, base URL
+docs/sdk/bukti/panen-gerbang4/          ← acuan format & perilaku server (tiket + respons live 3 mode)
+docs/sdk/bukti/riset-login/             ← dump dex: onLoginFinished, parser endpoint, base URL,
+                                          verifikasi-ulang-101, dump-generator-basis (basis generator)
 docs/sdk/bukti/dex-evidence/            ← dump QHinfo/sign/bind/apply/model
 docs/sdk/bukti/device-har/              ← bukti leg A=leg B (verbatim) + tiket HAR
 docs/sdk/CONFIG-SDK-ASLI.md             ← dokumen lengkap (config + gerbang + field)
 docs/sdk/RENCANA-GERBANG-LOGIN.md       ← dokumen ini
 ```
 
-**Kesimpulan:** dari 1.0.1, jarak menuju gerbang loginserver hanya 2 item delta (QHinfo +
-classes2.dex v6), 3 tahap uji, dan 1 variabel terbuka (kesegaran token → sudah ada Plan B
-berbasis edit config, bukan operasi dex). Tidak ada langkah yang mengandalkan asumsi.
+**Kesimpulan (setelah koreksi):** dari 1.0.1, jarak menuju gerbang = 2 item delta APK
+(QHinfo + classes2.dex v6) + 1 edit config gerbang (setting bin) — sesi DIBANGKITKAN BARU
+oleh generator lokal (sah: token opaque di seluruh rantai klien), 3 tahap uji, dan 1
+variabel jujur di luar pintu (konsumsi JS dunia game — R1'). Tidak ada langkah yang
+mengandalkan asumsi; tidak ada identitas dari sisa jejak.
