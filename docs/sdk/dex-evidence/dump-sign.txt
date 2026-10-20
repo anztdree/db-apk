@@ -1,0 +1,54 @@
+
+Lcom/quickgame/android/sdk/unnecessarysperrylites/seventygenom; -> nationalcommunitymissing (Ljava/util/HashMap;)Ljava/lang/String;
+  0000  invoke-virtual       v4, Ljava/util/HashMap;->size()I
+  0001  move-result          v0
+  0002  if-nez               v0, +004h
+  0003  const/4              v4, 0
+  0004  return-object        v4
+  0005  new-instance         v0, Ljava/util/TreeMap;
+  0006  invoke-direct        v0, Ljava/util/TreeMap;-><init>()V
+  0007  invoke-virtual       v0, v4, Ljava/util/TreeMap;->putAll(Ljava/util/Map;)V
+  0008  new-instance         v4, Ljava/lang/StringBuffer;
+  0009  invoke-direct        v4, Ljava/lang/StringBuffer;-><init>()V
+  0010  invoke-virtual       v0, Ljava/util/TreeMap;->keySet()Ljava/util/Set;
+  0011  move-result-object   v1
+  0012  invoke-interface     v1, Ljava/util/Set;->iterator()Ljava/util/Iterator;
+  0013  move-result-object   v1
+  0014  invoke-interface     v1, Ljava/util/Iterator;->hasNext()Z
+  0015  move-result          v2
+  0016  if-eqz               v2, +026h
+  0017  invoke-interface     v1, Ljava/util/Iterator;->next()Ljava/lang/Object;
+  0018  move-result-object   v2
+  0019  check-cast           v2, Ljava/lang/String;
+  0020  invoke-virtual       v4, v2, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+  0021  const-string         v3, "="
+  0022  invoke-virtual       v4, v3, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+  0023  invoke-virtual       v0, v2, Ljava/util/TreeMap;->get(Ljava/lang/Object;)Ljava/lang/Object;
+  0024  move-result-object   v3
+  0025  if-nez               v3, +005h
+  0026  const-string         v2, ""
+  0027  goto                 +5h
+  0028  invoke-virtual       v0, v2, Ljava/util/TreeMap;->get(Ljava/lang/Object;)Ljava/lang/Object;
+  0029  move-result-object   v2
+  0030  invoke-virtual       v4, v2, Ljava/lang/StringBuffer;->append(Ljava/lang/Object;)Ljava/lang/StringBuffer;
+  0031  const-string         v2, "&"
+  0032  invoke-virtual       v4, v2, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+  0033  goto                 -29h
+  0034  const-string         v0, "0b2a18e45d7df321"
+  0035  invoke-virtual       v4, v0, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+  0036  new-instance         v0, Ljava/lang/StringBuilder;
+  0037  invoke-direct        v0, Ljava/lang/StringBuilder;-><init>()V
+  0038  const-string         v1, "signData before MD5 is:"
+  0039  invoke-virtual       v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+  0040  invoke-virtual       v4, Ljava/lang/StringBuffer;->toString()Ljava/lang/String;
+  0041  move-result-object   v1
+  0042  invoke-virtual       v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+  0043  invoke-virtual       v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+  0044  move-result-object   v0
+  0045  const-string         v1, "QGSdkUtils"
+  0046  invoke-static        v1, v0, Lcom/quickgame/android/sdk/utils/log/QGLog;->d(Ljava/lang/String; Ljava/lang/String;)V
+  0047  invoke-virtual       v4, Ljava/lang/StringBuffer;->toString()Ljava/lang/String;
+  0048  move-result-object   v4
+  0049  invoke-static        v4, Lcom/quickgame/android/sdk/unnecessarysperrylites/seventygenom;->singersmooth(Ljava/lang/String;)Ljava/lang/String;
+  0050  move-result-object   v4
+  0051  return-object        v4

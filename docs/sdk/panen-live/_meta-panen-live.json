@@ -1,0 +1,24 @@
+{
+ "system/getNotice": {
+  "file": "panen-live-102/system__getNotice.bin",
+  "status": 200,
+  "size": 55,
+  "md5": "dfc2f19b12731c730252e917b718915e",
+  "sha256": "424866f49d03989112a7a6e3ab32a1851399f61a2fb698c46d00e5a0e9657247",
+  "content_type": "text/json",
+  "latency_s": 0.326,
+  "source": "LIVE panen qsdk.t4game.com via replay request asli perangkat (sdk.har leg A)",
+  "ts_utc": "2026-10-20T06:11:51Z"
+ },
+ "system/init": {
+  "file": "panen-live-102/system__init.bin",
+  "status": 200,
+  "size": 767,
+  "md5": "ccf4c1a8a4db9dee06856f77a04ce342",
+  "sha256": "0e2fd7ee75d64dc8704213dedf0d4678770ac212d4a2c4d951fc857a2a5cf788",
+  "content_type": "text/json",
+  "latency_s": 0.32,
+  "source": "LIVE panen qsdk.t4game.com via replay request asli perangkat (sdk.har leg A)",
+  "ts_utc": "2026-10-20T06:11:51Z"
+ }
+}

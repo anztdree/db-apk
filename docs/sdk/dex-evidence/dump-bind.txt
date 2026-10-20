@@ -1,0 +1,229 @@
+
+Lcom/quickgame/android/sdk/bindcommunist/singersmooth; -> singersmooth (Landroid/content/Context; Ljava/util/HashMap;)Ljava/util/Map;
+  0000  const-string         v0, ""
+  0001  const-string         v1, "authToken"
+  0002  new-instance         v2, Lorg/json/JSONObject;
+  0003  invoke-direct        v2, Lorg/json/JSONObject;-><init>()V
+  0004  invoke-static        v8, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->cointhreat(Landroid/content/Context;)Lcom/quickgame/android/sdk/unnecessa
+  0005  move-result-object   v3
+  0006  const-string         v4, "QGHttpRequestUtils"
+  0007  if-nez               v9, +007h
+  0008  new-instance         v9, Ljava/util/HashMap;
+  0009  invoke-direct        v9, Ljava/util/HashMap;-><init>()V
+  0010  const-string         v5, "sdkVersion"
+  0011  iget                 v6, v3, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->cointhreat I
+  0012  invoke-static        v6, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+  0013  move-result-object   v6
+  0014  invoke-virtual       v9, v5, v6, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0015  const-string         v5, "gameVersion"
+  0016  iget-wide            v6, v3, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->seventygenom J
+  0017  invoke-static        v6, v7, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
+  0018  move-result-object   v6
+  0019  invoke-virtual       v9, v5, v6, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0020  const-string         v5, "deviceId"
+  0021  iget-object          v6, v3, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->singersmooth Ljava/lang/String;
+  0022  invoke-virtual       v9, v5, v6, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0023  const-string         v5, "serialNum"
+  0024  iget-object          v6, v3, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->reweavingsiamesedpropertylessnesses Ljava/lang/String;
+  0025  invoke-virtual       v9, v5, v6, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0026  const-string         v5, "devIDShort"
+  0027  iget-object          v6, v3, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->dishbesideshockey Ljava/lang/String;
+  0028  invoke-virtual       v9, v5, v6, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0029  const-string         v5, "platform"
+  0030  iget                 v6, v3, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->nationalcommunitymissing I
+  0031  invoke-static        v6, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+  0032  move-result-object   v6
+  0033  invoke-virtual       v9, v5, v6, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0034  const-string         v5, "productCode"
+  0035  iget-object          v6, v3, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->ironoriginhoblike Ljava/lang/String;
+  0036  invoke-virtual       v9, v5, v6, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0037  iget-object          v5, v3, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->feedtonight Ljava/lang/String;
+  0038  const-string         v6, "default"
+  0039  invoke-virtual       v5, v6, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+  0040  move-result          v5
+  0041  const-string         v6, "channelCode"
+  0042  if-eqz               v5, +00ah
+  0043  invoke-static        v8, Lcom/quickgame/android/sdk/unnecessarysperrylites/seventygenom;->customreading(Landroid/content/Context;)Ljava/lang/String;
+  0044  move-result-object   v8
+  0045  invoke-virtual       v9, v6, v8, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0046  goto                 +6h
+  0047  iget-object          v8, v3, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->feedtonight Ljava/lang/String;
+  0048  invoke-virtual       v9, v6, v8, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0049  invoke-virtual       v9, v1, Ljava/util/HashMap;->containsKey(Ljava/lang/Object;)Z
+  0050  move-result          v8
+  0051  if-nez               v8, +007h
+  0052  iget-object          v8, v3, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->worktopichardtails Ljava/lang/String;
+  0053  invoke-virtual       v9, v1, v8, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0054  const-string         v8, "clientLang"
+  0055  invoke-static        Ljava/util/Locale;->getDefault()Ljava/util/Locale;
+  0056  move-result-object   v1
+  0057  invoke-virtual       v1, Ljava/util/Locale;->getLanguage()Ljava/lang/String;
+  0058  move-result-object   v1
+  0059  invoke-virtual       v9, v8, v1, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0060  const-string         v8, "suggestCurrency"
+  0061  invoke-virtual       v9, v8, v0, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0062  const-string         v8, "time"
+  0063  iget-wide            v5, v3, Lcom/quickgame/android/sdk/unnecessarysperrylites/cointhreat;->pursetruechild J
+  0064  invoke-static        v5, v6, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
+  0065  move-result-object   v1
+  0066  invoke-virtual       v9, v8, v1, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0067  invoke-virtual       v9, Ljava/util/HashMap;->keySet()Ljava/util/Set;
+  0068  move-result-object   v8
+  0069  invoke-interface     v8, Ljava/util/Set;->iterator()Ljava/util/Iterator;
+  0070  move-result-object   v8
+  0071  invoke-interface     v8, Ljava/util/Iterator;->hasNext()Z
+  0072  move-result          v1
+  0073  if-eqz               v1, +013h
+  0074  invoke-interface     v8, Ljava/util/Iterator;->next()Ljava/lang/Object;
+  0075  move-result-object   v1
+  0076  check-cast           v1, Ljava/lang/String;
+  0077  invoke-virtual       v9, v1, Ljava/util/HashMap;->get(Ljava/lang/Object;)Ljava/lang/Object;
+  0078  move-result-object   v3
+  0079  if-nez               v3, +003h
+  0080  move-object          v3, v0
+  0081  invoke-virtual       v2, v1, v3, Lorg/json/JSONObject;->put(Ljava/lang/String; Ljava/lang/Object;)Lorg/json/JSONObject;
+  0082  goto                 -16h
+  0083  new-instance         v8, Ljava/lang/StringBuilder;
+  0084  invoke-direct        v8, Ljava/lang/StringBuilder;-><init>()V
+  0085  const-string         v0, "mapParam="
+  0086  invoke-virtual       v8, v0, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+  0087  invoke-virtual       v8, v9, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+  0088  invoke-virtual       v8, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+  0089  move-result-object   v8
+  0090  invoke-static        v4, v8, Lcom/quickgame/android/sdk/utils/log/QGLog;->d(Ljava/lang/String; Ljava/lang/String;)V
+  0091  const-string         v8, "***************分割线****************"
+  0092  invoke-static        v4, v8, Lcom/quickgame/android/sdk/utils/log/QGLog;->d(Ljava/lang/String; Ljava/lang/String;)V
+  0093  new-instance         v8, Ljava/lang/StringBuilder;
+  0094  invoke-direct        v8, Ljava/lang/StringBuilder;-><init>()V
+  0095  const-string         v0, "jsonObj.toString()="
+  0096  invoke-virtual       v8, v0, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+  0097  invoke-virtual       v2, Lorg/json/JSONObject;->toString()Ljava/lang/String;
+  0098  move-result-object   v0
+  0099  invoke-virtual       v8, v0, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+  0100  invoke-virtual       v8, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+  0101  move-result-object   v8
+  0102  invoke-static        v4, v8, Lcom/quickgame/android/sdk/utils/log/QGLog;->d(Ljava/lang/String; Ljava/lang/String;)V
+  0103  invoke-static        v9, Lcom/quickgame/android/sdk/unnecessarysperrylites/seventygenom;->nationalcommunitymissing(Ljava/util/HashMap;)Ljava/lang/String;
+  0104  move-result-object   v8
+  0105  new-instance         v9, Ljava/util/HashMap;
+  0106  invoke-direct        v9, Ljava/util/HashMap;-><init>()V
+  0107  invoke-virtual       v2, Lorg/json/JSONObject;->toString()Ljava/lang/String;
+  0108  move-result-object   v0
+  0109  invoke-virtual       v0, Ljava/lang/String;->getBytes()[B
+  0110  move-result-object   v0
+  0111  const/4              v1, 0
+  0112  invoke-static        v0, v1, Landroid/util/Base64;->encodeToString([B I)Ljava/lang/String;
+  0113  move-result-object   v0
+  0114  const-string         v1, "sv"
+  0115  const-string         v2, "v2"
+  0116  invoke-virtual       v9, v1, v2, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0117  const-string         v1, "data"
+  0118  invoke-virtual       v9, v1, v0, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0119  const-string         v1, "sign"
+  0120  invoke-virtual       v9, v1, v8, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+  0121  new-instance         v1, Ljava/lang/StringBuilder;
+  0122  invoke-direct        v1, Ljava/lang/StringBuilder;-><init>()V
+  0123  const-string         v2, "data: "
+  0124  invoke-virtual       v1, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+  0125  invoke-virtual       v1, v0, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+  0126  invoke-virtual       v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+  0127  move-result-object   v0
+  0128  invoke-static        v4, v0, Landroid/util/Log;->i(Ljava/lang/String; Ljava/lang/String;)I
+  0129  new-instance         v0, Ljava/lang/StringBuilder;
+  0130  invoke-direct        v0, Ljava/lang/StringBuilder;-><init>()V
+  0131  const-string         v1, "sign:"
+  0132  invoke-virtual       v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+  0133  invoke-virtual       v0, v8, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+  0134  invoke-virtual       v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+  0135  move-result-object   v8
+  0136  invoke-static        v4, v8, Lcom/quickgame/android/sdk/utils/log/QGLog;->i(Ljava/lang/String; Ljava/lang/String;)V
+  0137  return-object        v9
+  0138  move-exception       v8
+  0139  invoke-virtual       v8, Ljava/lang/Exception;->getMessage()Ljava/lang/String;
+  0140  move-result-object   v9
+  0141  invoke-static        v4, v9, Landroid/util/Log;->e(Ljava/lang/String; Ljava/lang/String;)I
+  0142  invoke-static        v8, Lcom/quickgame/android/sdk/utils/log/QGLog;->LogException(Ljava/lang/Throwable;)V
+  0143  const/4              v8, 0
+  0144  return-object        v8
+
+
+===== XREF INSTANCE FIELDS model/e =====
+
+== e.singersmooth Lcom/quickgame/android/sdk/model/d; ==
+  Lcom/quickgame/android/sdk/QuickGameManager; -> enterCustomerService [iget-object] v3, v3, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/activity/GooglePlayActivity; -> onCreate [iget-object] v7, v7, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/activity/HWAccountCenterActivity; -> onCreate [iget-object] v6, v6, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/activity/HWLoginActivity; -> worktopichardtails [iget-object] v2, v0, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/activity/HWLoginActivity; -> worktopichardtails [iget-object] v0, v0, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/activity/HWLoginActivity; -> singersmooth [iget-object] v4, v0, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/activity/HWLoginActivity; -> singersmooth [iget-object] v0, v0, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/activity/canadasperse; -> onClick [iget-object] v1, v7, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/activity/canadasperse; -> onClick [iget-object] v7, v7, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/feedtonight$cointhreat; -> onLoginFinished [iget-object] v2, v2, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/feedtonight$cointhreat; -> onPaySuccess [iget-object] v7, v4, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/feedtonight$cointhreat; -> onPaySuccess [iget-object] v4, v4, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/feedtonight; -> porkactorcompanion [iget-object] v1, v1, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/model/e$cointhreat; -> createFromParcel [iput-object] v1, v0, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iput-object] v0, v2, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/model/e; -> writeToParcel [iget-object] v5, v3, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/view/seventygenom/worktopichardtails$seventygenom; -> singersmooth [iget-object] v2, v0, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+  Lcom/quickgame/android/sdk/view/seventygenom/worktopichardtails$seventygenom; -> singersmooth [iget-object] v0, v0, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+
+== e.seventygenom Lcom/quickgame/android/sdk/model/g; ==
+  Lcom/quickgame/android/sdk/QuickGameManager; -> cdkeyLogin [iget-object] v0, v1, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/QuickGameManager; -> freeLogin [iget-object] v8, v0, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/activity/HWLoginActivity$pursetruechild; -> handleMessage [iget-object] v12, v12, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/activity/HWLoginActivity; -> onCreate [iget-object] v12, v12, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/d/k; -> onCreateView [iget-object] v0, v10, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/d/k; -> onCreateView [iget-object] v2, v10, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/d/k; -> onCreateView [iget-object] v10, v10, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/d/k; -> onCreateView [iget-object] v9, v9, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/d/l; -> onClick [iget-object] v6, v6, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/d/l; -> onCreateView [iget-object] v3, v10, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/d/l; -> onCreateView [iget-object] v10, v10, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/d/l; -> onCreateView [iget-object] v10, v10, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/feedtonight; -> hardlinerspare [iget-object] v0, v0, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/model/e$cointhreat; -> createFromParcel [iput-object] v1, v0, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iput-object] v0, v2, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/model/e; -> writeToParcel [iget-object] v5, v3, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+  Lcom/quickgame/android/sdk/singersmooth; -> cointhreat [iget-object] v5, v5, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+
+== e.nationalcommunitymissing Ljava/util/ArrayList; ==
+  Lcom/quickgame/android/sdk/model/e$cointhreat; -> createFromParcel [iput-object] v1, v0, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+  Lcom/quickgame/android/sdk/model/e$cointhreat; -> createFromParcel [iget-object] v4, v0, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iput-object] v0, v2, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iget-object] v0, v2, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iget-object] v0, v2, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+  Lcom/quickgame/android/sdk/model/e; -> writeToParcel [iget-object] v5, v3, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+  Lcom/quickgame/android/sdk/model/e; -> writeToParcel [iget-object] v2, v3, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+  Lcom/quickgame/android/sdk/model/e; -> writeToParcel [iget-object] v2, v3, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+
+== e.worktopichardtails ==
+  Lcom/quickgame/android/sdk/gangclothing/nationalcommunitymissing; -> seventygenom [iget-object] v0, v0, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iput-object] v1, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iget-object] v1, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iget-object] v1, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iget-object] v1, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iget-object] v1, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iget-object] v3, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+
+== e.ironoriginhoblike ==
+  Lcom/quickgame/android/sdk/gangclothing/singersmooth$cointhreat; -> run [iget-object] v1, v1, Lcom/quickgame/android/sdk/model/e;->ironoriginhoblike Ljava/lang/String;
+  Lcom/quickgame/android/sdk/gangclothing/singersmooth$cointhreat; -> run [iget-object] v2, v2, Lcom/quickgame/android/sdk/model/e;->ironoriginhoblike Ljava/lang/String;
+  Lcom/quickgame/android/sdk/gangclothing/singersmooth; -> run [iput-object] v7, v1, Lcom/quickgame/android/sdk/model/e;->ironoriginhoblike Ljava/lang/String;
+  Lcom/quickgame/android/sdk/model/e; -> <init> [iput-object] v0, v1, Lcom/quickgame/android/sdk/model/e;->ironoriginhoblike Ljava/lang/String;
+  Lcom/quickgame/android/sdk/model/e; -> <init> [iput-object] v1, v0, Lcom/quickgame/android/sdk/model/e;->ironoriginhoblike Ljava/lang/String;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iput-object] v0, v2, Lcom/quickgame/android/sdk/model/e;->ironoriginhoblike Ljava/lang/String;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iget-object] v1, v2, Lcom/quickgame/android/sdk/model/e;->ironoriginhoblike Ljava/lang/String;
+
+== e.feedtonight Ljava/lang/String; ==
+  Lcom/quickgame/android/sdk/gangclothing/singersmooth$cointhreat; -> run [iget-object] v0, v0, Lcom/quickgame/android/sdk/model/e;->feedtonight Ljava/lang/String;
+  Lcom/quickgame/android/sdk/gangclothing/singersmooth; -> run [iput-object] v5, v1, Lcom/quickgame/android/sdk/model/e;->feedtonight Ljava/lang/String;
+  Lcom/quickgame/android/sdk/model/e; -> <init> [iput-object] v0, v1, Lcom/quickgame/android/sdk/model/e;->feedtonight Ljava/lang/String;
+  Lcom/quickgame/android/sdk/model/e; -> <init> [iput-object] v1, v0, Lcom/quickgame/android/sdk/model/e;->feedtonight Ljava/lang/String;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iput-object] v0, v2, Lcom/quickgame/android/sdk/model/e;->feedtonight Ljava/lang/String;
+  Lcom/quickgame/android/sdk/model/e; -> cointhreat [iget-object] v1, v2, Lcom/quickgame/android/sdk/model/e;->feedtonight Ljava/lang/String;
+
+== e.cointhreat Ljava/lang/String; ==
+  Lcom/quickgame/android/sdk/model/e$cointhreat; -> createFromParcel [iput-object] v1, v0, Lcom/quickgame/android/sdk/model/e;->cointhreat Ljava/lang/String;
+  Lcom/quickgame/android/sdk/model/e; -> writeToParcel [iget-object] v5, v3, Lcom/quickgame/android/sdk/model/e;->cointhreat Ljava/lang/String;

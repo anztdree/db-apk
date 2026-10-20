@@ -11,9 +11,9 @@
 > ## 📦 STATUS RILIS — **1.0.1 STABIL** (rilis default) · **test10 menunggu uji perangkat**
 > **`DB-Local-1.0.1.apk`** = build test9 (byte-identik; SHA-256 `a946ef6cc2d710e3b8812d836f654da42ec1f572370ef9f715e7ba3487c70b8e`) — **teruji di perangkat** (HAR+logcat): boot → unduh & ekstraksi → layar login → **login SDK sukses** → engine Egret jalan.
 > Arsitektur: **redirection murni** — endpoint CDN diarahkan ke mini server `127.0.0.1:28110` via mekanisme config aplikasi sendiri (`config_BS.properties` + setting bin); konten file 1:1 (23 file, gerbang siap-dulu); APK & pola client-server asli 100% utuh.
-> Masih ke internet (perilaku asli, layanan masih hidup): `login.popoh5.com:510/:610`, `qsdk.t4game.com`, telemetry → dijadwalkan jadi **1.0.2** (rencana: [`docs/RENCANA-1.0.2.md`](docs/RENCANA-1.0.2.md)).
+> Masih ke internet (perilaku asli, layanan masih hidup): `login.popoh5.com:510/:610`, `qsdk.t4game.com`, telemetry → **1.0.2-tes1** (prerelease) sudah dirilis; **doc SDK = SATU file lengkap: [`docs/sdk/CONFIG-SDK-ASLI.md`](docs/sdk/CONFIG-SDK-ASLI.md)** — config SDK asli terpetakan field-per-field dari dex + panen live + bukti perangkat, termasuk template config lokal yang benar.
 >
-> **`DB-Local-offline-test10.apk`** (SHA-256 `bebddbf5…`) = lapisan SDK lokal **100% file fisik**: `assets/QHinfo` (config ASLI aplikasi) diarahkan ke server lokal, +5 file respons SDK panenan RAW 1:1 sebagai `mirror/qsdk/v1/…` (**endpoint = nama file — nol route hardcode**), + fix drain body POST (lab: lama 0/6 vs baru 6/6). Semua endpoint & config kini file fisik yang bisa diedit bebas — panduan: [`docs/CONFIG-SERVER.md`](docs/CONFIG-SERVER.md). Menunggu HAR+logcat perangkat sebelum naik rilis 1.0.2.
+> **`DB-Local-offline-test10.apk`** (SHA-256 `bebddbf5…`) = lapisan SDK lokal **100% file fisik**: `assets/QHinfo` (config ASLI aplikasi) diarahkan ke server lokal, +5 file respons SDK panenan RAW 1:1 sebagai `mirror/qsdk/v1/…` (**endpoint = nama file — nol route hardcode**), + fix drain body POST (lab: lama 0/6 vs baru 6/6). Digantikan oleh rilis **1.0.2-tes1** (release `1.0.2-tes1`). Panduan config: [`docs/sdk/CONFIG-SDK-ASLI.md`](docs/sdk/CONFIG-SDK-ASLI.md).
 
 ---
 

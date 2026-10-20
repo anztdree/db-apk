@@ -1,0 +1,31 @@
+{
+ "sumber": "log/sdk.har (sesi uji perangkat APK 1.0.2-tes1, 2026-10-20 02:19 UTC)",
+ "bukti_init_proxy_verbatim": {
+  "leg_A_sdk_ke_local": {
+   "t": "2026-10-20T02:19:52.886Z",
+   "url": "http://127.0.0.1:28110/v1/system/init",
+   "status": 200,
+   "ukuran": 764,
+   "md5": "06a396d4655a44adf4e101e8519da164"
+  },
+  "leg_B_local_ke_qsdk": {
+   "t": "2026-10-20T02:19:53.123Z",
+   "url": "http://qsdk.t4game.com/v1/system/init",
+   "status": 200,
+   "ukuran": 764,
+   "md5": "06a396d4655a44adf4e101e8519da164"
+  },
+  "byte_identik": true
+ },
+ "bukti_getNotice_mirror": {
+  "t": "2026-10-20T02:19:53.361Z",
+  "url": "http://127.0.0.1:28110/v1/system/getNotice",
+  "status": 200,
+  "ukuran": 55,
+  "md5": "dfc2f19b12731c730252e917b718915e",
+  "leg_qsdk_tidak_ada": true,
+  "md5_sama_dengan_panen_live": true
+ },
+ "isi_init_perangkat_user": "{\"result\":true,\"data\":{\"payTypes\":[],\"version\":{\"versionName\":\"empty\",\"versionNo\":\"empty\",\"versionUrl\":\"empty\",\"updateTime\":\"empty\",\"isMust\":\"empty\",\"updateTips\":\"empty\"},\"productConfig\":{\"useServiceCenter\":\"0\",\"isShowFloat\":\"0\",\"showShare\":\"1\",\"title\":\"\",\"logo\":\"\",\"useSms\":\"0\",\"skinStyle\":\"0\",\"serviceInfo\":\"\",\"guestShowBind\":1,\"single_play\":0,\"adZhifuSwt\":0,\"noticeNode\":0,\"regMailVerify\":0,\"pycenttype\":0,\"onGoToPUrl\":0,\"onGoToPUrlData\":\"\",\"trashTime\":0,\"noFirebaseLog\":0,\"logEvtReport\":0},\"otherpayType\":2,\"payFast\":[],\"isNotGift\":0,\"showShare\":\"1\",\"requestIp\":\"182.9.2.96\",\"showDiscount\":0,\"nodes\":{\"deleteAccount\":0,\"serverInfo\":0,\"oneYeaerTips\":0,\"removeEmail\":0},\"loginTypes\":[\"1\",\"13\"],\"countryCode\":\"ID\",\"first_install\":0},\"error\":{\"id\":0,\"message\":\"\"}}",
+ "catatan": "requestIp=182.9.2.96 dan countryCode=ID adalah gema per-pemanggil dari server asli (perangkat user). Keduanya TIDAK dipakai koneksi oleh client (bukti dex: requestIp hanya disimpan utk getCountryInfo, countryCode respons diabaikan)."
+}

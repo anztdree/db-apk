@@ -1,0 +1,1057 @@
+================================================================================
+CLASS Lcom/quickgame/android/sdk/model/b;  extends Ljava/lang/Object;
+  FIELD Landroid/os/Parcelable$Creator; CREATOR None
+  FIELD I cointhreat None
+  FIELD Ljava/lang/String; feedtonight None
+  FIELD Ljava/lang/String; ironoriginhoblike None
+  FIELD Ljava/lang/String; nationalcommunitymissing None
+  FIELD Ljava/lang/String; seventygenom None
+  FIELD Ljava/lang/String; singersmooth None
+  FIELD I worktopichardtails None
+
+  METHOD <clinit> ()V(()V) regs=1
+    new-instance v0, Lcom/quickgame/android/sdk/model/b$cointhreat;
+    invoke-direct v0, Lcom/quickgame/android/sdk/model/b$cointhreat;-><init>()V
+    sput-object v0, Lcom/quickgame/android/sdk/model/b;->CREATOR Landroid/os/Parcelable$Creator;
+    return-void
+
+  METHOD <init> ()V(()V) regs=1
+    invoke-direct v0, Ljava/lang/Object;-><init>()V
+    return-void
+
+  METHOD describeContents ()I(()I) regs=2
+    const/4 v0, 0
+    return
+
+  METHOD writeToParcel (Landroid/os/Parcel; I)V((Landroid/os/Parcel; I)V) regs=3
+    iget v2, v0, Lcom/quickgame/android/sdk/model/b;->cointhreat I
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeInt(I)V
+    iget-object v2, v0, Lcom/quickgame/android/sdk/model/b;->singersmooth Ljava/lang/String;
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget-object v2, v0, Lcom/quickgame/android/sdk/model/b;->seventygenom Ljava/lang/String;
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget-object v2, v0, Lcom/quickgame/android/sdk/model/b;->nationalcommunitymissing Ljava/lang/String;
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget-object v2, v0, Lcom/quickgame/android/sdk/model/b;->ironoriginhoblike Ljava/lang/String;
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget-object v2, v0, Lcom/quickgame/android/sdk/model/b;->feedtonight Ljava/lang/String;
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget v2, v0, Lcom/quickgame/android/sdk/model/b;->worktopichardtails I
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeInt(I)V
+    return-void
+================================================================================
+CLASS Lcom/quickgame/android/sdk/model/d;  extends Ljava/lang/Object;
+  FIELD Landroid/os/Parcelable$Creator; CREATOR None
+  FIELD Z cointhreat None
+  FIELD Z dishbesideshockey None
+  FIELD Z feedtonight None
+  FIELD Ljava/lang/String; ironoriginhoblike None
+  FIELD Z nationalcommunitymissing None
+  FIELD Z pursetruechild None
+  FIELD Z reweavingsiamesedpropertylessnesses None
+  FIELD Ljava/lang/String; seventygenom None
+  FIELD Ljava/lang/String; singersmooth None
+  FIELD Z worktopichardtails None
+
+  METHOD <clinit> ()V(()V) regs=1
+    new-instance v0, Lcom/quickgame/android/sdk/model/d$cointhreat;
+    invoke-direct v0, Lcom/quickgame/android/sdk/model/d$cointhreat;-><init>()V
+    sput-object v0, Lcom/quickgame/android/sdk/model/d;->CREATOR Landroid/os/Parcelable$Creator;
+    return-void
+
+  METHOD <init> ()V(()V) regs=2
+    invoke-direct v1, Ljava/lang/Object;-><init>()V
+    const/4 v0, 1
+    iput-boolean v0, v1, Lcom/quickgame/android/sdk/model/d;->worktopichardtails Z
+    return-void
+
+  METHOD cointhreat (Lorg/json/JSONObject;)Lcom/quickgame/android/sdk/model/d;((Lorg/json/JSONObject;)Lcom/quickgame/android/sdk/model/d;) regs=16
+    const-string "adZhifuSwt"
+    const-string "initCZurl"
+    const-string "single_play"
+    const-string "guestShowBind"
+    const-string "isShowFloat"
+    const-string "serviceInfo"
+    const-string "useSms"
+    const-string "logo"
+    const-string "title"
+    const-string "useServiceCenter"
+    const/4 v10, 0
+    if-nez
+    return-object
+    new-instance v11, Lcom/quickgame/android/sdk/model/d;
+    invoke-direct v11, Lcom/quickgame/android/sdk/model/d;-><init>()V
+    invoke-virtual v15, v9, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    const-string "1"
+    const/4 v14, 1
+    if-eqz
+    invoke-virtual v15, v9, Lorg/json/JSONObject;->get(Ljava/lang/String;)Ljava/lang/Object;
+    move-result-object
+    invoke-virtual v13, v9, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    iput-boolean v14, v11, Lcom/quickgame/android/sdk/model/d;->cointhreat Z
+    invoke-virtual v15, v8, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v15, v8, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    iput-object v8, v11, Lcom/quickgame/android/sdk/model/d;->seventygenom Ljava/lang/String;
+    goto
+    move-exception
+    invoke-virtual v8, Ljava/lang/Exception;->printStackTrace()V
+    invoke-virtual v15, v7, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v15, v7, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-static v7, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    const-string "http"
+    invoke-virtual v7, v8, Ljava/lang/String;->startsWith(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    iput-object v7, v11, Lcom/quickgame/android/sdk/model/d;->singersmooth Ljava/lang/String;
+    goto
+    move-exception
+    invoke-virtual v7, Ljava/lang/Exception;->printStackTrace()V
+    invoke-virtual v15, v6, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v15, v6, Lorg/json/JSONObject;->get(Ljava/lang/String;)Ljava/lang/Object;
+    move-result-object
+    invoke-virtual v13, v6, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    iput-boolean v14, v11, Lcom/quickgame/android/sdk/model/d;->nationalcommunitymissing Z
+    invoke-virtual v15, v5, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    const/4 v7, 0
+    if-eqz
+    invoke-virtual v15, v5, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    iput-object v5, v11, Lcom/quickgame/android/sdk/model/d;->ironoriginhoblike Ljava/lang/String;
+    invoke-static v5, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    const/4 v5, 1
+    goto
+    const/4 v5, 0
+    iput-boolean v5, v11, Lcom/quickgame/android/sdk/model/d;->cointhreat Z
+    goto
+    move-exception
+    invoke-virtual v5, Ljava/lang/Exception;->printStackTrace()V
+    invoke-virtual v15, v4, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v15, v4, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-static v4, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    const-string "0"
+    invoke-virtual v4, v5, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    const/4 v4, 1
+    goto
+    const/4 v4, 0
+    iput-boolean v4, v11, Lcom/quickgame/android/sdk/model/d;->feedtonight Z
+    goto
+    move-exception
+    invoke-virtual v4, Ljava/lang/Exception;->printStackTrace()V
+    invoke-virtual v15, v3, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v15, v3, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-static v3, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    invoke-virtual v3, v13, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    const/4 v3, 1
+    goto
+    const/4 v3, 0
+    iput-boolean v3, v11, Lcom/quickgame/android/sdk/model/d;->worktopichardtails Z
+    goto
+    move-exception
+    invoke-virtual v3, Ljava/lang/Exception;->printStackTrace()V
+    invoke-virtual v15, v2, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v15, v2, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-static v2, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    invoke-virtual v2, v13, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    const/4 v2, 1
+    goto
+    const/4 v2, 0
+    iput-boolean v2, v11, Lcom/quickgame/android/sdk/model/d;->pursetruechild Z
+    goto
+    move-exception
+    invoke-virtual v2, Ljava/lang/Exception;->printStackTrace()V
+    invoke-virtual v15, v1, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v15, v1, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-static v1, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    invoke-virtual v1, v13, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    const/4 v1, 1
+    goto
+    const/4 v1, 0
+    iput-boolean v1, v11, Lcom/quickgame/android/sdk/model/d;->reweavingsiamesedpropertylessnesses Z
+    goto
+    move-exception
+    invoke-virtual v1, Ljava/lang/Exception;->printStackTrace()V
+    invoke-virtual v15, v0, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v15, v0, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-static v15, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    invoke-virtual v15, v13, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    goto
+    const/4 v14, 0
+    iput-boolean v14, v11, Lcom/quickgame/android/sdk/model/d;->dishbesideshockey Z
+    goto
+    move-exception
+    invoke-virtual v15, Ljava/lang/Exception;->printStackTrace()V
+    return-object
+    move-exception
+    invoke-static v15, Lcom/quickgame/android/sdk/utils/log/QGLog;->LogException(Ljava/lang/Throwable;)V
+    invoke-virtual v15, Ljava/lang/Exception;->printStackTrace()V
+    return-object
+
+  METHOD describeContents ()I(()I) regs=2
+    const/4 v0, 0
+    return
+
+  METHOD writeToParcel (Landroid/os/Parcel; I)V((Landroid/os/Parcel; I)V) regs=3
+    iget-boolean v2, v0, Lcom/quickgame/android/sdk/model/d;->cointhreat Z
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeInt(I)V
+    iget-object v2, v0, Lcom/quickgame/android/sdk/model/d;->seventygenom Ljava/lang/String;
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget-object v2, v0, Lcom/quickgame/android/sdk/model/d;->singersmooth Ljava/lang/String;
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget-boolean v2, v0, Lcom/quickgame/android/sdk/model/d;->nationalcommunitymissing Z
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeInt(I)V
+    iget-object v2, v0, Lcom/quickgame/android/sdk/model/d;->ironoriginhoblike Ljava/lang/String;
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget-boolean v2, v0, Lcom/quickgame/android/sdk/model/d;->feedtonight Z
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeInt(I)V
+    iget-boolean v2, v0, Lcom/quickgame/android/sdk/model/d;->worktopichardtails Z
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeInt(I)V
+    iget-boolean v2, v0, Lcom/quickgame/android/sdk/model/d;->pursetruechild Z
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeInt(I)V
+    iget-boolean v2, v0, Lcom/quickgame/android/sdk/model/d;->dishbesideshockey Z
+    invoke-virtual v1, v2, Landroid/os/Parcel;->writeInt(I)V
+    return-void
+================================================================================
+CLASS Lcom/quickgame/android/sdk/model/e;  extends Ljava/lang/Object;
+  FIELD Landroid/os/Parcelable$Creator; CREATOR <androguard.core.dex.EncodedValue object at 0x7ff2cf942660>
+  FIELD Ljava/lang/String; authorpair <androguard.core.dex.EncodedValue object at 0x7ff2cf9426c0>
+  FIELD Z bindcommunist <androguard.core.dex.EncodedValue object at 0x7ff2cf9426f0>
+  FIELD Z customreading <androguard.core.dex.EncodedValue object at 0x7ff2cf942720>
+  FIELD I dishbesideshockey <androguard.core.dex.EncodedValue object at 0x7ff2cf942750>
+  FIELD Z gangclothing <androguard.core.dex.EncodedValue object at 0x7ff2cf942780>
+  FIELD Z hardlinerspare <androguard.core.dex.EncodedValue object at 0x7ff2cf9427b0>
+  FIELD Z hoboismrelationbelow <androguard.core.dex.EncodedValue object at 0x7ff2cf9427e0>
+  FIELD Z influencecomparisonrestore <androguard.core.dex.EncodedValue object at 0x7ff2cf942810>
+  FIELD Z mesoamericanhochmagandies <androguard.core.dex.EncodedValue object at 0x7ff2cf942840>
+  FIELD Ljava/lang/String; porkactorcompanion <androguard.core.dex.EncodedValue object at 0x7ff2cf942870>
+  FIELD Z psalmicvolleyball None
+  FIELD I pursetruechild None
+  FIELD Z rawturn None
+  FIELD Ljava/util/List; representativehodmandodliving None
+  FIELD Lorg/json/JSONArray; reweavingsiamesedpropertylessnesses None
+  FIELD I swamppropitiates None
+  FIELD Z tidyleadership None
+  FIELD I timidcompletely None
+  FIELD I unnecessarysperrylites None
+  FIELD Ljava/lang/String; cointhreat None
+  FIELD Ljava/lang/String; feedtonight None
+  FIELD Ljava/lang/String; ironoriginhoblike None
+  FIELD Ljava/util/ArrayList; nationalcommunitymissing None
+  FIELD Lcom/quickgame/android/sdk/model/g; seventygenom None
+  FIELD Lcom/quickgame/android/sdk/model/d; singersmooth None
+  FIELD Lcom/quickgame/android/sdk/pursetruechild/cointhreat; worktopichardtails None
+
+  METHOD <clinit> ()V(()V) regs=1
+    new-instance v0, Lcom/quickgame/android/sdk/model/e$cointhreat;
+    invoke-direct v0, Lcom/quickgame/android/sdk/model/e$cointhreat;-><init>()V
+    sput-object v0, Lcom/quickgame/android/sdk/model/e;->CREATOR Landroid/os/Parcelable$Creator;
+    return-void
+
+  METHOD <init> ()V(()V) regs=2
+    invoke-direct v1, Ljava/lang/Object;-><init>()V
+    const-string ""
+    iput-object v0, v1, Lcom/quickgame/android/sdk/model/e;->ironoriginhoblike Ljava/lang/String;
+    iput-object v0, v1, Lcom/quickgame/android/sdk/model/e;->feedtonight Ljava/lang/String;
+    return-void
+
+  METHOD <init> (Lcom/quickgame/android/sdk/model/e$cointhreat;)V((Lcom/quickgame/android/sdk/model/e$cointhreat;)V) regs=2
+    invoke-direct v0, Ljava/lang/Object;-><init>()V
+    const-string ""
+    iput-object v1, v0, Lcom/quickgame/android/sdk/model/e;->ironoriginhoblike Ljava/lang/String;
+    iput-object v1, v0, Lcom/quickgame/android/sdk/model/e;->feedtonight Ljava/lang/String;
+    return-void
+
+  METHOD cointhreat (Ljava/lang/String;)Lcom/quickgame/android/sdk/model/e;((Ljava/lang/String;)Lcom/quickgame/android/sdk/model/e;) regs=32
+    const-string "downloadUrl"
+    const-string "title"
+    const-string "version"
+    const-string "lightPackage"
+    const-string ", "
+    const-string "payFast"
+    const-string "otherpayType"
+    const-string "productConfig"
+    sget-object v8, Lcom/quickgame/android/sdk/feedtonight$seventygenom;->cointhreat Lcom/quickgame/android/sdk/feedtonight;
+    const-string "payTypes"
+    const-string "requestIp"
+    const-string "showDiscount"
+    const-string "serverInfoData"
+    const-string "showShare"
+    const-string "isNotGift"
+    const-string "removeEmail"
+    move-object/from16
+    const-string "deleteAccount"
+    move-object/from16
+    const-string "serverInfo"
+    move-object/from16
+    const-string "loginTypes"
+    move-object/from16
+    const-string "nodes"
+    move-object/from16
+    const-string "id"
+    move-object/from16
+    const-string "webUrl"
+    invoke-static/range v31, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    move-result
+    const/16 v23, 0
+    if-eqz
+    return-object
+    move-object/from16
+    new-instance v4, Lcom/quickgame/android/sdk/model/e;
+    invoke-direct v4, Lcom/quickgame/android/sdk/model/e;-><init>()V
+    move-object/from16
+    new-instance v4, Lorg/json/JSONObject;
+    move-object/from16
+    move-object/from16
+    invoke-direct v4, v9, Lorg/json/JSONObject;-><init>(Ljava/lang/String;)V
+    invoke-virtual v4, v5, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    move-object/from16
+    const-string "QGProductInfo"
+    const/16 v27, 0
+    move-object/from16
+    const/4 v7, 1
+    if-eqz
+    invoke-virtual v4, v5, Lorg/json/JSONObject;->getJSONObject(Ljava/lang/String;)Lorg/json/JSONObject;
+    move-result-object
+    invoke-virtual v5, v1, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v5, v1, Lorg/json/JSONObject;->getInt(Ljava/lang/String;)I
+    move-result
+    sput v1, Lcom/quickgame/android/sdk/model/e;->swamppropitiates I
+    if-ne
+    new-instance v1, Ljava/util/ArrayList;
+    invoke-direct v1, Ljava/util/ArrayList;-><init>()V
+    sput-object v1, Lcom/quickgame/android/sdk/model/e;->representativehodmandodliving Ljava/util/List;
+    invoke-virtual v5, v12, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v5, v12, Lorg/json/JSONObject;->getJSONArray(Ljava/lang/String;)Lorg/json/JSONArray;
+    move-result-object
+    new-instance v9, Ljava/lang/StringBuilder;
+    invoke-direct v9, Ljava/lang/StringBuilder;-><init>()V
+    const-string "serverInfoData.length=="
+    invoke-virtual v9, v12, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v1, Lorg/json/JSONArray;->length()I
+    move-result
+    invoke-virtual v9, v12, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    invoke-virtual v9, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v9, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    invoke-virtual v1, Lorg/json/JSONArray;->length()I
+    move-result
+    if-lez
+    new-instance v9, Ljava/lang/StringBuilder;
+    invoke-direct v9, Ljava/lang/StringBuilder;-><init>()V
+    const-string "serverInfoData=="
+    invoke-virtual v9, v12, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v1, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-virtual v9, v12, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v9, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v9, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    const/4 v9, 0
+    invoke-virtual v1, Lorg/json/JSONArray;->length()I
+    move-result
+    if-ge
+    new-instance v12, Ljava/util/HashMap;
+    invoke-direct v12, Ljava/util/HashMap;-><init>()V
+    invoke-virtual v1, v9, Lorg/json/JSONArray;->get(I)Ljava/lang/Object;
+    move-result-object
+    move-object/from16
+    check-cast
+    move-object/from16
+    new-instance v1, Ljava/lang/StringBuilder;
+    invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+    move-object/from16
+    const-string "one==="
+    invoke-virtual v1, v11, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v7, Lorg/json/JSONObject;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-virtual v1, v11, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v1, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    new-instance v1, Ljava/lang/StringBuilder;
+    invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+    const-string "one id==="
+    invoke-virtual v1, v11, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v7, v6, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-virtual v1, v11, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v1, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    new-instance v1, Ljava/lang/StringBuilder;
+    invoke-direct v1, Ljava/lang/StringBuilder;-><init>()V
+    const-string "one title==="
+    invoke-virtual v1, v11, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v7, v0, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-virtual v1, v11, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v1, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v1, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    invoke-virtual v7, v6, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-virtual v12, v6, v1, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+    const-string "name"
+    invoke-virtual v7, v0, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-virtual v12, v1, v7, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+    const-string "boolean"
+    sget-object v7, Ljava/lang/Boolean;->TRUE Ljava/lang/Boolean;
+    invoke-virtual v12, v1, v7, Ljava/util/HashMap;->put(Ljava/lang/Object; Ljava/lang/Object;)Ljava/lang/Object;
+    sget-object v1, Lcom/quickgame/android/sdk/model/e;->representativehodmandodliving Ljava/util/List;
+    invoke-interface v1, v12, Ljava/util/List;->add(Ljava/lang/Object;)Z
+    add-int/lit8
+    move-object/from16
+    move-object/from16
+    const/4 v7, 1
+    goto/16
+    move-object/from16
+    new-instance v0, Ljava/lang/StringBuilder;
+    invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+    const-string "final list : "
+    invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    sget-object v1, Lcom/quickgame/android/sdk/model/e;->representativehodmandodliving Ljava/util/List;
+    invoke-virtual v1, Ljava/lang/Object;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v0, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    goto
+    move-object/from16
+    invoke-virtual v5, v2, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v5, v2, Lorg/json/JSONObject;->getInt(Ljava/lang/String;)I
+    invoke-virtual v5, v15, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v5, v15, Lorg/json/JSONObject;->getInt(Ljava/lang/String;)I
+    move-result
+    const/4 v1, 1
+    if-ne
+    const/4 v0, 1
+    goto
+    const/4 v0, 0
+    sput-boolean v0, Lcom/quickgame/android/sdk/model/e;->rawturn Z
+    goto
+    move-object/from16
+    invoke-virtual v4, v3, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    sput v27, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    invoke-virtual v4, v3, Lorg/json/JSONObject;->getJSONArray(Ljava/lang/String;)Lorg/json/JSONArray;
+    move-result-object
+    sput-object v0, Lcom/quickgame/android/sdk/model/e;->reweavingsiamesedpropertylessnesses Lorg/json/JSONArray;
+    new-instance v0, Ljava/lang/StringBuilder;
+    invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+    const-string "loginTypes==="
+    invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    sget-object v1, Lcom/quickgame/android/sdk/model/e;->reweavingsiamesedpropertylessnesses Lorg/json/JSONArray;
+    invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+    invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v0, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    sget-object v0, Lcom/quickgame/android/sdk/model/e;->reweavingsiamesedpropertylessnesses Lorg/json/JSONArray;
+    invoke-virtual v0, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+    move-result-object
+    const-string "12"
+    invoke-virtual v0, v1, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->psalmicvolleyball Z
+    goto
+    const/4 v0, 1
+    sput-boolean v0, Lcom/quickgame/android/sdk/model/e;->psalmicvolleyball Z
+    sput-boolean v0, Lcom/quickgame/android/sdk/model/e;->rawturn Z
+    sget-object v0, Lcom/quickgame/android/sdk/model/e;->reweavingsiamesedpropertylessnesses Lorg/json/JSONArray;
+    invoke-virtual v0, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+    move-result-object
+    const-string "9"
+    invoke-virtual v0, v1, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->hardlinerspare Z
+    goto
+    sget v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    const/4 v1, 1
+    add-int/2addr
+    sput v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    sput-boolean v1, Lcom/quickgame/android/sdk/model/e;->hardlinerspare Z
+    sget-object v0, Lcom/quickgame/android/sdk/model/e;->reweavingsiamesedpropertylessnesses Lorg/json/JSONArray;
+    invoke-virtual v0, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+    move-result-object
+    const-string "6"
+    invoke-virtual v0, v1, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->mesoamericanhochmagandies Z
+    goto
+    sget v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    const/4 v1, 1
+    add-int/2addr
+    sput v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    sput-boolean v1, Lcom/quickgame/android/sdk/model/e;->mesoamericanhochmagandies Z
+    sget-object v0, Lcom/quickgame/android/sdk/model/e;->reweavingsiamesedpropertylessnesses Lorg/json/JSONArray;
+    invoke-virtual v0, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+    move-result-object
+    const-string "8"
+    invoke-virtual v0, v1, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->customreading Z
+    goto
+    invoke-static Lcom/google/android/gms/common/GoogleApiAvailability;->getInstance()Lcom/google/android/gms/common/GoogleApiAvailability;
+    move-result-object
+    invoke-virtual v8, Lcom/quickgame/android/sdk/feedtonight;->rawturn()Landroid/content/Context;
+    move-result-object
+    invoke-virtual v0, v1, Lcom/google/android/gms/common/GoogleApiAvailability;->isGooglePlayServicesAvailable(Landroid/content/Context;)I
+    move-result
+    if-nez
+    const-string "support google login"
+    invoke-static v10, v0, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    sget v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    const/4 v1, 1
+    add-int/2addr
+    sput v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    sput-boolean v1, Lcom/quickgame/android/sdk/model/e;->customreading Z
+    goto
+    const-string "not support google login"
+    invoke-static v10, v0, Landroid/util/Log;->e(Ljava/lang/String; Ljava/lang/String;)I
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->customreading Z
+    sget-object v0, Lcom/quickgame/android/sdk/model/e;->reweavingsiamesedpropertylessnesses Lorg/json/JSONArray;
+    invoke-virtual v0, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+    move-result-object
+    const-string "17"
+    invoke-virtual v0, v1, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->gangclothing Z
+    goto
+    invoke-static Lcom/google/android/gms/common/GoogleApiAvailability;->getInstance()Lcom/google/android/gms/common/GoogleApiAvailability;
+    move-result-object
+    invoke-virtual v8, Lcom/quickgame/android/sdk/feedtonight;->rawturn()Landroid/content/Context;
+    move-result-object
+    invoke-virtual v0, v1, Lcom/google/android/gms/common/GoogleApiAvailability;->isGooglePlayServicesAvailable(Landroid/content/Context;)I
+    move-result
+    if-nez
+    const-string "support google play game"
+    invoke-static v10, v0, Landroid/util/Log;->e(Ljava/lang/String; Ljava/lang/String;)I
+    sget v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    const/4 v1, 1
+    add-int/2addr
+    sput v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    sput-boolean v1, Lcom/quickgame/android/sdk/model/e;->gangclothing Z
+    goto
+    const-string "not support google play game"
+    invoke-static v10, v0, Landroid/util/Log;->e(Ljava/lang/String; Ljava/lang/String;)I
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->gangclothing Z
+    sget-object v0, Lcom/quickgame/android/sdk/model/e;->reweavingsiamesedpropertylessnesses Lorg/json/JSONArray;
+    invoke-virtual v0, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+    move-result-object
+    const-string ""1""
+    invoke-virtual v0, v1, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    move-result
+    sput-boolean v0, Lcom/quickgame/android/sdk/model/e;->influencecomparisonrestore Z
+    sget-object v0, Lcom/quickgame/android/sdk/model/e;->reweavingsiamesedpropertylessnesses Lorg/json/JSONArray;
+    invoke-virtual v0, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+    move-result-object
+    const-string "10"
+    invoke-virtual v0, v1, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->hoboismrelationbelow Z
+    goto
+    sget v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    const/4 v1, 1
+    add-int/2addr
+    sput v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    sput-boolean v1, Lcom/quickgame/android/sdk/model/e;->hoboismrelationbelow Z
+    sget-object v0, Lcom/quickgame/android/sdk/model/e;->reweavingsiamesedpropertylessnesses Lorg/json/JSONArray;
+    invoke-virtual v0, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+    move-result-object
+    const-string "11"
+    invoke-virtual v0, v1, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->tidyleadership Z
+    goto
+    sget v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    const/4 v1, 1
+    add-int/2addr
+    sput v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    sput-boolean v1, Lcom/quickgame/android/sdk/model/e;->tidyleadership Z
+    sget-object v0, Lcom/quickgame/android/sdk/model/e;->reweavingsiamesedpropertylessnesses Lorg/json/JSONArray;
+    invoke-virtual v0, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+    move-result-object
+    const-string "14"
+    invoke-virtual v0, v1, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->bindcommunist Z
+    goto
+    sget v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    const/4 v1, 1
+    add-int/2addr
+    sput v0, Lcom/quickgame/android/sdk/model/e;->dishbesideshockey I
+    sput-boolean v1, Lcom/quickgame/android/sdk/model/e;->bindcommunist Z
+    goto
+    const-string "missing loginTypes，only show default fb login"
+    invoke-static v10, v0, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    const/4 v0, 1
+    sput-boolean v0, Lcom/quickgame/android/sdk/model/e;->mesoamericanhochmagandies Z
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->customreading Z
+    sput-boolean v27, Lcom/quickgame/android/sdk/model/e;->hardlinerspare Z
+    invoke-virtual v4, v14, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v4, v14, Lorg/json/JSONObject;->getInt(Ljava/lang/String;)I
+    move-result
+    sput v0, Lcom/quickgame/android/sdk/model/e;->pursetruechild I
+    invoke-virtual v4, v13, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v4, v13, Lorg/json/JSONObject;->getInt(Ljava/lang/String;)I
+    move-result
+    sput v0, Lcom/quickgame/android/sdk/model/e;->unnecessarysperrylites I
+    move-object/from16
+    invoke-virtual v4, v0, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v4, v0, Lorg/json/JSONObject;->getInt(Ljava/lang/String;)I
+    move-result
+    sput v0, Lcom/quickgame/android/sdk/model/e;->timidcompletely I
+    move-object/from16
+    invoke-virtual v4, v0, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v4, v0, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    if-eqz
+    invoke-virtual v4, v0, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    sput-object v0, Lcom/quickgame/android/sdk/model/e;->porkactorcompanion Ljava/lang/String;
+    new-instance v0, Ljava/lang/StringBuilder;
+    invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+    const-string "webUrl="
+    invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    sget-object v1, Lcom/quickgame/android/sdk/model/e;->porkactorcompanion Ljava/lang/String;
+    invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v0, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    move-object/from16
+    invoke-virtual v4, v0, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v4, v0, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    sput-object v0, Lcom/quickgame/android/sdk/model/e;->authorpair Ljava/lang/String;
+    move-object/from16
+    invoke-virtual v4, v0, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v4, v0, Lorg/json/JSONObject;->getJSONArray(Ljava/lang/String;)Lorg/json/JSONArray;
+    move-result-object
+    new-instance v0, Ljava/lang/StringBuilder;
+    invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+    const-string "payTypes length = "
+    invoke-virtual v0, v2, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v1, Lorg/json/JSONArray;->length()I
+    move-result
+    invoke-virtual v0, v2, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v0, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    new-instance v0, Ljava/util/ArrayList;
+    invoke-direct v0, Ljava/util/ArrayList;-><init>()V
+    move-object/from16
+    iput-object v0, v2, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+    const/4 v3, 0
+    invoke-virtual v1, Lorg/json/JSONArray;->length()I
+    move-result
+    if-ge
+    invoke-virtual v1, v3, Lorg/json/JSONArray;->getJSONObject(I)Lorg/json/JSONObject;
+    move-result-object
+    if-nez
+    goto
+    new-instance v5, Lcom/quickgame/android/sdk/bean/a;
+    invoke-direct v5, Lcom/quickgame/android/sdk/bean/a;-><init>()V
+    const-string "payTypeId"
+    invoke-virtual v0, v6, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-static v6, Ljava/lang/Integer;->valueOf(Ljava/lang/String;)Ljava/lang/Integer;
+    move-result-object
+    invoke-virtual v6, Ljava/lang/Integer;->intValue()I
+    move-result
+    iput v6, v5, Lcom/quickgame/android/sdk/bean/a;->cointhreat I
+    const-string "payName"
+    invoke-virtual v0, v6, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    iput-object v0, v5, Lcom/quickgame/android/sdk/bean/a;->seventygenom Ljava/lang/String;
+    goto
+    move-exception
+    invoke-virtual v0, Lorg/json/JSONException;->printStackTrace()V
+    invoke-static v0, Lcom/quickgame/android/sdk/utils/log/QGLog;->LogException(Ljava/lang/Throwable;)V
+    move-object/from16
+    if-eqz
+    iget-object v0, v2, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+    invoke-virtual v0, v5, Ljava/util/ArrayList;->add(Ljava/lang/Object;)Z
+    new-instance v0, Ljava/lang/StringBuilder;
+    invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+    const-string "QGPayType "
+    invoke-virtual v0, v6, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    iget v6, v5, Lcom/quickgame/android/sdk/bean/a;->cointhreat I
+    invoke-virtual v0, v6, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    move-object/from16
+    invoke-virtual v0, v6, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    iget-object v7, v5, Lcom/quickgame/android/sdk/bean/a;->seventygenom Ljava/lang/String;
+    invoke-virtual v0, v7, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v0, v6, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    iget-object v5, v5, Lcom/quickgame/android/sdk/bean/a;->singersmooth Ljava/lang/String;
+    invoke-virtual v0, v5, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v0, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    goto
+    move-object/from16
+    add-int/lit8
+    move-object/from16
+    goto
+    iget-object v0, v2, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+    invoke-virtual v0, Ljava/util/ArrayList;->size()I
+    move-result
+    if-nez
+    const-string "pay type is null"
+    invoke-static v10, v0, Lcom/quickgame/android/sdk/utils/log/QGLog;->e(Ljava/lang/String; Ljava/lang/String;)V
+    move-object/from16
+    invoke-virtual v4, v1, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v4, v1, Lorg/json/JSONObject;->getJSONObject(Ljava/lang/String;)Lorg/json/JSONObject;
+    move-result-object
+    invoke-static v0, Lcom/quickgame/android/sdk/model/d;->cointhreat(Lorg/json/JSONObject;)Lcom/quickgame/android/sdk/model/d;
+    move-result-object
+    iput-object v0, v2, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+    move-object/from16
+    invoke-virtual v4, v1, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v4, v1, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    iput-object v0, v2, Lcom/quickgame/android/sdk/model/e;->ironoriginhoblike Ljava/lang/String;
+    new-instance v0, Ljava/lang/StringBuilder;
+    invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+    const-string "otherpayType payWay = "
+    invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    iget-object v1, v2, Lcom/quickgame/android/sdk/model/e;->ironoriginhoblike Ljava/lang/String;
+    invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v0, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    move-object/from16
+    invoke-virtual v4, v1, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    invoke-virtual v4, v1, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    iput-object v0, v2, Lcom/quickgame/android/sdk/model/e;->feedtonight Ljava/lang/String;
+    new-instance v0, Ljava/lang/StringBuilder;
+    invoke-direct v0, Ljava/lang/StringBuilder;-><init>()V
+    const-string "payFast = "
+    invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    iget-object v1, v2, Lcom/quickgame/android/sdk/model/e;->feedtonight Ljava/lang/String;
+    invoke-virtual v0, v1, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual v0, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object
+    invoke-static v10, v0, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    move-object/from16
+    invoke-virtual v4, v1, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    const-string "have lightPackage"
+    invoke-static v10, v0, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    invoke-virtual v4, v1, Lorg/json/JSONObject;->getJSONObject(Ljava/lang/String;)Lorg/json/JSONObject;
+    move-result-object
+    new-instance v1, Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+    invoke-direct v1, Lcom/quickgame/android/sdk/pursetruechild/cointhreat;-><init>()V
+    iput-object v1, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+    const-string "1"
+    const-string "mustUpdate"
+    invoke-virtual v0, v3, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-virtual v1, v3, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    iget-object v1, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+    invoke-static v1, Ljava/util/Objects;->requireNonNull(Ljava/lang/Object;)Ljava/lang/Object;
+    iget-object v1, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+    const-string "packageName"
+    invoke-virtual v0, v3, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
+    invoke-static v1, Ljava/util/Objects;->requireNonNull(Ljava/lang/Object;)Ljava/lang/Object;
+    iget-object v1, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+    const-string "versionNum"
+    invoke-virtual v0, v3, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-static v3, Ljava/lang/Integer;->parseInt(Ljava/lang/String;)I
+    invoke-static v1, Ljava/util/Objects;->requireNonNull(Ljava/lang/Object;)Ljava/lang/Object;
+    iget-object v1, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+    const-string "signKey"
+    invoke-virtual v0, v3, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
+    invoke-static v1, Ljava/util/Objects;->requireNonNull(Ljava/lang/Object;)Ljava/lang/Object;
+    move-object/from16
+    invoke-virtual v0, v1, Lorg/json/JSONObject;->has(Ljava/lang/String;)Z
+    move-result
+    if-eqz
+    const-string "lightPackage has downloadUrl"
+    invoke-static v10, v3, Landroid/util/Log;->d(Ljava/lang/String; Ljava/lang/String;)I
+    iget-object v3, v2, Lcom/quickgame/android/sdk/model/e;->worktopichardtails Lcom/quickgame/android/sdk/pursetruechild/cointhreat;
+    invoke-virtual v0, v1, Lorg/json/JSONObject;->optString(Ljava/lang/String;)Ljava/lang/String;
+    invoke-static v3, Ljava/util/Objects;->requireNonNull(Ljava/lang/Object;)Ljava/lang/Object;
+    move-object/from16
+    invoke-virtual v4, v1, Lorg/json/JSONObject;->getJSONObject(Ljava/lang/String;)Lorg/json/JSONObject;
+    move-result-object
+    invoke-static v0, Lcom/quickgame/android/sdk/model/g;->cointhreat(Lorg/json/JSONObject;)Lcom/quickgame/android/sdk/model/g;
+    move-result-object
+    if-nez
+    const-string "version is null"
+    invoke-static v1, v3, Lcom/quickgame/android/sdk/utils/log/QGLog;->e(Ljava/lang/String; Ljava/lang/String;)V
+    iput-object v0, v2, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+    goto
+    move-exception
+    invoke-virtual v0, Ljava/lang/Exception;->printStackTrace()V
+    return-object
+    const-string "pay type no key"
+    invoke-static v10, v0, Lcom/quickgame/android/sdk/utils/log/QGLog;->e(Ljava/lang/String; Ljava/lang/String;)V
+    return-object
+    move-exception
+    invoke-static v0, Lcom/quickgame/android/sdk/utils/log/QGLog;->LogException(Ljava/lang/Throwable;)V
+    invoke-virtual v0, Lorg/json/JSONException;->printStackTrace()V
+    return-object
+
+  METHOD describeContents ()I(()I) regs=2
+    const/4 v0, 0
+    return
+
+  METHOD writeToParcel (Landroid/os/Parcel; I)V((Landroid/os/Parcel; I)V) regs=6
+    iget-object v5, v3, Lcom/quickgame/android/sdk/model/e;->cointhreat Ljava/lang/String;
+    invoke-virtual v4, v5, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget-object v5, v3, Lcom/quickgame/android/sdk/model/e;->seventygenom Lcom/quickgame/android/sdk/model/g;
+    const/4 v0, 1
+    invoke-virtual v4, v5, v0, Landroid/os/Parcel;->writeParcelable(Landroid/os/Parcelable; I)V
+    iget-object v5, v3, Lcom/quickgame/android/sdk/model/e;->singersmooth Lcom/quickgame/android/sdk/model/d;
+    invoke-virtual v4, v5, v0, Landroid/os/Parcel;->writeParcelable(Landroid/os/Parcelable; I)V
+    iget-object v5, v3, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+    invoke-virtual v5, Ljava/util/ArrayList;->size()I
+    move-result
+    new-array v5, v5, [Lcom/quickgame/android/sdk/bean/a;
+    const/4 v1, 0
+    iget-object v2, v3, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+    invoke-virtual v2, Ljava/util/ArrayList;->size()I
+    move-result
+    if-ge
+    iget-object v2, v3, Lcom/quickgame/android/sdk/model/e;->nationalcommunitymissing Ljava/util/ArrayList;
+    invoke-virtual v2, v1, Ljava/util/ArrayList;->get(I)Ljava/lang/Object;
+    move-result-object
+    check-cast
+    aput-object
+    add-int/lit8
+    goto
+    invoke-virtual v4, v5, v0, Landroid/os/Parcel;->writeParcelableArray([Landroid/os/Parcelable; I)V
+    return-void
+================================================================================
+CLASS Lcom/quickgame/android/sdk/model/g;  extends Ljava/lang/Object;
+  FIELD Landroid/os/Parcelable$Creator; CREATOR None
+  FIELD J cointhreat None
+  FIELD Z ironoriginhoblike None
+  FIELD Ljava/lang/String; nationalcommunitymissing None
+  FIELD Ljava/lang/String; seventygenom None
+  FIELD Ljava/lang/String; singersmooth None
+
+  METHOD <clinit> ()V(()V) regs=1
+    new-instance v0, Lcom/quickgame/android/sdk/model/g$cointhreat;
+    invoke-direct v0, Lcom/quickgame/android/sdk/model/g$cointhreat;-><init>()V
+    sput-object v0, Lcom/quickgame/android/sdk/model/g;->CREATOR Landroid/os/Parcelable$Creator;
+    return-void
+
+  METHOD <init> ()V(()V) regs=1
+    invoke-direct v0, Ljava/lang/Object;-><init>()V
+    return-void
+
+  METHOD cointhreat (Lorg/json/JSONObject;)Lcom/quickgame/android/sdk/model/g;((Lorg/json/JSONObject;)Lcom/quickgame/android/sdk/model/g;) regs=6
+    const-string "empty"
+    const/4 v1, 0
+    if-nez
+    return-object
+    new-instance v2, Lcom/quickgame/android/sdk/model/g;
+    invoke-direct v2, Lcom/quickgame/android/sdk/model/g;-><init>()V
+    const-string "versionNo"
+    invoke-virtual v5, v3, Lorg/json/JSONObject;->get(Ljava/lang/String;)Ljava/lang/Object;
+    move-result-object
+    if-eqz
+    invoke-virtual v0, v3, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-nez
+    instance-of
+    if-nez
+    goto/16
+    check-cast
+    invoke-static v3, Ljava/lang/Integer;->valueOf(Ljava/lang/String;)Ljava/lang/Integer;
+    move-result-object
+    invoke-virtual v3, Ljava/lang/Integer;->intValue()I
+    move-result
+    int-to-long
+    iput-wide v3, v2, Lcom/quickgame/android/sdk/model/g;->cointhreat J
+    const-string "versionName"
+    invoke-virtual v5, v3, Lorg/json/JSONObject;->get(Ljava/lang/String;)Ljava/lang/Object;
+    move-result-object
+    if-eqz
+    instance-of
+    if-eqz
+    invoke-virtual v0, v3, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    goto/16
+    check-cast
+    iput-object v3, v2, Lcom/quickgame/android/sdk/model/g;->seventygenom Ljava/lang/String;
+    const-string "versionUrl"
+    invoke-virtual v5, v3, Lorg/json/JSONObject;->get(Ljava/lang/String;)Ljava/lang/Object;
+    move-result-object
+    if-eqz
+    instance-of
+    if-eqz
+    invoke-virtual v0, v3, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    goto
+    check-cast
+    iput-object v3, v2, Lcom/quickgame/android/sdk/model/g;->singersmooth Ljava/lang/String;
+    const-string "isMust"
+    invoke-virtual v5, v3, Lorg/json/JSONObject;->get(Ljava/lang/String;)Ljava/lang/Object;
+    move-result-object
+    if-eqz
+    invoke-virtual v0, v3, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    goto
+    const-string "1"
+    invoke-virtual v4, v3, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-nez
+    instance-of
+    if-eqz
+    sget-object v4, Ljava/lang/Boolean;->TRUE Ljava/lang/Boolean;
+    invoke-virtual v3, v4, Ljava/lang/Object;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    goto
+    const/4 v3, 0
+    goto
+    const/4 v3, 1
+    iput-boolean v3, v2, Lcom/quickgame/android/sdk/model/g;->ironoriginhoblike Z
+    const-string "updateTips"
+    invoke-virtual v5, v3, Lorg/json/JSONObject;->getString(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object
+    invoke-static v3, Landroid/text/TextUtils;->isEmpty(Ljava/lang/CharSequence;)Z
+    move-result
+    if-nez
+    invoke-virtual v0, v3, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-eqz
+    goto
+    iput-object v3, v2, Lcom/quickgame/android/sdk/model/g;->nationalcommunitymissing Ljava/lang/String;
+    goto
+    const-string ""
+    iput-object v3, v2, Lcom/quickgame/android/sdk/model/g;->nationalcommunitymissing Ljava/lang/String;
+    const-string "updateTime"
+    invoke-virtual v5, v3, Lorg/json/JSONObject;->get(Ljava/lang/String;)Ljava/lang/Object;
+    move-result-object
+    if-eqz
+    invoke-virtual v0, v5, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result
+    if-nez
+    instance-of
+    if-nez
+    goto
+    check-cast
+    invoke-static v5, Ljava/lang/Long;->valueOf(Ljava/lang/String;)Ljava/lang/Long;
+    move-result-object
+    invoke-virtual v5, Ljava/lang/Long;->longValue()J
+    return-object
+    return-object
+    move-exception
+    invoke-virtual v5, Lorg/json/JSONException;->printStackTrace()V
+    invoke-static v5, Lcom/quickgame/android/sdk/utils/log/QGLog;->LogException(Ljava/lang/Throwable;)V
+    return-object
+
+  METHOD describeContents ()I(()I) regs=2
+    const/4 v0, 0
+    return
+
+  METHOD writeToParcel (Landroid/os/Parcel; I)V((Landroid/os/Parcel; I)V) regs=5
+    iget-wide v0, v2, Lcom/quickgame/android/sdk/model/g;->cointhreat J
+    invoke-virtual v3, v0, v1, Landroid/os/Parcel;->writeLong(J)V
+    iget-object v4, v2, Lcom/quickgame/android/sdk/model/g;->seventygenom Ljava/lang/String;
+    invoke-virtual v3, v4, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget-object v4, v2, Lcom/quickgame/android/sdk/model/g;->singersmooth Ljava/lang/String;
+    invoke-virtual v3, v4, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget-object v4, v2, Lcom/quickgame/android/sdk/model/g;->nationalcommunitymissing Ljava/lang/String;
+    invoke-virtual v3, v4, Landroid/os/Parcel;->writeString(Ljava/lang/String;)V
+    iget-boolean v4, v2, Lcom/quickgame/android/sdk/model/g;->ironoriginhoblike Z
+    invoke-virtual v3, v4, Landroid/os/Parcel;->writeInt(I)V
+    return-void

@@ -1,0 +1,55 @@
+
+Lcom/quickgame/android/sdk/unnecessarysperrylites/seventygenom; -> singersmooth (Ljava/lang/String;)Ljava/lang/String;
+  0000  const/4              v0, 0
+  0001  const-string         v1, "MD5"
+  0002  invoke-static        v1, Ljava/security/MessageDigest;->getInstance(Ljava/lang/String;)Ljava/security/MessageDigest;
+  0003  move-result-object   v0
+  0004  invoke-virtual       v0, Ljava/security/MessageDigest;->reset()V
+  0005  const-string         v1, "UTF-8"
+  0006  invoke-virtual       v4, v1, Ljava/lang/String;->getBytes(Ljava/lang/String;)[B
+  0007  move-result-object   v4
+  0008  invoke-virtual       v0, v4, Ljava/security/MessageDigest;->update([B)V
+  0009  goto                 +5h
+  0010  move-exception       v4
+  0011  invoke-virtual       v4, Ljava/lang/Exception;->printStackTrace()V
+  0012  invoke-virtual       v0, Ljava/security/MessageDigest;->digest()[B
+  0013  move-result-object   v4
+  0014  new-instance         v0, Ljava/lang/StringBuffer;
+  0015  invoke-direct        v0, Ljava/lang/StringBuffer;-><init>()V
+  0016  const/4              v1, 0
+  0017  array-length         v2, v4
+  0018  if-ge                v1, v2, +030h
+  0019  aget-byte            v2, v4, v1
+  0020  and-int/lit16        v2, v2, 255
+  0021  invoke-static        v2, Ljava/lang/Integer;->toHexString(I)Ljava/lang/String;
+  0022  move-result-object   v2
+  0023  invoke-virtual       v2, Ljava/lang/String;->length()I
+  0024  move-result          v2
+  0025  const/4              v3, 1
+  0026  if-ne                v2, v3, +013h
+  0027  const-string         v2, "0"
+  0028  invoke-virtual       v0, v2, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+  0029  aget-byte            v2, v4, v1
+  0030  and-int/lit16        v2, v2, 255
+  0031  invoke-static        v2, Ljava/lang/Integer;->toHexString(I)Ljava/lang/String;
+  0032  move-result-object   v2
+  0033  invoke-virtual       v0, v2, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+  0034  goto                 +ch
+  0035  aget-byte            v2, v4, v1
+  0036  and-int/lit16        v2, v2, 255
+  0037  invoke-static        v2, Ljava/lang/Integer;->toHexString(I)Ljava/lang/String;
+  0038  move-result-object   v2
+  0039  invoke-virtual       v0, v2, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+  0040  add-int/lit8         v1, v1, 1
+  0041  goto                 -30h
+  0042  invoke-virtual       v0, Ljava/lang/StringBuffer;->toString()Ljava/lang/String;
+  0043  move-result-object   v4
+  0044  return-object        v4
+
+=== PENULIS splashabsolute ===
+  Lcointhreat/seventygenom/cointhreat/bindcommunist/splashabsolute; -> <clinit> [sput-object]
+  Lcointhreat/seventygenom/cointhreat/bindcommunist/splashabsolute; -> <clinit> [sput-boolean]
+  Lcointhreat/seventygenom/cointhreat/bindcommunist/splashabsolute; -> seventygenom [sput-object]
+  Lcointhreat/seventygenom/cointhreat/bindcommunist/splashabsolute; -> seventygenom [sput-boolean]
+  Lcointhreat/seventygenom/cointhreat/unnecessarysperrylites/customreading; -> <clinit> [sput-object]
+  Lcom/quickgame/android/sdk/singersmooth; -> cointhreat [sput-object]
