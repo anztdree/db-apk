@@ -330,7 +330,7 @@ POST base+"/v1/…"  CT: application/x-www-form-urlencoded   body: sv=v2&data=�
 | Kategori | Endpoint |
 |---|---|
 | **system (config)** | `init` ✅ · `getNotice` ✅ · `getAgreement` ✅ · `dmsg` (butuh func_code) · `onNewToken` (push) |
-| **user (sesi/akun)** | `registerVisitor` ✅ **MATERI LIVE** · `registerUser` ✅ sukses asli (satu-kali; panen ulang = 40008) · `ckRegVistor` ✅ · `autoLogin` (format = registerVisitor, parser sama) · `loginByName` ✅ **MATERI LIVE** · `userLoginByOtherSdk` · `findPassByEmail` · `sendCodeByEmail` · `actCdKey` · `postGooglePlayVerify` · `getServerAgreement` (butuh agmId) |
+| **user (sesi/akun)** | `registerVisitor` ✅ **MATERI LIVE** · `registerUser` ✅ sukses asli (satu-kali; panen ulang = 40008) · `ckRegVistor` ✅ · `autoLogin` ✅ **DIIMPLEMENTASI 1.0.3** (format = registerVisitor — terbukti parser dex; validasi authToken terbitan, Opsi A setia server asli; lihat `BUILD-1.0.3.md`) · `loginByName` ✅ **MATERI LIVE** · `userLoginByOtherSdk` · `findPassByEmail` · `sendCodeByEmail` · `actCdKey` · `postGooglePlayVerify` · `getServerAgreement` (butuh agmId) |
 | **auth (aksi akun/bayar/event)** | `getUserInfo` ✅ **MATERI LIVE** (guest 280 B + terdaftar 280 B) · `createOrder` · `bindMail` · `changePassword` · `cksnslogin` · `fbActInit` · `fbInviteEvent` · `fbLikeEvent` · `fbShareEvent` · `fbUserClaimEvent` · `setGameRoleInfo` · `userBindOtherSdk` · `unBindOtherInfo` · `viewMigCode` · `cUserTrash` · `jianchaLayLx` |
 
 **Yang merupakan CONFIG + SESI utk Gerbang 4 — SEMUA SIAP**: `init`, `getNotice`,

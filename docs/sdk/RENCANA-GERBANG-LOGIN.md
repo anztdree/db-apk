@@ -190,6 +190,10 @@ koreksi user (generate) dan tanpa penerusan. Ini kini JALUR UTAMA (lihat Tahap C
 - Aturan generate (default, semua diatur user via config — lihat `config-local/README.md`):
   `UID` persisten per perangkat (bisa dikunci user); `TOKEN`/`AUTH_TOKEN` baru per sesi;
   `SIGN` = `md5(uid + salt)` mengikuti pola live; `isGuest` sesuai mode.
+- **STATUS 1.0.3 (TERBANGGAL 2026-10-20):** Tahap B LENGKAP dengan autoLogin —
+  bug 404 `v1/user/autoLogin` dari HAR perangkat (BUILD 1.0.2) sudah diperbaiki:
+  validasi authToken terbitan (Opsi A setia server asli) + persist sesi antar boot.
+  Lihat `BUILD-1.0.3.md`.
 - **Kriteria lulus:** `onLoginFinished` terpanggil; HashMap game terisi
   `{uid, username, token, usermode}` HASIL GENERATOR; `sdk登录验证url` mencetak alamat
   gerbang dengan token generate yang sama.

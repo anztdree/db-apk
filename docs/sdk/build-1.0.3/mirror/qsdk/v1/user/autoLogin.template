@@ -1,0 +1,93 @@
+{
+  "result": true,
+  "data": {
+    "authToken": "{{AUTH_TOKEN}}",
+    "userData": {
+      "uid": "{{UID}}",
+      "username": "{{USERNAME}}",
+      "token": "{{TOKEN}}",
+      "isGuest": {{IS_GUEST}},
+      "isNewUser": 0,
+      "mobile": "",
+      "bindInfo": {
+        "bindFB": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 6,
+          "buid": ""
+        },
+        "bindGameCenter": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 7,
+          "buid": ""
+        },
+        "bindGoogle": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 8,
+          "buid": ""
+        },
+        "bindEmail": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 13,
+          "buid": ""
+        },
+        "bindNaver": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 9,
+          "buid": ""
+        },
+        "bindTwitter": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 10,
+          "buid": ""
+        },
+        "bindLine": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 11,
+          "buid": ""
+        },
+        "bindVK": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 14,
+          "buid": ""
+        },
+        "signApple": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 16,
+          "buid": ""
+        },
+        "bindPlay": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 17,
+          "buid": ""
+        },
+        "bd94hi": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 18,
+          "buid": ""
+        },
+        "bdhw": {
+          "isBind": 0,
+          "otherAccountName": "",
+          "bid": 19,
+          "buid": ""
+        }
+      }
+    },
+    "checkRealName": 0
+  },
+  "error": {
+    "id": 0,
+    "message": ""
+  }
+}
