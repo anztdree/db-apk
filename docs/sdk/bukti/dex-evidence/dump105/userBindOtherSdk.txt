@@ -1,0 +1,100 @@
+==============================================================================
+CLASS Lcom/quickgame/android/sdk/service/dishbesideshockey$representativehodmandodliving$seventygenom;  (endpoint: /userBindOtherSdk)
+==============================================================================
+  FIELD cointhreat : Ljava/lang/String;
+  FIELD feedtonight : Lcom/quickgame/android/sdk/service/dishbesideshockey$representativehodmandodliving;
+  FIELD ironoriginhoblike : Ljava/lang/String;
+  FIELD nationalcommunitymissing : Ljava/lang/String;
+  FIELD seventygenom : Ljava/lang/String;
+  FIELD singersmooth : Ljava/lang/String;
+------------------------------------------------------------
+  METHOD <init> (Lcom/quickgame/android/sdk/service/dishbesideshockey$representativehodmandodliving; Ljava/lang/String; Ljava/lang/String; Ljava/lang/String; Ljava/lang/String; Ljava/lang/String;)V
+    public dishbesideshockey$representativehodmandodliving$seventygenom(com.quickgame.android.sdk.service.dishbesideshockey$representativehodmandodliving p1, String p2, String p3, String p4, String p5, String p6)
+        {
+            this.feedtonight = p1;
+            this.cointhreat = p2;
+            this.seventygenom = p3;
+            this.singersmooth = p4;
+            this.nationalcommunitymissing = p5;
+            this.ironoriginhoblike = p6;
+            return;
+        }
+------------------------------------------------------------
+  METHOD run ()V
+    public void run()
+        {
+            String v1_8 = com.quickgame.android.sdk.service.dishbesideshockey$cointhreat.cointhreat.cointhreat;
+            if (v1_8 != null) {
+                if (v1_8.singersmooth != null) {
+                    try {
+                        String v7_1 = new java.util.HashMap();
+                        v7_1.put("uid", v1_8.singersmooth.getUid());
+                        v7_1.put("userOpenId", this.cointhreat);
+                        v7_1.put("otherAccountName", this.seventygenom);
+                        v7_1.put("openType", this.singersmooth);
+                        v7_1.put("access_token", this.nationalcommunitymissing);
+                        v7_1.put("appToken", this.ironoriginhoblike);
+                        String v1_16 = com.quickgame.android.sdk.bindcommunist.cointhreat$seventygenom.cointhreat.cointhreat("/v1/auth/userBindOtherSdk", com.quickgame.android.sdk.bindcommunist.singersmooth.singersmooth(this.feedtonight.cointhreat, v7_1));
+                        String v7_4 = v1_16.getBoolean("result");
+                        android.util.Log.d("QGUserCenterBinder", v1_16.toString());
+                    } catch (Exception) {
+                        Exception v0_15 = new org.json.JSONObject();
+                        try {
+                            v0_15.put("id", 0);
+                            v0_15.put("message", "");
+                            this.feedtonight.cointhreat.feedtonight("com.quickgame.android.sdk.THIRD_LOGIN_BIND", 0, v0_15.toString());
+                        } catch (Exception v0_2) {
+                            v0_2.printStackTrace();
+                        }
+                        return;
+                    }
+                    if (v7_4 == null) {
+                        this.feedtonight.cointhreat.feedtonight("com.quickgame.android.sdk.THIRD_LOGIN_BIND", v7_4, v1_16.getJSONObject("error").toString());
+                        if (this.singersmooth == "8") {
+                            android.util.Log.d("QGUserCenterBinder", "\u7ed1\u5b9aGoogle\u5931\u8d25");
+                            String v1_22 = new com.quickgame.android.sdk.rawturn.nationalcommunitymissing();
+                            v1_22.cointhreat = new com.quickgame.android.sdk.service.dishbesideshockey$representativehodmandodliving$seventygenom$cointhreat(this);
+                            v1_22.ironoriginhoblike();
+                        }
+                        if (this.singersmooth != "6") {
+                            return;
+                        } else {
+                            android.util.Log.d("QGUserCenterBinder", "\u7ed1\u5b9afacebook\u5931\u8d25");
+                            android.util.Log.d("FacebookManager", "logout");
+                            try {
+                                com.facebook.login.LoginManager.getInstance().logOut();
+                                com.facebook.AccessToken.setCurrentAccessToken(0);
+                                android.util.Log.e("QGUserCenterBinder", "facebook logout");
+                                com.quickgame.android.sdk.rawturn.cointhreat.singersmooth = 0;
+                            } catch (Exception v0_11) {
+                                v0_11.printStackTrace();
+                            }
+                            return;
+                        }
+                    } else {
+                        this.feedtonight.cointhreat.feedtonight("com.quickgame.android.sdk.THIRD_LOGIN_BIND", v7_4, v1_16.getJSONObject("data").toString());
+                        return;
+                    }
+                } else {
+                    Exception v0_4 = new org.json.JSONObject();
+                    try {
+                        v0_4.put("id", 0);
+                        v0_4.put("message", "");
+                        this.feedtonight.cointhreat.feedtonight("com.quickgame.android.sdk.THIRD_LOGIN_BIND", 0, v0_4.toString());
+                    } catch (Exception v0_6) {
+                        v0_6.printStackTrace();
+                    }
+                    return;
+                }
+            } else {
+                Exception v0_8 = new org.json.JSONObject();
+                try {
+                    v0_8.put("id", 0);
+                    v0_8.put("message", "");
+                    this.feedtonight.cointhreat.feedtonight("com.quickgame.android.sdk.THIRD_LOGIN_BIND", 0, v0_8.toString());
+                } catch (Exception v0_10) {
+                    v0_10.printStackTrace();
+                }
+                return;
+            }
+        }

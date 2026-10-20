@@ -1,0 +1,99 @@
+==============================================================================
+CLASS Lcom/quickgame/android/sdk/service/dishbesideshockey$dishbesideshockey;  (endpoint: /bindMail)
+==============================================================================
+  FIELD cointhreat : Ljava/lang/String;
+  FIELD nationalcommunitymissing : Lcom/quickgame/android/sdk/service/dishbesideshockey$nationalcommunitymissing;
+  FIELD seventygenom : Ljava/lang/String;
+  FIELD singersmooth : Ljava/lang/String;
+------------------------------------------------------------
+  METHOD <init> (Lcom/quickgame/android/sdk/service/dishbesideshockey$nationalcommunitymissing; Ljava/lang/String; Ljava/lang/String; Ljava/lang/String;)V
+    public dishbesideshockey$dishbesideshockey(com.quickgame.android.sdk.service.dishbesideshockey$nationalcommunitymissing p1, String p2, String p3, String p4)
+        {
+            this.nationalcommunitymissing = p1;
+            this.cointhreat = p2;
+            this.seventygenom = p3;
+            this.singersmooth = p4;
+            return;
+        }
+------------------------------------------------------------
+  METHOD run ()V
+    public void run()
+        {
+            try {
+                String v2_4 = new java.util.HashMap();
+                v2_4.put("uid", com.quickgame.android.sdk.service.dishbesideshockey$cointhreat.cointhreat.cointhreat.singersmooth.getUid());
+                v2_4.put("email", this.cointhreat);
+                v2_4.put("code", this.seventygenom);
+                v2_4.put("password", com.quickgame.android.sdk.unnecessarysperrylites.seventygenom.singersmooth(this.singersmooth));
+                String v1_8 = com.quickgame.android.sdk.bindcommunist.cointhreat$seventygenom.cointhreat.cointhreat("/v1/auth/bindMail", com.quickgame.android.sdk.bindcommunist.singersmooth.singersmooth(this.nationalcommunitymissing.cointhreat, v2_4));
+                String v2_2 = v1_8.getBoolean("result");
+            } catch (String v1_14) {
+                String v2_6 = new org.json.JSONObject();
+                try {
+                    v2_6.put("id", 0);
+                    v2_6.put("message", "");
+                    this.nationalcommunitymissing.cointhreat.feedtonight("com.quickgame.android.sdk.GUEST_REGIST_EMAIL", 0, v2_6.toString());
+                } catch (Exception v0_1) {
+                    v0_1.printStackTrace();
+                }
+                v1_14.printStackTrace();
+                return;
+            }
+            if (v2_2 == null) {
+                this.nationalcommunitymissing.cointhreat.feedtonight("com.quickgame.android.sdk.GUEST_REGIST_EMAIL", v2_2, v1_8.getJSONObject("error").toString());
+                return;
+            } else {
+                this.nationalcommunitymissing.cointhreat.feedtonight("com.quickgame.android.sdk.GUEST_REGIST_EMAIL", v2_2, v1_8.getJSONObject("data").toString());
+                return;
+            }
+        }
+==============================================================================
+CLASS Lcom/quickgame/android/sdk/service/dishbesideshockey$reweavingsiamesedpropertylessnesses;  (endpoint: /bindMail)
+==============================================================================
+  FIELD cointhreat : Ljava/lang/String;
+  FIELD nationalcommunitymissing : Lcom/quickgame/android/sdk/service/dishbesideshockey$nationalcommunitymissing;
+  FIELD seventygenom : Ljava/lang/String;
+  FIELD singersmooth : Ljava/lang/String;
+------------------------------------------------------------
+  METHOD <init> (Lcom/quickgame/android/sdk/service/dishbesideshockey$nationalcommunitymissing; Ljava/lang/String; Ljava/lang/String; Ljava/lang/String;)V
+    public dishbesideshockey$reweavingsiamesedpropertylessnesses(com.quickgame.android.sdk.service.dishbesideshockey$nationalcommunitymissing p1, String p2, String p3, String p4)
+        {
+            this.nationalcommunitymissing = p1;
+            this.cointhreat = p2;
+            this.seventygenom = p3;
+            this.singersmooth = p4;
+            return;
+        }
+------------------------------------------------------------
+  METHOD run ()V
+    public void run()
+        {
+            com.quickgame.android.sdk.service.QuickGameSdkService v0_0 = com.quickgame.android.sdk.service.dishbesideshockey$cointhreat.cointhreat;
+            int v2_8 = v0_0.cointhreat.singersmooth;
+            try {
+                String v4_5 = new java.util.HashMap();
+                v4_5.put("uid", v2_8.getUid());
+                v4_5.put("email", this.cointhreat);
+                v4_5.put("code", this.seventygenom);
+                v4_5.put("password", com.quickgame.android.sdk.unnecessarysperrylites.seventygenom.singersmooth(this.singersmooth));
+                int v2_7 = com.quickgame.android.sdk.bindcommunist.cointhreat$seventygenom.cointhreat.cointhreat("/v1/auth/bindMail", com.quickgame.android.sdk.bindcommunist.singersmooth.singersmooth(this.nationalcommunitymissing.cointhreat, v4_5));
+            } catch (Exception) {
+                this.nationalcommunitymissing.singersmooth("com.quickgame.android.sdk.GUEST_REGIST_EMAIL", 0);
+                return;
+            }
+            if (!v2_7.getBoolean("result")) {
+                this.nationalcommunitymissing.singersmooth("com.quickgame.android.sdk.GUEST_REGIST_EMAIL", v2_7);
+                return;
+            } else {
+                int v2_10 = com.quickgame.android.sdk.psalmicvolleyball.cointhreat.cointhreat(v2_7.getString("data"));
+                if (v2_10 != 0) {
+                    v0_0.cointhreat = v2_10;
+                    this.nationalcommunitymissing.cointhreat.seventygenom(12);
+                    this.nationalcommunitymissing.cointhreat.ironoriginhoblike("com.quickgame.android.sdk.GUEST_REGIST_EMAIL", 1);
+                    return;
+                } else {
+                    this.nationalcommunitymissing.singersmooth("com.quickgame.android.sdk.GUEST_REGIST_EMAIL", 0);
+                    return;
+                }
+            }
+        }

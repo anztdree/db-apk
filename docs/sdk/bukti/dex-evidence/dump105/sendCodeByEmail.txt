@@ -1,0 +1,70 @@
+==============================================================================
+CLASS Lcom/quickgame/android/sdk/service/dishbesideshockey$seventygenom;  (endpoint: /sendCodeByEmail)
+==============================================================================
+  FIELD cointhreat : Ljava/lang/String;
+  FIELD seventygenom : Ljava/lang/String;
+  FIELD singersmooth : Lcom/quickgame/android/sdk/service/dishbesideshockey$nationalcommunitymissing;
+------------------------------------------------------------
+  METHOD <init> (Lcom/quickgame/android/sdk/service/dishbesideshockey$nationalcommunitymissing; Ljava/lang/String; Ljava/lang/String;)V
+    public dishbesideshockey$seventygenom(com.quickgame.android.sdk.service.dishbesideshockey$nationalcommunitymissing p1, String p2, String p3)
+        {
+            this.singersmooth = p1;
+            this.cointhreat = p2;
+            this.seventygenom = p3;
+            return;
+        }
+------------------------------------------------------------
+  METHOD run ()V
+    public void run()
+        {
+            org.json.JSONObject v8_3 = new java.util.HashMap();
+            v8_3.put("email", this.cointhreat);
+            v8_3.put("sendType", this.seventygenom);
+            org.json.JSONObject v8_1 = com.quickgame.android.sdk.bindcommunist.cointhreat$seventygenom.cointhreat.cointhreat("/v1/user/sendCodeByEmail", com.quickgame.android.sdk.bindcommunist.singersmooth.singersmooth(this.singersmooth.cointhreat, v8_3));
+            boolean v9_6 = Boolean.valueOf(v8_1.getBoolean("result"));
+            org.json.JSONObject v10_3 = new org.json.JSONObject();
+        }
+==============================================================================
+CLASS Lcom/quickgame/android/sdk/service/dishbesideshockey$singersmooth;  (endpoint: /sendCodeByEmail)
+==============================================================================
+  FIELD cointhreat : Ljava/lang/String;
+  FIELD seventygenom : Ljava/lang/String;
+  FIELD singersmooth : Lcom/quickgame/android/sdk/service/dishbesideshockey$nationalcommunitymissing;
+------------------------------------------------------------
+  METHOD <init> (Lcom/quickgame/android/sdk/service/dishbesideshockey$nationalcommunitymissing; Ljava/lang/String; Ljava/lang/String;)V
+    public dishbesideshockey$singersmooth(com.quickgame.android.sdk.service.dishbesideshockey$nationalcommunitymissing p1, String p2, String p3)
+        {
+            this.singersmooth = p1;
+            this.cointhreat = p2;
+            this.seventygenom = p3;
+            return;
+        }
+------------------------------------------------------------
+  METHOD run ()V
+    public void run()
+        {
+            try {
+                String v1_3 = new java.util.HashMap();
+                v1_3.put("email", this.cointhreat);
+                v1_3.put("sendType", this.seventygenom);
+                String v1_2 = com.quickgame.android.sdk.bindcommunist.cointhreat$seventygenom.cointhreat.cointhreat("/v1/user/sendCodeByEmail", com.quickgame.android.sdk.bindcommunist.singersmooth.singersmooth(this.singersmooth.cointhreat, v1_3));
+                com.quickgame.android.sdk.service.QuickGameSdkService v2_4 = Boolean.valueOf(v1_2.getBoolean("result"));
+            } catch (Exception) {
+                String v1_9 = new org.json.JSONObject();
+                try {
+                    v1_9.put("id", 0);
+                    v1_9.put("message", "");
+                    this.singersmooth.cointhreat.feedtonight("com.quickgame.android.sdk.EMAIL_VERIFY", 0, v1_9.toString());
+                } catch (Exception v0_1) {
+                    v0_1.printStackTrace();
+                }
+                return;
+            }
+            if (!v2_4.booleanValue()) {
+                this.singersmooth.cointhreat.feedtonight("com.quickgame.android.sdk.EMAIL_VERIFY", v2_4.booleanValue(), v1_2.getJSONObject("error").toString());
+                return;
+            } else {
+                this.singersmooth.cointhreat.feedtonight("com.quickgame.android.sdk.EMAIL_VERIFY", v2_4.booleanValue(), v1_2.getJSONObject("data").toString());
+                return;
+            }
+        }

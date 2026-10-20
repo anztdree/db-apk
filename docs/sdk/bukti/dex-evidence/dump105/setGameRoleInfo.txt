@@ -1,0 +1,50 @@
+==============================================================================
+CLASS Lcom/quickgame/android/sdk/cointhreat;  (endpoint: /setGameRoleInfo)
+==============================================================================
+  FIELD cointhreat : Ljava/lang/String;
+  FIELD seventygenom : Lcom/quickgame/android/sdk/bean/QGRoleInfo;
+  FIELD singersmooth : Lcom/quickgame/android/sdk/feedtonight;
+------------------------------------------------------------
+  METHOD <init> (Lcom/quickgame/android/sdk/feedtonight; Ljava/lang/String; Lcom/quickgame/android/sdk/bean/QGRoleInfo;)V
+    public cointhreat(com.quickgame.android.sdk.feedtonight p1, String p2, com.quickgame.android.sdk.bean.QGRoleInfo p3)
+        {
+            this.singersmooth = p1;
+            this.cointhreat = p2;
+            this.seventygenom = p3;
+            return;
+        }
+------------------------------------------------------------
+  METHOD run ()V
+    public void run()
+        {
+            String v0_1 = this.singersmooth.worktopichardtails;
+            StringBuilder v1_3 = this.cointhreat;
+            String v2_0 = this.seventygenom;
+            try {
+                android.util.Log.d("QGUserToken", "setGameRoleInfo");
+                java.util.HashMap v4_2 = new java.util.HashMap();
+                v4_2.put("uid", v1_3);
+                v4_2.put("gameRoleId", v2_0.getRoleId());
+                v4_2.put("gameRoleName", v2_0.getRoleName());
+                v4_2.put("serverName", v2_0.getServerName());
+                v4_2.put("gameRoleLevel", v2_0.getRoleLevel());
+                v4_2.put("vipLevel", v2_0.getVipLevel());
+                v4_2.put("partyName", v2_0.getRolePartyName());
+                v4_2.put("gameRoleBalance", v2_0.getRoleBalance());
+                String v0_3 = com.quickgame.android.sdk.bindcommunist.cointhreat$seventygenom.cointhreat.cointhreat("/v1/auth/setGameRoleInfo", com.quickgame.android.sdk.bindcommunist.singersmooth.singersmooth(v0_1, v4_2));
+            } catch (Exception) {
+                android.util.Log.d("QGUserToken", "submit exception!");
+                return;
+            }
+            if (!v0_3.getBoolean("result")) {
+                String v0_4 = v0_3.getString("error");
+                StringBuilder v1_13 = new StringBuilder();
+                v1_13.append("submit fail :");
+                v1_13.append(v0_4);
+                android.util.Log.d("QGUserToken", v1_13.toString());
+                return;
+            } else {
+                android.util.Log.d("QGUserToken", "submit success!");
+                return;
+            }
+        }

@@ -1,0 +1,50 @@
+==============================================================================
+CLASS Lcom/quickgame/android/sdk/psalmicvolleyball/cointhreat;
+==============================================================================
+  FIELD cointhreat : Ljava/lang/String;
+  FIELD feedtonight : Z
+  FIELD ironoriginhoblike : Lcom/quickgame/android/sdk/bean/QGUserBindInfo;
+  FIELD nationalcommunitymissing : Lcom/quickgame/android/sdk/bean/QGUserInfo;
+  FIELD seventygenom : Ljava/lang/String;
+  FIELD singersmooth : Lcom/quickgame/android/sdk/bean/QGUserData;
+------------------------------------------------------------
+  METHOD <init> ()V
+    public cointhreat()
+        {
+            this.feedtonight = 0;
+            return;
+        }
+------------------------------------------------------------
+  METHOD cointhreat (Ljava/lang/String;)Lcom/quickgame/android/sdk/psalmicvolleyball/cointhreat;
+    public static com.quickgame.android.sdk.psalmicvolleyball.cointhreat cointhreat(String p9)
+        {
+            if ((!android.text.TextUtils.isEmpty(p9)) && ((!"[]".equalsIgnoreCase(p9)) && (!"{}".equalsIgnoreCase(p9)))) {
+                com.quickgame.android.sdk.psalmicvolleyball.cointhreat v4_4 = new com.quickgame.android.sdk.psalmicvolleyball.cointhreat();
+                try {
+                    org.json.JSONObject v6_1 = new org.json.JSONObject(p9);
+                    com.quickgame.android.sdk.bean.QGUserBindInfo v9_2 = new StringBuilder();
+                    v9_2.append("data:");
+                    v9_2.append(v6_1.toString());
+                    com.quickgame.android.sdk.utils.log.QGLog.d("QGAuthToken", v9_2.toString());
+                    com.quickgame.android.sdk.bean.QGUserBindInfo v9_5 = v6_1.optString("checkRealName", "0");
+                    StringBuilder v7_4 = new StringBuilder();
+                    v7_4.append("checkRealName:");
+                    v7_4.append(v9_5);
+                    android.util.Log.d("QGAuthToken", v7_4.toString());
+                    v4_4.cointhreat = v6_1.getString("authToken");
+                } catch (com.quickgame.android.sdk.bean.QGUserBindInfo v9_18) {
+                    android.util.Log.d("QGAuthToken", v9_18.toString());
+                    com.quickgame.android.sdk.utils.log.QGLog.LogException(v9_18);
+                    v9_18.printStackTrace();
+                }
+                if (v6_1.has("tips")) {
+                    v4_4.seventygenom = v6_1.getString("tips");
+                }
+                v4_4.singersmooth = com.quickgame.android.sdk.bean.QGUserData.generateFromJson(v6_1.getJSONObject("userData"));
+                if (v6_1.optJSONObject("userData").optJSONObject("bindInfo") != null) {
+                    v4_4.ironoriginhoblike = com.quickgame.android.sdk.bean.QGUserBindInfo.generateFromJson(v6_1.optJSONObject("userData").optJSONObject("bindInfo"));
+                }
+                return v4_4;
+            }
+            return 0;
+        }

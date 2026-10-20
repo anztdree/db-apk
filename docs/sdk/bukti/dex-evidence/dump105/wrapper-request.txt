@@ -1,0 +1,531 @@
+==============================================================================
+CLASS Lcom/quickgame/android/sdk/bindcommunist/singersmooth;
+==============================================================================
+  FIELD cointhreat : I
+  FIELD customreading : I
+  FIELD dishbesideshockey : I
+  FIELD feedtonight : I
+  FIELD hardlinerspare : I
+  FIELD influencecomparisonrestore : I
+  FIELD ironoriginhoblike : I
+  FIELD mesoamericanhochmagandies : I
+  FIELD nationalcommunitymissing : I
+  FIELD pursetruechild : I
+  FIELD reweavingsiamesedpropertylessnesses : I
+  FIELD seventygenom : I
+  FIELD singersmooth : I
+  FIELD worktopichardtails : I
+------------------------------------------------------------
+  METHOD cointhreat (Landroid/content/Context; Ljava/lang/String;)Ljava/lang/String;
+    public static String cointhreat(android.content.Context p5, String p6)
+        {
+            StringBuffer v1_1 = new StringBuffer();
+            String v5_3 = p5.getAssets();
+            try {
+                int v2_5 = v5_3.open(p6);
+                try {
+                    int v3_2;
+                    int v3_9 = new java.io.BufferedInputStream(v2_5);
+                    int v4_2 = ((v3_9.read() << 8) + v3_9.read());
+                } catch (int v2_0) {
+                    android.util.Log.e("GetAssetsUtils", v2_0.getMessage());
+                    v3_2 = "";
+                    java.io.BufferedReader v6_2 = new java.io.BufferedReader(new java.io.InputStreamReader(v5_3.open(p6), v3_2));
+                    String v5_2 = v6_2.readLine();
+                    int v2_4 = 0;
+                    while (v5_2 != null) {
+                        v2_4++;
+                        if (v2_4 >= 2) {
+                            v1_1.append("\n");
+                        }
+                        v1_1.append(v5_2);
+                        v5_2 = v6_2.readLine();
+                        if (v2_4 == 200) {
+                            break;
+                        }
+                    }
+                    return v1_1.toString();
+                }
+                if (v4_2 == 61371) {
+                    v3_2 = "UTF-8";
+                } else {
+                    if (v4_2 == 65279) {
+                        v3_2 = "UTF-16BE";
+                    } else {
+                        if (v4_2 == 65534) {
+                            v3_2 = "Unicode";
+                        } else {
+                            v3_2 = "GBK";
+                        }
+                    }
+                }
+                v2_5.close();
+            } catch (String v5_4) {
+                java.io.BufferedReader v6_4 = cointhreat.singersmooth.cointhreat.cointhreat.cointhreat.worktopichardtails("ioException not config ");
+                v6_4.append(v5_4.getMessage());
+                android.util.Log.w("GetAssetsUtils", v6_4.toString());
+                return v1_1.toString();
+            }
+        }
+------------------------------------------------------------
+  METHOD customreading (I I)I
+    public static final int customreading(int p0, int p1)
+        {
+            int v0_1 = (p0 % p1);
+            if (v0_1 < 0) {
+                v0_1 += p1;
+            }
+            return v0_1;
+        }
+------------------------------------------------------------
+  METHOD dishbesideshockey (Lsingersmooth/hardlinerspare/seventygenom;)Ljava/lang/Class;
+    public static final Class dishbesideshockey(singersmooth.hardlinerspare.seventygenom p2)
+        {
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p2, "$this$javaObjectType");
+            Class v2_1 = ((singersmooth.mesoamericanhochmagandies.singersmooth.seventygenom) p2).cointhreat();
+            if (v2_1.isPrimitive()) {
+                boolean v0_11 = v2_1.getName();
+                switch (v0_11.hashCode()) {
+                    case -1325958191:
+                        if (!v0_11.equals("double")) {
+                        } else {
+                            v2_1 = Double;
+                        }
+                        break;
+                    case 104431:
+                        if (!v0_11.equals("int")) {
+                        } else {
+                            v2_1 = Integer;
+                        }
+                        break;
+                    case 3039496:
+                        if (!v0_11.equals("byte")) {
+                        } else {
+                            v2_1 = Byte;
+                        }
+                        break;
+                    case 3052374:
+                        if (!v0_11.equals("char")) {
+                        } else {
+                            v2_1 = Character;
+                        }
+                        break;
+                    case 3327612:
+                        if (!v0_11.equals("long")) {
+                        } else {
+                            v2_1 = Long;
+                        }
+                        break;
+                    case 3625364:
+                        if (!v0_11.equals("void")) {
+                        } else {
+                            v2_1 = Void;
+                        }
+                        break;
+                    case 64711720:
+                        if (!v0_11.equals("boolean")) {
+                        } else {
+                            v2_1 = Boolean;
+                        }
+                        break;
+                    case 97526364:
+                        if (!v0_11.equals("float")) {
+                        } else {
+                            v2_1 = Float;
+                        }
+                        break;
+                    case 109413500:
+                        if (!v0_11.equals("short")) {
+                        } else {
+                            v2_1 = Short;
+                        }
+                        break;
+                    default:
+                }
+                return v2_1;
+            } else {
+                return v2_1;
+            }
+        }
+------------------------------------------------------------
+  METHOD feedtonight (Landroid/app/Activity; Z Ljava/lang/String;)V
+    public static void feedtonight(android.app.Activity p4, boolean p5, String p6)
+        {
+            com.quickgame.android.sdk.service.dishbesideshockey$cointhreat.cointhreat.cointhreat.feedtonight = 0;
+            android.content.Intent v0_3 = new android.content.Intent(p4, com.quickgame.android.sdk.activity.BindThirdLoginActivity);
+            if (p5 != null) {
+                v0_3.putExtra("type", "unbind");
+                v0_3.putExtra("openType", p6);
+            } else {
+                v0_3.putExtra("type", "bind");
+                v0_3.putExtra("openType", p6);
+            }
+            p4.startActivityForResult(v0_3, 0);
+            return;
+        }
+------------------------------------------------------------
+  METHOD gangclothing (Ljava/lang/String; I Ljava/lang/String; I I Z)Z
+    public static final boolean gangclothing(String p6, int p7, String p8, int p9, int p10, boolean p11)
+        {
+            boolean v6_1;
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p6, "$this$regionMatches");
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p8, "other");
+            if (p11) {
+                v6_1 = p6.regionMatches(p11, p7, p8, p9, p10);
+            } else {
+                v6_1 = p6.regionMatches(p7, p8, p9, p10);
+            }
+            return v6_1;
+        }
+------------------------------------------------------------
+  METHOD hardlinerspare (J J)J
+    public static final long hardlinerspare(long p3, long p5)
+        {
+            long v3_1 = (p3 % p5);
+            if (v3_1 < 0) {
+                v3_1 += p5;
+            }
+            return v3_1;
+        }
+------------------------------------------------------------
+  METHOD hoboismrelationbelow (Ljava/lang/String; Ljava/lang/String; Ljava/lang/String; Z I)Ljava/lang/String;
+    public static String hoboismrelationbelow(String p5, String p6, String p7, boolean p8, int p9)
+        {
+            int v0 = 0;
+            if ((p9 & 4) != 0) {
+                p8 = 0;
+            }
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p5, "$this$replace");
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p6, "oldValue");
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p7, "newValue");
+            int v9_2 = singersmooth.hoboismrelationbelow.dishbesideshockey.singersmooth(p5, p6, 0, p8);
+            if (v9_2 >= 0) {
+                int v1 = p6.length();
+                int v2 = 1;
+                if (v1 >= 1) {
+                    v2 = v1;
+                }
+                int v4_1 = (p7.length() + (p5.length() - v1));
+                if (v4_1 < 0) {
+                    throw new OutOfMemoryError();
+                } else {
+                    StringBuilder v3_3 = new StringBuilder(v4_1);
+                    do {
+                        v3_3.append(p5, v0, v9_2);
+                        v3_3.append(p7);
+                        v0 = (v9_2 + v1);
+                        if (v9_2 >= p5.length()) {
+                            break;
+                        }
+                        v9_2 = singersmooth.hoboismrelationbelow.dishbesideshockey.singersmooth(p5, p6, (v9_2 + v2), p8);
+                    } while(v9_2 > 0);
+                    v3_3.append(p5, v0, p5.length());
+                    p5 = v3_3.toString();
+                    singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.nationalcommunitymissing(p5, "stringBuilder.append(this, i, length).toString()");
+                }
+            }
+            return p5;
+        }
+------------------------------------------------------------
+  METHOD influencecomparisonrestore (I I I)I
+    public static final int influencecomparisonrestore(int p1, int p2, int p3)
+        {
+            if (p3 <= 0) {
+                if (p3 >= 0) {
+                    throw new IllegalArgumentException("Step is zero.");
+                } else {
+                    if (p1 > p2) {
+                        int v3_1 = (- p3);
+                        p2 += com.quickgame.android.sdk.bindcommunist.singersmooth.customreading((com.quickgame.android.sdk.bindcommunist.singersmooth.customreading(p1, v3_1) - com.quickgame.android.sdk.bindcommunist.singersmooth.customreading(p2, v3_1)), v3_1);
+                    }
+                }
+            } else {
+                if (p1 < p2) {
+                    p2 -= com.quickgame.android.sdk.bindcommunist.singersmooth.customreading((com.quickgame.android.sdk.bindcommunist.singersmooth.customreading(p2, p3) - com.quickgame.android.sdk.bindcommunist.singersmooth.customreading(p1, p3)), p3);
+                }
+            }
+            return p2;
+        }
+------------------------------------------------------------
+  METHOD ironoriginhoblike (Landroid/app/Activity; Z)V
+    public static void ironoriginhoblike(android.app.Activity p5, boolean p6)
+        {
+            com.quickgame.android.sdk.service.dishbesideshockey$cointhreat.cointhreat.cointhreat.feedtonight = 0;
+            android.content.Intent v0_3 = new android.content.Intent(p5, com.quickgame.android.sdk.activity.BindEmailActivity);
+            if (p6 != null) {
+                v0_3.putExtra("type", "unbind");
+                v0_3.putExtra("openType", "13");
+            } else {
+                v0_3.putExtra("type", "bind");
+                v0_3.putExtra("openType", "13");
+            }
+            p5.startActivityForResult(v0_3, 0);
+            return;
+        }
+------------------------------------------------------------
+  METHOD mesoamericanhochmagandies (I)I
+    public static final int mesoamericanhochmagandies(int p1)
+        {
+            if (p1 >= 0) {
+                if (p1 >= 3) {
+                    if (p1 >= 1073741824) {
+                        p1 = 2147483647;
+                    } else {
+                        p1 = ((int) ((((float) p1) / 1061158912) + 1065353216));
+                    }
+                } else {
+                    p1++;
+                }
+            }
+            return p1;
+        }
+------------------------------------------------------------
+  METHOD nationalcommunitymissing (Ljava/io/InputStream;)Lorg/json/JSONObject;
+    public static org.json.JSONObject nationalcommunitymissing(java.io.InputStream p4)
+        {
+            String v0_1 = new java.io.ByteArrayOutputStream();
+            String v1_3 = new byte[1024];
+            try {
+                while(true) {
+                    byte[] v2_1 = p4.read(v1_3);
+                    v0_1.write(v1_3, 0, v2_1);
+                }
+                String v1_1 = new String(v0_1.toByteArray());
+                try {
+                    p4.close();
+                    try {
+                        v0_1.close();
+                    } catch (org.json.JSONException v4_2) {
+                        v4_2.printStackTrace();
+                    }
+                    if ((android.text.TextUtils.isEmpty(v1_1)) || (!v1_1.contains("result"))) {
+                        if ((!android.text.TextUtils.isEmpty(v1_1)) && (!v1_1.contains("result"))) {
+                            cointhreat.singersmooth.cointhreat.cointhreat.cointhreat.gangclothing("result = ", v1_1, "QGNetWorkImpl");
+                            try {
+                                return new org.json.JSONObject(v1_1.trim());
+                            } catch (org.json.JSONException v4_10) {
+                                v4_10.printStackTrace();
+                            }
+                        }
+                    } else {
+                        try {
+                            return new org.json.JSONObject(v1_1.trim());
+                        } catch (org.json.JSONException v4_13) {
+                            v4_13.printStackTrace();
+                        }
+                    }
+                    return 0;
+                } catch (org.json.JSONException v4_1) {
+                    v4_1.printStackTrace();
+                }
+            } catch (String v1_4) {
+                v1_4.printStackTrace();
+            }
+            if (v2_1 != -1) {
+            }
+        }
+------------------------------------------------------------
+  METHOD pursetruechild (Ljava/lang/String; Ljava/lang/String; Z I)Z
+    public static boolean pursetruechild(String p6, String p7, boolean p8, int p9)
+        {
+            if ((p9 & 2) != 0) {
+                p8 = 0;
+            }
+            boolean v6_1;
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p6, "$this$endsWith");
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p7, "suffix");
+            if (p8 != 0) {
+                v6_1 = com.quickgame.android.sdk.bindcommunist.singersmooth.gangclothing(p6, (p6.length() - p7.length()), p7, 0, p7.length(), 1);
+            } else {
+                v6_1 = p6.endsWith(p7);
+            }
+            return v6_1;
+        }
+------------------------------------------------------------
+  METHOD reweavingsiamesedpropertylessnesses (C C Z)Z
+    public static final boolean reweavingsiamesedpropertylessnesses(char p3, char p4, boolean p5)
+        {
+            if (p3 != p4) {
+                if (p5 != 0) {
+                    if (Character.toUpperCase(p3) != Character.toUpperCase(p4)) {
+                        if (Character.toLowerCase(p3) != Character.toLowerCase(p4)) {
+                            return 0;
+                        } else {
+                            return 1;
+                        }
+                    } else {
+                        return 1;
+                    }
+                } else {
+                    return 0;
+                }
+            } else {
+                return 1;
+            }
+        }
+------------------------------------------------------------
+  METHOD seventygenom (Ljava/util/Map;)Ljava/lang/StringBuffer;
+    public static StringBuffer seventygenom(java.util.Map p3)
+        {
+            StringBuffer v0_1 = new StringBuffer();
+            try {
+                int v3_4 = p3.entrySet().iterator();
+            } catch (Exception) {
+                return v0_1;
+            }
+            while (v3_4.hasNext()) {
+                String v1_1 = ((java.util.Map$Entry) v3_4.next());
+                v0_1.append(((String) v1_1.getKey()));
+                v0_1.append("=");
+                v0_1.append(java.net.URLEncoder.encode(((String) v1_1.getValue()), "utf-8"));
+                v0_1.append("&");
+            }
+            v0_1.deleteCharAt((v0_1.length() - 1));
+            return v0_1;
+        }
+------------------------------------------------------------
+  METHOD singersmooth (Landroid/content/Context; Ljava/util/HashMap;)Ljava/util/Map;
+    public static java.util.Map singersmooth(android.content.Context p8, java.util.HashMap p9)
+        {
+            String v2_3 = new org.json.JSONObject();
+            StringBuilder v3_1 = com.quickgame.android.sdk.unnecessarysperrylites.cointhreat.cointhreat(p8);
+            try {
+                if (p9 == null) {
+                    p9 = new java.util.HashMap();
+                }
+            } catch (String v8_2) {
+                android.util.Log.e("QGHttpRequestUtils", v8_2.getMessage());
+                com.quickgame.android.sdk.utils.log.QGLog.LogException(v8_2);
+                return 0;
+            }
+            p9.put("sdkVersion", Integer.valueOf(v3_1.cointhreat));
+            p9.put("gameVersion", Long.valueOf(v3_1.seventygenom));
+            p9.put("deviceId", v3_1.singersmooth);
+            p9.put("serialNum", v3_1.reweavingsiamesedpropertylessnesses);
+            p9.put("devIDShort", v3_1.dishbesideshockey);
+            p9.put("platform", Integer.valueOf(v3_1.nationalcommunitymissing));
+            p9.put("productCode", v3_1.ironoriginhoblike);
+            if (!v3_1.feedtonight.equals("default")) {
+                p9.put("channelCode", v3_1.feedtonight);
+            } else {
+                p9.put("channelCode", com.quickgame.android.sdk.unnecessarysperrylites.seventygenom.customreading(p8));
+            }
+            if (!p9.containsKey("authToken")) {
+                p9.put("authToken", v3_1.worktopichardtails);
+            }
+            p9.put("clientLang", java.util.Locale.getDefault().getLanguage());
+            p9.put("suggestCurrency", "");
+            p9.put("time", Long.valueOf(v3_1.pursetruechild));
+            String v8_12 = p9.keySet().iterator();
+            while (v8_12.hasNext()) {
+                String v1_9 = ((String) v8_12.next());
+                StringBuilder v3_0 = p9.get(v1_9);
+                if (v3_0 == null) {
+                    v3_0 = "";
+                }
+                v2_3.put(v1_9, v3_0);
+            }
+            String v8_14 = new StringBuilder();
+            v8_14.append("mapParam=");
+            v8_14.append(p9);
+            com.quickgame.android.sdk.utils.log.QGLog.d("QGHttpRequestUtils", v8_14.toString());
+            com.quickgame.android.sdk.utils.log.QGLog.d("QGHttpRequestUtils", "***************\u5206\u5272\u7ebf****************");
+            String v8_18 = new StringBuilder();
+            v8_18.append("jsonObj.toString()=");
+            v8_18.append(v2_3.toString());
+            com.quickgame.android.sdk.utils.log.QGLog.d("QGHttpRequestUtils", v8_18.toString());
+            String v8_20 = com.quickgame.android.sdk.unnecessarysperrylites.seventygenom.nationalcommunitymissing(p9);
+            java.util.HashMap v9_4 = new java.util.HashMap();
+            StringBuilder v0_2 = android.util.Base64.encodeToString(v2_3.toString().getBytes(), 0);
+            v9_4.put("sv", "v2");
+            v9_4.put("data", v0_2);
+            v9_4.put("sign", v8_20);
+            String v1_6 = new StringBuilder();
+            v1_6.append("data: ");
+            v1_6.append(v0_2);
+            android.util.Log.i("QGHttpRequestUtils", v1_6.toString());
+            StringBuilder v0_5 = new StringBuilder();
+            v0_5.append("sign:");
+            v0_5.append(v8_20);
+            com.quickgame.android.sdk.utils.log.QGLog.i("QGHttpRequestUtils", v0_5.toString());
+            return v9_4;
+        }
+------------------------------------------------------------
+  METHOD tidyleadership (Ljava/lang/String; Ljava/lang/String; Z I)Z
+    public static boolean tidyleadership(String p6, String p7, boolean p8, int p9)
+        {
+            int v5;
+            if ((p9 & 2) == 0) {
+                v5 = p8;
+            } else {
+                v5 = 0;
+            }
+            boolean v6_1;
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p6, "$this$startsWith");
+            singersmooth.mesoamericanhochmagandies.singersmooth.feedtonight.ironoriginhoblike(p7, "prefix");
+            if (v5 != 0) {
+                v6_1 = com.quickgame.android.sdk.bindcommunist.singersmooth.gangclothing(p6, 0, p7, 0, p7.length(), v5);
+            } else {
+                v6_1 = p6.startsWith(p7);
+            }
+            return v6_1;
+        }
+------------------------------------------------------------
+  METHOD worktopichardtails (Landroid/content/Context; Ljava/util/HashMap;)Ljava/util/Map;
+    public static java.util.Map worktopichardtails(android.content.Context p6, java.util.HashMap p7)
+        {
+            StringBuilder v0_1 = new org.json.JSONObject();
+            String v1_7 = com.quickgame.android.sdk.unnecessarysperrylites.cointhreat.cointhreat(p6);
+            try {
+                p7.put("sdkVersion", Integer.valueOf(v1_7.cointhreat));
+                p7.put("gameVersion", Long.valueOf(v1_7.seventygenom));
+                p7.put("deviceId", v1_7.singersmooth);
+                p7.put("serialNum", v1_7.reweavingsiamesedpropertylessnesses);
+                p7.put("devIDShort", v1_7.dishbesideshockey);
+                p7.put("platform", Integer.valueOf(v1_7.nationalcommunitymissing));
+                p7.put("productCode", v1_7.ironoriginhoblike);
+            } catch (String v6_2) {
+                android.util.Log.e("QGHttpRequestUtils", v6_2.getMessage());
+                com.quickgame.android.sdk.utils.log.QGLog.LogException(v6_2);
+                return 0;
+            }
+            if (!v1_7.feedtonight.equals("default")) {
+                p7.put("channelCode", v1_7.feedtonight);
+            } else {
+                p7.put("channelCode", com.quickgame.android.sdk.unnecessarysperrylites.seventygenom.customreading(p6));
+            }
+            p7.put("clientLang", java.util.Locale.getDefault().getLanguage());
+            p7.put("suggestCurrency", "");
+            p7.put("time", Long.valueOf(v1_7.pursetruechild));
+            if (p7.size() != 0) {
+                String v6_11 = p7.keySet().iterator();
+                while (v6_11.hasNext()) {
+                    String v1_6 = ((String) v6_11.next());
+                    v0_1.put(v1_6, p7.get(v1_6));
+                }
+            }
+            String v6_13 = new StringBuilder();
+            v6_13.append("mapParam=");
+            v6_13.append(p7);
+            com.quickgame.android.sdk.utils.log.QGLog.d("QGHttpRequestUtils", v6_13.toString());
+            com.quickgame.android.sdk.utils.log.QGLog.d("QGHttpRequestUtils", "***************\u5206\u5272\u7ebf****************");
+            String v6_17 = new StringBuilder();
+            v6_17.append("jsonObj.toString()=");
+            v6_17.append(v0_1.toString());
+            com.quickgame.android.sdk.utils.log.QGLog.d("QGHttpRequestUtils", v6_17.toString());
+            String v6_19 = com.quickgame.android.sdk.unnecessarysperrylites.seventygenom.nationalcommunitymissing(p7);
+            java.util.HashMap v7_3 = new java.util.HashMap();
+            StringBuilder v0_7 = android.util.Base64.encodeToString(v0_1.toString().getBytes(), 0);
+            v7_3.put("sv", "v2");
+            v7_3.put("data", v0_7);
+            v7_3.put("sign", v6_19);
+            String v1_3 = new StringBuilder();
+            v1_3.append("data:");
+            v1_3.append(v0_7);
+            android.util.Log.i("QGHttpRequestUtils", v1_3.toString());
+            StringBuilder v0_4 = new StringBuilder();
+            v0_4.append("sign:");
+            v0_4.append(v6_19);
+            android.util.Log.i("QGHttpRequestUtils", v0_4.toString());
+            return v7_3;
+        }

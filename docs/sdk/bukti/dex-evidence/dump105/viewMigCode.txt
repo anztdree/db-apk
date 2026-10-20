@@ -1,0 +1,36 @@
+==============================================================================
+CLASS Lcom/quickgame/android/sdk/service/dishbesideshockey$rewakenssupertoward;  (endpoint: /viewMigCode)
+==============================================================================
+  FIELD cointhreat : Lcom/quickgame/android/sdk/service/dishbesideshockey$representativehodmandodliving;
+------------------------------------------------------------
+  METHOD <init> (Lcom/quickgame/android/sdk/service/dishbesideshockey$representativehodmandodliving;)V
+    public dishbesideshockey$rewakenssupertoward(com.quickgame.android.sdk.service.dishbesideshockey$representativehodmandodliving p1)
+        {
+            this.cointhreat = p1;
+            return;
+        }
+------------------------------------------------------------
+  METHOD run ()V
+    public void run()
+        {
+            try {
+                String v0_1 = new java.util.HashMap();
+                v0_1.put("uid", com.quickgame.android.sdk.service.dishbesideshockey$cointhreat.cointhreat.cointhreat.singersmooth.getUid());
+                String v0_3 = com.quickgame.android.sdk.bindcommunist.cointhreat$seventygenom.cointhreat.cointhreat("/v1/auth/viewMigCode", com.quickgame.android.sdk.bindcommunist.singersmooth.singersmooth(this.cointhreat.cointhreat, v0_1));
+                com.quickgame.android.sdk.service.QuickGameSdkService v2_2 = new StringBuilder();
+                v2_2.append("cdkeyResult=");
+                v2_2.append(v0_3.toString());
+                android.util.Log.d("QGUserCenterBinder", v2_2.toString());
+                boolean v1_6 = v0_3.getBoolean("result");
+            } catch (String v0_8) {
+                v0_8.printStackTrace();
+                return;
+            }
+            if (!v1_6) {
+                this.cointhreat.cointhreat.feedtonight("com.quickgame.android.sdk.GET_CDKEY_FAIL", v1_6, v0_3.getJSONObject("error").toString());
+                return;
+            } else {
+                this.cointhreat.cointhreat.feedtonight("com.quickgame.android.sdk.GET_CDKEY_SUCCESS", v1_6, v0_3.getJSONObject("data").toString());
+                return;
+            }
+        }
