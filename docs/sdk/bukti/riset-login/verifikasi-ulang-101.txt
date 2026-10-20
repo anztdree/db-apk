@@ -1,0 +1,62 @@
+VERIFIKASI ULANG 1.0.1 → GERBANG LOGINSERVER (bukti fisik, tanpa asumsi)
+Tanggal verifikasi: 2026-10-20 (sesi rencana-gerbang-login)
+Basis: /tmp/DB-Local-1.0.1.apk (sha256 a946ef6cc2d710e3…, cocok unduhan GitHub release)
+       vs DB-Local-original.apk (sha256 3650cbe54ecae38f…)
+
+=== A. STRUKTUR 1.0.1 (ulang) ===
+26 file baru  = 23 mirror + classes2.dex (6020 B) + META-INF/ANDROIDD.{RSA,SF}
+3 file berubah: META-INF/MANIFEST.MF (82c431d394->5256baf087),
+                assets/config_BS.properties (20f8fedc95->3619a8fdf1),
+                classes.dex (30e3757af8->ac70203455)
+
+=== B. config_BS.properties 1.0.1 (base64 didekode) ===
+EntryPoint1 = http://127.0.0.1:28110/bs/db/android
+EntryPoint2 = http://127.0.0.1:28110/bs/db/android
+(original: https://configus.sjmobilegame.com/bs/db/android
+           https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android)
+
+=== C. MIRROR setting bin 1.0.1 (XOR "DragonBall") ===
+url          = http://127.0.0.1:28110/bs/index-native.html?v=202109150935   (LOKAL)
+update       = http://127.0.0.1:28110/upgrade                               (LOKAL)
+loginServer  = https://login.popoh5.com      <- ALAMAT GERBANG (INTERNET)
+loginWebPort = 510                           <- PORT GERBANG
+loginPort    = 610
+tsLoginServer= http://118.24.68.91:7003
+testMode     = 1
+
+=== D. classes2.dex 1.0.1 (MiniServer) ===
+Tidak ada string: v1/, QHinfo, loginchecknative, qsdk  → 1.0.1 murni static server.
+start(): flag 'started' anti ganda; bootstrapSync() → File(getExternalFilesDir(null),"server")
+         + copyDir(assets,"mirror",…).
+copyDir(): file.exists() → SKIP (file lama TIDAK pernah ditimpa; edit user bertahan)
+resolve(): files/server/<path> DULU → fallback assets "mirror/"+<path>
+parsePath(): potong query '?', buang leading '/', tolak "..".
+
+=== E. PARSER GERBANG DI GAME DEX ===
+LaunchActivity.worktopichardtails membaca key:
+  "loginServer" (getString → field host), "loginWebPort" (getInt → field port),
+  "loginPort", "tsLoginServer", "loginKey"
+MainActivity.hardlinerspare juga membaca "loginServer" (ambil ulang saat sesi jalan).
+
+=== F. BUILDER ALAMAT GERBANG ===
+pursetruechild.ironoriginhoblike.seventygenom():
+  port > 0 → String.format(Locale.ENGLISH, "%s:%d", host, port) → "https://login.popoh5.com:510"
+
+=== G. TANPA HARDCODE (grep seluruh classes.dex) ===
+Kemunculan 'popoh5' / '118.24' : TIDAK ADA.
+Kemunculan 'loginchecknative' : 1 — const-string
+  "%s/loginchecknative?%sos=Android&sdk=%s"
+  di Lcointhreat/cointhreat/cointhreat/pursetruechild/nationalcommunitymissing;->run()
+→ satu-satunya sumber alamat gerbang = setting bin (LEG 2), bukan dex.
+
+=== H. TIKET + RESPONS LIVE GERBANG (panen perangkat itel S665L) ===
+guest   : uid=28486093 usermode=1 → {"code":0,…,"loginToken":"9a1ad1bd…","userId":"28486093",…}
+register: uid=28506361 usermode=0 → {"code":0,…,"loginToken":"7e0d3915…","userId":"28506361",…}
+login   : uid=28506361 usermode=0 → {"code":0,…,"loginToken":"6ddd1f61…","userId":"28506361",…}
+3 token BERBEDA diterima loginserver dalam satu sesi → validasi per-sesi (bukti R1).
+
+=== I. HAR PERANGKAT 1.0.1 ===
+Sesi 09:26 (catatan worklog study-101): bootstrap 09:26:42.634 sebelum config fetch;
+7 request ke 127.0.0.1:28110; loginchecknative via :510 = 200 OK.
+HAR 09:12 (repo-102/log/sdk.har) = BUILD JEMBATAN tes1 (request SDK ganda lokal+qsdk)
+→ BUKAN baseline 1.0.1; hanya nilai historis format request/respons.
