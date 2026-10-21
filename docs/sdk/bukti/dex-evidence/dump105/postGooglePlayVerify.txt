@@ -1,9 +1,0 @@
-==============================================================================
-CLASS Lcom/quickgame/android/sdk/bindcommunist/seventygenom;  (endpoint: /postGooglePlayVerify)
-==============================================================================
-------------------------------------------------------------
-  METHOD cointhreat (Ljava/util/Map;)Lorg/json/JSONObject;
-    public static org.json.JSONObject cointhreat(java.util.Map p2)
-        {
-            return com.quickgame.android.sdk.bindcommunist.cointhreat$seventygenom.cointhreat.cointhreat("/v1/user/postGooglePlayVerify ", p2);
-        }
