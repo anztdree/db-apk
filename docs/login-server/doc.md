@@ -367,7 +367,9 @@ Aturan edit:
 - Murni Java (`ServerSocket` thread-per-connection), TANPA lib eksternal; dilatari
   dari `MiniServer.start()` (satu hook warisan 1.0.1, classes.dex tidak disentuh).
 - Port **28112** (bin `loginPort`), bind 127.0.0.1; socket.io v2 / Engine.IO v3 POLLING:
-  handshake `0{...}` (upgrades websocket, ping 25000/5000), connect `40`, ping `2`→`3`,
+  handshake `0{...}` — sejak REVISI 3 mengiklankan `"upgrades":[]` (sengaja, server
+  polling-only; mencegah klien asli mencoba upgrade websocket yang pada implementasi
+  polling akan mengganggu sesi — lihat §8b), ping 25000/5000, connect `40`, ping `2`→`3`,
   emit `42<id>["handler.process",…]` → ack `43<id>[…]`, disconnect `41`; frame
   `<len>:<isi>` dengan len = panjang STRING (unit UTF-16) — bukti probe parse karakter.
 - 6 aksi User/* + aksi asing `ret:901` (bentuk byte §5g) + `loginGame` kebijakan (a)
@@ -472,6 +474,63 @@ emit bentuk panenan `{"type":"User","action":…}`) → `2:40` → GetServerList
 **LIST SERVER MUNCUL**. TestLogin regresi tetap 30/30. Catatan pengetesan: klien socket.io
 asli mengirim POST berframing `len:content`; emit tanpa `type`/bentuk asing dijawab
 `ret:901` sesuai kontrak.
+
+### 8b. REVISI 3 — penelusuran mandiri tanpa log baru (2026-10-21)
+
+Laporan pemilik: rev2 terpasang, hasil sama, "loginserver tidak ada tanda-tanda terbuka",
+tidak akan update log lagi. Penelusuran dilakukan penuh dari artefak (APK tayang, dex,
+runtime-dex.jar, libegret.so, HAR lama, main.min/index-native asli). Rantai bukti:
+
+1. **Rantai start utuh**: `LaunchActivity.onCreate` instruksi ke-2 = `MiniServer.start`
+   (classes.dex, tidak pernah disentuh) → `LoginServer.start` dipanggil TANPA syarat
+   SEBELUM thread MiniServer → bind `127.0.0.1:28112` hardcoded. Karena 28110 terbukti
+   hidup di perangkat (HAR 200 berulang), `LoginServer.start` pasti tereksekusi; bind
+   28112 tidak mungkin gagal (port kosong; INTERNET ada — 28110 bind sukses) →
+   **port 28112 LISTENING di perangkat**. "Tidak ada tanda-tanda" = butanya Reqable:
+   WebView/mesin native Chromium & engine HTTP tidak mem-proksi loopback — semua entri
+   28110 di HAR berasal dari HttpURLConnection Java, bukan klien game.
+2. **JALUR 1 (payload `startGame`) mati di perangkat — bukti empiris 2 sumber**:
+   (a) logcat 1.0.1 penulis: JS mem-fetch `serversetting.json` (JALUR 2) padahal bin
+   saat itu punya `loginServer` internet; (b) `sdk.har` 1.0.2: UI login hidup
+   (loginByName ×3 + loginchecknative) tapi NOL trafik ke `login.popoh5.com:610` yang
+   saat itu HIDUP. `loginServer = json.loginServer` tidak pernah terisi → klien SELALU
+   JALUR 2. (Payload builder terbukti benar: kedua cabang `gangclothing` memuat
+   `loginServer = cointhreat()`; penyebab pasti jalur native→JS — tidak perlu
+   diperbaiki karena JALUR 2 kini dijamin.)
+3. **JALUR 2 (serversetting.json) salah root di semua build sebelumnya**: mesin native
+   Egret memetakan path `resource/...` ke root sendiri — string `assetsRoot` + `game/`
+   di `libegret.so` + `preloadPath` (folder ekstrak all.zip). Bukan mirror `bs/`
+   (rev1 — salinan di sana tidak pernah dibaca), dan bukan folder ekstrak untuk
+   perangkat ber-versi 11220: **`assets/game/resource.version` = 11220** sedangkan
+   `upgrade.json` tak punya kunci `"11220"` → update-manager batalkan ekstrak diam-diam
+   → all.zip rev2 (berisi serversetting.json) TIDAK PERNAH diekstrak → 404 JALUR 2
+   (persis logcat penulis: clientversion.json ×3, serversetting.json, sound_click.mp3).
+4. **Mekanisme bunuh sesi rev2 (baru ditemukan)**: handshake mengiklankan
+   `upgrades:["websocket"]`; klien asli (mesin native punya WebSocket) mencoba upgrade
+   `GET /socket.io/?...transport=websocket` — `handleIo` menjawabnya lewat jalur
+   long-poll biasa → `sess.drain()` bisa menelan paket antrean (mis. pong `3`) →
+   heartbeat klien timeout → reconnect ×10 → mati tanpa list.
+
+Perbaikan rev3 (basis = aset tayang rev2 `b4b095db…`; delta 3 ganti + 3 tambah):
+
+| # | Perubahan | Tujuan |
+|---|---|---|
+| 1 | `classes2.dex`: literal handshake `"upgrades":["websocket"]` → `"upgrades":           []` (24 byte sama panjang, SHA1+Adler32 header dex dihitung ulang) | klien tak pernah mencoba WS; sesi tetap di jalur polling yang terverifikasi byte-exact |
+| 2 | +`assets/game/resource/properties/serversetting.json` (67 B, 28112) | JALUR 2 di root embedded `assetsRoot=game/` — root yang benar-benar dipakai mesin |
+| 3 | +`assets/game/resource/properties/clientversion.json` (38 B) + `resource/assets/image/public/sound/sound_click.mp3` (1585 B) | menutup 3 × 404 lain dari logcat penulis di root yang sama |
+| 4 | `upgrade.json` +`"11220":"all.zip"`; `size.json` +`"11220":19387001` | perangkat ber-versi lokal 11220 kini benar-benar mengekstrak all.zip (root preload) |
+
+Verifikasi: androguard parse dex valid (12 kelas); hanya 24 byte offset 35028 berubah;
+3 entri baru tepat; upgrade/size JSON valid; sign v1+v2+v3 + zipalign.
+
+**SERTIFIKAT BARU** — keystore 1.0.1–rev2 hilang bersama sandbox lama → rev3 dipakai
+kunci baru (SHA256 `a8c47b4e…8602`, berlaku s.d. 2056) → **WAJIB UNINSTALL build lama
+dulu**, lalu pasang rev3. Konsekuensi: DB akun generator mulai dari nol (guest baru).
+
+**Kesengajaan divergensi dari server asli**: handshake `upgrades:[]` (asli: websocket).
+Ini satu-satunya beda byte dari bentuk panenan — dipilih agar klien asli tetap di
+transport polling yang kontraknya terverifikasi penuh, bukan WS yang tidak pernah
+dipanen. Catatan di §7.
 
 ---
 
