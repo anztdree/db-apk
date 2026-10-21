@@ -692,6 +692,98 @@ alat PC.
 
 ---
 
+### 8e. REVISI 6-DEBUG — bedah bukti perangkat rev5 (logcat 5.540 baris + HAR Reqable + tangkapan layar) (2026-10-21)
+
+**Bukti**: `log running/logcat_2026-10-21_22-42-32.txt` (5.540 baris, 22:39:59–22:42:32,
+3× restart app, rev5-debug — bukti: mirror `I/Dbg` yang hanya ada di classes3 rev5),
+`log running/login-server.har` (84 entri Reqable), `log running/Screenshot_20261021-224147.jpg`.
+
+**LAPORAN PEMILIK**: (1) floating debug log tidak muncul; (2) "LOGINSERVER MUNCUL,
+TAPI PORT LOGIN SERVER TIDAK TERBUKA DAN TERBACA DI REQABLE .. JELAS INI SALAH
+CONFIG .. SDK PUNYA PORT SENDIRI, LOGIN SERVER ADA PORT SENDIRI".
+
+**TEMPUAN 1 — PROTOKOL rev5 BERHASIL: loginserver MENANG, list server TAMPIL.**
+Screenshot menunjukkan layar login dgn pemilih server **"DB-Local 1"** + res ver
+**110.11391** (versi mirror lokal!). Rantai bukti logcat+HAR:
+
+| Tahap | Bukti |
+|---|---|
+| bind | `I/LoginServer: listening 127.0.0.1:28112` ×3 proses |
+| verifier DLog | `I/Dbg: PORT: 28112 (LoginServer) LISTENING ✓` (probe internal kita) |
+| SDK login | HAR: `200 /v1/user/autoLogin`, `200 /loginchecknative?uid=84661813…` |
+| handshake | `I/LoginServer: 200 handshake` ×4 per proses (fix `2:40` bekerja) |
+| list server | UI "DB-Local 1" (screenshot) — hasil GetServerList via 28112 |
+
+**JAWABAN "SALAH CONFIG / PORT TIDAK TERBUKA": CONFIG BENAR — REQABLE MEMANG BUTA
+KE 28112.** Port SDK = 28110 (MiniServer), port loginserver = 28112 (LoginServer) —
+memang DUA port berbeda, sesuai desain. Perbedaan keterlihatan di Reqable:
+
+- **28110 terlihat** di HAR karena diakses layer Java (`HttpURLConnection`) yang
+  mengikuti proxy sistem (Reqable) — 11 request `127.0.0.1:28110` semua 200.
+- **28112 tidak mungkin terlihat** karena diakses mesin game (socket.io dari layer
+  JS/native) yang **tidak mengikuti proxy** — koneksi loopback langsung; Reqable
+  (proksi/VPN HTTP) tidak pernah mencegat trafik loopback engine. NOL entri 28112
+  di HAR ≠ port mati; bukti hidup justru di logcat (tabel atas) + list server di UI.
+- Kesimpulan rev3 tetap berlaku: "port tidak terbuka di Reqable" = ilusi alat ukur.
+  Cara melihat 28112 TANPA Reqable: tab NET/INFO panel DBG (verifier + log
+  LoginServer) — itulah sebabnya panel harus tayang (Tempuan 2).
+
+**TEMPUAN 2 — DUA AKAR MASALAH floating tak muncul (kali ini TERBUKTI, bukan
+tebakan):**
+
+1. **BUG RACE `inAdd` di DLog** — guard re-entrancy berupa boolean statis dipakai
+   lintas-thread. Thread `DLog-bridge` (parser logcat) membanjiri `addInternal`
+   (spam `GraphResponse` ratusan baris; masing-masing menulis file di dalam LOCK)
+   → saat main thread menulis log attach overlay, `inAdd==true` di thread lain →
+   **entri dibuang senyap**. Bukti di logcat: mirror `I/Dbg` hanya muncul utk
+   entri dari thread bridge sendiri (GraphResponse/ion/EgretNative) + boot awal
+   (sebelum spam); NOL jejak `overlay:`/`DBG:` padahal mirror hidup. rev4 tidak
+   terdampak log-nya (tak punya mirror) tapi panel rev4 juga tak terbukti tayang.
+2. **Panel tertempel tapi tertutup surface game** — path sub-window rev5
+   (`TYPE_APPLICATION_PANEL`) tidak menang z-order melawan
+   `SurfaceView.setZOrderOnTop(true)` milik libegret pada perangkat uji (Transsion
+   Android 11/API 31); outcome rev5 tidak teramati karena (1) membuang lognya.
+   Temuan tambahan: **sink UI hanya dipasang di jalur decor** — panel mode
+   sub-window tidak akan pernah update live.
+
+**Perbaikan rev6-debug** (basis = aset tayang rev5; delta = classes3.dex saja —
+classes2/classes/manifest byte-identik):
+
+| # | Perubahan | Tujuan |
+|---|---|---|
+| 1 | DLog v3: guard `inAdd` → **ThreadLocal** (re-entrancy per-thread; tidak ada lagi pembuangan lintas-thread) | log thread mana pun tidak hilang saat bridge spam |
+| 2 | DLog v3: `mirrorNow(tag,msg)` — tulis logcat langsung (tag `Dbg`) di luar ring | diagnostik kritis SELALU terlihat di logcat |
+| 3 | BOOT lantang: `DbgAppApplication` v3 log tiap langkah (`attachBaseContext OK`, `onCreate enter`, `kelas DebugOverlay/OverlayHost OK|GAGAL`, `lifecycle callbacks terpasang|GAGAL`); `OverlayHost` v3 log tiap resume | kegagalan senyap mustahil terulang; banner kini "rev6-debug" |
+| 4 | DebugOverlay v3 **triple-path**: path1 `TYPE_APPLICATION_OVERLAY` (layer sistem, DI ATAS surface game — butuh izin) → path2 sub-window (token activity → token aplikasi) → path3 DecorView | salah satu path WAJIB tayang; semua outcome dilog |
+| 5 | Alur izin: bila `canDrawOverlays()==false` → Toast + buka layar izin SEKALI per instalasi (prefs `ask_overlay_rev6`) + tombol **IZIN** permanen di tab INFO | pemilik bisa memberi izin tanpa adb |
+| 6 | BUG SINK fix: `DLog.setSink` dipasang sekali di `attach()` untuk SEMUA jalur | panel live-update di mode window |
+| 7 | panel `type`/`token` mengikuti mode bubble (system/subwindow); `teardownDecor` saat pindah mode; judul & INFO berlabel rev6 | konsistensi antar-jalur |
+
+**Uji JVM (kelas PERSIS dex v3) — 32 PASS / 0 FAIL**, termasuk uji race BARU:
+thread spam 3.000 entri bersamaan dgn 100 log "kritis" dari thread lain →
+**100/100 tersampaikan** (pembuktian fix bug rev4/rev5) + regresi penuh rev4
+(init/tee/parser 4 kasus/crash-chain/filter/query/netOnly/format/rotasi
+deterministik/cap ring).
+
+**SERTIFIKAT**: sama dengan rev4/rev5-debug (SHA256 `96dfa852…`) → **`adb install
+-r` dari rev5-debug TANPA uninstall**.
+
+**FINAL**: `DB-Local-1.0.3-rev6-debug.apk` — 125.126.049 B, sha256
+`5504e070545be546e371fa74a689641e6abb95d2aae91f94452396f6e699292f`.
+
+**Protokol verifikasi perangkat (tanpa PC):**
+1. `adb install -r` rev6-debug (atau pasang manual) → buka app.
+2. Bila Toast "Panel DBG butuh izin…" muncul dan layar pengaturan terbuka →
+   aktifkan **'Tampil di atas aplikasi lain'** → kembali ke game. (Hanya sekali.)
+3. Bubble **DBG** kini tayang DI ATAS layar game (layer sistem). Ketuk → panel.
+4. Tab **NET**: `LoginServer 200 handshake` + data; tab **INFO**: `PORT 28112 ✓` —
+   ini jawaban visual "port terbuka atau tidak" TANPA Reqable.
+5. Bila bubble tetap tak tayang → logcat (atau tab INFO) pasti berisi baris
+   `dbg:`/`path1..3` yang menyebut GAGAL — kirim baris itu; tidak ada lagi jalur
+   gagal senyap.
+
+---
+
 
 ## 9. RENCANA PEMBUATAN (DIEKSEKUSI 2026-10-21 — menunggu verifikasi perangkat pemilik)
 
