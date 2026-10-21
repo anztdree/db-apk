@@ -1,0 +1,16 @@
+[
+  {
+    "serverId": "1",
+    "url": "http://127.0.0.1:28113",
+    "new": false,
+    "hot": true,
+    "name": "DB-Local 1",
+    "online": true,
+    "openDate": "2026-10-16T00:00:00.000Z",
+    "offlineReason": "",
+    "merge": false,
+    "mergeTo": "",
+    "urlInner": "http://127.0.0.1:28113",
+    "chatInner": ""
+  }
+]
