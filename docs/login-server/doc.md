@@ -600,6 +600,96 @@ keputusan ikut/tidaknya di 1.0.3 stabil tetap milik pemilik.
 5. Tab INFO: status port real-time, path file log, memori, mirror.
 6. Tombol BAGIKAN → kirim log sebagai teks (WhatsApp/email) tanpa PC.
 
+
+### 8d. REVISI 5-DEBUG — akar masalah 2 kesalahan dari logcat perangkat (2026-10-21)
+
+**Bukti**: `log running/logcat.txt` (1.427 baris, 19:00:23–19:00:58, perangkat itel
+S665L, Android 12, rev4-debug terpasang — bukti: `re-sync … 1.0.8-login: 47 file`).
+Dua kesalahan pemilik: (1) loginserver belum memunculkan server, (2) floating tidak
+muncul.
+
+**Temuan positif dari logcat** (rantai boot rev4 hidup sampai jauh):
+
+| Tahap | Bukti baris logcat |
+|---|---|
+| LoginServer bind | `I/LoginServer: listening 127.0.0.1:28112` (19:00:24.114) |
+| Generator | `I/DbGen: generator: uid=61219341 …` |
+| SDK lokal | `200 v1/system/init`, `200 v1/system/getNotice`, `200 gen v1/user/registerVisitor` |
+| Gerbang | `200 gate loginchecknative` (token lokal) |
+| Web layer | `200 bs/index-native.html`, `200 bs/manifest.json`, mesin Egret jalan |
+| **serverurl** | `JS:INFO:serverurl:http://127.0.0.1:28112` — JALUR 2 rev3 BERHASIL |
+| **handshake** | `I/LoginServer: 200 handshake` ×4 (36.18 / 39.16 / 39.85 / 40.52) |
+| layer debug | probe verifier DLog: `404 (malformed)` 12× @1 dtk lalu @10 dtk (pola 2,5 dtk + 12 + 10 dtk = DLog-port) — classes3 HIDUP |
+
+KESIMPULAN: loginserver TERBUKA dan DIHUBUNGI — "belum memunculkan server" terjadi
+SETELAH handshake: sesi socket.io mati-dihidupkan berulang (4 handshake dalam 4,3
+dtk), list tidak pernah terkirim.
+
+**AKAR MASALAH 1 — klien tidak pernah dianggap tersambung (protokol)**. Probe ulang
+server asli yang hidup (`login.popoh5.com:610`, TLS, 2026-10-21) menunjukkan dua
+kontrak yang tidak dipenuhi build rev2–rev4:
+
+1. Handshake server asli = `96:0{…}2:40` — server MENYAMBUNG namespace segera
+   (frame `2:40` menyertai frame open). rev4 hanya mengirim `93:0{…}` → klien game
+   (klien socket.io termodifikasi milik game) tidak pernah masuk state CONNECTED →
+   watchdog main.min memutus → `serverurl` dicetak ulang → reconnect → putus-putus.
+2. Poll kosong server asli ditahan ~30 dtk lalu dijawab frame NOOP `1:1`. rev4
+   menjawab BODY KOSONG (`Content-Length: 0`) → transport gagal-parse → putus.
+
+(FIX tambahan preventif: `handlePacket` kini juga menerima kembung ganda
+`"44…"` — bila klien mem-bungkus MESSAGE dua lapis; bentuk telanjang lama tetap
+dilayani. Diuji tidak mengubah paket klien asli `40`/`420[…]`.)
+
+**AKAR MASALAH 2 — floating tak terlihat karena permukaan game di ATAS window**.
+`runtime-dex.jar` (mesin Egret) memanggil `SurfaceView.setZOrderOnTop(true)` —
+permukaan render game dikomposit DI ATAS seluruh view-hierarchy window, jadi bubble
+rev4 yang ditempel di DecorView tertutup permukaan game (layer debug sendiri HIDUP —
+lihat pola verifier di atas).
+
+**Perbaikan rev5-debug** (basis = aset tayang rev4; delta = 2 dex saja):
+
+| # | Perubahan | Tujuan |
+|---|---|---|
+| 1 | `classes2.dex` v5 (46.052 B, 12 kelas sama): handshake `frame(open)+"2:40"`; poll kosong → `frame("1")` (`1:1`); handlePacket toleransi kembung `44…` | klien masuk CONNECTED + sesi tak mati saat idle; selaras byte dengan perilaku server asli |
+| 2 | `classes3.dex` v2 (47.024 B): overlay pindah ke SUB-WINDOW `TYPE_APPLICATION_PANEL` (bubble 46dp + panel 92%×68%, `FLAG_NOT_TOUCH_MODAL`+`FLAG_NOT_FOCUSABLE`, tombol KB utk IME) — window terpisah DI ATAS surface game; fallback DecorView rev4 dipertahankan; DLog kini MIRROR-kan diagnosa (S) + error (E) ke logcat tag `Dbg` | floating terlihat DI ATAS game; status overlay/PORT/bridge tampak di logcat perangkat |
+| 3 | `AndroidManifest.xml`, `classes.dex`, mirror, assets: BYTE-IDENTIK rev4 | nol perubahan di luar dua dex |
+
+Sumber v4 hilang bersama sandbox → classes2 v5 direkonstruksi utuh dari dekompilasi
+dex v4 (12 kelas) lalu diverifikasi byte-contract: MSG_103 Mandarin, komentar akun
+`(1.0.5)`, literal handshake 11 spasi, `{"ret":901,"message":"command not definded"}`
+(sic), template paths — semua transkrip setia.
+
+**Uji JVM (kelas PERSIS dari dex v5) — 35 PASS / 0 FAIL**:
+
+- `TestProtocol` (26 PASS): handshake `93:0{…}2:40`; POST `2:40` → poll mengembalikan
+  `2:40` (klien CONNECTED); emit bentuk klien asli `420["handler.process",{…}]` →
+  ack `430[{"ret":0,"data":"…"}]`; GetServerList 12 field + url 28113 + history;
+  loginGame 103 byte-exact (koma ganda + Mandarin); aksi asing ret:901;
+  SaveLanguage/SaveUserEnterInfo; ping `1:2`→`1:3`; poll kosong → `1:1` (~20 dtk,
+  sesi tetap hidup); sid asing → 400 `Session ID unknown`; path asing → 400; prober
+  port tak membunuh server.
+- `TestMini5` (9 PASS): setting bin verbatim 688 B; index-native.html verbatim;
+  resource.version 11391; v1/system/init mirror text/json; gerbang
+  loginchecknative (code 0 + BSNative); registerVisitor generate; 404; malformed;
+  reject `..`.
+
+**Catatan kunci uji rev2/rev3 yang lampau**: uji lama memakai klien tiruan berbentuk
+telanjang ("40", "42…") — kebetulan cocok dgn ekspektasi server rev4 — sehingga
+rantai terlihat hijau di sandbox padahal bentuk kawat klien asli tidak divalidasi.
+Uji rev5 memakai bentuk kawat klien asli sejak frame pertama.
+
+**SERTIFIKAT**: sama dengan rev4-debug (SHA256 `96dfa852…`) → **`adb install -r`
+dari rev4-debug TANPA uninstall**; dari build lain (≤rev3) tetap wajib uninstall.
+
+**FINAL**: `DB-Local-1.0.3-rev5-debug.apk` — 125.126.049 B, sha256
+`5b16ef90dbd83bbaabdbce604fb84aca29ab9576ba7ea56cec90f21d44c22866`.
+
+**Protokol verifikasi perangkat (tanpa PC)**: pasang → buka app → bubble `DBG`
+kini HARUS terlihat DI ATAS layar game; ketuk → LIVE/NET/INFO; tab NET wajib
+memperlihatkan `LoginServer 200 handshake` lalu data GetServerList; list server
+muncul di UI. Logcat perangkat kini juga memuat tag `Dbg` (mirror diagnosa) tanpa
+alat PC.
+
 ---
 
 
