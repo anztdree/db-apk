@@ -1,0 +1,10 @@
+[
+  {
+    "serverId": "1",
+    "name": "DB-Local 1",
+    "online": 1,
+    "url": "http://127.0.0.1:28113",
+    "chaturl": "http://127.0.0.1:28113",
+    "dungeonurl": "http://127.0.0.1:28113"
+  }
+]

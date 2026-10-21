@@ -8,7 +8,9 @@
 > Semua kunci/rahasia di bawah **memang tertanam di dalam klien** (bukan hasil serangan ke server).
 > Jangan gunakan untuk kegiatan ilegal (cheat, bot ekonomi, penyalahgunaan server).
 
-> ## 📦 STATUS RILIS — **1.0.1 STABIL** (rilis default) · **test10 menunggu uji perangkat**
+> ## 📦 STATUS RILIS — **1.0.3 (tahap loginserver)** · SDK 1.0.2 teruji perangkat · 1.0.1 STABIL
+> **`DB-Local-1.0.3.apk`** (SHA-256 `df7466c6…5e0ec2`, sertifikat identik → install-over aman) = **tahap loginserver**: gerbang loginserver game kini LOKAL — socket.io v2 (Engine.IO polling murni Java) di `127.0.0.1:28112` dari bin `loginPort`; GetServerList/LoginAnnounce/SaveHistory/loginGame; server list + tombol START hidup dari config `docs/login-server/config/`. **Doc loginserver = SATU file: [`docs/login-server/doc.md`](docs/login-server/doc.md)**. Uji lab JVM 25/25; menunggu uji perangkat.
+> **`DB-Local-1.0.2.apk`** (SHA-256 `b32352ce…585300`) = **tahap SDK LOKAL PENUH teruji perangkat** (HAR 21-10: register → gerbang → restart → password salah ditolak → benar diterima — nol qsdk): config + gerbang + autoLogin + DB akun + 8 endpoint akun/keamanan. **Doc SDK = SATU file: [`docs/sdk/CONFIG-SDK-ASLI.md`](docs/sdk/CONFIG-SDK-ASLI.md)**.
 > **`DB-Local-1.0.1.apk`** = build test9 (byte-identik; SHA-256 `a946ef6cc2d710e3b8812d836f654da42ec1f572370ef9f715e7ba3487c70b8e`) — **teruji di perangkat** (HAR+logcat): boot → unduh & ekstraksi → layar login → **login SDK sukses** → engine Egret jalan.
 > Arsitektur: **redirection murni** — endpoint CDN diarahkan ke mini server `127.0.0.1:28110` via mekanisme config aplikasi sendiri (`config_BS.properties` + setting bin); konten file 1:1 (23 file, gerbang siap-dulu); APK & pola client-server asli 100% utuh.
 > Masih ke internet (perilaku asli, layanan masih hidup): `login.popoh5.com:510/:610`, `qsdk.t4game.com`, telemetry → **1.0.2-tes1** (prerelease) sudah dirilis; **doc SDK = SATU file lengkap: [`docs/sdk/CONFIG-SDK-ASLI.md`](docs/sdk/CONFIG-SDK-ASLI.md)** — config SDK asli terpetakan field-per-field dari dex + panen live + bukti perangkat, termasuk template config lokal yang benar.
