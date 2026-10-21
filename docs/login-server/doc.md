@@ -534,6 +534,75 @@ dipanen. Catatan di §7.
 
 ---
 
+### 8c. REVISI 4-DEBUG — konsol debug melayang Eruda-like (2026-10-21)
+
+**Motif**: verifikasi perangkat tidak lagi bergantung logcat PC/Reqable. Alat debug
+sendiri (self-logger) tertanam di APK: layer tampilan terpisah yang mengambang di
+atas game dan tetap membaca log layer utama — persis pola Eruda pada web, tapi
+versi native. Semua diagnosis "28112 tidak terbuka" kini terlihat di layar perangkat.
+
+**Prinsip build (sumber kebenaran tidak disentuh)**:
+
+| Komponen | Status vs rev3 |
+|---|---|
+| `classes.dex` (game + hook) | byte-identik ✓ |
+| `classes2.dex` (MiniServer/LoginServer/DbGen v4) | byte-identik ✓ |
+| `AndroidManifest.xml` | flip same-length 28 char (UTF-16 pool): `com.zhuhuan.game.Application` → `com.db.dbg.DbgAppApplication`; 15232 B tetap, 13 byte beda, AXML tetap valid |
+| `classes3.dex` | BARU 41.520 B — layer debug `com.db.dbg.*` (33 kelas: DLog, DebugOverlay, OverlayHost, DbgAppApplication) |
+
+`DbgAppApplication` = subclass murni dari Application asli (`super` selalu dipanggil
+lebih dulu; seluruh perilaku asli diwarisi). Semua kode debug dibungkus try/catch —
+bila layer debug gagal, aplikasi tetap jalan normal.
+
+**Arsitektur DLog — 5 sumber log → ring 4000 entri + file + UI**:
+
+| Sumber | Mekanisme | Menangkap |
+|---|---|---|
+| API sendiri | `DLog.add` | diagnostik rev4: BOOT, PORT |
+| stdout/stderr | tee `PrintStream` (asli tetap jalan) | print Java engine/SDK |
+| Crash | `defaultUncaughtExceptionHandler` + chain | crash Java apa pun (tampil sebelum proses mati + disimpan ke file) |
+| Bridge logcat | `logcat -v threadtime -T 300`, filter PID sendiri | `Log.i` LoginServer/MiniServer/DbGen v4 + log engine/JS — TANPA PC |
+| Verifier port | connect `127.0.0.1:28112` & `28110` (1s×12 lalu 10s) | `LISTENING ✓` / `TIDAK TERBUKA ✗` + waktu naik/turun |
+
+**Overlay (layer DecorView — tanpa izin, tanpa ubah window type)**: bubble 46 dp
+bisa digeser (snap ke tepi), badge merah = jumlah error baru; panel berisi tab
+**LIVE** (semua log), **NET** (hanya tag server: MiniServer/LoginServer/LoginConn/
+DbGen/PORT/BOOT), **INFO** (status port real-time, bridge, memori, path file, jumlah
+file mirror); filter level V/D/I/W/E, pencarian, jeda, salin, bersihkan; sentuhan di
+luar panel lolos ke game. File log otomatis:
+`Android/data/com.db.local/files/dbg/log.txt` (+`log.1.txt`, rotasi 512 KB).
+
+**Uji JVM DLog: 28 PASS / 0 FAIL** — init, tee stdout/stderr, parser threadtime
+(4 kasus: normal, PID asing difilter, tag padded, colon ganda), crash-chain ke
+handler sebelumnya, filter level/query/netOnly, format baris, rotasi deterministik,
+ring cap 4000.
+
+**Sertifikat**: keystore rev3 tidak bisa dibuka (password hilang bersama sandbox
+lama) → keystore debug baru `build-dbg/keys/dblocal-dbg.keystore` (alias `dblocal`,
+pass `dblocal-dbg-2026`, cert SHA256 `96dfa852…c337f`, berlaku s.d. 2056) →
+**WAJIB UNINSTALL rev3 dulu**, lalu pasang rev4-debug.
+
+**Hasil build**: `DB-Local-1.0.3-rev4-debug.apk` 125.121.953 B, sha256
+`e5ba4132128423673e1e3067383de5b89cea9445582bd1aebe1c81d14b9067c9`; audit: hanya
+manifest (13 byte) berubah + 1 entri baru; sign v1+v2+v3; zipalign verified.
+Sumber: `work-re/build-dbg/` (di luar repo, aturan anti-sampah). Build debug —
+keputusan ikut/tidaknya di 1.0.3 stabil tetap milik pemilik.
+
+**Protokol diagnosis perangkat (langsung menjawab keluhan "28112 tidak terbuka")**:
+
+1. Pasang → buka app → bubble `DBG` muncul di kiri atas layar.
+2. Ketuk bubble → tab LIVE. Wajib ada: `S/BOOT` (perangkat+pid), `S/DLog: bridge
+   logcat aktif`, `S/PORT: 28112 (LoginServer) LISTENING ✓`.
+3. Bila `PORT 28112 ✗` → baca baris `E/LoginServer` (penyebab bind) dan
+   `E/CRASH` (bila proses mati) — semuanya tampil di layar, tanpa PC.
+4. Tab NET: request MiniServer (setting bin, upgrade.json, all.zip, v1/*) +
+   handshake/polling LoginServer, lengkap dgn status.
+5. Tab INFO: status port real-time, path file log, memori, mirror.
+6. Tombol BAGIKAN → kirim log sebagai teks (WhatsApp/email) tanpa PC.
+
+---
+
+
 ## 9. RENCANA PEMBUATAN (DIEKSEKUSI 2026-10-21 — menunggu verifikasi perangkat pemilik)
 
 1. **LoginServer** (kelas `com.db.local.LoginServer`, classes2.dex — TANPA nama
