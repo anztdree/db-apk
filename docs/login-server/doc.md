@@ -435,6 +435,44 @@ dengan CDN asli).
 Uji build baru: **SELESAI — 30 PASS / 0 FAIL** (rincian di atas) — kontras byte-exact
 respons vs panenan live (9 aksi), guard re-sync, regresi gerbang SDK `loginchecknative`.
 
+### 8a. REVISI 2 — verifikasi perangkat pemilik (HAR `log running/loginserver.har`, 2026-10-21)
+
+Keluhan pemilik: port 28112 tidak pernah dihubungi, list server tidak muncul. Telusuri
+HAR (58 entri, Reqable): SEMUA jalur sebelum loginserver hijau (bin 688 B `loginPort
+28112` sampai ke perangkat — dekript respons HAR; upgrade/SDK/loginchecknative 200),
+TIDAK ADA satu pun koneksi ke 28112. **LoginServer tidak cacat — ia tidak pernah
+ditakdeer.** Akar masalah (bukti `main.min_777039fc.js` + dex asli):
+
+1. `connectToLogin` = dua jalur: `TSBrowser.executeFunction("getLoginServer")` dulu
+   (JALUR 1), lalu fallback baca `resource/properties/serversetting.json` RELATIF dari
+   root web (JALUR 2). `getLoginServer` di index-native.html = `var loginServer = null`
+   dan TIDAK pernah diisi (classes.dex asli tidak mengenal string itu) → JALUR 1 selalu
+   kosong → JALUR 2 = satu-satunya.
+2. Root web perangkat = folder hasil ekstrak `upgrade/all.zip` oleh update-manager
+   native (bukan `server/bs/`), dan all.zip (asli maupun build 1.0.3) TIDAK berisi
+   `resource/properties/serversetting.json` → `RES.getResByUrl` gagal diam →
+   `connectToServer` TIDAK pernah dipanggil.
+3. Perangkat tidak re-ekstrak karena `resource.version` server (11390) = warisan 1.0.2.
+
+Perbaikan rev2 (TANPA menyentuh kode; delta = isi mirror saja):
+
+| # | Perubahan | Isi |
+|---|---|---|
+| 1 | `upgrade/all.zip` | +3 file path relatif root web: `resource/properties/serversetting.json` (`http://127.0.0.1:28112`, bentuk tab asli), `resource/properties/clientversion.json` (byte-exact panen), `resource/assets/image/public/sound/sound_click.mp3` (byte-exact panen); internal `resource.version` → 11391 |
+| 2 | `upgrade/resource.version` | 11390 → **11391** (pemicu unduh+ekstrak) |
+| 3 | `upgrade/size.json` | +`"11390": <size all.zip baru>`, `"all"` diperbarui |
+| 4 | `upgrade/upgrade.json` | +`"11390": "all.zip"` |
+| 5 | `VERSION` | `1.0.6-login` → `1.0.8-login` (pemicu re-sync mirror) |
+
+Uji rev2 (JVM, satu rantai dari APK final): update-manager sim (lokal 11390) →
+`resource.version` 11391 → unduh all.zip (size cocok size.json) → ekstrak → root web
+berisi 3 file + `resource.version` 11391 → konek socket.io 28112 (framing `len:content`,
+emit bentuk panenan `{"type":"User","action":…}`) → `2:40` → GetServerList ack
+`{"ret":0,"data":"{\"errorCode\":0,\"serverList\":[1 server 12 field url 28113],…}"}` —
+**LIST SERVER MUNCUL**. TestLogin regresi tetap 30/30. Catatan pengetesan: klien socket.io
+asli mengirim POST berframing `len:content`; emit tanpa `type`/bentuk asing dijawab
+`ret:901` sesuai kontrak.
+
 ---
 
 ## 9. RENCANA PEMBUATAN (DIEKSEKUSI 2026-10-21 — menunggu verifikasi perangkat pemilik)
