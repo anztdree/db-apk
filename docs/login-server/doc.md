@@ -9,7 +9,12 @@
 > dari bedah asli). Doc ini + `config/` ditulis ulang dari **dua sumber asli**:
 > (1) bedah byte APK original & server config asli, (2) **probe langsung ke server
 > asli yang MASIH HIDUP** `login.popoh5.com:610` (2026-10-21). Build baru belum
-> dieksekusi — rencana ada di bagian 10.
+> dieksekusi — rencana ada di bagian 9.
+>
+> **ATURAN NAMA VERSI (perintah pemilik):** kerja yang belum terbukti jalan stabil
+> TIDAK boleh diberi nama versi baru (tidak ada "LoginServer v2" atau sejenisnya) —
+> yang belum teruji tetap memakai **versi default tahap ini = 1.0.3**. Versi hanya
+> berubah bila pemilik menetapkannya SETELAH rilis terbukti stabil jalan.
 >
 > Tahap sebelumnya (SDK) = 1.0.2 — doc-nya terpisah:
 > [`docs/sdk/CONFIG-SDK-ASLI.md`](../sdk/CONFIG-SDK-ASLI.md).
@@ -39,6 +44,27 @@ SDK lokal (1.0.2, port 28110)  ← SUDAH LOKAL
 
 Yang TIDAK disentuh tahap ini: `tsLoginServer`/`tsUrl` (hanya jalur mode 2), telemetry
 FB/AppsFlyer/ThinkingData (noise SDK), pembayaran (fase C), chat/dungeon server.
+
+### 1a. AUDIT BASIS RILIS v1.0.2 (bedah isi APK rilis `v1.0.2`, 2026-10-21)
+
+Basis = `DB-Local-1.0.2.apk` dari release `v1.0.2` — 125.280.859 B, sha256
+`b32352ce35d0006111a6a1ba766b61881ccd1e65399cf558ca62abf6be585300` (cocok doc SDK).
+Hasil bedah isi dengan lensa loginserver:
+
+| Item di APK 1.0.2 | Kondisi terverifikasi | Konsekuensi untuk 1.0.3 |
+|---|---|---|
+| `bs/js/main.min_777039fc.js` (4.914.149 B) + `bs/index-native.html` (10.792 B) | sha256 IDENTIK byte-per-byte dengan CDN asli (`2a14dca3…`, `59dba3e4…`) | semua kontrak JS di doc ini berlaku apa adanya — tidak ada yang perlu disentuh |
+| `classes.dex` (hook `MiniServer.start` di `LaunchActivity.onCreate`) | utuh, warisan 1.0.1 | satu-satunya titik membangunkan server lokal — TIDAK diubah |
+| Gerbang `loginchecknative` | SUDAH LOKAL — bin `loginServer http://127.0.0.1` + `loginWebPort 28110`; template generator `code:0` di mirror (terbukti HIJAU di perangkat) | tidak perlu diubah |
+| Bin mirror (686 B) — **`loginPort`** | **masih 610** → `cointhreat()` = `http://127.0.0.1:610`, tidak ada yang mendengarkan → koneksi login-server JS gagal (ini BATAS 1.0.2) | SATU field redirect tersisa: `loginPort → 28112` (bin `config/` 688 B — 686+2 byte konsisten dgn panjang "28112") |
+| `serversetting.json` / `clientversion.json` / `sound_click.mp3` | TIDAK ADA di mirror (42 entri: bs/ + qsdk/ + upgrade/ + generator.json + VERSION) | +3 file wajib ditambah — isi sudah ada di `config/` |
+| `classes2.dex` (35.056 B) | MiniServer + generator + DB akun + 8 endpoint akun/keamanan; TIDAK ada `LoginServer`/`28112`/socket listener/`gamehistory` | +1 kelas `LoginServer` (rencana bagian 9) — tidak ada yang dibongkar |
+| `socket.io.min_57ea9db7.js` | ada di mirror (manifest group "game") | klien socket.io v2 JS siap konek ke 28112 tanpa perubahan |
+
+**Kesimpulan audit: tidak ada penghalang.** Build 1.0.3 = basis 1.0.2 + redirect
+`loginPort` (1 field bin) + kelas `LoginServer` (28112) + 3 file web-layer.
+Setelah itu rantai §1 menjadi 100% lokal sampai batas tahap ini (START → mainClient
+28113 = tahap dunia game, gagal konek = jalur error normal klien).
 
 ---
 
@@ -179,7 +205,14 @@ if (0===e.ret){ var t=e.data;
 ```
 
 Server asli (probe) mengirim **`{"ret":0,"data":"<JSON>"}` saja** — tanpa
-`compress`, tanpa `language`. Aksi yang tidak dikenal → **`ret:901`** (BUKAN ret:1).
+`compress`, tanpa `language`. Aksi yang tidak dikenal → **`ret:901`** (BUKAN ret:1)
+dengan bentuk byte (raw-unknown.txt):
+
+```json
+{"ret":901,"message":"command not definded"}
+```
+
+(tanpa field `data`; teks pesan — termasuk typo aslinya — dipertahankan byte persis.)
 
 ---
 
@@ -187,7 +220,7 @@ Server asli (probe) mengirim **`{"ret":0,"data":"<JSON>"}` saja** — tanpa
 
 > Semua respons `data` dari server asli membawa **`errorCode`** (0 = sukses).
 > Nilai di bawah = byte asli dari `login.popoh5.com:610` (raw frame disimpan
-> di panenan, lihat bagian 11).
+> di panenan, lihat bagian 10).
 
 ### 5a. `GetServerList` — daftar server (memicu koneksi + pemilihan server)
 
@@ -278,14 +311,24 @@ resp: probe (userId tidak dikenal di server asli):
        "errorCode":103, "errorMessage":"本服务器只允许特定的渠道来源", "channelCode":""}
 ```
 
-Server asli membatasi channel origin tertentu. **Kebijakan lokal (menunggu
-persetujuan): menerima `game_origin`/channel lokal dengan bentuk sukses, atau
-meniru penolakan 103 — diputuskan saat implementasi.** Jalur SDK (BSNative) tidak
-pernah memakai aksi ini.
+Server asli membatasi channel origin tertentu.
+
+**Kebijakan loginGame lokal — DIPUTUSKAN pemilik: (a) TIRU ASLI.** Server lokal
+menolak channel asing persis seperti asli: bentuk byte sesuai probe di atas
+(`errorCode:103`, `errorMessage:"本服务器只允许特定的渠道来源"`, field `loginToken`/
+`userId`/`nickName`/`headerImage`/`isCreated`/`channelCode` kosong sesuai asli).
+**SDK BUKAN jalur `game_origin`:** channel SDK (BSNative) TIDAK dimasukkan ke
+daftar channel origin dan TIDAK boleh dilewatkan lewat aksi ini — jalur masuk
+game lokal tetap lewat gerbang SDK (`thirdParams` → `getSdkLoginInfo()`), bukan
+lewat `loginGame`. Tidak ada jalur sukses `loginGame` di tahap ini: server asli
+tidak pernah teramati mengizinkan channel asing, bentuk suksesnya tidak pernah
+ada di bukti, dan TIDAK diarang-arang. Jalur origin sesungguhnya (bila suatu saat
+dibutuhkan) = keputusan tahap DUNIA GAME, bukan tahap ini.
 
 ### 5g. Aksi asing
 
-Server asli: envelope `{"ret":901}` tanpa `data`. (Implementasi lama salah: ret:1.)
+Server asli: envelope `{"ret":901,"message":"command not definded"}` — tanpa `data`,
+typo asli dipertahankan (bentuk byte raw-unknown.txt). (Implementasi lama salah: ret:1.)
 
 ---
 
@@ -319,22 +362,60 @@ Aturan edit:
 
 ---
 
-## 7. IMPLEMENTASI SERVER LOKAL YANG DIHARAPKAN (classes2.dex, kelas `com.db.local.LoginServer`)
+## 7. IMPLEMENTASI SERVER LOKAL (DIBANGUN — classes2.dex, kelas `com.db.local.LoginServer`)
 
-- Murni Java (`ServerSocket` thread-per-connection), TANPA lib eksternal; dibangunkan
+- Murni Java (`ServerSocket` thread-per-connection), TANPA lib eksternal; dilatari
   dari `MiniServer.start()` (satu hook warisan 1.0.1, classes.dex tidak disentuh).
-- Sesi socket.io: map `sid → {antrian keluar, status nsp}`; long-poll GET menunggu
-  maks ~20 dtk lalu jawab kosong; sweep sesi kedaluwarsa.
+- Port **28112** (bin `loginPort`), bind 127.0.0.1; socket.io v2 / Engine.IO v3 POLLING:
+  handshake `0{...}` (upgrades websocket, ping 25000/5000), connect `40`, ping `2`→`3`,
+  emit `42<id>["handler.process",…]` → ack `43<id>[…]`, disconnect `41`; frame
+  `<len>:<isi>` dengan len = panjang STRING (unit UTF-16) — bukti probe parse karakter.
+- 6 aksi User/* + aksi asing `ret:901` (bentuk byte §5g) + `loginGame` kebijakan (a)
+  tolak channel asing `errorCode:103` byte persis probe.
+- Sesi: map `sid → {antrean keluar, status nsp, userId}`; long-poll GET menunggu maks
+  ~20 dtk lalu jawab kosong; sweep sesi kedaluwarsa (TTL 60 dtk); sid acak 17 char.
 - CORS `*` di semua jawaban (page-origin 28110 ≠ port 28112, pola asli sama).
-- Config dibaca via pola `resolve` MiniServer (files/server dulu → assets mirror).
-- `gamehistory.txt`: `uid<TAB>id,id,…` — maks 5, terbaru di depan, DIJAGA re-sync;
-  gagal simpan tidak memblokir START (perilaku klien tetap lanjut).
+- Config dibaca via pola `resolve` MiniServer (files/server dulu → assets mirror):
+  `loginserver/servers.json` + `loginserver/notice.json` — edit file langsung efektif.
+- `gamehistory.txt`: `uid<TAB>id,id,…` — maks 5, terbaru di depan, **DIJAGA re-sync**
+  (bootstrapSync kini memulihkannya bersama 5 file DB + generator.json);
+  `todayLoginCount` per accountToken per hari (SaveHistory mulai 1; SaveLanguage 0).
+- MiniServer: `mimeFor` + `.mp3 → audio/mpeg` dan `.zip → application/zip` (CT CDN asli).
+- `serverList` di-rebuild urutan asli 12 field; item tanpa `serverId` dilewati;
+  `notice.json` = isi array diteruskan apa adanya.
 
 ---
 
-## 8. STATUS & UJI (rencana — build lama TIDAK SAH)
+## 8. STATUS & UJI (build 1.0.3 — 2026-10-21)
 
-**Rilis `v1.0.3` lama DITOLAK pemilik.** Kesalahan yang terbukti:
+**Build baru SUDAH DIEKSEKUSI & terverifikasi JVM; verifikasi perangkat menunggu
+pemilik.** Rilis `v1.0.3` lama (tidak sah) DIGANTI asetnya di release yang sama.
+
+APK: `DB-Local-1.0.3.apk` — 125.293.629 B, sha256
+`42d66ba122aca19dc8c1198e0ac82b66ffdcfe223eae8099717f5f788b399239`, zipalign verified,
+signature v1+v2+v3, sertifikat IDENTIK garis 1.0.1/1.0.2 (SHA1 `5D:08:26:4B…`) →
+`adb install -r` di atas 1.0.2 tanpa uninstall.
+
+Delta terverifikasi byte terhadap basis rilis v1.0.2 (3.713 entri): 3 penggantian
+(classes2.dex 46.452 B; bin 688 B loginPort 28112; VERSION `1.0.6-login` = pemicu
+re-sync internal) + 5 file baru (loginserver/servers.json, loginserver/notice.json,
+bs/resource/properties/serversetting.json + clientversion.json byte-exact asli,
+bs/resource/assets/image/public/sound/sound_click.mp3 byte-exact asli). Sisanya
+byte-identik, TIDAK ada entri hilang.
+
+Uji JVM **30 PASS / 0 FAIL** (kelas PERSIS dex; kontras langsung raw frame panenan):
+- handshake byte persis + prefix = panjang string; connect `2:40`; ping `1:2`→`1:3`;
+  multipaket POST (pong+ack satu poll);
+- **LoginAnnounce / SaveHistory / SaveLanguage / SaveUserEnterInfo byte-exact** vs
+  panenan; **loginGame 103 byte-exact** (Mandarin UTF-8 benar); **aksi asing byte-exact**
+  (`ret:901` + pesan asli);
+- GetServerList: item 12 field urutan asli + tipe bool; history `[]` → SaveHistory →
+  `["1"]` → kap 5 terbaru di depan; gamehistory.txt format `uid<TAB>ids`;
+- re-sync VERSION menjaga gamehistory.txt + menyalin ulang config;
+- regresi MiniServer: bin verbatim 688 B, index-native verbatim, 404, gerbang
+  `loginchecknative` tetap hijau (`code:0`).
+
+Kesalahan build lama (terverifikasi dari server asli):
 
 | # | Kesalahan | Bukti dari server asli |
 |---|---|---|
@@ -351,25 +432,35 @@ Yang terbukti BENAR dari build lama (dipertahankan): redirect bin, arsitektur 2 
 autentik (`main.min_777039fc.js` + `index-native.html` sha256 identik byte-per-byte
 dengan CDN asli).
 
-Uji build baru (rencana): JVM 25+ kasus — kontras byte-exact respons vs panenan live
-(9 aksi), guard re-sync, regresi gerbang SDK `loginchecknative`.
+Uji build baru: **SELESAI — 30 PASS / 0 FAIL** (rincian di atas) — kontras byte-exact
+respons vs panenan live (9 aksi), guard re-sync, regresi gerbang SDK `loginchecknative`.
 
 ---
 
-## 9. RENCANA PEMBUATAN (menunggu persetujuan pemilik — BELUM dieksekusi)
+## 9. RENCANA PEMBUATAN (DIEKSEKUSI 2026-10-21 — menunggu verifikasi perangkat pemilik)
 
-1. **LoginServer v2** di classes2.dex: 6 aksi User/* dengan bentuk respons ASLI
-   (`errorCode` di semua data; SaveHistory tanpa loginToken; ret:901 aksi asing;
-   loginGame sesuai keputusan kebijakan), `gamehistory.txt` dijaga, CORS `*`.
+1. **LoginServer** (kelas `com.db.local.LoginServer`, classes2.dex — TANPA nama
+   versi baru; tetap versi default tahap = 1.0.3): 6 aksi User/* dengan bentuk
+   respons ASLI (`errorCode` di semua data; SaveHistory tanpa loginToken; ret:901
+   aksi asing; **loginGame = kebijakan (a) tiru asli — tolak channel asing
+   `errorCode:103`, SDK bukan jalur game_origin**), `gamehistory.txt` dijaga,
+   CORS `*`. → **SELESAI, uji JVM 30/30 (bagian 8).**
 2. **Mirror +3 file**: `bs/resource/properties/serversetting.json` (lokal 28112),
    `bs/resource/properties/clientversion.json` (asli), `bs/resource/assets/image/
-   public/sound/sound_click.mp3` (asli).
-3. **Config** → dari folder `config/` ini tanpa diubah makna.
-4. **Uji JVM** kontras langsung dengan raw frame panenan (bagian 11).
-5. **Build APK** dari basis warisan (classes2.dex baru + mirror + bin) — penomoran
-   rilis menggantikan v1.0.3 lama mengikuti keputusan pemilik.
+   public/sound/sound_click.mp3` (asli). → **SELESAI (byte-exact).**
+3. **Config** → dari folder `config/` ini tanpa diubah makna. → **SELESAI**
+   (+ `loginserver/servers.json` & `notice.json` masuk mirror).
+4. **Uji JVM** kontras langsung dengan raw frame panenan (bagian 10). → **SELESAI,
+   30 PASS / 0 FAIL.**
+5. **Build APK** dari basis rilis v1.0.2 terverifikasi (sha256 `b32352ce…585300`,
+   audit bagian 1a) — classes2.dex baru + mirror + bin — penomoran
+   rilis = **1.0.3 (versi default tahap, menggantikan v1.0.3 lama yang tidak sah)**;
+   nomor baru HANYA jika pemilik menetapkannya setelah build terbukti stabil jalan.
+   → **SELESAI — sha256 `42d66ba1…99239` (bagian 8), aset diganti di release GitHub.**
 6. **Verifikasi perangkat**: server list tampil di UI, notice, START → SaveHistory →
-   (dialog putus ke 28113 = batas tahap ini, normal).
+   (dialog putus ke 28113 = batas tahap ini, normal). → **MENUNGGU pemilik** —
+   logcat: tag `LoginServer` (listening 28112, 200 handshake, 200 ok) + tag
+   `MiniServer` (re-sync 1.0.5 → 1.0.6-login, 200, 200 gate).
 
 ---
 
