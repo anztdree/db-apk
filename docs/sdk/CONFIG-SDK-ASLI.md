@@ -1,15 +1,19 @@
-# SDK — DOC TUNGGAL (config + gerbang login + build + rencana)
+# SDK — DOC TUNGGAL (config + gerbang login + kondisi final)
 
-> **Ini satu-satunya doc SDK.** Seluruh isi (config asli, gerbang login, riwayat build,
-> kontrak endpoint, database lokal, rencana lanjut) ada di sini — doc ini yang **selalu
-> di-upgrade**, tidak dibuat file terpisah lagi (permintaan user: 1 doc saja, berapa pun
-> barisnya, yang penting jelas).
+> **Ini satu-satunya doc SDK — selalu di-upgrade file ini, TIDAK pernah dibuat doc/folder
+> baru atau per-versi.** (Aturan user: repo hanya berisi KONDISI FINAL; terlalu banyak
+> file/folder per-versi = sampah + bikin bingung mana config yang benar.)
 >
-> **Status terkini (2026-10-21):** BUILD 1.0.5-A (akun & keamanan penuh, 8 endpoint)
-> selesai, uji JVM 32/32, **terverifikasi lapangan di perangkat** (HAR 2026-10-21:
-> register → gerbang game → restart → password salah ditolak → password benar diterima —
-> 100% lokal, nol qsdk). Rilis tayang: release `v1.0.2`, aset `DB-Local-1.0.2.apk`
-> (versioning tetap, isi = BUILD 1.0.5, REVISI v3), sha256 `b32352ce…585300`.
+> **Produk = DB-Local 1.0.2 — FINAL, dan tetap 1.0.2.** Tidak ada 1.0.3/1.0.4/1.0.5 sbg
+> versi: semua pengerjaan itu TAHAP-TAHAP dalam 1.0.2 yang sama (sejarahnya ringkas di §10).
+> Rilis tayang: release `v1.0.2`, aset `DB-Local-1.0.2.apk` (125.280.859 B), sha256
+> `b32352ce…585300` — berisi SDK lokal penuh: config + gerbang login + autoLogin +
+> database akun + 8 endpoint akun/keamanan. **Terverifikasi lapangan di perangkat**
+> (HAR 2026-10-21: register → gerbang game → restart → password salah ditolak → password
+> benar diterima — 100% lokal, nol qsdk).
+>
+> Penanda `VERSION` di dalam mirror APK = pemicu re-sync internal antar-install SAJA —
+> BUKAN nomor versi produk. Nomor produk tidak pernah berubah dari 1.0.2.
 
 ---
 
@@ -18,32 +22,33 @@
 1. **ATURAN #1: capture ≠ config asli.** HAR/capture = alat bantu & tiket petunjuk saja,
    BUKAN acuan pondasi — berlaku juga untuk login/register/guest. Pondasi = jawaban ASLI
    server hidup + bukti instruksi dex.
-2. **GENERATE, bukan sisa jejak** (koreksi user 2026-10-20): kalau config benar → token/
-   uid dibangkitkan BARU secara lokal. Sah karena token = string opaque di seluruh rantai
-   klien (bagian 9). Dilarang memakai identitas panen/perangkat di APK (dicek otomatis
-   saat packaging).
-3. **NATURAL, tanpa jaring** (mandat 2026-10-20): *"semua fitur SDK ini seharusnya wajib
-   bisa di local karena kita sudah sepakat baik itu pembayaran atau CDK"* — endpoint
-   diimplementasi sungguhan berbasis kontrak dex; TIDAK ada catch-all error sebagai
-   tujuan akhir.
+2. **GENERATE, bukan sisa jejak:** token/uid dibangkitkan BARU secara lokal. Sah karena
+   token = string opaque di seluruh rantai klien (§9). Dilarang memakai identitas
+   panen/perangkat di APK (dicek otomatis saat packaging).
+3. **NATURAL, tanpa jaring:** *"semua fitur SDK ini seharusnya wajib bisa di local karena
+   kita sudah sepakat baik itu pembayaran atau CDK"* — endpoint diimplementasi sungguhan
+   berbasis kontrak dex; TIDAK ada catch-all error sebagai tujuan akhir.
 4. **TANPA bridge/forward** — server lokal MENJAWAB, bukan meneruskan ke qsdk.t4game.com.
-   Pola jembatan era tes1 sudah ditinggalkan.
 5. **Config SDK di LOCAL, bebas diatur user** — edit file di `Android/data/com.db.local/
    files/server/` → langsung efektif antar boot (copyDir tidak menimpa file yang ada).
-6. **Versioning tetap:** nama aset rilis selalu `DB-Local-1.0.2.apk`; nomor build internal
-   ada di `mirror/VERSION` + doc ini.
-7. **Revisi rencana 2026-10-20 (final):** pembayaran + config lainnya → **WEBSITE LOKAL**
-   (fase C: order muncul di web, konfirmasi via web, web = developer config local —
-   rumah CDK, migcode, order, config server). **SNS/Facebook diskip** (*"tidak perlu
-   karena logis local"*).
+6. **Versioning:** produk selalu **1.0.2**. Tidak ada folder/doc per-versi (1.0.5, 1.0.6,
+   dst. = DILARANG). Milestone baru = upgrade doc ini + config lokal di tempat yang sama.
+7. **Pembayaran + config lainnya → WEBSITE LOKAL** (fase berikutnya; folder
+   `docs/login-server/` disiapkan user): player membeli → order muncul di web →
+   dikonfirmasi via web; web = developer config local (rumah CDK, migcode, order, config).
+   **SNS/Facebook diskip** (*"tidak perlu karena logis local"*).
 
-### Bukti dari 3 sumber yang saling mengunci
+### Sumber kebenaran (metode kerja — berlaku meski artefak bukti tidak disimpan di repo)
 
-| Sumber | Isi | Lokasi |
-|---|---|---|
-| 1. DEX ORIGINAL APK | field yang BENAR-BENAR diparse SDK (instruksi, bukan tebakan) | `bukti/dex-evidence/`, `bukti/riset-login/`, `bukti/dex-evidence/dump105/` |
-| 2. SERVER ASLI HIDUP | panen live respons config & sesi (acuan format) | `bukti/panen-live/`, `bukti/panen-gerbang4/` |
-| 3. HAR PERANGKAT | tiket request asli + verifikasi lapangan | `bukti/device-har/`, `log/sdk.har` |
+| Sumber | Isi |
+|---|---|
+| 1. DEX ORIGINAL APK | field yang BENAR-BENAR diparse SDK (instruksi, bukan tebakan) — kontrak terpenting terdokumentasi §5–§8 doc ini |
+| 2. SERVER ASLI HIDUP (qsdk.t4game.com) | panen live respons config & sesi = acuan FORMAT (panen terdokumentasi nilai/hash-nya di doc ini) |
+| 3. HAR PERANGKAT (`log running/sdk.har`) | tiket request asli + verifikasi lapangan |
+
+> Dump bukti mentah & folder sumber build sengaja TIDAK disimpan di repo (dibersihkan
+> user — repo hanya kondisi final). Kontrak yang dibutuhkan terdokumentasi penuh di doc
+> ini; provenance final = APK rilis itu sendiri (classes2.dex 35.056 B).
 
 ---
 
@@ -65,14 +70,15 @@ seluruh jalur SDK karena pembaca `QHinfo` hanya satu: `QuickGameManager.initThir
 dex/.so/asset).
 
 **Komponen MiniServer (classes2.dex, hook `MiniServer.start(Context)` di
-`LaunchActivity.onCreate` instruksi #2, ada sejak 1.0.1):**
+`LaunchActivity.onCreate` instruksi #2, warisan 1.0.1):**
 - `ServerSocket 127.0.0.1:28110` (daemon), drain body POST, mime map (CT live `text/json`,
   `.mp3=audio/mpeg`, `.zip=application/zip`), reject `..`, `Connection: close`.
 - `bootstrapSync`: `assets/mirror/` → `getExternalFilesDir(null)/server/` (file yang SUDAH
   ADA → DILEWATI, edit user bertahan).
-- **Re-sync versi:** boot membaca `mirror/VERSION` vs `server/VERSION`; beda/kosong →
-  sync penuh (file lama dibuang) **kecuali DB user dijaga**: `generator.json`,
-  `accounts.txt`, `codes.txt`, `bindings.txt`, `migcodes.txt`, `outbox.txt`.
+- **Re-sync versi:** boot membaca `mirror/VERSION` vs `server/VERSION` (penanda INTERNAL,
+  bukan nomor produk); beda/kosong → sync penuh (file lama dibuang) **kecuali DB user
+  dijaga**: `generator.json`, `accounts.txt`, `codes.txt`, `bindings.txt`, `migcodes.txt`,
+  `outbox.txt`.
 - `resolve`: `files/server/<path>` dulu → fallback assets mirror.
 - Generator `DbGen` + mini JSON `DbJson`; decoder amplop `valueFromEnvelope`
   (form `data` → Base64 → JSON) — dipakai semua endpoint sesi/aksi.
@@ -109,14 +115,14 @@ LaunchActivity (channel "BS")
 
 **LEG 0** injeksi 1.0.1: diff classes.dex original→1.0.1 = SATU method berubah
 (LaunchActivity.onCreate 234→244 B, invoke `MiniServer.start`, dibungkus try/catch
-senyap); classes2.dex 6.020 B = MiniServer/ConnRun.
+senyap); classes2.dex awal 6.020 B = MiniServer/ConnRun statik.
 
 ---
 
 ## 4. THE CONFIG — `config-local/` + aturan edit
 
-Folder `config-local/` = materi yang dilayani MiniServer (bukan jejak). Di APK: mirror
-`assets/mirror/qsdk/**` (staging `build-1.0.x/mirror/`). **Edit file → langsung efektif.**
+Folder `config-local/` = **satu-satunya config yang benar** (materi yang dilayani
+MiniServer, bukan jejak). **Edit file → langsung efektif.**
 
 | File (config-local/) | Endpoint | Peran / status material |
 |---|---|---|
@@ -125,11 +131,11 @@ Folder `config-local/` = materi yang dilayani MiniServer (bukan jejak). Di APK: 
 | `system/getAgreement.json` | POST /v1/system/getAgreement | Perjanjian (semua kosong) — ✅ FINAL (188 B live) |
 | `user/ckRegVistor.json` | POST /v1/user/ckRegVistor | Cek registrasi guest — ✅ FINAL (`isReged:1`) |
 | `user/registerVisitor.json` | POST /v1/user/registerVisitor | **SESI GUEST — TEMPLATE GENERATOR** (bentuk = live 2345 B) |
-| `user/registerUser.json` | POST /v1/user/registerUser | REGISTER — kini GENERATOR + DB AKUN (1.0.4); acuan sukses asli satu-kali |
-| `user/loginByName.json` | POST /v1/user/loginByName | LOGIN — kini GENERATOR + DB AKUN (1.0.4); acuan live 2429 B |
+| `user/registerUser.json` | POST /v1/user/registerUser | REGISTER — GENERATOR + DB AKUN; acuan sukses asli satu-kali |
+| `user/loginByName.json` | POST /v1/user/loginByName | LOGIN — GENERATOR + DB AKUN; acuan live 2429 B |
 | `auth/getUserInfo.json` | POST /v1/auth/getUserInfo | Profil bersesi — GENERATOR (acuan live 280 B ×2 varian) |
-| `user/autoLogin.template` + `autoLogin.error.template` | POST /v1/user/autoLogin | **1.0.3** — sesi akun/guest ter-validasi + bentuk error live 40008 |
-| `user/error.template` | (bersama) | **1.0.4** — bentuk error live 40008, id/message → placeholder |
+| `user/autoLogin.template` + `autoLogin.error.template` | POST /v1/user/autoLogin | Sesi akun/guest ter-validasi + bentuk error live 40008 |
+| `user/error.template` | (bersama) | Bentuk error live 40008, id/message → placeholder |
 | `game/loginchecknative.json` | GET <loginServer>/loginchecknative | **GERBANG — TEMPLATE GENERATOR** (bentuk 10 field `code:0` live) |
 
 ### Aturan edit (salah format = SDK tolak — bukti parser dex)
@@ -168,8 +174,7 @@ Folder `config-local/` = materi yang dilayani MiniServer (bukan jejak). Di APK: 
 
 `generator.json` (external files, dijaga re-sync): `uid` (kosong = auto-seed sekali lalu
 terkunci), `username`, `salt` (default `dblocal-102`), + sesi terakhir: `lastAuthToken`,
-`lastUsername`, `lastIsGuest`, `lastUid` (migrasi 1.0.2/1.0.3 → 1.0.4: lastUid kosong +
-lastUsername ada → lastUid = uid era satu-uid).
+`lastUsername`, `lastIsGuest`, `lastUid`.
 
 ### Sifat sesi (TERBUKTI panen live 2026-10-20)
 
@@ -178,7 +183,7 @@ lastUsername ada → lastUid = uid era satu-uid).
 | Sesi guest terikat perangkat & dapat diulang | tiket sama → sesi SAMA persis | uid generator persisten per perangkat |
 | loginchecknative menerima token berulang | GET sama → `code:0` tiap panen; loginToken baru, sign stabil per uid | validasi per-sesi: token baru per sesi, uid stabil, jawaban `code:0` |
 | registerUser SATU-KALI (state-bound) | panen ulang → `40008 pengguna ini telah digunakan` | server lokal = DB: register diterima sekali, duplikat ditolak (id=3) |
-| loginByName dapat diulang | panen ulang → sesi akun sama | login = validasi password (1.0.4) |
+| loginByName dapat diulang | panen ulang → sesi akun sama | login = validasi password (DB akun) |
 | uid antar perangkat berbeda | 28486093 vs 28506361 | generator membangkitkan uid sendiri |
 
 ---
@@ -299,24 +304,24 @@ menjawab dgn wrapper & field yang benar. Password klien = **MD5 hex** sebelum di
 | Kategori | Endpoint | Status |
 |---|---|---|
 | **system (config)** | `init` ✅ · `getNotice` ✅ · `getAgreement` ✅ · `dmsg` ✅ statik · `onNewToken` ✅ statik | 5/5 LOKAL |
-| **user (sesi/akun)** | `registerVisitor` ✅ generator · `registerUser` ✅ generator+DB (1.0.4) · `ckRegVistor` ✅ statik · `autoLogin` ✅ generator tervalidasi (1.0.3, Opsi A) · `loginByName` ✅ generator+DB (1.0.4) · `getServerAgreement` ✅ statik · `sendCodeByEmail` ✅ (1.0.5-A) · `findPassByEmail` ✅ (1.0.5-A) · `actCdKey` ⬜ 1.0.5-B · `postGooglePlayVerify` ⬜ fase C · `userLoginByOtherSdk` ⛔ SNS diskip | |
-| **auth (aksi akun/bayar/event)** | `getUserInfo` ✅ generator · `changePassword` ✅ (1.0.5-A) · `bindMail` ✅ (1.0.5-A) · `viewMigCode` ✅ (1.0.5-A) · `cUserTrash` ✅ (1.0.5-A) · `unBindOtherInfo` ✅ (1.0.5-A) · `userBindOtherSdk` ✅ (1.0.5-A) · `setGameRoleInfo` ⬜ 1.0.5-B · `createOrder` ⬜ fase C · `jianchaLayLx` ⬜ fase C · `cksnslogin` ⛔ · `fbActInit` ⛔ · `fbInviteEvent` ⛔ · `fbLikeEvent` ⛔ · `fbShareEvent` ⛔ · `fbUserClaimEvent` ⛔ | |
+| **user (sesi/akun)** | `registerVisitor` ✅ generator · `registerUser` ✅ generator+DB · `ckRegVistor` ✅ statik · `autoLogin` ✅ generator tervalidasi (Opsi A) · `loginByName` ✅ generator+DB · `getServerAgreement` ✅ statik · `sendCodeByEmail` ✅ · `findPassByEmail` ✅ · `actCdKey` ⬜ tahap CDK · `postGooglePlayVerify` ⬜ fase C · `userLoginByOtherSdk` ⛔ SNS diskip | |
+| **auth (aksi akun/bayar/event)** | `getUserInfo` ✅ generator · `changePassword` ✅ · `bindMail` ✅ · `viewMigCode` ✅ · `cUserTrash` ✅ · `unBindOtherInfo` ✅ · `userBindOtherSdk` ✅ · `setGameRoleInfo` ⬜ tahap CDK · `createOrder` ⬜ fase C · `jianchaLayLx` ⬜ fase C · `cksnslogin` ⛔ · `fbActInit` ⛔ · `fbInviteEvent` ⛔ · `fbLikeEvent` ⛔ · `fbShareEvent` ⛔ · `fbUserClaimEvent` ⛔ | |
 
 ⬜ = antrian sesuai rencana; ⛔ = diskip keputusan user (SNS "logis local"). Gerbang
-`loginchecknative` (bukan /v1) = ✅ lokal sejak 1.0.2.
+`loginchecknative` (bukan /v1) = ✅ lokal.
 
 ---
 
-## 8. KONTRAK 19 RUTE FASE 1.0.5 (bukti dex fase 0 — dump105, 27 file, androguard, nol kelas hilang)
+## 8. KONTRAK 19 RUTE TAMBAHAN (bukti dex — bedah androguard atas classes.dex asli)
 
 ### 8a. Amplop request BERSAMA (wrapper `bindcommunist.singersmooth.singersmooth(...)`)
 
 Field umum **di dalam JSON**: `sdkVersion`(223), `gameVersion`, `deviceId`, `serialNum`,
 `devIDShort`, `platform`, `productCode`, `channelCode`, **`authToken`** (bila ada sesi),
 `clientLang`, `suggestCurrency`, `time` + field spesifik endpoint. Lewat kabel:
-`sv=v2&data=Base64(JSON)&sign=…` — decoder `valueFromEnvelope` (sudah terbukti di
-perangkat sejak 1.0.4) dipakai ulang semua endpoint. `authToken` = identitas pemanggil
-untuk operasi per-akun → dipetakan ke DB via generator.
+`sv=v2&data=Base64(JSON)&sign=…` — decoder `valueFromEnvelope` (terbukti di perangkat)
+dipakai ulang semua endpoint. `authToken` = identitas pemanggil untuk operasi per-akun →
+dipetakan ke DB via generator.
 
 ### 8b. Kontrak per endpoint (req = field JSON; resp = yang dibaca SDK)
 
@@ -359,7 +364,7 @@ sesi dipakai ulang; CDK sukses = token baru + userData akun.
 
 ## 9. BASIS BUKTI GENERATOR — kenapa token generate SAH
 
-Koreksi user terbukti dari dex — token = **string opaque di seluruh rantai klien**:
+Token = **string opaque di seluruh rantai klien**:
 
 | Titik | Pembuktian (dex original) | Konsekuensi |
 |---|---|---|
@@ -369,13 +374,8 @@ Koreksi user terbukti dari dex — token = **string opaque di seluruh rantai kli
 | Runnable gerbang `nationalcommunitymissing.run` | `getInt("code") == 0` → LOLOS; else `msg`/`message` | jawaban lokal cukup `code:0` |
 | Konsumen lanjut `MainActivity.hardlinerspare` | respons gerbang utuh diteruskan ke JS (payload startGame) | bentuk 10 field live dipertahankan, nilai generate |
 
-Pola server asli ditiru perilakunya (bukti panen): uid stabil per perangkat, token baru
-per sesi, `sign` stabil per uid, `loginToken` baru per panggilan. Bukti mentah:
-`bukti/riset-login/dump-generator-basis.txt`.
-
-**Konsekuensi arah gerbang:** loginserver asli memvalidasi token di sisi server → token
-generate tidak akan lolos di sana → gerbang diarahkan LOKAL lewat setting bin (config
-yang sudah lokal sejak 1.0.1). Jalur lama "gerbang live dgn token panen" DIBATALKAN.
+Pola server asli ditiru perilakunya: uid stabil per perangkat, token baru per sesi,
+`sign` stabil per uid, `loginToken` baru per panggilan.
 
 **Aturan autoLogin (Opsi A — setia server asli):** generator menerbitkan token →
 generator berhak memvalidasi. authToken == terbitan terakhir → sesi dipulihkan (rotasi
@@ -386,36 +386,46 @@ manual sekali, lalu auto-masuk selamanya — natural.
 
 ---
 
-## 10. RIWAYAT BUILD (semua terbukti: uji JVM → perangkat)
+## 10. KONDISI FINAL 1.0.2 (APA YANG ADA DI APK RILIS SEKARANG)
 
-Basis selalu 1.0.1; `classes.dex` TIDAK pernah disentuh lagi; manifest/resources/mirror
-lama byte-identik. Sertifikat SEMUA build IDENTIK (serial `56c1a15`, SHA256
-`1e08a903…b5953`) → **install-over tanpa uninstall**. NOL kebocoran identitas
-panen/perangkat (dicek otomatis saat packaging).
+**Satu APK final:** release `v1.0.2` → `DB-Local-1.0.2.apk` — 125.280.859 B, sha256
+`b32352ce35d0006111a6a1ba766b61881ccd1e65399cf558ca62abf6be585300`. Sertifikat IDENTIK
+dengan 1.0.1 (serial `56c1a15`, SHA256 `1e08a903…b5953`) → install-over aman. NOL
+kebocoran identitas panen/perangkat (dicek otomatis saat packaging). `classes.dex` asli
+hanya membawa injeksi warisan 1.0.1; seluruh server lokal ada di `classes2.dex`
+(35.056 B) berisi MiniServer + DbGen + DbJson + ConnRun.
 
-| Build | Tanggal | Pemicu / isi | classes2.dex | Uji JVM | APK sha256 |
-|---|---|---|---|---|---|
-| **1.0.1** (baseline, release default) | — | offline: config game + mirror + upgrade lokal (3 patch: config_BS.properties EntryPoint → 127.0.0.1, classes2.dex MiniServer statik, hook LaunchActivity) | 6.020 B | — | `a946ef6c…70b8e` (125.262.811 B) |
-| **1.0.2** (tes1/jembatan, HISTORIS) | 2026-10-20 | QHinfo flip + 4 panenan RAW replay + drain body — pola bridge DITINGGALKAN | 8.556 B | 7/7 | `7b9ff17d…7670e6` |
-| **1.0.2** (generator+gerbang lokal) | 2026-10-20 | Rute MENJAWAB: 7 statik byte-exact + 4 generator + gerbang lokal; `VERSION`=1.0.2 + re-sync; `generator.json` | 17.056 B | 22/22 | `f7f754ae…46aa` (125.272.205 B) |
-| **1.0.3** autoLogin Opsi A | 2026-10-20 | Bug HAR perangkat: `autoLogin` 404 ×4 (rute lupa di-wire). Fix: rute + validasi authToken terbitan + persist sesi (`lastAuthToken/Username/IsGuest`) | 18.840 B | 29/29 | `442e7df6…72db5` (125.272.393 B) |
-| **1.0.4** DB AKUN | 2026-10-20 | Keberatan user *"password cocok login!!"* benar: 1.0.3 hanya echo username. Fix: `accounts.txt`, passHash = md5(klien+salt), uid per akun, login membandingkan password, error id 2/3/4, `getUserInfo` per sesi, re-sync menjaga DB | 23.312 B | 42/42 | `05d17aaf…942ad2` |
-| **1.0.5-A** akun & keamanan | 2026-10-20 | 8 endpoint penuh (tabel §7); DB +4 file; **TERBANG DI PERANGKAT 21-10** | 35.056 B | 32/32 | `b32352ce…585300` (125.280.859 B) |
+**Isi fungsional final:**
+- Config boot & SDK 100% lokal: setting bin, mirror bs/upgrade, 5 statik `v1/system/*`,
+  `ckRegVistor`, `getServerAgreement` (byte-exact live).
+- Sesi: `registerVisitor`, `registerUser`, `loginByName` (generator + DB akun),
+  `autoLogin` (Opsi A tervalidasi), `getUserInfo` (per sesi).
+- Akun & keamanan (8): `sendCodeByEmail`, `findPassByEmail`, `changePassword`, `bindMail`,
+  `viewMigCode`, `cUserTrash`, `unBindOtherInfo`, `userBindOtherSdk`.
+- Gerbang lokal `loginchecknative` (`code:0`, 10 field live, sign = md5(uid+salt)).
 
-**Rute MiniServer kini (semua 127.0.0.1:28110):** statik: setting bin, `com_db_local.bin`
-(404 normal), bs/*, upgrade/*, `v1/system/{init,getNotice,getAgreement,dmsg,onNewToken}`,
-`v1/user/{ckRegVistor,getServerAgreement}` · generator+DB:
-`v1/user/{registerVisitor,registerUser,loginByName,autoLogin}`,
-`v1/auth/getUserInfo` · akun/keamanan (1.0.5-A):
-`v1/user/{sendCodeByEmail,findPassByEmail}`,
+**Tahap pengerjaan (semua 20-10-2026 — HANYA catatan sejarah, BUKAN versi terpisah;
+produk tetap 1.0.2):**
+
+| Tahap | Isi | uji JVM |
+|---|---|---|
+| basis 1.0.1 | offline: config game + mirror + upgrade lokal (3 patch: EntryPoint, classes2.dex statik 6.020 B, hook LaunchActivity) | — |
+| SDK menjawab + gerbang | 7 statik byte-exact + generator sesi + gerbang lokal + re-sync VERSION + generator.json (dex 17.056 B) | 22/22 |
+| autoLogin | rute + validasi authToken terbitan + persist sesi (dex 18.840 B) — dipicu bug autoLogin 404 dari HAR perangkat | 29/29 |
+| database akun | `accounts.txt` + passHash md5(klien+salt) + uid per akun + login membandingkan password (dex 23.312 B) — dipicu keberatan user *"password cocok login!!"* yang BENAR | 42/42 |
+| akun & keamanan (FINAL) | 8 endpoint + 4 file DB (dex 35.056 B) — **terbang di perangkat 21-10** | 32/32 |
+
+**Rute MiniServer final (semua 127.0.0.1:28110):** statik: setting bin,
+`com_db_local.bin` (404 normal), bs/*, upgrade/*, `v1/system/{init,getNotice,getAgreement,
+dmsg,onNewToken}`, `v1/user/{ckRegVistor,getServerAgreement}` · generator+DB:
+`v1/user/{registerVisitor,registerUser,loginByName,autoLogin}`, `v1/auth/getUserInfo` ·
+akun/keamanan: `v1/user/{sendCodeByEmail,findPassByEmail}`,
 `v1/auth/{changePassword,bindMail,viewMigCode,cUserTrash,unBindOtherInfo,userBindOtherSdk}`
 · gerbang: `GET /loginchecknative?…`.
 
-**Cara rebuild (sandbox):** `docs/sdk/build-1.0.x/` → `staging_mirror*.py` (bangun
-staging dari bukti repo) → compile `src/` (javac via ToolProvider/ecj + stub android
-compile-only) → D8 (`r8.jar --lib android.jar`) → `repackage*.py` (rakit dari basis
-1.0.1, verifikasi anti-panen otomatis) → `uber-apk-signer` (debug key AOSP = sertifikat
-1.0.1). Uji: `TestServer*.java` (kelas PERSIS dari dex hasil build).
+**Rebuild:** sumber/toolchain TIDAK disimpan di repo (keputusan user — repo hanya kondisi
+final). Provenance = APK rilis itu sendiri; bila perlu membedah ulang: decompile
+`classes2.dex` dari APK + kontrak di doc ini.
 
 ---
 
@@ -423,17 +433,17 @@ compile-only) → D8 (`r8.jar --lib android.jar`) → `repackage*.py` (rakit dar
 
 ```
 generator.json : uid, username, salt, lastAuthToken, lastUsername, lastIsGuest, lastUid
-accounts.txt   : name<TAB>passHash<TAB>uid<TAB>isGuest                ← sejak 1.0.4
-                 (1.0.5-A: + kolom email, trash; baris 4-kolom lama tetap sah — install-over aman)
+accounts.txt   : name<TAB>passHash<TAB>uid<TAB>isGuest<TAB>email<TAB>trash
+                 (baris 4-kolom era awal tetap sah — install-over aman)
                  passHash = md5(password_dari_SDK + salt); kosong = guest
 codes.txt      : email<TAB>code<TAB>sendType<TAB>createdMs<TAB>used   ← kode email, TTL 10 menit, sekali pakai
-bindings.txt   : uid<TAB>openType<TAB>userOpenId<TAB>otherAccountName ← 1.0.5-A
+bindings.txt   : uid<TAB>openType<TAB>userOpenId<TAB>otherAccountName
 migcodes.txt   : code<TAB>uid<TAB>createdMs<TAB>used                  ← kode migrasi DB+8HEX, reuse sampai terpakai
 outbox.txt     : ts<TAB>email<TAB>code<TAB>sendType                   ← jurnal "email keluar" lokal (pengganti SMTP)
 ```
 
-**Perilaku 8 endpoint 1.0.5-A (natural, kontrak dex):** `sendCodeByEmail` kode 6 digit →
-outbox; `findPassByEmail` kode sah → password baru + **SESI REFRESH** (auto-login);
+**Perilaku 8 endpoint akun/keamanan (natural, kontrak dex):** `sendCodeByEmail` kode 6
+digit → outbox; `findPassByEmail` kode sah → password baru + **SESI REFRESH** (auto-login);
 `changePassword` verifikasi lama (salah → id 8); `bindMail` identitas akun MENJADI email
 (isGuest→0; duplikat → id 6); `viewMigCode` DB+8HEX reuse; `cUserTrash` tStatus 1=trash
 (login/autoLogin DITOLAK id 7) 2=pulih; `unBindOtherInfo`/`userBindOtherSdk` baris
@@ -441,16 +451,16 @@ binding (data.status).
 
 ---
 
-## 12. BUKTI PERANGKAT (HAR, itel S665L)
+## 12. BUKTI PERANGKAT (HAR, itel S665L — `log running/sdk.har`)
 
-| Sesi | Build | Hasil |
+| Sesi | Kondisi yang diuji | Hasil |
 |---|---|---|
 | 2026-10-20 09:26 | 1.0.1 | baseline murni: 7 request lokal → loginchecknative :510 (internet) = 200 OK |
-| 2026-10-20 09:12 | tes1 (bridge) | leg A ≡ leg B **8/8 byte-identik** (nilai historis: isi respons asli per perangkat); GUEST/REGISTER/LOGIN 3 mode → `code:0`; getUserInfo ×2 |
-| 2026-10-20 02:19 | 1.0.2-tes1 | gerbang 1–3 hijau: all.zip 19.385.098 B dalam 3,55 s; init proxy leg-B 1×; getNotice mirror murni |
-| 2026-10-20 11:57 | 1.0.2 generator | 90% lulus; **autoLogin 404 ×4** → pemicu BUILD 1.0.3 (rantai generator terbukti hidup: envelope autoLogin membawa authToken terbitan loginByName sesi-1) |
-| (lapangan, setelah 1.0.3/1.0.4) | | konfirmasi user: *"password cocok login !!"* |
-| **2026-10-21 07:44 WIB** | **1.0.5-A** | **HIJAU penuh**: boot lokal → registerUser 200 (akun BARU tes@mail.com, uid 91429108, isNewUser=1, bindEmail isBind=1) → gerbang `code=0` masuk game → restart → loginByName SALAH ×2 ditolak (`id=2 "username atau password salah"`) → BENAR → 200 sesi penuh (authToken baru) → gerbang `code=0` lagi. **NOL trafik qsdk**; 18/18 lokal = 200; tidak ada autoLogin (instalasi segar, wajar); 77×400 di log = telemetri pihak ketiga (66× graph.facebook.com app-id placeholder `999999999999999`, 11× appsflyer) — bukan jalur game |
+| 2026-10-20 09:12 | tes1 (jembatan, historis) | leg A ≡ leg B **8/8 byte-identik** (nilai historis: isi respons asli per perangkat); 3 mode guest/register/login → `code:0` |
+| 2026-10-20 02:19 | rilis tag 1.0.2-tes1 (jembatan) | gerbang boot hijau: all.zip 19.385.098 B dalam 3,55 s; getNotice mirror murni |
+| 2026-10-20 11:57 | tahap "SDK menjawab" | 90% lulus; **autoLogin 404 ×4** → pemicu tahap autoLogin (rantai generator terbukti hidup: envelope autoLogin membawa authToken terbitan loginByName sesi-1) |
+| (lapangan) | setelah tahap DB akun | konfirmasi user: *"password cocok login !!"* |
+| **2026-10-21 07:44 WIB** | **FINAL** | **HIJAU penuh**: boot lokal → registerUser 200 (akun BARU tes@mail.com, uid 91429108, isNewUser=1, bindEmail isBind=1) → gerbang `code=0` masuk game → restart → loginByName SALAH ×2 ditolak (`id=2 "username atau password salah"`) → BENAR → 200 sesi penuh (authToken baru) → gerbang `code=0` lagi. **NOL trafik qsdk**; 18/18 lokal = 200; tidak ada autoLogin (instalasi segar, wajar); 77×400 di log = telemetri pihak ketiga (66× graph.facebook.com app-id placeholder `999999999999999`, 11× appsflyer) — bukan jalur game |
 
 ---
 
@@ -462,11 +472,10 @@ binding (data.status).
    dunia game JS ternyata menolak.
 2. ISI pesan error lokal (id 1–8) = **kebijakan lokal**; BENTUKNYA dari panen error live
    40008. Server asli tidak pernah mempublikasi teks error ini.
-3. authToken pada 8 endpoint 1.0.5-A tidak divalidasi ketat (lokal memakai uid dari sesi
-   SDK); autoLogin TETAP Opsi A ketat.
+3. authToken pada 8 endpoint akun/keamanan tidak divalidasi ketat (lokal memakai uid dari
+   sesi SDK); autoLogin TETAP Opsi A ketat.
 4. Kode email TIDAK dikirim via internet — `outbox.txt` = bentuk natural lokalnya.
-5. Binding pihak ketiga = identitas LOKAL (tidak ada FB/Google asli — sesi keputusan SNS
-   diskip).
+5. Binding pihak ketiga = identitas LOKAL (tidak ada FB/Google asli — SNS diskip).
 6. `isNewUser` pada templat bindMail/findPass = 0 (bukan registrasi baru).
 7. `tsLoginServer`/`tsUrl` masih internet (di luar lingkup — target user "sampai masuk
    loginserver saja").
@@ -479,27 +488,13 @@ binding (data.status).
 
 ## 14. RENCANA LANJUT (menunggu lampu hijau user)
 
-- **1.0.5-B — CDK & peran:** `actCdKey` (DB kode CDK → sukses = SESI REFRESH bentuk live,
+- **Tahap CDK & peran:** `actCdKey` (DB kode CDK → sukses = SESI REFRESH bentuk live,
   §8c) + `setGameRoleInfo` (tabel role per akun — fondasi tahap belakang).
-- **Fase C — WEBSITE LOKAL = developer config local** (revisi user): pembayaran diproses
-  via website — player membeli → order muncul di web → dikonfirmasi via web; web jadi
-  rumah bagi CDK, migcode, order, dan config server. Endpoint SDK terkait
-  (`jianchaLayLx`, `createOrder`, `postGooglePlayVerify`) diarahkan ke alur ini.
-- **Fase D — SNS/Facebook: DISKIP** (keputusan user: *"tidak perlu karena logis local"*).
-- Tiap tahap: uji JVM → rebuild → push release (versioning tetap `DB-Local-1.0.2.apk`).
-
----
-
-## 15. INDEKS BAHAN (folder ini)
-
-| Bahan | Isi |
-|---|---|
-| `config-local/` | THE CONFIG — file JSON/template siap-layani (tanpa README; aturannya di §4 doc ini) |
-| `bukti/panen-live/` | 8 respons asli server hidup fase config + `_probe-semua.json` + meta |
-| `bukti/panen-gerbang4/` | materi LIVE gerbang 4: 3 mode + loginchecknative ×3 + registerUser state-bound + meta/tiket |
-| `bukti/riset-login/` | dump dex alur login + generator basis |
-| `bukti/dex-evidence/` | dump instruksi dex original (QHinfo/sign/bind/apply/model) |
-| `bukti/dex-evidence/dump105/` | **fase 0 1.0.5** — 27 file kontrak 19 rute (23 caller class) |
-| `bukti/device-har/` | bukti leg A=leg B + tiket HAR |
-| `build-1.0.2/` … `build-1.0.5/` | sumber MiniServer/DbGen/DbJson/ConnRun + staging mirror + skrip repackage + TestServer (uji JVM) |
-| `../../log/sdk.har` | HAR perangkat terakhir (di-update user tiap sesi uji) |
+- **Fase C — WEBSITE LOKAL = developer config local:** pembayaran diproses via website —
+  player membeli → order muncul di web → dikonfirmasi via web; web jadi rumah bagi CDK,
+  migcode, order, dan config server. Endpoint terkait (`jianchaLayLx`, `createOrder`,
+  `postGooglePlayVerify`) diarahkan ke alur ini. Folder kerjanya: `docs/login-server/`
+  (disiapkan user; doc fase berikutnya = SATU file di situ).
+- **SNS/Facebook: DISKIP** (keputusan user: *"tidak perlu karena logis local"*).
+- Aturan kerja fase berikutnya SAMA: satu doc di-upgrade, tanpa folder per-versi,
+  produk tetap 1.0.2.
