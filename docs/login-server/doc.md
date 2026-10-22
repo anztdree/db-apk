@@ -784,6 +784,48 @@ deterministik/cap ring).
 
 ---
 
+### 8f. REVISI 7-DEBUG — fix floating (appCtx) + server utama 28113 LOKAL (2026-10-22)
+
+**Bukti**: `log running/logcat_2026-10-21_23-57-28.txt` (2.257 baris, 23:55:52–23:57:31,
+rev6-debug) + `log running/loginserver.har` (63 entri) + screenshot server list.
+
+**LAPORAN PEMILIK**: "PORT LOCAL CUMA 1, server utama ada 5!! loginserver sukses tapi
+tidak tercapture, floating masih tidak muncul — TIDAK ADA REVISI".
+
+**Bedah logcat — rantai rev6 TERBUKTI hidup sampai jauh**:
+
+| Tahap | Bukti baris |
+|---|---|
+| boot debug | `BOOT: DLog init (rev6-debug…)` + `lifecycle callbacks terpasang` |
+| bind | `I/LoginServer: listening 127.0.0.1:28112` + `PORT: 28112 (LoginServer) LISTENING ✓` |
+| SDK lokal | HAR: `/v1/system/init`…`registerVisitor`…`loginchecknative` semua 200 |
+| **handshake** | `I/LoginServer: 200 handshake` ×2 (23:56:52 & 23:57:14) |
+| **list server** | game mencoba `http://127.0.0.1:28113/socket.io/…` — URL yang HANYA ada di servers.json kami → GetServerList sukses; PLAY tertekan |
+| **GAGAL** | `EgretNative: Downloading http://127.0.0.1:28113/socket.io/… FAILED. errorCode: 0` — **28113 kosong** |
+| floating | `DBG: resume MainActivity — attach overlay` → **`attach batal: appCtx null`** |
+
+Jawaban "port lokal cuma 1": benar — **server utama belum digantikan** (bukan config
+salah; 28112 bekerja dan mengantarkan game sampai PLAY). "Tidak tercapture Reqable" =
+butanya Reqable ke loopback engine (§8e — tetap berlaku). Hitungan **5 server** kini
+terverifikasi dari main.min.js dan seluruhnya dipetakan lokal — lihat
+[`docs/game-world/doc.md`](../game-world/doc.md) (panen server asli hidup + implementasi).
+
+**Perbaikan rev7-debug** (delta = classes2.dex + classes3.dex saja; audit 3.720 entri:
+3.715 identik, 2 diganti, sisanya tanda tangan):
+
+1. classes3: `DLog.rebindApp()` + panggil di `DbgAppApplication.onCreate` — akar
+   `appCtx null`: `DLog.init` di `attachBaseContext` menyimpan `getApplicationContext()`
+   yang MASIH NULL lalu `inited=true` mengunci selamanya. + tag `MainServer` masuk
+   `isNetTag` (tab NET).
+2. classes2: kelas **`com.db.local.MainServer`** (28113 verify-XXTEA + enterGame panen
+   asli 79 kunci + registChat ret:60 + stub 28114/28115) + hook di `MiniServer.start`.
+
+Uji JVM-kawat 21/21 PASS (rincian di doc game-world). **SERTIFIKAT BARU** →
+**WAJIB UNINSTALL lama**. FINAL: `DB-Local-1.0.3-rev7-debug.apk` — 125.138.387 B,
+sha256 `5ef586a2e40761a6af3364286ac10804995d0a8e82799c47e1626071f6d452af`.
+
+---
+
 
 ## 9. RENCANA PEMBUATAN (DIEKSEKUSI 2026-10-21 — menunggu verifikasi perangkat pemilik)
 
