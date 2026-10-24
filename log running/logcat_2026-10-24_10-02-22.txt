@@ -1,0 +1,184 @@
+[2026-10-24 10:01:31.182 Uid(value=10707):17591:17591 I/com.db.local]
+Using generational CollectorTypeCMC GC.
+
+[2026-10-24 10:01:31.255 Uid(value=10707):17591:17591 D/CompatibilityChangeReporter]
+Compat change id reported: 171979766; UID 10707; state: DISABLED
+
+[2026-10-24 10:01:31.257 Uid(value=10707):17591:17591 D/os.SingleLiceFactory]
+using android.graphics.IGraphicLice$DefaultImpl@f0abe08 instead of com.transsion.typeface.TypefaceLiceFactory  from android.graphics.IGraphicLice
+
+[2026-10-24 10:01:31.258 Uid(value=10707):17591:17591 D/os.LiceInfo]
+instance successfully. com.transsion.graphics.GraphicLice@fa989a1 from android.graphics.IGraphicLice
+
+[2026-10-24 10:01:31.264 Uid(value=10707):17591:17591 D/nativeloader]
+Configuring clns-4 for other apk /data/app/~~Jh-VLEjVRGh3mC2KvfHdDA==/com.db.local-wLcnBP3nS06aRMQeRGbCTA==/base.apk. target_sdk_version=30, uses_libraries=, library_path=/data/app/~~Jh-VLEjVRGh3mC2KvfHdDA==/com.db.local-wLcnBP3nS06aRMQeRGbCTA==/lib/arm64:/data/app/~~Jh-VLEjVRGh3mC2KvfHdDA==/com.db.local-wLcnBP3nS06aRMQeRGbCTA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.db.local
+
+[2026-10-24 10:01:31.272 Uid(value=10707):17591:17591 V/GraphicsEnvironment]
+ANGLE Developer option for 'com.db.local' set to: 'default'
+
+[2026-10-24 10:01:31.272 Uid(value=10707):17591:17591 V/GraphicsEnvironment]
+Neither updatable production driver nor prerelease driver is supported.
+
+[2026-10-24 10:01:31.274 Uid(value=10707):17591:17591 I/LoadedApk]
+No resource references to update in package com.transsion.theme.icon
+
+[2026-10-24 10:01:31.274 Uid(value=10707):17591:17591 D/NetworkSecurityConfig]
+Using Network Security Config from resource network_security_config debugBuild: false
+
+[2026-10-24 10:01:31.275 Uid(value=10707):17591:17591 D/NetworkSecurityConfig]
+Using Network Security Config from resource network_security_config debugBuild: false
+
+[2026-10-24 10:01:31.304 Uid(value=10707):17591:17591 W/com.facebook.UserSettingsManager]
+Please set a value for AutoLogAppEventsEnabled. Set the flag to TRUE if you want to collect app install, app launch and in-app purchase events automatically. To request user consent before collecting data, set the flag value to FALSE, then change to TRUE once user consent is received. Learn more: https://developers.facebook.com/docs/app-events/getting-started-app-events-android#disable-auto-events.
+
+[2026-10-24 10:01:31.304 Uid(value=10707):17591:17591 W/com.facebook.UserSettingsManager]
+You haven't set a value for AdvertiserIDCollectionEnabled. Set the flag to TRUE if you want to collect Advertiser ID for better advertising and analytics results. To request user consent before collecting data, set the flag value to FALSE, then change to TRUE once user consent is received. Learn more: https://developers.facebook.com/docs/app-events/getting-started-app-events-android#disable-auto-events.
+
+[2026-10-24 10:01:31.355 Uid(value=10707):17591:17613 D/nativeloader]
+Configuring clns-5 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~J749ddPaWhx341zk_8JQpw==/com.google.android.gms-7S-fvrOsCKOz6GPk-Xkciw==/lib/arm64:/data/app/~~J749ddPaWhx341zk_8JQpw==/com.google.android.gms-7S-fvrOsCKOz6GPk-Xkciw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+
+[2026-10-24 10:01:31.368 Uid(value=10707):17591:17613 D/nativeloader]
+Configuring clns-6 for other apk /apex/com.android.extservices/javalib/android.ext.adservices.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~J749ddPaWhx341zk_8JQpw==/com.google.android.gms-7S-fvrOsCKOz6GPk-Xkciw==/lib/arm64:/data/app/~~J749ddPaWhx341zk_8JQpw==/com.google.android.gms-7S-fvrOsCKOz6GPk-Xkciw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+
+[2026-10-24 10:01:31.370 Uid(value=10707):17591:17613 D/nativeloader]
+InitApexLibraries:
+  com_android_appsearch: libicing.so
+  com_android_art: libartservice.so
+  com_android_conscrypt: libjavacrypto.so
+  com_android_extservices: libtflite_support_classifiers_native.so
+  com_android_mediaprovider: libpdfclient.so
+  com_android_os_statsd: libstats_jni.so
+  com_android_tethering: libandroid_net_connectivity_com_android_net_module_util_jni.so:libandroid_net_connectivity_com_android_net_module_util_jni_CommonConnectivityJni.so:libcrypto_httpengine.so:libframework-connectivity-jni.so:libframework-connectivity-tiramisu-jni.so:libhttpengine.so:libservice-connectivity.so:libservice-thread-jni.so
+
+[2026-10-24 10:01:31.373 Uid(value=10707):17591:17613 D/nativeloader]
+Configuring clns-7 for other apk /system/framework/com.android.location.provider.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~J749ddPaWhx341zk_8JQpw==/com.google.android.gms-7S-fvrOsCKOz6GPk-Xkciw==/lib/arm64:/data/app/~~J749ddPaWhx341zk_8JQpw==/com.google.android.gms-7S-fvrOsCKOz6GPk-Xkciw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+
+[2026-10-24 10:01:31.376 Uid(value=10707):17591:17613 D/nativeloader]
+Configuring clns-8 for other apk /system/framework/com.android.media.remotedisplay.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~J749ddPaWhx341zk_8JQpw==/com.google.android.gms-7S-fvrOsCKOz6GPk-Xkciw==/lib/arm64:/data/app/~~J749ddPaWhx341zk_8JQpw==/com.google.android.gms-7S-fvrOsCKOz6GPk-Xkciw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+
+[2026-10-24 10:01:31.381 Uid(value=10707):17591:17613 D/nativeloader]
+Configuring clns-9 for other apk /data/app/~~J749ddPaWhx341zk_8JQpw==/com.google.android.gms-7S-fvrOsCKOz6GPk-Xkciw==/base.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~J749ddPaWhx341zk_8JQpw==/com.google.android.gms-7S-fvrOsCKOz6GPk-Xkciw==/lib/arm64:/data/app/~~J749ddPaWhx341zk_8JQpw==/com.google.android.gms-7S-fvrOsCKOz6GPk-Xkciw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+
+[2026-10-24 10:01:31.384 Uid(value=10707):17591:17608 W/FeatureFlagsImplExport]
+java.lang.NoClassDefFoundError: Class not found using the boot class loader; no stack trace available
+
+[2026-10-24 10:01:31.460 Uid(value=10707):17591:17591 I/DBLocal-Core]
+mulai: 10100=cdn 10101=sdk 10102=loginserver
+
+[2026-10-24 10:01:31.460 Uid(value=10707):17591:17591 I/DBLOCAL]
+mulai: 10100=cdn 10101=sdk 10102=loginserver
+
+[2026-10-24 10:01:31.462 Uid(value=10707):17591:17591 D/AndroidRuntime]
+Shutting down VM
+
+[2026-10-24 10:01:31.462 Uid(value=10707):17591:17591 E/AndroidRuntime]
+FATAL EXCEPTION: main
+Process: com.db.local, PID: 17591
+java.lang.VerifyError: Verifier rejected class com.db.local.Db: void com.db.local.Db.setWal(android.database.sqlite.SQLiteDatabase) failed to verify: void com.db.local.Db.setWal(android.database.sqlite.SQLiteDatabase): [0x10] Rejecting invocation, expected 2 argument registers, method signature has 1 (declaration of 'com.db.local.Db' appears in /data/app/~~Jh-VLEjVRGh3mC2KvfHdDA==/com.db.local-wLcnBP3nS06aRMQeRGbCTA==/base.apk!classes2.dex)
+	at com.db.local.Core.start(Core.java:39)
+	at com.db.local.MiniServer.start(MiniServer.java:13)
+	at com.zhuhuan.game.LaunchActivity.onCreate(SourceFile:1)
+	at android.app.Activity.performCreate(Activity.java:8069)
+	at android.app.Activity.performCreate(Activity.java:8049)
+	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1329)
+	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:3690)
+	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3877)
+	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:105)
+	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:136)
+	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:96)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2289)
+	at android.os.Handler.dispatchMessage(Handler.java:106)
+	at android.os.Looper.loopOnce(Looper.java:201)
+	at android.os.Looper.loop(Looper.java:288)
+	at android.app.ActivityThread.main(ActivityThread.java:7996)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:553)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1003)
+
+[2026-10-24 10:01:31.565 Uid(value=10707):17591:17591 I/Process]
+Sending signal. PID: 17591 SIG: 9
+
+[2026-10-24 10:01:39.579 Uid(value=10707):17734:17734 I/com.db.local]
+Using generational CollectorTypeCMC GC.
+
+[2026-10-24 10:01:39.622 Uid(value=10707):17734:17734 D/CompatibilityChangeReporter]
+Compat change id reported: 171979766; UID 10707; state: DISABLED
+
+[2026-10-24 10:01:39.626 Uid(value=10707):17734:17734 D/os.SingleLiceFactory]
+using android.graphics.IGraphicLice$DefaultImpl@f0abe08 instead of com.transsion.typeface.TypefaceLiceFactory  from android.graphics.IGraphicLice
+
+[2026-10-24 10:01:39.626 Uid(value=10707):17734:17734 D/os.LiceInfo]
+instance successfully. com.transsion.graphics.GraphicLice@fa989a1 from android.graphics.IGraphicLice
+
+[2026-10-24 10:01:39.634 Uid(value=10707):17734:17734 D/nativeloader]
+Configuring clns-4 for other apk /data/app/~~Jh-VLEjVRGh3mC2KvfHdDA==/com.db.local-wLcnBP3nS06aRMQeRGbCTA==/base.apk. target_sdk_version=30, uses_libraries=, library_path=/data/app/~~Jh-VLEjVRGh3mC2KvfHdDA==/com.db.local-wLcnBP3nS06aRMQeRGbCTA==/lib/arm64:/data/app/~~Jh-VLEjVRGh3mC2KvfHdDA==/com.db.local-wLcnBP3nS06aRMQeRGbCTA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.db.local
+
+[2026-10-24 10:01:39.642 Uid(value=10707):17734:17734 V/GraphicsEnvironment]
+ANGLE Developer option for 'com.db.local' set to: 'default'
+
+[2026-10-24 10:01:39.642 Uid(value=10707):17734:17734 V/GraphicsEnvironment]
+Neither updatable production driver nor prerelease driver is supported.
+
+[2026-10-24 10:01:39.644 Uid(value=10707):17734:17734 I/LoadedApk]
+No resource references to update in package com.transsion.theme.icon
+
+[2026-10-24 10:01:39.644 Uid(value=10707):17734:17734 D/NetworkSecurityConfig]
+Using Network Security Config from resource network_security_config debugBuild: false
+
+[2026-10-24 10:01:39.645 Uid(value=10707):17734:17734 D/NetworkSecurityConfig]
+Using Network Security Config from resource network_security_config debugBuild: false
+
+[2026-10-24 10:01:39.657 Uid(value=10707):17734:17734 W/com.facebook.UserSettingsManager]
+Please set a value for AutoLogAppEventsEnabled. Set the flag to TRUE if you want to collect app install, app launch and in-app purchase events automatically. To request user consent before collecting data, set the flag value to FALSE, then change to TRUE once user consent is received. Learn more: https://developers.facebook.com/docs/app-events/getting-started-app-events-android#disable-auto-events.
+
+[2026-10-24 10:01:39.657 Uid(value=10707):17734:17734 W/com.facebook.UserSettingsManager]
+You haven't set a value for AdvertiserIDCollectionEnabled. Set the flag to TRUE if you want to collect Advertiser ID for better advertising and analytics results. To request user consent before collecting data, set the flag value to FALSE, then change to TRUE once user consent is received. Learn more: https://developers.facebook.com/docs/app-events/getting-started-app-events-android#disable-auto-events.
+
+[2026-10-24 10:01:39.692 Uid(value=10707):17734:17734 I/DBLocal-Core]
+mulai: 10100=cdn 10101=sdk 10102=loginserver
+
+[2026-10-24 10:01:39.693 Uid(value=10707):17734:17734 I/DBLOCAL]
+mulai: 10100=cdn 10101=sdk 10102=loginserver
+
+[2026-10-24 10:01:39.694 Uid(value=10707):17734:17734 D/AndroidRuntime]
+Shutting down VM
+
+[2026-10-24 10:01:39.694 Uid(value=10707):17734:17734 E/AndroidRuntime]
+FATAL EXCEPTION: main
+Process: com.db.local, PID: 17734
+java.lang.VerifyError: Verifier rejected class com.db.local.Db: void com.db.local.Db.setWal(android.database.sqlite.SQLiteDatabase) failed to verify: void com.db.local.Db.setWal(android.database.sqlite.SQLiteDatabase): [0x10] Rejecting invocation, expected 2 argument registers, method signature has 1 (declaration of 'com.db.local.Db' appears in /data/app/~~Jh-VLEjVRGh3mC2KvfHdDA==/com.db.local-wLcnBP3nS06aRMQeRGbCTA==/base.apk!classes2.dex)
+	at com.db.local.Core.start(Core.java:39)
+	at com.db.local.MiniServer.start(MiniServer.java:13)
+	at com.zhuhuan.game.LaunchActivity.onCreate(SourceFile:1)
+	at android.app.Activity.performCreate(Activity.java:8069)
+	at android.app.Activity.performCreate(Activity.java:8049)
+	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1329)
+	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:3690)
+	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3877)
+	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:105)
+	at android.app.servertransaction.TransactionExecutor.executeCallbacks(TransactionExecutor.java:136)
+	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:96)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2289)
+	at android.os.Handler.dispatchMessage(Handler.java:106)
+	at android.os.Looper.loopOnce(Looper.java:201)
+	at android.os.Looper.loop(Looper.java:288)
+	at android.app.ActivityThread.main(ActivityThread.java:7996)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:553)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1003)
+
+[2026-10-24 10:01:39.764 Uid(value=10707):17734:17753 W/FeatureFlagsImplExport]
+java.lang.NoClassDefFoundError: Class not found using the boot class loader; no stack trace available
+
+[2026-10-24 10:01:39.764 Uid(value=10707):17734:17750 W/FeatureFlagsImplExport]
+java.lang.NoClassDefFoundError: Class not found using the boot class loader; no stack trace available
+
+[2026-10-24 10:01:39.764 Uid(value=10707):17734:17752 W/FeatureFlagsImplExport]
+java.lang.NoClassDefFoundError: Class not found using the boot class loader; no stack trace available
+
+[2026-10-24 10:01:40.285 Uid(value=10707):17734:17750 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
+[2026-10-24 10:01:40.290 Uid(value=10707):17734:17752 E/GraphResponse]
+{HttpStatus: 400, errorCode: 100, subErrorCode: 33, errorType: GraphMethodException, errorMessage: Unsupported get request. Object with ID '999999999999999' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api}
+
