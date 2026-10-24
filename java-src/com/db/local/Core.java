@@ -25,10 +25,13 @@ public final class Core {
     public static final int PORT_CDN = 0x2774;
     public static final int PORT_SDK = 0x2775;
     public static final int PORT_LOGIN = 0x2776;
+    public static final int PORT_FB = 0x5190;
+    public static final int PORT_AF = 0x5191;
 
     public static Context APP;
     public static File SERVER_DIR;
 
+    private static volatile boolean ready;
     private static volatile boolean started;
 
     static final Map<Ws, Sio.Session> WS_MAP = new HashMap<Ws, Sio.Session>();
@@ -41,7 +44,7 @@ public final class Core {
     }
 
     // ======================================================================
-    // anonim #1 (Core$1) — Runnable GC sesi socket.io, thread "DBLocal-sio-gc"
+    // anonim #1 (Core$1) — Runnable seed besar (zip), thread "DBLocal-seed-big"
     // ======================================================================
     public static void start(Context ctx) {
         if (started) {
@@ -49,14 +52,27 @@ public final class Core {
         }
         started = true;
         APP = ctx.getApplicationContext();
-        log("mulai: 10100=cdn 10101=sdk 10102=loginserver");
-        Db.init(APP);
-        bootstrapSync(APP);
-        Db.TemplateDirHolder.set(new File(APP.getFilesDir(), "mirror"));
+        log("mulai: 10100=cdn 10101=sdk 10102=loginserver 20880=facebook 20881=appsflyer");
         initServerDir(APP);
         listen(PORT_CDN);
         listen(PORT_SDK);
         listen(PORT_LOGIN);
+        listen(PORT_FB);
+        listen(PORT_AF);
+        Db.init(APP);
+        bootstrapSync(APP);
+        File mir = new File(APP.getFilesDir(), "mirror");
+        Db.TemplateDirHolder.set(mir);
+        seedServerDir(APP);
+        ready = true;
+        log("siap: server/ terbaca dari Android/data");
+        Thread big = new Thread(new Runnable() {
+            public void run() {
+                seedServerDirBig(APP);
+            }
+        }, "DBLocal-seed-big");
+        big.setDaemon(true);
+        big.start();
         Thread gc = new Thread(new Runnable() {
             public void run() {
                 while (true) {
@@ -78,7 +94,7 @@ public final class Core {
     }
 
     // ======================================================================
-    // anonim #2 (Core$2) — Runnable accept-loop, menangkap val$port
+    // anonim #2 (Core$3) — Runnable accept-loop, menangkap val$port
     // ======================================================================
     private static void listen(int port) {
         Thread t = new Thread(new Runnable() {
@@ -91,7 +107,7 @@ public final class Core {
     }
 
     // ======================================================================
-    // anonim #3 (Core$3) — Runnable koneksi, menangkap val$s + val$port
+    // anonim #3 (Core$4) — Runnable koneksi, menangkap val$s + val$port
     // ======================================================================
     private static void acceptLoop(int port) {
         try {
@@ -156,11 +172,18 @@ public final class Core {
                 respond(socket, 200, "text/plain", Texts.utf8("OK"));
                 return;
             }
-            if (port == PORT_CDN) {
+            if (port == PORT_FB) {
+                serveFacebook(socket, method, path);
+            } else if (port == PORT_AF) {
+                serveAppsflyer(socket, method, path);
+            } else if (port == PORT_CDN) {
+                waitReady();
                 serveMirror(socket, path);
             } else if (port == PORT_SDK) {
+                waitReady();
                 serveSdk(socket, path, body);
             } else if (port == PORT_LOGIN) {
+                waitReady();
                 serveLogin(socket, method, path, query, headers, body);
             } else {
                 respond(socket, 404, "text/plain", Texts.utf8("not found"));
@@ -283,7 +306,7 @@ public final class Core {
     }
 
     // ======================================================================
-    // anonim #4 (Core$4) — implements Ws.SessionOwner
+    // anonim #4 (Core$5) — implements Ws.SessionOwner
     // ======================================================================
     private static void serveSio(Socket socket, String method, String query, Map<String, String> headers,
             byte[] body) {
@@ -398,11 +421,27 @@ public final class Core {
         }
     }
 
+    private static String reason(int code) {
+        if (code == 200) {
+            return "OK";
+        }
+        if (code == 400) {
+            return "Bad Request";
+        }
+        if (code == 404) {
+            return "Not Found";
+        }
+        if (code == 403) {
+            return "Forbidden";
+        }
+        return "OK";
+    }
+
     public static void respond(Socket socket, int code, String type, byte[] data) {
         try {
             OutputStream os = socket.getOutputStream();
-            os.write(Texts.utf8("HTTP/1.1 " + code + " OK\r\nContent-Type: " + type + "\r\nContent-Length: "
-                    + data.length
+            os.write(Texts.utf8("HTTP/1.1 " + code + " " + reason(code)
+                    + "\r\nContent-Type: " + type + "\r\nContent-Length: " + data.length
                     + "\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET,POST,OPTIONS\r\nAccess-Control-Allow-Headers: *\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n"));
             os.write(data);
             os.flush();
@@ -608,7 +647,7 @@ public final class Core {
                 File readme = new File(dir, "README.TXT");
                 if (!readme.exists()) {
                     fileWrite(readme,
-                            "DB-LOCAL - FOLDER SERVER\nFile di folder ini MENGGANTIKAN file yang sebelumnya diambil dari server online.\nSalin struktur asli: bs/... upgrade/... qsdk/...\nContoh: bs/resource/properties/clientversion.json\nFile di sini dipakai lebih dulu daripada bawaan APK.\n");
+                            "DB-LOCAL - FOLDER SERVER\nFile di folder ini MENGGANTIKAN file yang sebelumnya diambil dari server online.\nSemua config bawaan (bs/ upgrade/ qsdk/) SUDAH DISALIN ke sini - edit langsung,\nfile yang ada di folder ini dipakai lebih dulu daripada bawaan APK.\nContoh: bs/resource/properties/clientversion.json\noverride/facebook/  = respons Facebook Graph (graph.facebook.com -> 127.0.0.1:20880)\noverride/appsflyer/ = respons AppsFlyer (*.appsflyer.com -> 127.0.0.1:20881)\nFile hanya disalin sekali: editan Anda tidak pernah ditimpa.\n");
                 }
                 log("server dir: " + dir.getAbsolutePath());
             }
@@ -635,6 +674,179 @@ public final class Core {
             return;
         }
         respond(socket, 404, "text/plain", Texts.utf8("404"));
+    }
+
+    // ================== seed server/ dari assets/mirror ==================
+    // FIX 1.0.1-E: build 1.0.2-D menulis file ke File(out, basename) padahal
+    // pemanggil sudah memberi File(out, nama) — akibatnya setiap file jadi
+    // FOLDER bernama file itu yang berisi file bernama sama
+    // (contoh: server/upgrade/all.zip/all.zip). Sekarang file ditulis ke
+    // `out` langsung, plus perbaikan otomatis pohon rusak peninggalan D.
+    private static void seedAssetDir(Context ctx, String assetPath, File out, boolean skipZip) {
+        try {
+            String[] list = ctx.getAssets().list(assetPath);
+            if (list != null && list.length > 0) {
+                out.mkdirs();
+                for (int i = 0; i < list.length; i++) {
+                    String sub = assetPath + "/" + list[i];
+                    if (skipZip && list[i].endsWith(".zip")) {
+                        continue;
+                    }
+                    File f = new File(out, list[i]);
+                    if (f.isFile() && f.length() > 0L) {
+                        continue;
+                    }
+                    seedAssetDir(ctx, sub, f, skipZip);
+                }
+                return;
+            }
+            // cabang file: `out` ADALAH file tujuan (bukan dibungkus folder lagi)
+            repairNested(ctx, assetPath, out);
+            if (out.isFile() && out.length() > 0L) {
+                return;
+            }
+            if (skipZip && assetPath.endsWith(".zip")) {
+                return;
+            }
+            InputStream in = ctx.getAssets().open(assetPath);
+            copyFully(in, out);
+        } catch (Throwable t) {
+            if (skipZip) {
+                log("seed " + assetPath + " gagal: " + t);
+            }
+        }
+    }
+
+    // perbaiki pohon rusak build 1.0.2-D: folder bernama file yang berisi
+    // file bernama sama -> dinaikkan jadi file biasa (isi tetap utuh,
+    // tidak ada yang ditimpa; idempoten)
+    private static void repairNested(Context ctx, String assetPath, File out) {
+        try {
+            if (!out.isDirectory()) {
+                return;
+            }
+            File inner = new File(out, out.getName());
+            if (!inner.isFile() || inner.length() <= 0L) {
+                return;
+            }
+            File tmp = new File(out.getParentFile(), out.getName() + ".fixtmp");
+            if (tmp.exists()) {
+                tmp.delete();
+            }
+            if (inner.renameTo(tmp)) {
+                deleteRecursive(out);
+                tmp.renameTo(out);
+                log("seed perbaiki: " + out.getName());
+            }
+        } catch (Throwable t) {
+            log("seed repair gagal: " + out.getName() + " " + t);
+        }
+    }
+
+    private static void seedServerDir(Context ctx) {
+        seedAssetDir(ctx, "mirror", serverDir(), true);
+    }
+
+    private static void seedServerDirBig(Context ctx) {
+        try {
+            seedAssetDir(ctx, "mirror", serverDir(), false);
+        } catch (Throwable t) {
+            log("seed big gagal: " + t);
+        }
+    }
+
+    private static void waitReady() {
+        long deadline = System.currentTimeMillis() + 5000L;
+        while (!ready && System.currentTimeMillis() < deadline) {
+            try {
+                Thread.sleep(50L);
+            } catch (InterruptedException e) {
+                break;
+            }
+        }
+    }
+
+    private static byte[] readFile(File f) {
+        try {
+            FileInputStream fis = new FileInputStream(f);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            byte[] buf = new byte[16384];
+            int n;
+            while ((n = fis.read(buf)) > 0) {
+                bos.write(buf, 0, n);
+            }
+            fis.close();
+            return bos.toByteArray();
+        } catch (Throwable t) {
+            return new byte[0];
+        }
+    }
+
+    private static byte[] canned(String name, byte[] def) {
+        try {
+            File sd = serverDir();
+            if (sd != null) {
+                File f = new File(new File(sd, "override"), name);
+                if (f.isFile() && f.length() > 0L) {
+                    return readFile(f);
+                }
+            }
+            InputStream in = APP.getAssets().open("mirror/override/" + name);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                bos.write(buf, 0, n);
+            }
+            in.close();
+            return bos.toByteArray();
+        } catch (Throwable t) {
+            return def;
+        }
+    }
+
+    private static void serveFacebook(Socket socket, String method, String path) {
+        String lower = path == null ? "" : path.toLowerCase();
+        String name;
+        int code = 200;
+        if (lower.contains("/mobile_sdk_gk")) {
+            name = "mobile_sdk_gk";
+        } else if (lower.contains("/model_asset")) {
+            name = "model_asset";
+            code = 400;
+        } else if (lower.contains("/activities")) {
+            name = "activities";
+        } else if (lower.endsWith("/me") || lower.contains("/me?")) {
+            name = "me";
+            code = 400;
+        } else {
+            name = "profile";
+        }
+        byte[] body = canned("facebook/" + name, Texts.utf8("{\"success\":true}"));
+        logReq("fb " + method + " " + path, "-> " + code + " " + name);
+        respond(socket, code, "application/json", body);
+    }
+
+    private static void serveAppsflyer(Socket socket, String method, String path) {
+        String lower = path == null ? "" : path.toLowerCase();
+        String name = null;
+        if (lower.contains("androidevent")) {
+            name = "androidevent";
+        } else if (lower.contains("register")) {
+            name = "register";
+        } else if (lower.contains("validate")) {
+            name = "validate";
+        }
+        if (name != null) {
+            byte[] body = canned("appsflyer/" + name, null);
+            if (body != null) {
+                logReq("af " + method + " " + path, "-> 200 " + name);
+                respond(socket, 200, "application/json", body);
+                return;
+            }
+        }
+        logReq("af " + method + " " + path, "-> 400");
+        respond(socket, 400, "text/plain", new byte[0]);
     }
 
     private static void logReq(String req, String extra) {
