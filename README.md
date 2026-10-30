@@ -1,8 +1,11 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Analisis Fondasi & Rencana (v1.0) — *tanpa implementasi*
+> **Status dokumen:** Analisis Fondasi & Rencana (v1.1) — *rencana saja, belum ada implementasi*
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-10-30
+> **Perubahan v1.1:** strategi diubah — **original APK tidak dimodifikasi sama sekali**
+> (endpoint dibiarkan). Server lokal dibangun sebagai **APK pendamping (companion)**
+> yang berjalan **bersebelahan** dengan APK asli. Merge endpoint = tahap akhir nanti.
 
 ---
 
@@ -15,8 +18,10 @@ remote pihak ketiga yang **sudah/segera mati**.
 **Tujuan akhir:** menjadikan APK **standalone & berjalan lokal (offline)**.
 Prinsip yang disepakati:
 
-- **Client tidak dirombak** — cukup mengubah konfigurasi endpoint.
-- **Server disiapkan di dalam APK** (embedded local server).
+- **Original APK tidak disentuh** — endpoint, smali, signature: semuanya tetap utuh.
+- **Server lokal dibangun terpisah sebagai APK pendamping** (companion), disempurnakan
+  dulu hingga sempurna sambil **bersebelahan** dengan APK asli.
+- Perubahan endpoint pada client **ditunda** sampai server lokal terbukti sempurna.
 - Semua pekerjaan didokumentasikan di file ini (dokumentasi tunggal).
 
 ---
@@ -98,6 +103,11 @@ dikirim via respons `config_BS`** (dinamis), lalu dipakai oleh JS di dalam bundl
 **Kesimpulan:** rantai bootstrap sudah terputus. APK saat ini **tidak mungkin** mendapatkan
 konfigurasi server game → sesuai prediksi "game akan segera mati".
 
+**Catatan tambahan (v1.1):** pencarian arsip publik (Wayback Machine + CDX API) untuk
+`sjmobilegame.com` dan `t4game.com` **tidak menemukan snapshot sama sekali**. Artinya
+format respons asli bootstrap **tidak dapat dipulihkan dari luar** — harus direkonstruksi
+dari sisi client (analisis dex/smali + observasi perilaku runtime). Lihat Fase S1 & S4.
+
 ### 2.5 Dependensi Cloud yang Akan Mati (perlu di-stub)
 
 | Dependensi | Fungsi | Dampak jika mati |
@@ -116,90 +126,122 @@ konfigurasi server game → sesuai prediksi "game akan segera mati".
 
 ---
 
-## 3. Konsep Solusi: Standalone Local Server
+## 3. Konsep Solusi: APK Pendamping Server Lokal (Side-by-Side)
+
+Dua aplikasi terpisah berjalan di device yang sama. **Original APK tidak pernah diubah.**
 
 ```
-┌──────────────────────────── APK (satu aplikasi) ────────────────────────────┐
+┌── Device Android ───────────────────────────────────────────────────────────┐
 │                                                                             │
-│  Game Client (Egret JS, tidak diubah)                                       │
-│        │  hanya config endpoint yang diarahkan ulang                        │
-│        ▼                                                                    │
-│  http://127.0.0.1:<PORT>/  ◄── Embedded Local Server (baru, di dalam APK)   │
-│        │                                                                    │
-│        ├─ /lzceshi/native_setting/Android   (mantani bootstrap lama)        │
-│        ├─ /bs/db/android                    (konfigurasi server, statis)    │
-│        └─ API game lainnya                  (dipetakan dari hasil capture)  │
-│                                                                             │
-│  Data persisten → file lokal (SQLite/files di storage internal APK)         │
-└─────────────────────────────────────────────────────────────────────────────┘
+│  ┌─ APK ASLI (com.db.local) ─────────┐  ┌─ APK PENDAMPING (baru, kita) ────┐│
+│  │  Game Client (Egret JS)           │  │  Embedded Local Server           ││
+│  │  • endpoint TIDAK diubah          │◄─┤  • HTTP di 127.0.0.1:<PORT>      ││
+│  │  • smali/signature utuh           │  │  • SQLite (state lokal)          ││
+│  └──────────────┬────────────────────┘  │  • Lapisan intersep: VpnService  ││
+│                 │                       └──────────────────────────────────┘│
+│                 │  "dragon.sjmobilegame.com" ──DNS──► VPN ✂ diintersep      │
+│                 │                                     ► 127.0.0.1:<PORT>    │
+└─────────────────┴────────────────────────────────────────────────────────────┘
 ```
 
-**Prinsip:** client tetap berpikir sedang bicara dengan server lama. Kita hanya
-"menyulap" DNS/endpoint agar menunjuk ke server kecil di dalam APK itu sendiri.
+**Prinsip kerja:**
+
+1. Client asli **tetap mengira** sedang bicara dengan `sjmobilegame.com` — tidak ada
+   satu byte pun dari APK asli yang diubah.
+2. APK pendamping menyadap resolusi DNS domain game (via **VpnService**, tanpa root)
+   dan menjawab semua request dari server lokal di `127.0.0.1`.
+3. Keunggulan side-by-side:
+   - APK asli = **oracle uji**: setiap respons server kita divalidasi langsung dari
+     reaksi client (logcat), tanpa risiko merusak original.
+   - Rollback instan: matikan APK pendamping → kondisi kembali seperti semula.
+   - Ketika sempurna → baru pertimbangkan merge endpoint di Track A.
 
 ---
 
-## 4. Rencana Tahap Fondasi (per fase, tanpa implementasi)
+## 4. Rencana Tahap Fondasi (v1.1 — Track B aktif)
 
 > Setiap fase punya keluaran (deliverable) & kriteria selesai. Tidak ada fase gameplay di sini.
 
-### Fase 0 — Persiapan Workspace & Toolchain
-- [ ] Folder `.analysis/` di-gitignore (hasil bedah APK tidak di-commit).
-- [ ] Siapkan toolchain: `apktool` (decompile/rebuild), `jadx` (baca Java),
-      `apksigner`/`zipalign` (sign ulang), emulator/HP uji.
-- [ ] Simpan salinan APK asli **tidak pernah dimodifikasi** sebagai baseline.
-- **Deliverable:** lingkungan siap; baseline tercatat di dokumen ini.
-- **Kriteria selesai:** `apktool d` & `apktool b` sukses round-trip pada APK asli, hasilnya masih bisa terinstall.
+### Track A — Modifikasi APK Asli (DIBEKUKAN / di-pause)
 
-### Fase 1 — Pemetaan Protokol (Network Capture)
-- [ ] Jalankan APK di emulator + intercept trafik (MITM proxy / iptables redirect).
-      *Karena endpoint mati, fokus capture adalah: urutan request + format yang dikirim client
-      sebelum gagal, dari sisi client.*
-- [ ] Alternatif (jika capture mentok): riset skema `onepieceencrypts` di `libgavesec.so`
-      untuk membaca daftar endpoint asli dari bundle JS — *ini masih ranah fondasi
-      (protokol), bukan gameplay*.
-- **Deliverable:** daftar endpoint + skema request/response (ditambahkan ke §2.3).
-- **Kriteria selesai:** peta endpoint lengkap cukup untuk merancang API server lokal.
+| Fase | Konten | Status |
+|---|---|---|
+| A-1 | Repointing endpoint (config Base64) | ⏸ Ditunda sampai server lokal sempurna |
+| A-2 | Stub SDK cloud (Billing/GMS/FB/Adjust) | ⏸ Ditunda |
+| A-3 | Repackage & sign ulang | ⏸ Ditunda |
 
-### Fase 2 — Desain Embedded Local Server
-- [ ] Pilih library server embedded (kandidat: **NanoHTTPD** atau **AndServer** — murni Java, tanpa root).
-- [ ] Definisikan kontrak API berdasarkan hasil Fase 1 (rute, format, enkripsi payload bila perlu).
-- [ ] Desain penyimpanan lokal (SQLite) untuk menggantikan state yang tadinya di server.
-- [ ] Server berjalan di thread background, listen di `127.0.0.1:<PORT>` saja (aman, tidak terekspos).
-- **Deliverable:** dokumen kontrak API + diagram startup (Application → start server → baru load game).
-- **Kriteria selesai:** desain disetujui; belum menulis kode.
+> Prinsip: Track A **hanya boleh** dilakukan setelah Track B membuktikan server lokal
+> mampu melayani seluruh rantai bootstrap & API yang dibutuhkan client.
 
-### Fase 3 — Repointing Endpoint Client
-- [ ] Ubah `assets/config.properties` & `config_BS.properties`
-      (Base64 URL → `http://127.0.0.1:<PORT>/...` — encoding sama, hanya nilai diganti).
-- [ ] Netralkan `QHinfo` (t4game) bila SDK menyentuhnya.
-- [ ] Pastikan string `sjmobilegame.com`/`t4game.com` tersisa di smali di-stub/redirect seragam.
-- **Deliverable:** diff konfigurasi minimum yang bisa di-review.
-- **Kriteria selesai:** client boot tanpa memanggil domain lama (dicek via logcat/pcap).
+### Track B — APK Pendamping Server Lokal (AKTIF)
 
-### Fase 4 — Stub SDK Cloud
-- [ ] Stub/neutralisasi: Billing, Google Sign-In, Facebook, Adjust, quickgame SDK
-      (gunakan no-op agar alur boot tidak crash).
-- [ ] Ganti login dengan identitas lokal (device-local account).
-- **Deliverable:** daftar kelas SDK yang di-stub + perilaku penggantinya.
-- **Kriteria selesai:** APK boot & masuk game **tanpa GMS/FB/Adjust** (mode pesawat pun lolos).
+#### Fase B0 — Persiapan Workspace & Keputusan Arsitektur
+- [ ] Project Android baru untuk companion (Gradle + Kotlin/Java).
+- [ ] Pilih library server embedded (kandidat: **NanoHTTPD** / **AndServer** — murni Java, tanpa root).
+- [ ] Tentukan mekanisme intersep (lihat §5): **VpnService (rekomendasi)** vs root/hosts vs proxy debug.
+- **Deliverable:** skeleton project companion + keputusan arsitektur tercatat di §5.
+- **Kriteria selesai:** struktur project disepakati; belum menulis kode bisnis.
 
-### Fase 5 — Repackage, Sign & Uji Offline
-- [ ] Rebuild APK (`apktool b`), sign (`apksigner`), install bersih.
-- [ ] Uji: mode pesawat penuh — boot → konfigurasi lokal terbaca → masuk layar login/game.
-- [ ] Uji: reinstall/restart (pastikan state lokal tidak hilang).
-- **Deliverable:** `DB-LOCAL-standalone.apk` + catatan hasil uji di dokumen ini.
-- **Kriteria selesai:** semua langkah uji lolos di device/emulator target.
+#### Fase B1 — Rekonstruksi Kontrak Bootstrap (dari sisi client)
+- [ ] Analisis dex/smali + runtime: apa yang client **harapkan** dari
+      `/lzceshi/native_setting/Android` dan `/bs/db/android` (format, field, encoding)?
+- [ ] Catat urutan request saat boot original APK (logcat + capture) — client asli
+      dipakai sebagai **oracle**, tidak diubah.
+- [ ] Fallback jika terbentur enkripsi payload: riset `onepieceencrypts`/`libgavesec.so`
+      (masih ranah fondasi/protokol, bukan gameplay).
+- **Deliverable:** spesifikasi kontrak bootstrap → ditulis menggantikan bagian
+      "endpoint game sesungguhnya" di §2.3.
+- **Kriteria selesai:** format request/response kedua endpoint bootstrap jelas.
+
+#### Fase B2 — Skeleton Embedded Server
+- [ ] Implementasi HTTP server di companion: route stub untuk kedua endpoint bootstrap.
+- [ ] Penyimpanan: SQLite (state) + file konfigurasi statis.
+- [ ] Server listen **hanya** di `127.0.0.1:<PORT>` (tidak terekspos jaringan).
+- **Deliverable:** APK companion v0.1 (server jalan, belum dihubungkan ke game).
+- **Kriteria selesai:** `curl http://127.0.0.1:<PORT>/bs/db/android` dari device
+      mengembalikan respons sesuai kontrak Fase B1.
+
+#### Fase B3 — Lapisan Intersep (VpnService)
+- [ ] Companion menjalankan VpnService yang menangkap DNS domain game
+      (`sjmobilegame.com`, `t4game.com`, dst. dari hasil B1) → arahkan ke server lokal.
+- [ ] Non-domain game **diteruskan apa adanya** (passthrough transparan).
+- **Deliverable:** APK companion v0.2 (VPN + server menyatu).
+- **Kriteria selesai:** dari device, query `dragon.sjmobilegame.com` tersedot ke lokal
+      tanpa mengganggu trafik aplikasi lain.
+
+#### Fase B4 — Kalibrasi Bersama APK Asli (oracle loop)
+- [ ] Install keduanya bersebelahan → nyalakan companion → boot original APK.
+- [ ] Iterasi: amati logcat client → perbaiki respons server → ulangi, sampai client
+      lolos rantai bootstrap (config terbaca, tidak lagi gagal koneksi).
+- [ ] Setiap kemajuan dicatat di §2.3 (endpoint + format yang sudah "diterima" client).
+- **Deliverable:** log kalibrasi + respons server yang lolos tiap tahap.
+- **Kriteria selesai:** client melewati seluruh rantai bootstrap tanpa error jaringan
+      (masuk gerbang berikutnya — dicatat sebatas protokol, bukan gameplay-nya).
+
+#### Fase B5 — Hardening & Kemandirian
+- [ ] Foreground service + auto-start: server siap **sebelum** game dibuka.
+- [ ] Persistensi state lintas restart (SQLite solid, migrasi aman).
+- [ ] Uji: mode pesawat (VPN lokal tetap bekerja), reboot device, kill/restart companion.
+- **Deliverable:** APK companion v1.0 + catatan uji di dokumen ini.
+- **Kriteria selesai:** semua skenario uji lolos; companion berdiri sendiri tanpa internet.
+
+> Setelah B5 selesai → kembali ke Track A (repoint endpoint → merge single APK)
+> sebagai tahap akhir opsional.
 
 ---
 
 ## 5. Keputusan Terbuka (perlu keputusan owner)
 
-1. **Port lokal** yang dipakai server embedded (usulan: `12729` / acak tinggi, hindari port umum).
-2. **Strategi bundle terenkripsi:** biarkan runtime asli yang mendekripsi (pilihan aman, Fase 1
-   kemungkinan tidak butuh dekripsi) vs. dekripsi statis (lebih fleksibel tapi perlu riset kunci AES).
-3. **Login lokal:** satu user default otomatis, atau layar pilih-profil sederhana.
-4. **Penyimpanan:** SQLite vs file JSON (skala data menentukan).
+1. **Mekanisme intersep (kunci):**
+   - **(a) VpnService di APK pendamping — rekomendasi**: tanpa root, tanpa mengubah
+     client; konsekuensi: ikon VPN aktif + izin VPN sekali di awal.
+   - (b) hosts/DNS dengan root: sederhana, tapi butuh device rooted — cocok hanya lab uji.
+   - (c) WiFi proxy debug: rapuh, game bisa mengabaikan proxy — hanya cadangan.
+2. **Port lokal** server embedded (usulan: `12729`, hindari port umum).
+3. **minSdk companion:** mengikuti device uji yang dipakai (menentukan fitur VpnService).
+4. **Strategi bundle terenkripsi:** biarkan runtime asli mendekripsi (aman) vs dekripsi
+   statis (fleksibel tapi perlu riset AES `libgavesec.so`) — Fase B1 yang menentukan.
+5. **Penyimpanan:** SQLite (rekomendasi) vs file JSON.
 
 ---
 
@@ -207,21 +249,24 @@ konfigurasi server game → sesuai prediksi "game akan segera mati".
 
 | Risiko | Dampak | Mitigasi |
 |---|---|---|
-| Skema `onepieceencrypts` tidak terpecahkan | Tidak bisa baca endpoint dari JS | Gunakan MITM dari sisi client; runtime asli tetap dipertahankan |
-| Client mengirim payload terenkripsi ke server | API lokal harus replikasi format | Replikasi via `libgavesec.so` (JNI bridge) alih-alih reimplement |
-| SDK boot-flow hard-gagal saat cloud mati | APK crash saat start | Fase 4: stub agresif + try-catch di jalur boot |
-| Play Protect/signature mismatch | Install ditolak | Sign dengan key sendiri, uninstall versi lama |
-| Regression saat rebuild APK | APK rusak | Fase 0: uji round-trip sebelum perubahan apa pun |
+| Format respons bootstrap salah ditebak | Client menolak config, kalibrasi macet | Oracle loop B4: perbaiki dari logcat, iterasi cepat |
+| Payload client terenkripsi (bukan JSON polos) | Server lokal harus replikasi skema | Replikasi via `libgavesec.so` (JNI bridge), bukan reimplement; riset `onepieceencrypts` sebagai cadangan |
+| VpnService gagal start / user menolak izin VPN | Intersep tidak jalan | B3: UI izin jelas; fallback proxy debug di build debug |
+| Game dibuka sebelum server siap | Request pertama gagal | B5: foreground service + start-on-boot, urutan aman |
+| VPN memengaruhi trafik aplikasi lain | Mengganggu device | Passthrough ketat: hanya domain game yang diintersep |
+| SDK cloud di client mem-blok boot saat mati | Client crash sebelum menyentuh server | Catat di B4; solusi permanen ada di Track A (stub SDK) |
+| Companion dibunuh OS (battery saver) | Server mati diam-diam | B5: foreground service + battery optimization exemption |
 
 ---
 
-## 7. Kriteria Selesai Tahap Fondasi (Definition of Done)
+## 7. Kriteria Selesai Tahap Fondasi (Definition of Done — Track B)
 
-1. APK boot **penuh tanpa jaringan eksternal** (mode pesawat).
-2. Semua request keluar dari proses game hanya menuju `127.0.0.1`.
-3. Tidak ada lagi panggilan ke `sjmobilegame.com`, `myqcloud.com`, `t4game.com`, GMS, FB, Adjust.
-4. Kontrak API server lokal terdokumentasi §2.3 (hasil Fase 1).
-5. Dokumen ini selalu menjadi sumber kebenaran tunggal — setiap fase selesai diperbarui di sini.
+1. Original APK **identik dengan baseline** — tidak pernah diubah sedikit pun.
+2. Companion APK melayani seluruh rantai bootstrap; client asli lolos tanpa error jaringan.
+3. Semua trafik game yang diintersep hanya menuju server lokal `127.0.0.1`.
+4. Kontrak API bootstrap + endpoint yang sudah "diterima" client terdokumentasi §2.3.
+5. Companion berjalan stabil: start-on-boot, mode pesawat, tanpa internet.
+6. Dokumen ini selalu menjadi sumber kebenaran tunggal — setiap fase selesai diperbarui di sini.
 
 ---
 
@@ -230,5 +275,5 @@ konfigurasi server game → sesuai prediksi "game akan segera mati".
 - **Dokumentasi tunggal:** semua catatan/keputusan/hasil uji hanya di `README.md` ini.
 - `DB-LOCAL.apk` asli = baseline **immutable** (tidak pernah ditimpa).
 - Hasil bedah/dump berada di `.analysis/` (gitignored, tidak masuk repo).
-- Cabang kerja: `main` untuk dokumentasi; buat branch per fase saat implementasi dimulai.
+- Cabang kerja: `main` untuk dokumentasi; implementasi Track B di branch `feat/companion-server`.
 - **Batas analisis:** fondasi infrastruktur saja. Analisis mekanik/gameplay dilarang sampai fondasi selesai.
