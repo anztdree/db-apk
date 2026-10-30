@@ -8,6 +8,9 @@
 > yang berjalan **bersebelahan** dengan APK asli. Merge endpoint = tahap akhir nanti.
 > **Perubahan v1.2:** server lokal dipatok **port 4000** — API game + **Web Dashboard**
 > (logging, debugging, APK reader). Server **wajib jalan duluan** sebelum APK game dibuka.
+> **Perubahan v1.3:** akses dashboard diputuskan — **cukup `127.0.0.1:4000`** (tanpa mode
+> LAN). Dashboard dirancang **copy-first**: semua data — alur request & config yang
+> di-load — bisa disalin satu klik untuk dibagikan/dianalisis.
 
 ---
 
@@ -171,6 +174,7 @@ Server lokal **terikat satu port: `4000`** — melayani API game (hasil intersep
 | **Logging** | Semua trafik terintersep (domain asli, path, method, header, body, status, durasi) — live stream + riwayat SQLite. Termasuk request yang **gagal/tak dikenal** — justru itu bahan utama rekayasa kontrak |
 | **Debugging** | Detail request/response, replay request, mock override per-endpoint (edit respons on-the-fly, toggle on/off), penangkap endpoint asing → auto-log + template respons |
 | **APK Reader** | Buka APK dari device: tree assets, manifest, `config.properties` + auto-decode Base64, strings/dex grep endpoint — mempermudah pembuatan handler server yang setara dengan server asli |
+| **Copy / Export (copy-first)** | Tombol salin **satu klik** untuk semua data: raw body, headers, perintah `curl` siap-replay, config yang di-load (sudah di-decode), dan **timeline alur** (urutan request per sesi boot). Tujuan: alur & config di-copy → ditempel ke asisten → handler server dibuat cepat & akurat |
 
 **Prinsip kerja:**
 
@@ -242,8 +246,11 @@ Server lokal **terikat satu port: `4000`** — melayani API game (hasil intersep
       (edit respons on-the-fly, toggle on/off), template respons endpoint baru.
 - [ ] **APK Reader:** buka APK dari device (SAF) → tree assets, manifest,
       `config.properties` + decode Base64 otomatis, grep strings/dex untuk endpoint.
+- [ ] **Copy-first:** tombol salin satu klik untuk semua data — raw body, headers,
+      `curl` siap-replay, config ter-decode, timeline alur per sesi boot
+      (alur & config mudah di-copy → dibagikan ke asisten untuk dianalisis).
 - **Deliverable:** dashboard hidup di `http://127.0.0.1:4000` (browser device,
-      atau PC via `adb forward tcp:4000 tcp:4000`).
+      atau PC via `adb forward tcp:4000 tcp:4000`) dengan fitur copy-first aktif.
 - **Kriteria selesai:** satu siklus kalibrasi bisa dijalankan penuh dari dashboard
       (lihat request → edit mock → replay → lihat hasil) tanpa tools eksternal.
 
@@ -289,8 +296,9 @@ Server lokal **terikat satu port: `4000`** — melayani API game (hasil intersep
    - (c) WiFi proxy debug: rapuh, game bisa mengabaikan proxy — hanya cadangan.
 2. ~~Port lokal~~ → **DIPUTUSKAN (v1.2): port 4000** — satu server untuk API game + dashboard.
 3. **minSdk companion:** mengikuti device uji yang dipakai (menentukan fitur VpnService).
-4. **Akses dashboard:** cukup `127.0.0.1:4000` (browser device + `adb forward` dari PC),
-   atau perlu mode bind LAN (toggle — tidak aman di jaringan publik)?
+4. ~~Akses dashboard~~ → **DIPUTUSKAN (v1.3): cukup `127.0.0.1:4000`** (browser device +
+   `adb forward` dari PC); tanpa mode LAN. Dashboard wajib "lengkap" dengan desain
+   **copy-first** (lihat §3) — alur & config yang di-load mudah disalin untuk dibagikan.
 5. **HTTPS wajib?** (tergantung hasil B1): jika client memanggil `configus` (HTTPS) dan
    gagal tanpa itu — opsi: (i) abaikan bila SDK toleran gagal, (ii) install user CA
    bila ternyata dipercaya, (iii) evaluasi ulang strategi intersep. **Tidak ada MITM paksa.**
@@ -323,8 +331,8 @@ Server lokal **terikat satu port: `4000`** — melayani API game (hasil intersep
    tanpa error jaringan.
 3. Semua trafik game yang diintersep hanya menuju `127.0.0.1:4000`.
 4. **Server terjamin jalan duluan** — game tidak pernah memulai request sebelum server siap.
-5. **Web Dashboard** (logging, debugging, APK reader) berfungsi penuh sebagai alat utama
-   kalibrasi.
+5. **Web Dashboard** (logging, debugging, APK reader, **copy-first**) berfungsi penuh
+   sebagai alat utama kalibrasi.
 6. Kontrak API bootstrap + endpoint yang sudah "diterima" client terdokumentasi §2.3.
 7. Companion berjalan stabil: start-on-boot, mode pesawat, tanpa internet.
 8. Dokumen ini selalu menjadi sumber kebenaran tunggal — setiap fase selesai diperbarui di sini.
