@@ -11,6 +11,9 @@
 > **Perubahan v1.3:** akses dashboard diputuskan — **cukup `127.0.0.1:4000`** (tanpa mode
 > LAN). Dashboard dirancang **copy-first**: semua data — alur request & config yang
 > di-load — bisa disalin satu klik untuk dibagikan/dianalisis.
+> **Perubahan v1.4:** root folder server ditetapkan **`Android/data/<paket>/server/`**.
+> Posisi diperjelas: logging/dashboard = **alat bantu** (indikator server hidup & mirip
+> server asli), bukan produk — produk utama = **server lokal yang setara**.
 
 ---
 
@@ -176,6 +179,24 @@ Server lokal **terikat satu port: `4000`** — melayani API game (hasil intersep
 | **APK Reader** | Buka APK dari device: tree assets, manifest, `config.properties` + auto-decode Base64, strings/dex grep endpoint — mempermudah pembuatan handler server yang setara dengan server asli |
 | **Copy / Export (copy-first)** | Tombol salin **satu klik** untuk semua data: raw body, headers, perintah `curl` siap-replay, config yang di-load (sudah di-decode), dan **timeline alur** (urutan request per sesi boot). Tujuan: alur & config di-copy → ditempel ke asisten → handler server dibuat cepat & akurat |
 
+**Posisi logging & dashboard (v1.4):** keduanya **alat bantu**, bukan produk. Log adalah
+indikator bahwa (1) server lokal sudah running dan (2) jawabannya mirip server asli.
+Jangan gold-plate — produk utama tetap **server lokal yang setara** dengan server lama.
+
+**Root folder server (v1.4):** semua artefak milik server hidup di folder aplikasi
+pendamping sendiri:
+
+```
+Android/data/<paket>/server/
+├── logs/          ← log request/response + status server (indikator hidup)
+├── config/        ← konfigurasi server + mock/override respons
+├── data/          ← SQLite (state) 
+└── responses/     ← template respons statis per-endpoint
+```
+
+Keuntungan: mudah di-backup/diintip dari PC (USB), terhapus bersih saat uninstall,
+dan tidak butuh izin storage tambahan (folder own-app).
+
 **Prinsip kerja:**
 
 1. Client asli **tetap mengira** sedang bicara dengan `sjmobilegame.com` — tidak ada
@@ -233,6 +254,7 @@ Server lokal **terikat satu port: `4000`** — melayani API game (hasil intersep
 
 #### Fase B2 — Skeleton Local Server (port 4000)
 - [ ] Implementasi HTTP server: route stub untuk endpoint bootstrap (hasil B1).
+- [ ] **Root folder:** `Android/data/<paket>/server/` (logs/, config/, data/, responses/).
 - [ ] Penyimpanan: SQLite (log trafik + state) + file konfigurasi statis.
 - [ ] Server listen `127.0.0.1:4000` (tidak terekspos jaringan luar).
 - **Deliverable:** APK companion v0.1 (server jalan, belum dihubungkan ke game).
@@ -240,6 +262,7 @@ Server lokal **terikat satu port: `4000`** — melayani API game (hasil intersep
       mengembalikan respons sesuai kontrak Fase B1.
 
 #### Fase B3 — Web Dashboard (logging · debugging · APK reader)
+> *Alat bantu — cukup lengkap, jangan gold-plate. Log = indikator server hidup & setara.*
 - [ ] **Logging:** capture semua request/response → SQLite + live stream ke browser;
       endpoint tak dikenal otomatis ter-log (bahan utama kalibrasi).
 - [ ] **Debugging:** detail viewer, replay request, mock override per-endpoint
@@ -305,6 +328,8 @@ Server lokal **terikat satu port: `4000`** — melayani API game (hasil intersep
 6. **Strategi bundle terenkripsi:** biarkan runtime asli mendekripsi (aman) vs dekripsi
    statis (fleksibel tapi perlu riset AES `libgavesec.so`) — Fase B1 yang menentukan.
 7. **Penyimpanan:** SQLite (rekomendasi) vs file JSON.
+8. **Package name companion** (menentukan root folder): usulan `com.db.localserver` →
+   `Android/data/com.db.localserver/server/`. Owner bebas mengganti.
 
 ---
 
@@ -336,6 +361,7 @@ Server lokal **terikat satu port: `4000`** — melayani API game (hasil intersep
 6. Kontrak API bootstrap + endpoint yang sudah "diterima" client terdokumentasi §2.3.
 7. Companion berjalan stabil: start-on-boot, mode pesawat, tanpa internet.
 8. Dokumen ini selalu menjadi sumber kebenaran tunggal — setiap fase selesai diperbarui di sini.
+9. Semua artefak server (log, config, data, respons) hidup di `Android/data/<paket>/server/`.
 
 ---
 
@@ -343,6 +369,8 @@ Server lokal **terikat satu port: `4000`** — melayani API game (hasil intersep
 
 - **Dokumentasi tunggal:** semua catatan/keputusan/hasil uji hanya di `README.md` ini.
 - **Port 4000 = kontrak tetap** (API game + Web Dashboard). Semua dokumentasi teknis mengacu ke port ini.
+- **Root folder server = `Android/data/<paket>/server/`** — log/config/data/respons hidup di sini.
+- **Logging = alat bantu**, bukan produk: indikator server running & paritas dengan server asli.
 - `DB-LOCAL.apk` asli = baseline **immutable** (tidak pernah ditimpa).
 - Hasil bedah/dump berada di `.analysis/` (gitignored, tidak masuk repo).
 - Cabang kerja: `main` untuk dokumentasi; implementasi Track B di branch `feat/companion-server`.
