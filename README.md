@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Analisis Fondasi & Rencana (v2.2) — *rencana saja, belum ada implementasi*
+> **Status dokumen:** Fondasi & Implementasi (v2.3) — **L0 dieksekusi: build 0.1.0 selesai di level build**; fase lain masih rencana
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-10-30
 > **Riwayat strategi:**
@@ -18,6 +18,9 @@
 >   Local server berjalan **bersebelahan dengan server asli (remote)** yang tetap
 >   melayani game seperti biasa. Tiga mode progresif: **M1 pajangan → M2 monitor
 >   (passthrough) → M3 ambil alih bertahap**.
+> - **v2.3 — EKSEKUSI DIMULAI (Fase L0).** Build custom pertama **`APK-LSF-0.1.0.apk`**
+>   sukses dibuat & diverifikasi (round-trip murni, tanpa server). Keystore tetap dibuat
+>   & di-commit agar signature konsisten lintas sesi/build. Uji install di device menunggu owner.
 
 ---
 
@@ -286,15 +289,18 @@ tanpa izin storage tambahan (folder own-app).
 > Setiap fase punya keluaran (deliverable) & kriteria selesai. Tidak ada fase gameplay di sini.
 > Semua pekerjaan dilakukan pada **salinan** APK; `DB-LOCAL.apk` di repo = baseline immutable.
 
-#### Fase L0 — Toolchain & Custom Dasar (round-trip)
-- [ ] Siapkan toolchain: `apktool` (decompile/rebuild), `jadx` (baca Java),
-      `apksigner` + `zipalign`, keystore sendiri, emulator/device uji.
-- [ ] Uji **round-trip**: decompile `DB-LOCAL.apk` → **tanpa perubahan apa pun
-      (paket tetap `com.db.local`)** → rebuild → sign → install → pastikan game boot
-      **persis seperti aslinya** (masih online, tak ada perilaku baru).
-- **Deliverable:** `APK-LSF-0.apk` (custom dasar tanpa server) + catatan uji.
+#### Fase L0 — Toolchain & Custom Dasar (round-trip) — **STATUS: build ✓ · uji device ⏳**
+- [x] Siapkan toolchain: `apktool` 3.0.3, `uber-apk-signer` 1.3.0 (zipalign + sign
+      v1/v2/v3), JDK 21; keystore sendiri dibuat (`keystore/lsf.keystore` — lihat
+      *Riwayat Build & Artefak* di akhir §4).
+- [x] Uji **round-trip** (level build): decompile `DB-LOCAL.apk` → satu-satunya
+      perubahan = `versionName: 1.0.0 → 0.1.0` → rebuild → zipalign → sign →
+      **terverifikasi penuh** (detail: *Riwayat Build & Artefak* di akhir §4).
+- [ ] Uji di device: install → boot → pastikan game **persis seperti aslinya**
+      (masih online, tak ada perilaku baru). *Menunggu owner — langkah ada di §4 Riwayat Build.*
+- **Deliverable:** `releases/APK-LSF-0.1.0.apk` (custom dasar tanpa server, tersimpan via LFS).
 - **Kriteria selesai:** APK LSF terinstall menggantikan original (paket sama) dan
-      boot normal; tidak ada regresi vs baseline.
+      boot normal; tidak ada regresi vs baseline. *(Menunggu konfirmasi device owner.)*
 
 #### Fase L1 — Rekonstruksi Kontrak Bootstrap (dari sisi client)
 - [ ] Analisis dex/smali + runtime: apa yang client **harapkan** dari
@@ -375,6 +381,60 @@ tanpa izin storage tambahan (folder own-app).
 - [ ] Persistensi state (SQLite solid); uji reboot, kill/restart, **mode pesawat penuh**.
 - **Deliverable:** `APK-LSF-3.apk` (standalone) + catatan uji di dokumen ini.
 - **Kriteria selesai:** APK LSF berdiri sendiri tanpa internet; server asli tidak lagi dibutuhkan.
+
+---
+
+### Riwayat Build & Artefak (log eksekusi — sumber kebenaran hasil build)
+
+**Skema versi build LSF** (versionCode LSF = nomor urut rilis LSF sendiri):
+
+| Versi | Isi | Fase |
+|---|---|---|
+| **0.1.0** | Round-trip custom dasar — game tidak disentuh; hanya identitas versi | L0 ✓ (build) |
+| 0.2.0 | + local server embedded (M1 pajangan) | L2 |
+| 0.3.0 | + Web Dashboard (logging, monitoring, debugging, APK reader, copy-first) | L3 |
+| 1.0.0 | Fondasi lulus penuh — game & server lokal hidup bersebelahan terbukti | L4 |
+| 1.1.0 | Mode monitor/passthrough (M2) — game tetap data asli | L5a |
+| 1.2.0 | Ambil alih bertahap per-endpoint (M3) | L5b |
+| 2.0.0 | Standalone penuh tanpa internet | L6 |
+
+**Build 0.1.0 — 2026-10-30:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.1.0.apk` (via Git LFS — 104.993.732 byte) |
+| SHA-256 | `137bdf315a953f4c8f6d874cd2bd7e3c3eda3e098ac33db4178886761e5daac8` |
+| Toolchain | apktool 3.0.3 · uber-apk-signer 1.3.0 (zipalign bawaan) · JDK 21 |
+| Perubahan vs baseline | **Hanya `versionName: 1.0.0 → 0.1.0`** — versionCode tetap 1, paket tetap `com.db.local`, game tidak disentuh |
+| Signature | ✅ v1 + v2 + v3 verified — cert `CN=DB Local LSF, OU=LocalServer, O=db-apk, C=ID` |
+| Verifikasi isi | ✅ 3.665 entri = 3.665 entri (tidak ada hilang/tambahan); 15 file beda-CRC **wajar**: manifest (versi), `classes.dex` (recompile smali), XML resource (recompile aapt2), 5 PNG ter-crunch ulang (lossless — dimensi diverifikasi identik) |
+| Status | ✅ build & verifikasi level build selesai · ⏳ uji install/boot di device owner |
+
+**Keystore tetap (wajib dipakai SEMUA build LSF — signature konsisten):**
+
+| Item | Nilai |
+|---|---|
+| File | `keystore/lsf.keystore` (di-commit — agar tidak pernah berubah lintas sesi) |
+| Alias / password | `lsf` / `lsf-local-2025` (sama untuk store & key) |
+| Cert SHA-256 | `FD:4B:7A:95:CB:5B:96:32:28:93:97:03:8F:8C:E6:88:3C:0C:BA:10:85:C5:1D:5A:30:B1:9E:42:42:3A:CF:D7` |
+| Berlaku s.d. | 22 Okt 2056 |
+
+> Password didokumentasikan sengaja: repo = area kerja owner, reproducibility > kerahasiaan
+> (APK sideload, bukan Play Store). Jika keystore berubah/hilang → build baru wajib uninstall dulu.
+
+**Cara uji install (owner):**
+1. Siapkan **device uji** (bukan device utama). Uninstall `DB-LOCAL` original dulu —
+   paket sama + signature beda → tanpa uninstall, install pasti gagal.
+2. Unduh `releases/APK-LSF-0.1.0.apk` dari repo ini → transfer ke device → install
+   (izinkan "install unknown apps"; jika Play Protect protes → install anyway).
+3. Buka game → harus boot **persis seperti original** (masih online, tidak ada fitur baru).
+4. Laporkan hasilnya di percakapan → status L0 ditutup, lanjut L1.
+
+**Catatan kejadian (2026-10-30):** filesystem workspace pernah ter-reset di antara sesi —
+workspace dipulihkan penuh dari GitHub (README + baseline pointer) dan baseline
+`DB-LOCAL.apk` diunduh ulang via LFS lalu diverifikasi SHA-256 **cocok** dengan
+`62418cc4…fe23d`. Bukti mekanisme *baseline immutable* bekerja. Pelajaran: keystore &
+artefak build wajib hidup di repo (seperti sekarang), bukan hanya di workspace.
 
 ---
 

@@ -1,2 +1,4 @@
 .analysis/
 *.log
+tools/
+dist/
