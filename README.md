@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Analisis Fondasi & Rencana (v2.1) — *rencana saja, belum ada implementasi*
+> **Status dokumen:** Analisis Fondasi & Rencana (v2.2) — *rencana saja, belum ada implementasi*
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-10-30
 > **Riwayat strategi:**
@@ -14,6 +14,10 @@
 > - **v2.1 — Nama paket TETAP `com.db.local`** (tanpa rename; custom APK menggantikan
 >   original di device). **Log dashboard wajib bahasa manusia** — mudah dibaca siapa pun,
 >   bukan dump teknis mentah.
+> - **v2.2 — Penegasan: perubahan murni PENAMBAHAN (monitoring, bukan penggantian).**
+>   Local server berjalan **bersebelahan dengan server asli (remote)** yang tetap
+>   melayani game seperti biasa. Tiga mode progresif: **M1 pajangan → M2 monitor
+>   (passthrough) → M3 ambil alih bertahap**.
 
 ---
 
@@ -24,7 +28,7 @@ runtime native (shell APK). Saat ini seluruh konfigurasi & layanan bergantung pa
 remote pihak ketiga yang **sudah/segera mati**.
 
 **Tujuan akhir:** menjadikan APK **standalone & berjalan lokal (offline)**.
-Prinsip yang disepakati (terakhir diperbarui v2.1):
+Prinsip yang disepakati (terakhir diperbarui v2.2):
 
 - **Tidak membuat project/APK baru.** APK yang kita edit = **APK LSF**, hasil custom
   langsung dari `DB-LOCAL.apk` (decompile → tambah local server → rebuild).
@@ -36,6 +40,9 @@ Prinsip yang disepakati (terakhir diperbarui v2.1):
 - **Yang utama = yang running online.** Game tetap berperilaku online persis seperti
   aslinya; local server mula-mula **pajangan yang work**: jalan di port 4000, dashboard
   hidup, terbukti setara — tapi belum dihubungkan ke game (endpoint belum diganti).
+- **Local server = monitor/observator (v2.2).** Ia berjalan bersebelahan dengan
+  **server asli (remote)** — server asli tetap melayani game seperti biasa; local
+  server hanya mengamati & mencatat, tidak mengubah apa pun sampai paritas terbukti.
 - Semua pekerjaan didokumentasikan di file ini (dokumentasi tunggal).
 
 ---
@@ -157,13 +164,15 @@ dipanggil client + protokolnya.
 
 ---
 
-## 3. Konsep Solusi (v2.1): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded
+## 3. Konsep Solusi (v2.2): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded
 
 **Satu sumber, satu APK.** `DB-LOCAL.apk` di-decompile → **ditambah local server**
 (service di dalam aplikasi) → rebuild dengan **nama paket tetap `com.db.local`** —
 custom APK menggantikan original di device (signature berbeda → uninstall original
-dulu; lihat §6). "Bersebelahan" berarti game & server hidup berdampingan **di dalam
-satu aplikasi** — bukan dua aplikasi terpisah.
+dulu; lihat §6). "Bersebelahan" berarti: (1) game & local server hidup berdampingan
+**di dalam satu aplikasi** — bukan dua aplikasi terpisah; (2) local server hidup
+**bersebelahan dengan server asli (remote)** yang tetap melayani game seperti biasa —
+tidak ada yang digantikan sampai saatnya tiba.
 
 ```
 ┌── Device Android ────────────────────────────────────────────────────────────┐
@@ -172,8 +181,9 @@ satu aplikasi** — bukan dua aplikasi terpisah.
 │  │                                                                          ││
 │  │   GAME CLIENT                              LOCAL SERVER (ditambah)       ││
 │  │   ★ UTAMA — running online ★               port 4000                     ││
-│  │   • tidak diubah sama sekali               • API game (route stub dulu)  ││
-│  │   • pengalaman persis seperti aslinya      • Web Dashboard (pajangan)    ││
+│  │   • tidak diubah sama sekali               • M1 pajangan → M2 monitor    ││
+│  │   • pengalaman persis seperti aslinya        → M3 ambil alih bertahap   ││
+│  │          │                                 • Web Dashboard + monitoring  ││
 │  │          │                                 • start Application.onCreate  ││
 │  │          │  BERSEBELAHAN (satu aplikasi)     → PASTI jalan duluan        ││
 │  │          └──────────────────────────────────────┘                        ││
@@ -183,9 +193,14 @@ satu aplikasi** — bukan dua aplikasi terpisah.
 │                                                                              │
 │  Browser (device/PC via adb) ──► http://127.0.0.1:4000 → Web Dashboard       │
 └────────────────────────────────────────────────────────────────────────────────┘
+            │ traffic game (M1: langsung ke server asli · M2: lewat passthrough)
+            ▼
+┌─ SERVER ASLI (remote) — tetap melayani game seperti biasa, tidak diubah ─────┐
+│  dragon / configus / COS / qsdk — sumber data utama sampai paritas terbukti  │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Kenapa pendekatan ini (v2.1):**
+**Kenapa pendekatan ini (v2.2):**
 
 1. **Tanpa rename, tanpa proyek baru** — paket tetap `com.db.local` menghindari risiko
    bug resource/manifest akibat rename; APK hasil edit = pengganti setia original.
@@ -197,12 +212,27 @@ satu aplikasi** — bukan dua aplikasi terpisah.
    di repo immutable sebagai pembanding/oracle.
 5. **Server = "pajangan tapi work"** di awal — hidup, dashboard jalan, terbukti setara;
    repointing endpoint baru dilakukan setelah paritas terbukti.
+6. **Monitor dulu, ambil alih kemudian** — mode passthrough (M2) merekam respons ASLI
+   dari server asli; paritas dibangun dari data nyata, bukan tebakan.
+
+**Tiga mode local server — progresif, satu arah (v2.2):**
+
+| Mode | Apa yang terjadi | Posisi game & server asli | Fase |
+|---|---|---|---|
+| **M1 — Pajangan** | Server lokal hidup, dashboard + monitoring aktif. Traffic game **tidak disentuh** | Game online normal **langsung ke server asli** | L2–L4 |
+| **M2 — Monitor (passthrough)** | Endpoint di-repoint → server lokal **meneruskan** request ke server asli → jawaban ASLI kembali ke game; seluruh lalu-lintas dicatat dua arah | Game tetap online dengan **data asli**; server asli tetap bekerja seperti biasa | L5a |
+| **M3 — Ambil alih bertahap** | Per-endpoint yang paritasnya terbukti: jawaban diganti lokal; sisanya tetap passthrough | Game hidup dari server lokal, endpoint demi endpoint | L5b → L6 |
+
+**Kenapa M2 penting:** kita **melihat format respons asli** langsung dari server asli —
+tidak perlu menebak. Oracle terbaik untuk membangun paritas, tanpa mengubah pengalaman
+online sama sekali.
 
 **Web Dashboard di port 4000 (alat bantu — mission control kalibrasi):**
 
 | Fitur | Isi |
 |---|---|
 | **Logging** | Semua request tercetak **dalam bahasa manusia yang mudah dibaca** (format di bawah) — live stream + riwayat SQLite; detail mentah tetap tersedia via expand. Endpoint tak dikenal otomatis ter-log dengan peringatan jelas |
+| **Monitoring** | Kesehatan **dua sisi** dalam bahasa manusia: server lokal (hidup/uptime/jumlah request/gagal) + **server asli** (dicek berkala: bisa dihubungi / mati, latensi) — tanpa menyentuh traffic game |
 | **Debugging** | Detail request/response, replay request, mock override per-endpoint (edit respons on-the-fly, toggle on/off), template respons endpoint baru |
 | **APK Reader** | Buka APK dari device: tree assets, manifest, `config.properties` + auto-decode Base64, strings/dex grep endpoint |
 | **Copy / Export (copy-first)** | Salin **satu klik** semua data: raw body, headers, `curl` siap-replay, config ter-decode, **timeline alur** per sesi boot → ditempel ke asisten untuk dianalisis |
@@ -251,7 +281,7 @@ tanpa izin storage tambahan (folder own-app).
 
 ---
 
-## 4. Rencana Tahap Fondasi (v2.1 — Track L: Custom APK LSF)
+## 4. Rencana Tahap Fondasi (v2.2 — Track L: Custom APK LSF)
 
 > Setiap fase punya keluaran (deliverable) & kriteria selesai. Tidak ada fase gameplay di sini.
 > Semua pekerjaan dilakukan pada **salinan** APK; `DB-LOCAL.apk` di repo = baseline immutable.
@@ -291,6 +321,9 @@ tanpa izin storage tambahan (folder own-app).
 > *Alat bantu — cukup lengkap, jangan gold-plate. Log = indikator server hidup & setara.*
 - [ ] **Logging:** capture semua request → SQLite + live stream ke browser;
       **setiap baris log dalam bahasa manusia** (format §3), detail mentah di balik expand.
+- [ ] **Monitoring:** panel kesehatan dua sisi (server lokal + server asli) — server
+      asli dicek berkala & ditampilkan dalam bahasa manusia (mis.
+      "Server asli dragon…: MATI — sudah tidak bisa dihubungi").
 - [ ] **Debugging:** detail viewer, replay, mock override per-endpoint (edit + toggle).
 - [ ] **APK Reader:** tree assets, manifest, `config.properties` + decode Base64 otomatis,
       grep strings/dex untuk endpoint.
@@ -302,7 +335,7 @@ tanpa izin storage tambahan (folder own-app).
       (lihat request → edit mock → replay → lihat hasil) tanpa tools eksternal; log
       dashboard terbaca manusia biasa (non-programmer paham apa yang terjadi).
 
-#### Fase L4 — Validasi Bersebelahan (game online utama, server pajangan)
+#### Fase L4 — Validasi Bersebelahan (M1: game online via server asli, server lokal pajangan)
 - [ ] Install APK LSF di device uji (paket sama dengan original → menggantikan;
       baseline `DB-LOCAL.apk` tetap utuh di repo sebagai pembanding).
 - [ ] Buka **APK LSF** → game berjalan normal seperti aslinya (masih online),
@@ -315,13 +348,25 @@ tanpa izin storage tambahan (folder own-app).
 
 > ── Batas fondasi ── Fase berikut dieksekusi setelah L0–L4 lulus & owner setuju ──
 
-#### Fase L5 — Repointing Endpoint (di APK LSF saja, kalibrasi)
+#### Fase L5a — Repointing + Mode Monitor/Passthrough (game tetap online, data asli)
 - [ ] Ubah endpoint di `assets/config*.properties` **milik APK LSF**
       (Base64 → `http://127.0.0.1:4000/...`); baseline `DB-LOCAL.apk` di repo tetap tidak disentuh.
-- [ ] Oracle loop: amati request game LSF di dashboard → lengkapi/mock respons →
-      replay → ulangi sampai client lolos rantai bootstrap & API berikutnya.
+- [ ] Server lokal = **penyambung transparan**: terima request game → teruskan ke
+      server asli → kembalikan jawaban ASLI tanpa diubah → catat dua arah.
+- [ ] Dashboard kini memperlihatkan **format respons asli** dari server asli
+      (bukan tebakan) → di-copy untuk membangun template paritas.
+- **Deliverable:** `APK-LSF-2a.apk` + rekaman traffic asli lengkap per sesi boot.
+- **Kriteria selesai:** game bermain online seperti biasa (lewat passthrough) dan
+      seluruh aliran request/response tercatat di dashboard.
+
+#### Fase L5b — Ambil Alih Bertahap (per-endpoint, kalibrasi)
+- [ ] Endpoint demi endpoint: template jawaban lokal dibangun dari rekaman asli (L5a)
+      → mock diaktifkan → client lolos → endpoint itu "berpindah" ke lokal; sisanya
+      tetap passthrough.
+- [ ] Oracle loop: amati di dashboard → perbaiki template → replay → ulangi sampai
+      client lolos rantai bootstrap & API berikutnya.
 - [ ] Setiap kemajuan dicatat di §2.3 (endpoint + format yang sudah "diterima" client).
-- **Deliverable:** `APK-LSF-2.apk` + log kalibrasi.
+- **Deliverable:** `APK-LSF-2b.apk` + log kalibrasi.
 - **Kriteria selesai:** game di APK LSF lolos seluruh rantai bootstrap dari server lokal
       (dicatat sebatas protokol, bukan gameplay-nya).
 
@@ -329,7 +374,7 @@ tanpa izin storage tambahan (folder own-app).
 - [ ] Stub SDK cloud di LSF bila mengganggu (Billing/GMS/FB/Adjust) → no-op aman.
 - [ ] Persistensi state (SQLite solid); uji reboot, kill/restart, **mode pesawat penuh**.
 - **Deliverable:** `APK-LSF-3.apk` (standalone) + catatan uji di dokumen ini.
-- **Kriteria selesai:** APK LSF berdiri sendiri tanpa internet; original tetap utama online.
+- **Kriteria selesai:** APK LSF berdiri sendiri tanpa internet; server asli tidak lagi dibutuhkan.
 
 ---
 
@@ -348,6 +393,8 @@ tanpa izin storage tambahan (folder own-app).
    statis (fleksibel tapi perlu riset AES `libgavesec.so`) — Fase L1 yang menentukan.
 7. **Penyimpanan:** SQLite (rekomendasi) vs file JSON.
 8. **Library server embedded:** NanoHTTPD (ringan, murni Java — rekomendasi) vs AndServer.
+9. ~~Mode transisi sebelum ambil alih~~ → **DIPUTUSKAN (v2.2): monitor/passthrough** —
+   request diteruskan ke server asli & dicatat dua arah; game tetap menerima data asli.
 
 ---
 
@@ -359,7 +406,8 @@ tanpa izin storage tambahan (folder own-app).
 | Signature berbeda dari original → install custom MENIMPA original (data device terhapus) | Kehilangan data pemain di device | Pakai device/emulator uji; dokumentasikan backup dulu; sign key konsisten agar update custom→custom mulus |
 | Signature tak dikenal → Play Protect menolak instalasi | Install ditolak | Sign key sendiri yang konsisten + dokumentasikan langkah "install anyway" |
 | Injeksi server mengubah perilaku game | Regresi di LSF | Prinsip **pure addition**: hanya menambah service; L4 bandingkan boot original vs LSF |
-| Format respons bootstrap salah ditebak | Client menolak config, kalibrasi macet | Oracle loop L5 via dashboard: perbaiki mock, replay, iterasi cepat |
+| Format respons bootstrap salah ditebak | Client menolak config, kalibrasi macet | L5a merekam respons ASLI via passthrough → template dibangun dari data asli, bukan tebakan |
+| Mode passthrough jadi titik gagal tunggal (server lokal mati → game kehilangan koneksi) | Game online terganggu | Repoint baru dilakukan setelah stabilitas L2–L4 terbukti; foreground service + restart otomatis |
 | Payload client terenkripsi (bukan JSON polos) | Server lokal harus replikasi skema | Replikasi via `libgavesec.so` (JNI bridge), bukan reimplement; riset `onepieceencrypts` cadangan |
 | Port 4000 bentrok (aplikasi lain memakai port) | Server gagal bind | Hanya satu aplikasi (APK custom) yang menjalankan server; deteksi bentrok + fallback port tercatat |
 | Game LSF dibuka sebelum server siap | Request pertama gagal | Server start di `Application.onCreate` — sebelum activity game; urutan terjamin |
@@ -375,8 +423,9 @@ tanpa izin storage tambahan (folder own-app).
 3. APK LSF = game berperilaku normal **+ local server hidup di port 4000** (pajangan
    yang work), murni penambahan tanpa regresi.
 4. **Server pasti jalan duluan** — dinyalakan di `Application.onCreate` sebelum game dimuat.
-5. **Web Dashboard** (logging, debugging, APK reader, copy-first) berfungsi sebagai alat
-   bantu kalibrasi di `127.0.0.1:4000` — **lognya mudah dibaca manusia** (format §3).
+5. **Web Dashboard** (monitoring, logging, debugging, APK reader, copy-first) berfungsi
+   sebagai alat bantu kalibrasi di `127.0.0.1:4000` — **lognya mudah dibaca manusia**
+   (format §3), termasuk panel kesehatan server lokal & server asli.
 6. Kontrak API bootstrap + endpoint yang sudah "diterima" client terdokumentasi §2.3.
 7. Semua artefak server (log, config, data, respons) hidup di `Android/data/com.db.local/server/`.
 8. Dokumen ini selalu menjadi sumber kebenaran tunggal — setiap fase selesai diperbarui di sini.
@@ -391,6 +440,8 @@ tanpa izin storage tambahan (folder own-app).
 - **Paket tetap `com.db.local`** — tidak ada rename package, kapan pun.
 - **Pengalaman online game = utama, tidak diubah.** Baseline `DB-LOCAL.apk` di repo
   immutable; semua eksperimen hanya pada APK LSF.
+- **Server asli tetap melayani game** sampai paritas per-endpoint terbukti; mode monitor
+  (passthrough) tidak pernah mengubah jawaban.
 - **Port 4000 = kontrak tetap** (API game + Web Dashboard).
 - **Root folder server = `Android/data/com.db.local/server/`** — log/config/data/respons hidup di sini.
 - **Logging = alat bantu**, bukan produk: indikator server running & paritas dengan server asli.
