@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (v2.4) — **build 0.1.0 DIBANGUN ULANG dengan fitur nyata: local server embedded (M1) + dashboard lengkap**; uji device menunggu owner
+> **Status dokumen:** Fondasi & Implementasi (v2.5) — **v0.1.0 TERBUKTI HIDUP di device owner**; analisis titik masuk original selesai (§2.8); desain perbaikan log disiapkan (menunggu OK)
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-10-30
 > **Riwayat strategi:**
@@ -27,6 +27,13 @@
 >   via `BootProvider` (jalan sebelum `Application.onCreate`), dashboard web lengkap
 >   (log bahasa manusia, monitoring dua sisi, APK Reader, analisis config, copy-first),
 >   **kode game & traffic TIDAK disentuh** (dex original byte-identical; mode M1).
+> - **v2.5 — UJI LIVE SUKSES + ANALISIS TANPA IMPLEMENTASI (permintaan owner).**
+>   v0.1.0 terpasang di device: server hidup, dasbor jalan, monitoring jalan ✔ — catatan
+>   owner: **log tidak efisien** (polling dasbor membanjiri; "local running" kurang
+>   menonjol) → desain perbaikan disiapkan di §3.4 (menunggu OK, belum diimplementasi).
+>   Bedah **titik masuk original saat pertama terhubung** selesai — urutan baca +
+>   kontrak bootstrap terpetakan penuh di **§2.8**. Temuan penting: ketiga host server
+>   asli ternyata masih **TCP-reachable** dari device.
 
 ---
 
@@ -171,6 +178,64 @@ Implikasi untuk strategi v2.0 (kita pegang client-nya langsung — tidak perlu i
 Prioritas tetap jalur HTTP; Fase L1 memverifikasi endpoint mana yang benar-benar
 dipanggil client + protokolnya.
 
+### 2.8 Titik Masuk & Urutan Bootstrap APK Original — bedah statis (v2.5)
+
+> Permintaan owner: *"lihat titik masuk apk original pertama kali baca apa saat terhubung,
+> kita di local server harus punya juga"*. Ini hasil bedah smali (`LaunchActivity` →
+> `MainActivity` → `QuickGameManager`) + isi assets — **tanpa implementasi apa pun**.
+> Inilah kontrak minimal yang kelak harus dipunyai local server (bahan utama Fase L1).
+
+**Tahap A — yang dibaca dari APK sendiri (saat dibuka, sebelum internet):**
+
+| Urut | Yang dibaca | Temuan |
+|---|---|---|
+| A1 | `assets/config_BS.properties` (dibaca dulu) lalu `assets/config.properties` | Channel **"BS" dipilih hardcoded** (`LaunchActivity`); nama file pola `config_<channel>.properties`; kunci `EntryPoint1`, `EntryPoint2` + varian `_debug` — **nilai Base64** |
+| A2 | `assets/QHinfo` | Plaintext `http://qsdk.t4game.com` — server SDK quickgame (dibaca `QuickGameManager.initThirdDataSDK`) |
+| A3 | `assets/game/base.version` | Plaintext **`110`** — versi bundle dasar bawaan |
+| A4 | `assets/game/infoinfo.bin` | **Plaintext**: `voyage_fancy_radius` → `pschent_full_tired` — **urutan load dua bundle JS** game |
+| A5 | `assets/game/vvcc.bin` / `vvcc_tc.bin` | Tersandi (AES) — versi lokal `vc`, `vc_ts`, `vc_obb` (OBB/resource) |
+
+**Hasil dekode Base64 `EntryPoint` (konfig file server bootstrap):**
+
+| Sumber | Kunci | URL |
+|---|---|---|
+| `config.properties` | `EntryPoint1` | `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` |
+| `config_BS.properties` | `EntryPoint1` | `https://configus.sjmobilegame.com/bs/db/android` |
+| `config_BS.properties` | `EntryPoint2` | `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android` (fallback Tencent COS) |
+
+**Tahap B — panggilan jaringan bootstrap (ke URL EntryPoint, pola persis dari smali):**
+
+| Urut | Request (pola smali) | Tujuan |
+|---|---|---|
+| B1 | `GET {EntryPoint}/setting_%s_Android.bin?rnd=%f` → `setting_BS_Android.bin` | Setting native per-channel |
+| B2 | `GET {EntryPoint}/%s.bin?rnd=%f` | File config biner tambahan |
+| B3 | `GET {EntryPoint}/base.version?rnd=%f` dan `/resource.version?rnd=%f` | Banding versi vs lokal (`110`) |
+| B4 | `GET {EntryPoint}/upgrade.json?rnd=%f` dan `/size.json?rnd=%f` | Info upgrade + ukuran unduhan |
+| B5 | `GET {EntryPoint}/base.zip?v=…` / `/all.zip?v=…` | Hot-update → di-unzip ke preload path eksternal |
+| — | B3 mendapat **404** → log `"Server base.version is Not Exist"` → **lanjut pakai versi lokal, tidak crash** | **Penting untuk M3**: local server boleh jawab 404 dulu, game tetap boot dengan bundle bawaan |
+
+**Tahap C — runtime game menyala:**
+
+| Urut | Kejadian |
+|---|---|
+| C1 | Bundle JS `voyage_fancy_radius.bin` → `pschent_full_tired.bin` didekripsi **native AES** (`libgavesec.so` mengekspor `Java_com_utils_EncryptUtil_nativeAES` / `nativeEncrypt`) |
+| C2 | Egret runtime jalan; tercatat URL fallback debug (Base64 di `MainActivity`): `http://tool.egret-labs.org/Weiduan/game/index.html` |
+| C3 | JS hidup → panggil SDK quickgame (`qsdk.t4game.com`) → API game (`dragon.sjmobilegame.com:82`) — isi payload hanya terlihat via M2 |
+
+**Catatan penting dari uji live v0.1.0 (17:57):**
+1. Ketiga host **TCP-connect berhasil** (dragon 400 ms, configus 16–251 ms, qsdk 205–325 ms).
+   TCP bisa dihubungi ≠ layanan hidup (probe HTTP lama: 404/timeout) — tapi ini sinyal kuat
+   server asli **belum tentu mati total**. **M2 passthrough akan membuktikan isi jawabannya.**
+2. Hanya `infoinfo.bin`, `base.version`, `config*.properties`, `QHinfo` yang polos —
+   semua `.bin/.txt/.version` lain tersandi AES (dekripsi = ranah M2/M3, bukan sekarang).
+3. Semua request bootstrap memakai query anti-cache (`?rnd=` / `?v=`) — handler lokal
+   kelak cukup mengabaikan query-nya.
+
+**Implikasi ke local server (untuk Fase L1/L2 — BELUM diimplementasi):** kontrak bootstrap
+minimal yang harus dipunyai server lokal = 7 pola path di Tahap B, dengan root path
+per-channel (`/bs/db/android` untuk BS). Urutan inilah yang kelak dicatat M2 passthrough
+untuk melihat **jawaban ASLI** tiap langkah sebelum kita menirunya di M3.
+
 ---
 
 ## 3. Konsep Solusi (v2.2): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded
@@ -275,6 +340,30 @@ Aturan penulisan log:
 5. Panel status di atas dashboard juga kalimat manusia, mis.:
    `Server lokal HIDUP sejak 14:30 · sudah menjawab 37 permintaan · 0 gagal · port 4000`.
 
+#### 3.4 Desain Log v2.5 — PERBAIKAN EFISIENSI (PROPOSAL — MENUNGGU OK OWNER, belum diimplementasi)
+
+**Temuan uji live v0.1.0:** log bekerja, TAPI **polling dasbor sendiri (tiap 3 dtk:
+`/api/status` + `/api/logs`) membanjiri log** — baris bermakna tenggelam, dan kesan
+"local server sedang hidup" tidak menonjol. Ini catatan owner setelah uji device.
+
+**Perbaikan yang diusulkan (arah, belum dikode):**
+
+1. **Polling dasbor TIDAK lagi dicatat per-baris** — hanya dihitung di counter. Panel
+   status menambah baris: `Ping dasbor: 214 kali · terakhir 17:59:27`.
+2. **Hanya event bermakna yang masuk log**: start/shutdown, hasil pantauan server asli,
+   APK Reader, analisis config, bersihkan log, error/500, endpoint tak dikenal, dan
+   permintaan yang **bukan** polling.
+3. **Monitor server asli: log hanya saat ADA perubahan status** (sehat ↔ gagal) —
+   ditambah **denyut ringkas tiap 10 menit**:
+   `✔ Masih hidup · 32 mnt · 214 ping dasbor · server asli 3/3 sehat`.
+4. **"Local running" menonjol**: baris HIDUP dipin di atas daftar log + denyut berkala;
+   pill status dasbor tetap seperti sekarang.
+5. File teknis `events.jsonl` & `human.log` tetap merekam penuh di disk — riwayat tidak
+   hilang, hanya TAMPILAN dasbor yang dibersihkan.
+
+**Dampak perkiraan:** ±40 baris/menit → ±1–2 baris/menit — log terasa seperti "peristiwa",
+bukan "detak jantung dasbor".
+
 **Root folder server (tetap sesuai v1.4):**
 
 ```
@@ -309,10 +398,10 @@ tanpa izin storage tambahan (folder own-app).
       boot normal; tidak ada regresi vs baseline. *(Menunggu konfirmasi device owner.)*
 
 #### Fase L1 — Rekonstruksi Kontrak Bootstrap (dari sisi client)
-- [ ] Analisis dex/smali + runtime: apa yang client **harapkan** dari
-      `/lzceshi/native_setting/Android` dan `/bs/db/android` (format, field, encoding)?
-- [ ] Verifikasi: endpoint mana yang benar-benar dipanggil client, **HTTP atau HTTPS**?
-- [ ] Catat urutan request saat boot (logcat + capture) — original & LSF dipakai sebagai oracle.
+- [x] **(v2.5) Analisis statis selesai** — urutan baca + pola request terpetakan penuh
+      di **§2.8** (Tahap A/B/C); endpoint bootstrap = 7 pola path di bawah EntryPoint.
+- [ ] Konfirmasi **runtime** (isi payload & jawaban ASLI): dilakukan via M2 passthrough
+      (L5a) — logcat + capture original & LSF sebagai oracle.
 - [ ] Fallback jika terbentur enkripsi payload: riset `onepieceencrypts`/`libgavesec.so`
       (masih ranah fondasi/protokol, bukan gameplay).
 - **Deliverable:** spesifikasi kontrak bootstrap → ditulis menggantikan bagian
