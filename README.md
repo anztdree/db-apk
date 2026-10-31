@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (v2.6) — **v0.2.0 DIBANGUN** (cermin bootstrap + switch mode ONLINE/LOCAL); v0.1.0 TERBUKTI HIDUP di device owner (uji live 17:57)
+> **Status dokumen:** Fondasi & Implementasi (v2.7) — **ARSITEKTUR TERKOREKSI + build 0.1.0 dibangun ulang**: port game terpisah (8080) dengan www/ isi manual + passthrough ONLINE, switch mode LOCAL/ONLINE via tombol melayang, endpoint client diarahkan ke lokal; build 0.2.0 (cermin otomatis) DITARIK
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-10-31
 > **Riwayat strategi:**
@@ -27,25 +27,25 @@
 >   via `BootProvider` (jalan sebelum `Application.onCreate`), dashboard web lengkap
 >   (log bahasa manusia, monitoring dua sisi, APK Reader, analisis config, copy-first),
 >   **kode game & traffic TIDAK disentuh** (dex original byte-identical; mode M1).
-> - **v2.5 — UJI LIVE SUKSES + ANALISIS TANPA IMPLEMENTASI (permintaan owner).**
->   v0.1.0 terpasang di device: server hidup, dasbor jalan, monitoring jalan ✔ — catatan
->   owner: **log tidak efisien** (polling dasbor membanjiri; "local running" kurang
->   menonjol) → desain perbaikan disiapkan di §3.4 (menunggu OK, belum diimplementasi).
->   Bedah **titik masuk original saat pertama terhubung** selesai — urutan baca +
->   kontrak bootstrap terpetakan penuh di **§2.8**. Temuan penting: ketiga host server
->   asli ternyata masih **TCP-reachable** dari device.
-> - **v2.6 — CERMIN BOOTSTRAP + SWITCH MODE (arahan owner: "config_BS.properties —
->   local kita juga harus punya itu yg membaca local, bukan di ganti tp bersebelahan;
->   ada switch mode, local atau online").** Dibangun **v0.2.0** (versionCode 3):
->   **switch mode ONLINE/LOCAL** di dasbor (tersimpan server.json) · **Mirror.java**:
->   config yang dibaca game saat boot disalin BERSEBELAHAN ke `data/mirror/lokal/`
->   (file asli di APK tak disentuh) + kontrak bootstrap §2.8 Tahap B dilayani lokal
->   di mode LOCAL (`/bs/db/android/…`, query anti-cache diabaikan) + **sinkron dari
->   server asli** (pola request smali persis → cermin berisi jawaban ASLI, fondasi
->   paritas M2/M3) · **log efisien §3.4 diimplementasi** (polling tak lagi membanjiri;
->   monitor hanya log saat status BERUBAH + denyut 10 mnt; baris HIDUP dipin di dasbor;
->   ping dasbor dihitung) · **notifikasi Android "server lokal HIDUP"** (local running
->   terlihat tanpa buka dasbor; targetSdk 30 → tanpa izin runtime).
+> - **v2.5 — UJI DEVICE L4 SUKSES + analisis titik masuk (tanpa implementasi).**
+>   Dari device owner: folder siap, M1 aktif, dasbor hidup, monitoring server asli jalan.
+>   Kontrak bootstrap terpetakan penuh di §2.8; ketiga host asli TCP-connect sukses
+>   dari device (server asli belum tentu mati).
+> - **v2.6 — Build 0.2.0 (cermin otomatis + switch) DITARIK.** Owner menilai implementasi
+>   melampaui arahan (yang diminta saat itu = rencana), dan **sistem salin-otomatis bukan
+>   yang diminta**. Build & Release v0.2.0 dicabut dari deliverable; pelajarannya jadi
+>   dasar arsitektur v2.7.
+> - **v2.7 — ARSITEKTUR TERKOREKSI (arahan owner) + build 0.1.0 DIBANGUN ULANG.**
+>   Prinsip owner: **"bukan sistem yang menyalin — kita salin MANUAL lalu edit endpoint
+>   agar menuju local"**. Poin: (1) **port dipisah** — 4000 = dasbor debug developer,
+>   **8080 = port game** (endpoint client menunjuk ke sini); (2) **isi config asli ditaruh
+>   MANUAL** di `Android/data/com.db.local/server/www/` dengan struktur folder = path URL
+>   server asli, dilayani **seakan server asli** — TIDAK disembunyikan di assets APK;
+>   (3) **switch mode LOCAL/ONLINE** lewat **tombol melayang** di APK — ditekan → mode
+>   tersimpan di `server.json` → **aplikasi restart otomatis** → game baca config sesuai
+>   mode baru; (4) client hanya berubah di **nilai endpoint** (3 Base64 → `127.0.0.1:8080`),
+>   dex game byte-identical; (5) **log tenang** — polling dasbor tidak dicatat lagi,
+>   monitor hanya mencatat saat kondisi berubah + denyut ringkasan 10 menit.
 
 ---
 
@@ -190,64 +190,6 @@ Implikasi untuk strategi v2.0 (kita pegang client-nya langsung — tidak perlu i
 Prioritas tetap jalur HTTP; Fase L1 memverifikasi endpoint mana yang benar-benar
 dipanggil client + protokolnya.
 
-### 2.8 Titik Masuk & Urutan Bootstrap APK Original — bedah statis (v2.5)
-
-> Permintaan owner: *"lihat titik masuk apk original pertama kali baca apa saat terhubung,
-> kita di local server harus punya juga"*. Ini hasil bedah smali (`LaunchActivity` →
-> `MainActivity` → `QuickGameManager`) + isi assets — **tanpa implementasi apa pun**.
-> Inilah kontrak minimal yang kelak harus dipunyai local server (bahan utama Fase L1).
-
-**Tahap A — yang dibaca dari APK sendiri (saat dibuka, sebelum internet):**
-
-| Urut | Yang dibaca | Temuan |
-|---|---|---|
-| A1 | `assets/config_BS.properties` (dibaca dulu) lalu `assets/config.properties` | Channel **"BS" dipilih hardcoded** (`LaunchActivity`); nama file pola `config_<channel>.properties`; kunci `EntryPoint1`, `EntryPoint2` + varian `_debug` — **nilai Base64** |
-| A2 | `assets/QHinfo` | Plaintext `http://qsdk.t4game.com` — server SDK quickgame (dibaca `QuickGameManager.initThirdDataSDK`) |
-| A3 | `assets/game/base.version` | Plaintext **`110`** — versi bundle dasar bawaan |
-| A4 | `assets/game/infoinfo.bin` | **Plaintext**: `voyage_fancy_radius` → `pschent_full_tired` — **urutan load dua bundle JS** game |
-| A5 | `assets/game/vvcc.bin` / `vvcc_tc.bin` | Tersandi (AES) — versi lokal `vc`, `vc_ts`, `vc_obb` (OBB/resource) |
-
-**Hasil dekode Base64 `EntryPoint` (konfig file server bootstrap):**
-
-| Sumber | Kunci | URL |
-|---|---|---|
-| `config.properties` | `EntryPoint1` | `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` |
-| `config_BS.properties` | `EntryPoint1` | `https://configus.sjmobilegame.com/bs/db/android` |
-| `config_BS.properties` | `EntryPoint2` | `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android` (fallback Tencent COS) |
-
-**Tahap B — panggilan jaringan bootstrap (ke URL EntryPoint, pola persis dari smali):**
-
-| Urut | Request (pola smali) | Tujuan |
-|---|---|---|
-| B1 | `GET {EntryPoint}/setting_%s_Android.bin?rnd=%f` → `setting_BS_Android.bin` | Setting native per-channel |
-| B2 | `GET {EntryPoint}/%s.bin?rnd=%f` | File config biner tambahan |
-| B3 | `GET {EntryPoint}/base.version?rnd=%f` dan `/resource.version?rnd=%f` | Banding versi vs lokal (`110`) |
-| B4 | `GET {EntryPoint}/upgrade.json?rnd=%f` dan `/size.json?rnd=%f` | Info upgrade + ukuran unduhan |
-| B5 | `GET {EntryPoint}/base.zip?v=…` / `/all.zip?v=…` | Hot-update → di-unzip ke preload path eksternal |
-| — | B3 mendapat **404** → log `"Server base.version is Not Exist"` → **lanjut pakai versi lokal, tidak crash** | **Penting untuk M3**: local server boleh jawab 404 dulu, game tetap boot dengan bundle bawaan |
-
-**Tahap C — runtime game menyala:**
-
-| Urut | Kejadian |
-|---|---|
-| C1 | Bundle JS `voyage_fancy_radius.bin` → `pschent_full_tired.bin` didekripsi **native AES** (`libgavesec.so` mengekspor `Java_com_utils_EncryptUtil_nativeAES` / `nativeEncrypt`) |
-| C2 | Egret runtime jalan; tercatat URL fallback debug (Base64 di `MainActivity`): `http://tool.egret-labs.org/Weiduan/game/index.html` |
-| C3 | JS hidup → panggil SDK quickgame (`qsdk.t4game.com`) → API game (`dragon.sjmobilegame.com:82`) — isi payload hanya terlihat via M2 |
-
-**Catatan penting dari uji live v0.1.0 (17:57):**
-1. Ketiga host **TCP-connect berhasil** (dragon 400 ms, configus 16–251 ms, qsdk 205–325 ms).
-   TCP bisa dihubungi ≠ layanan hidup (probe HTTP lama: 404/timeout) — tapi ini sinyal kuat
-   server asli **belum tentu mati total**. **M2 passthrough akan membuktikan isi jawabannya.**
-2. Hanya `infoinfo.bin`, `base.version`, `config*.properties`, `QHinfo` yang polos —
-   semua `.bin/.txt/.version` lain tersandi AES (dekripsi = ranah M2/M3, bukan sekarang).
-3. Semua request bootstrap memakai query anti-cache (`?rnd=` / `?v=`) — handler lokal
-   kelak cukup mengabaikan query-nya.
-
-**Implikasi ke local server (untuk Fase L1/L2 — BELUM diimplementasi):** kontrak bootstrap
-minimal yang harus dipunyai server lokal = 7 pola path di Tahap B, dengan root path
-per-channel (`/bs/db/android` untuk BS). Urutan inilah yang kelak dicatat M2 passthrough
-untuk melihat **jawaban ASLI** tiap langkah sebelum kita menirunya di M3.
-
 ---
 
 ## 3. Konsep Solusi (v2.2): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded
@@ -352,103 +294,44 @@ Aturan penulisan log:
 5. Panel status di atas dashboard juga kalimat manusia, mis.:
    `Server lokal HIDUP sejak 14:30 · sudah menjawab 37 permintaan · 0 gagal · port 4000`.
 
-#### 3.4 Desain Log v2.5 → DIIMPLEMENTASI di build 0.2.0 (v2.6)
-
-**Temuan uji live v0.1.0:** log bekerja, TAPI **polling dasbor sendiri (tiap 3 dtk:
-`/api/status` + `/api/logs`) membanjiri log** — baris bermakna tenggelam, dan kesan
-"local server sedang hidup" tidak menonjol. Ini catatan owner setelah uji device.
-
-**Yang diimplementasi (v0.2.0 — semua poin di bawah sudah jadi kode):**
-
-1. **Polling dasbor TIDAK lagi dicatat per-baris** — hanya dihitung di counter
-   (`pings` di `/api/status`); Panel status menampilkan baris
-   `Ping dasbor: 214 kali · terakhir 17:59:27`. Salinan teknis polling tetap ditulis
-   ke `logs/human.log` + `events.jsonl` via `HumanLog.evDiskOnly` — riwayat disk tidak
-   hilang, hanya TAMPILAN dasbor yang dibersihkan.
-2. **Hanya event bermakna yang masuk log dasbor**: start/shutdown, perubahan status
-   server asli, sinkron cermin, request bootstrap, APK Reader, analisis config,
-   bersihkan log, ganti mode, error/500, endpoint tak dikenal.
-3. **Monitor server asli: log hanya saat ADA perubahan status** (sehat ↔ gagal,
-   termasuk "pulih") — ditambah **denyut ringkas tiap 10 menit**:
-   `✔ Masih hidup · 32 mnt · ping dasbor 214× · server asli 3/3 sehat · mode ONLINE`.
-4. **"Local running" menonjol**: (a) baris hero `✔ SERVER LOKAL HIDUP · port · mode ·
-   uptime · ping` dipin di atas daftar log (klik → tab Status); (b) **notifikasi
-   Android** "DB LOCAL · server lokal HIDUP — port 4000 · mode X · dasbor http://127.0.0.1:4000"
-   terpasang saat server hidup & ikut berganti saat mode berubah — terlihat langsung
-   di HP tanpa buka dasbor; ikon memakai resource bawaan platform (tanpa resource baru),
-   targetSdk 30 → tanpa izin runtime; gagal buat notif = fail-safe.
-5. **Dampak:** ±40 baris/menit → ±1–2 baris/menit — log terasa seperti "peristiwa",
-   bukan "detak jantung dasbor".
-
-**Root folder server (diperluas v0.2.0 — folder cermin baru):**
+**Root folder server (tetap sesuai v1.4):**
 
 ```
 Android/data/com.db.local/server/
-├── logs/          ← log request/response + status server (indikator hidup)
-├── config/        ← server.json (port/bind/MODE/monitor/targets) + mock/override
-├── data/          ← file kerja server + data/tmp
-│   └── mirror/    ← CERMIN BOOTSTRAP (v0.2.0)
-│       ├── lokal/ ← salinan bersebelahan config yang dibaca game saat boot
-│       │            (config_BS.properties, config.properties, QHinfo,
-│       │             base.version, infoinfo.bin) — asli di APK tak disentuh
-│       └── bs/    ← hasil sinkron: jawaban ASLI server bootstrap (Tahap B §2.8)
-└── responses/     ← template respons statis per-endpoint (dipakai M2/M3)
+├── config/        ← server.json (mode local/online, gamePort 8080, debugPort 4000)
+├── logs/          ← log bahasa manusia + status server (indikator hidup)
+├── tmp/
+└── www/           ← ISI config ASLI ditaruh MANUAL (struktur = path URL server asli)
+    ├── bs/db/android/                    ← cermin configus.sjmobilegame.com/bs/db/android
+    │   ├── base.version                  ← "110" (versi bawaan → game skip hot-update)
+    │   ├── resource.version              ← "110"
+    │   └── (setting_BS_Android.bin, upgrade.json, size.json, … — taruh manual)
+    └── lzceshi/native_setting/Android/   ← cermin dragon.sjmobilegame.com:82/lzceshi
 ```
+
+Aturan pemilik (v2.7): **bukan sistem yang menyalin** — isi server asli disalin **manual**
+ke `www/` (bahan: hasil probe/unduhan jawaban asli, atau rekonstruksi minimal).
+Server lokal hanya **melayani file yang ada**; yang belum ada dijawab 404 dan game
+melanjutkan boot (terbukti dari analisis §2.8 — `Server base.version is Not Exist`).
+Mode ONLINE (default) = permintaan diteruskan ke server asli (passthrough, fallback
+COS otomatis untuk path `/bs/db/android`), jadi game tetap berperilaku online persis
+seperti aslinya sampai pemilik siap berpindah ke LOCAL.
+
+**Dua port, dua peran (v2.7):**
+
+| Port | Untuk siapa | Fungsi |
+|---|---|---|
+| **4000** (debugPort) | Developer | Dasbor debug + log + APK Reader — game tidak tahu port ini |
+| **8080** (gamePort) | Game client | Melayani kontrak server: LOCAL = www/, ONLINE = passthrough |
+
+**Switch mode (v2.7):** tombol melayang bulat di atas game (`L`/`O`). Ditekan → mode
+ditulis ke `config/server.json` → aplikasi direstart via AlarmManager → BootProvider
+menyalakan server lagi → game membaca config sesuai mode. Izin overlay
+(SYSTEM_ALERT_WINDOW) sudah ada di manifest original; di Android 6+ pemilik
+mengaktifkannya sekali di Setelan → “Tampil di atas aplikasi lain”.
 
 Keuntungan: mudah di-backup/diintip dari PC (USB), terhapus bersih saat uninstall,
 tanpa izin storage tambahan (folder own-app).
-
-#### 3.5 Switch Mode ONLINE/LOCAL + Cermin Bootstrap (v2.6 — implementasi arahan owner)
-
-> Arahan owner: *"config_BS.properties — oke kalau pertama kali server baca itu, maka
-> local kita juga harus punya itu yg membaca local, bukan di ganti tp bersebelahan.
-> ada switch mode, local atau online."*
-
-**Switch mode (2 posisi, tersimpan di `config/server.json` → `"mode": "ONLINE"|"LOCAL"`,
-nilai lama `"M1"` dari build 0.1.0 dimaknai ONLINE):**
-
-| Mode | Arti | Hubungan fasa M |
-|---|---|---|
-| **ONLINE** *(bawaan)* | Game online ke server ASLI seperti biasa; server lokal hanya memantau & melayani dasbor. Bootstrap TIDAK dilayani (request ke path bootstrap dijawab 404 + pesan manusia yang mengarahkan pindah mode). | = M1 |
-| **LOCAL** | Server lokal **siap melayani kontrak bootstrap dari cermin lokal**: `/config_BS.properties` (salinan mentah) + `{EntryPointPath}/…` (Tahap B §2.8). Game sendiri **belum diarahkan ke sini** — itu fasa M3 (butuh repoint + persetujuan). Mode ini = uji & pembuktian jalur bootstrap lokal. | persiapan M3 |
-
-Kedua mode **tidak pernah mengubah file game** — switch hanya mengubah perilaku
-server lokal. Perubahan mode langsung dari dasbor (tab Status → dua tombol besar),
-tersimpan permanen, dicatat di log (`Mode berubah: ONLINE → LOCAL — …`), dan
-notifikasi HP ikut diperbarui.
-
-**Cermin bootstrap (`Mirror.java`) — "local kita juga harus punya itu yg membaca local":**
-
-1. **Salinan bersebelahan (Tahap A §2.8):** saat boot, server lokal membaca file config
-   yang DIBACA GAME PERTAMA KALI langsung dari APK yang sedang jalan —
-   `config_BS.properties` (dibaca dulu oleh game), `config.properties`, `QHinfo`,
-   `game/base.version`, `game/infoinfo.bin` — lalu menyimpan salinan byte-identik ke
-   `data/mirror/lokal/`. **File asli di APK tidak diganti, tidak diubah, tidak dihapus.**
-2. **Dekode EntryPoint:** `EntryPoint1`/`EntryPoint2` (Base64) dari config_BS.properties
-   didekode → alamat bootstrap channel BS (`https://configus.sjmobilegame.com/bs/db/android`
-   + fallback COS) → tampil di tab Cermin dasbor dengan tombol salin.
-3. **Melayani kontrak Tahap B (hanya mode LOCAL, query anti-cache diabaikan):**
-
-| Request | Sumber jawaban | Kalau kosong |
-|---|---|---|
-| `GET /config_BS.properties` | salinan lokal | 404 |
-| `GET /bs/db/android/setting_BS_Android.bin` | cermin hasil sinkron | 404 + saran sinkron (log ⚠ sekali per nama) |
-| `GET /bs/db/android/base.version` | cermin → **fallback salinan lokal APK** (`110`) | 404 |
-| `GET /bs/db/android/resource.version` · `upgrade.json` · `size.json` | cermin hasil sinkron | 404 + saran |
-| `GET /bs/db/android/{nama}.bin` (lainnya) | cermin hasil sinkron | 404 + saran |
-| `GET /bs/db/android/base.zip` · `all.zip` | selalu 404 — hot-update besar tak dicerminkan; server asli juga 404 → game lanjut pakai bundle bawaan | — |
-
-4. **Sinkron dari server asli:** tombol "Sinkron dari server asli" menarik jawaban ASLI
-   memakai pola request persis smali (`%s?rnd=%f`, EntryPoint1 → fallback EntryPoint2)
-   dan menyimpannya ke `data/mirror/bs/` — cermin berisi **data nyata, bukan tebakan**;
-   inilah fondasi paritas M2/M3. Ringkasan dicatat manusiawi:
-   `✔ Sinkron cermin: 3/5 file dari server asli · setting_BS_Android.bin 1,2 KB · base.version tidak tersedia (404 — sama seperti pola asli)`.
-5. **Fail-safe penuh:** semua operasi cermin dibungkus try/catch; nama file divalidasi
-   (tanpa traversal); batas ukuran 8 MB; sinkron berjalan di thread HTTP (bukan UI).
-
-Endpoint dasbor baru (v0.2.0): `GET/POST /api/mode?set=ONLINE|LOCAL` (POST = aksi),
-`GET /api/mirror` (status cermin — polling, tidak dikerumuni di log),
-`POST /api/mirror/sync` (aksi owner), `GET /api/mirror/get?name=` (unduh file cermin).
 
 ---
 
@@ -471,53 +354,53 @@ Endpoint dasbor baru (v0.2.0): `GET/POST /api/mode?set=ONLINE|LOCAL` (POST = aks
       boot normal; tidak ada regresi vs baseline. *(Menunggu konfirmasi device owner.)*
 
 #### Fase L1 — Rekonstruksi Kontrak Bootstrap (dari sisi client)
-- [x] **(v2.5) Analisis statis selesai** — urutan baca + pola request terpetakan penuh
-      di **§2.8** (Tahap A/B/C); endpoint bootstrap = 7 pola path di bawah EntryPoint.
-- [ ] Konfirmasi **runtime** (isi payload & jawaban ASLI): dilakukan via M2 passthrough
-      (L5a) — logcat + capture original & LSF sebagai oracle.
+- [ ] Analisis dex/smali + runtime: apa yang client **harapkan** dari
+      `/lzceshi/native_setting/Android` dan `/bs/db/android` (format, field, encoding)?
+- [ ] Verifikasi: endpoint mana yang benar-benar dipanggil client, **HTTP atau HTTPS**?
+- [ ] Catat urutan request saat boot (logcat + capture) — original & LSF dipakai sebagai oracle.
 - [ ] Fallback jika terbentur enkripsi payload: riset `onepieceencrypts`/`libgavesec.so`
       (masih ranah fondasi/protokol, bukan gameplay).
 - **Deliverable:** spesifikasi kontrak bootstrap → ditulis menggantikan bagian
       "endpoint game sesungguhnya" di §2.3.
 - **Kriteria selesai:** format request/response endpoint bootstrap jelas.
 
-#### Fase L2 — Embed Local Server ke APK LSF (port 4000) — **STATUS: ✓ build 0.1.0 (v2.4), terbukti hidup (v2.5)**
-- [x] Injeksi kode server (**NanoHTTPD** — murni Java) sebagai `classes2.dex`
-      di dalam APK LSF; dipanggil dari **`BootProvider`** (provider di-init Android
-      SEBELUM `Application.onCreate` → server pasti jalan duluan).
-- [x] **Root folder:** `Android/data/com.db.local/server/` (logs/, config/, data/ +
-      data/mirror/, responses/) — diperluas v0.2.0, lihat §3.
-- [x] Route bootstrap (hasil L1/§2.8) — **dilayani penuh di mode LOCAL sejak v0.2.0**
-      (cermin); SQLite diganti ring log memori + file JSONL (ringan & cukup).
-- [x] Server listen `127.0.0.1:4000` (tidak terekspos jaringan luar).
-- **Deliverable:** `APK-LSF-0.1.0.apk` (game + server hidup di dalam satu aplikasi). ✅
-- **Kriteria selesai:** ✅ dari device, dasbor hidup; `curl http://127.0.0.1:4000/bs/db/android`
-      dijawab sesuai kontrak (mode LOCAL — uji di tab Cermin v0.2.0); log muncul di root folder.
+#### Fase L2 — Embed Local Server ke APK LSF (port 4000)
+- [ ] Injeksi kode server (kandidat: **NanoHTTPD** — murni Java) sebagai service
+      di dalam APK LSF; dipanggil dari `Application.onCreate` → **server pasti jalan duluan**.
+- [ ] **Root folder:** `Android/data/com.db.local/server/` (logs/, config/, data/, responses/).
+- [ ] Route stub untuk endpoint bootstrap (hasil L1); SQLite untuk log + state.
+- [ ] Server listen `127.0.0.1:4000` (tidak terekspos jaringan luar).
+- **Deliverable:** `APK-LSF-1.apk` (game + server hidup di dalam satu aplikasi).
+- **Kriteria selesai:** dari device, `curl http://127.0.0.1:4000/bs/db/android`
+      mengembalikan respons sesuai kontrak Fase L1; log muncul di root folder.
 
-#### Fase L3 — Web Dashboard ("pajangan yang work") — **STATUS: ✓ build 0.1.0, dipoles 0.2.0**
+#### Fase L3 — Web Dashboard ("pajangan yang work")
 > *Alat bantu — cukup lengkap, jangan gold-plate. Log = indikator server hidup & setara.*
-- [x] **Logging:** log bahasa manusia (ring memori + live stream); **efisiensi §3.4
-      diimplementasi v0.2.0** — polling tak lagi membanjiri tampilan.
-- [x] **Monitoring:** panel kesehatan dua sisi (server lokal + server asli).
-- [ ] **Debugging:** detail viewer ✓, replay/mock override per-endpoint → M2/M3.
-- [x] **APK Reader:** list/pratinjau/unduh isi APK + decode Base64 otomatis.
-- [x] **Copy-first:** tombol salin satu klik di semua nilai.
-- **Deliverable:** dashboard hidup di `http://127.0.0.1:4000` ✅ (terbukti uji live).
-- **Kriteria selesai:** log dashboard terbaca manusia biasa ✅; siklus kalibrasi penuh
-      (mock/replay) menyusul di M2/M3.
+- [ ] **Logging:** capture semua request → SQLite + live stream ke browser;
+      **setiap baris log dalam bahasa manusia** (format §3), detail mentah di balik expand.
+- [ ] **Monitoring:** panel kesehatan dua sisi (server lokal + server asli) — server
+      asli dicek berkala & ditampilkan dalam bahasa manusia (mis.
+      "Server asli dragon…: MATI — sudah tidak bisa dihubungi").
+- [ ] **Debugging:** detail viewer, replay, mock override per-endpoint (edit + toggle).
+- [ ] **APK Reader:** tree assets, manifest, `config.properties` + decode Base64 otomatis,
+      grep strings/dex untuk endpoint.
+- [ ] **Copy-first:** tombol salin satu klik — raw body, headers, `curl` siap-replay,
+      config ter-decode, timeline alur per sesi boot.
+- **Deliverable:** dashboard hidup di `http://127.0.0.1:4000` (browser device,
+      atau PC via `adb forward tcp:4000 tcp:4000`).
+- **Kriteria selesai:** satu siklus kalibrasi bisa dijalankan penuh dari dashboard
+      (lihat request → edit mock → replay → lihat hasil) tanpa tools eksternal; log
+      dashboard terbaca manusia biasa (non-programmer paham apa yang terjadi).
 
-#### Fase L4 — Validasi Bersebelahan (M1: game online via server asli, server lokal pajangan) — **STATUS: ✓ UJI LIVE SUKSES (log device owner, 17:57, v2.5)**
-- [x] Install APK LSF di device uji → **game boot normal, server lokal hidup otomatis**
-      (folder eksternal terbentuk, M1 aktif, dasbor hidup, semua endpoint dasbor 200).
-- [x] **Temuan intel:** ketiga host server asli **TCP-reachable** dari jaringan device
-      (dragon 400 ms · configus 16–251 ms · qsdk 205–325 ms) — server asli belum tentu
-      mati; M2 passthrough akan membuktikan isi jawabannya.
-- [x] Feedback owner tercatat & dijawab di **v0.2.0**: log efisien (§3.4) + "local
-      running" menonjol (hero bar + notifikasi HP) + cermin bootstrap + switch mode.
-- [ ] Uji bergantian boot baseline vs LSF (formal) — opsional; log device sudah
-      menunjukkan perilaku identik + server bersebelahan.
-- **Deliverable:** ✅ bukti log device (17:57:50–17:59:27) + perbaikan v0.2.0.
-- **Kriteria selesai:** ✅ game = utama, online normal; server = "pajangan yang work"
+#### Fase L4 — Validasi Bersebelahan (M1: game online via server asli, server lokal pajangan)
+- [ ] Install APK LSF di device uji (paket sama dengan original → menggantikan;
+      baseline `DB-LOCAL.apk` tetap utuh di repo sebagai pembanding).
+- [ ] Buka **APK LSF** → game berjalan normal seperti aslinya (masih online),
+      DAN server lokal hidup otomatis bersebelahan (terbukti via dashboard + log root folder).
+- [ ] Bandingkan perilaku boot dengan baseline (uji bergantian di device yang sama)
+      → pastikan injeksi server **tidak mengubah** perilaku game sama sekali (pure addition).
+- **Deliverable:** catatan uji perbandingan + bukti server hidup (screenshot/log).
+- **Kriteria selesai:** game = utama, online normal; server = "pajangan yang work"
       di port 4000 tanpa mengganggu game.
 
 > ── Batas fondasi ── Fase berikut dieksekusi setelah L0–L4 lulus & owner setuju ──
@@ -558,31 +441,29 @@ Endpoint dasbor baru (v0.2.0): `GET/POST /api/mode?set=ONLINE|LOCAL` (POST = aks
 
 | Versi | Isi | Fase |
 |---|---|---|
-| **0.1.0** | **+ local server embedded (NanoHTTPD, port 4000, auto-start via BootProvider) + dashboard web (log bahasa manusia, monitoring dua sisi, APK Reader, analisis config, copy-first) — game & traffic tetap TIDAK disentuh (M1)** | **L0+L2+L3 ✓ (build — v2.4) · ✅ uji live device sukses (v2.5)** |
-| **0.2.0** | **+ cermin bootstrap** (config yang dibaca game saat boot disalin BERSEBELAHAN + kontrak Tahap B dilayani lokal di mode LOCAL + sinkron jawaban ASLI dari server asli) **+ switch mode ONLINE/LOCAL + log efisien (§3.4 diimplementasi) + notifikasi "server lokal HIDUP"** | **L4 ✓ · L1 implementasi cermin ✓ (build — v2.6)** |
-| 0.3.0 | Mode monitor/passthrough (M2) — repoint + teruskan ke server asli, jawaban ASLI dicatat dua arah | L5a |
+| **0.1.0** | **(v2.7) + port game terpisah 8080 (www/ manual LOCAL / passthrough ONLINE) + switch mode tombol melayang + restart otomatis + endpoint client → 127.0.0.1:8080 + log tenang** | **L1–L2a ✓ (build — v2.7)** |
+| 0.1.x | Uji device: switch mode, isi www/ manual, pantau log | L4b |
+| 0.3.0 | Passthrough penuh + rekam jawaban ASLI dua arah (M2) | L5a |
 | 0.4.0 | Ambil alih bertahap per-endpoint (M3) | L5b |
 | 1.0.0 | Fondasi lulus penuh — paritas endpoint terbukti | L5b ✓ |
 | 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.2.0 (v2.6) — 2026-10-31 — cermin bootstrap + switch mode:**
+**Build 0.1.0 (ARSITEKTUR TERKOREKSI, v2.7) — 2026-10-31 — SUPERSEDE build v2.4 di bawah:**
 
 | Item | Nilai |
 |---|---|
-| Artefak | `releases/APK-LSF-0.2.0.apk` (pointer Git LFS — 105.104.456 byte) + **asset Release GitHub `v0.2.0`** |
-| SHA-256 | `d4a2fb9f403a85de4704d181eb6b6c12e811925361aff887a0ccd46a0dc20afc` |
-| versionCode / versionName | **3** / **0.2.0** (install-over v0.1.0, signature sama) |
-| Toolchain | apktool 3.0.3 · ECJ 3.33.0 (javac tak tersedia; compile pakai android.jar **API 28** untuk `NotificationChannel`, runtime tetap minSdk 21 dengan guard `Build.VERSION`) · r8 8.5.35 (D8, `classes2.dex`) · uber-apk-signer 1.3.0 · JRE 21 |
-| **Fitur baru** | **(1) Switch mode ONLINE/LOCAL** — `ServerMode.java`, tersimpan `config/server.json` (`"M1"` lama dimaknai ONLINE), dua tombol besar di dasbor + log + notifikasi ikut berganti · **(2) Cermin bootstrap** — `Mirror.java`: 5 file config yang dibaca game saat boot (Tahap A §2.8) disalin byte-identik ke `data/mirror/lokal/` · EntryPoint1/2 didekode · kontrak Tahap B dilayani di mode LOCAL (`/config_BS.properties` + `/bs/db/android/…`) · **sinkron dari server asli** (pola smali persis, EntryPoint1→fallback COS, simpan ke `data/mirror/bs/`) · fallback `base.version` = salinan lokal APK · 404 ala asli dengan saran (log ⚠ sekali per nama) · **(3) Log efisien §3.4** — polling dasbor tak lagi ke tampilan (counter `pings` + `HumanLog.evDiskOnly` ke disk); monitor hanya log saat status BERUBAH + denyut 10 mnt; hero bar "SERVER LOKAL HIDUP" dipin di log; panel status + baris "Ping dasbor" · **(4) Notifikasi Android** — `Notifier.java` (API 26+ channel IMPORTANCE_LOW, ikon resource platform, fail-safe) + permission `POST_NOTIFICATIONS` |
-| Endpoint baru | `GET/POST /api/mode?set=` · `GET /api/mirror` · `POST /api/mirror/sync` · `GET /api/mirror/get?name=` · mode LOCAL: `/config_BS.properties`, `/bs/db/android/*` (404 manusia di mode ONLINE) |
-| Perubahan vs baseline | **PENAMBAHAN MURNI — kode game tidak disentuh:** (1) `classes2.dex` baru (90.480 byte — 11 kelas `com.db.local.server.*` + NanoHTTPD, +3 kelas vs 0.1.0: Mirror, ServerMode, Notifier); dex game **byte-identical (CRC cocok)**; (2) manifest: +provider BootProvider (`initOrder=999`) +permission POST_NOTIFICATIONS +versionCode/Name; (3) asset baru `assets/server/dashboard.html` (32.784 byte); (4) resource re-encode apktool (sama seperti build 0.1.0 yang terbukti hidup di device) |
-| Signature | ✅ v1 + v2 + v3 verified — cert `CN=DB Local LSF` (keystore tetap, SHA-256 `FD:4B:…:CF:D7`, berlaku s.d. 2056) |
-| Verifikasi isi | ✅ 3.670 entri = 3.668 baseline + 2 tambahan (`classes2.dex`, `assets/server/dashboard.html`) + 2 META-INF baru (re-sign); yang dihapus hanya `META-INF/CERT.*` lama (normal re-sign); `classes.dex` game CRC **identik** dengan baseline |
-| Fail-safe | Semua kode server tetap try/catch penuh — mode/cermin/notifikasi gagal ⟹ game tetap normal |
-| Status | ✅ build & verifikasi selesai · ⏳ terbit ke Release GitHub `v0.2.0` · ⏳ uji install + switch mode + sinkron cermin di device owner |
+| Artefak | `releases/APK-LSF-0.1.0.apk` (pointer Git LFS — 105.100.360 byte) + **asset Release GitHub `v0.1.0` (diganti)** |
+| SHA-256 | `0d5cfa7cfd241dbf88ddfafd547017eda6e0cdbcdcedd6402a3ac0bd6f435114` |
+| versionCode / versionName | **4** / **0.1.0** (bump code agar bisa install-over 0.1.0 lama (2) & 0.2.0 tertarik (3)) |
+| Toolchain | apktool 3.0.3 · ECJ 3.33.0 · r8 8.5.35 (D8 → `classes2.dex`) · uber-apk-signer 1.3.0 · JDK 21 |
+| **Fitur baru (arsitektur terkoreksi)** | **(1) Port game terpisah 8080** (`GameServer`) — dasbor 4000 murni debug; **(2) dua mode** di `config/server.json`: LOCAL = layani `www/` (isi manual, 404 bila belum ada), **ONLINE (default) = passthrough** ke server asli (dragon/configus + fallback COS, query `?rnd=` diteruskan apa adanya); **(3) tombol melayang switch mode** (`FloatingToggle`, overlay, `L`/`O`) → tulis `server.json` → **restart otomatis** (`RestartHelper` via AlarmManager) → BootProvider menyalakan ulang; **(4) endpoint client diedit** → `127.0.0.1:8080` (EntryPoint1/2 config_BS + EntryPoint1 config.properties, termasuk varian `_debug`; `QHinfo` TIDAK diubah); **(5) log tenang** — polling dasbor tak dicatat, monitor catat saat kondisi berubah + denyut 10 mnt; **(6) www/ skeleton** dibuat saat boot + `base.version`/`resource.version` = `110` (isi LAINNYA ditaruh manual sesuai aturan owner) |
+| Perubahan client | **HANYA nilai endpoint** (4 baris Base64 di 2 file config assets) + `classes2.dex` baru (12 kelas) + `assets/server/dashboard.html` + 1 baris provider + versi. **Dex game byte-identical** — SHA256 `classes.dex` = `9c60ac1c…5d1e28e` = original |
+| Signature | ✅ v1 + v2 + v3 — cert `CN=DB Local LSF` (keystore tetap, SHA-256 `FD:4B:…:CF:D7`) |
+| Verifikasi isi | ✅ 3.670 entri; manifest terbaca `com.db.local` + `BootProvider` + versionName `0.1.0`; endpoint lokal terbaca di assets; kelas baru (`GameServer`, `FloatingToggle`, `RestartHelper`, `Config`) ada di `classes2.dex` |
+| Status | ✅ build & verifikasi level build selesai · ⏳ uji device owner (switch mode, isi www/, log) |
 
-**Build 0.1.0 (REBUILT, v2.4) — 2026-10-30 — ✅ TERBUKTI HIDUP di device owner (uji live 17:57):**
+**Build 0.1.0 (REBUILT, v2.4) — 2026-10-30 — SEJARAH (arsitektur lama: hanya dasbor, endpoint belum diubah):**
 
 | Item | Nilai |
 |---|---|
@@ -595,7 +476,7 @@ Endpoint dasbor baru (v0.2.0): `GET/POST /api/mode?set=ONLINE|LOCAL` (POST = aks
 | Signature | ✅ v1 + v2 + v3 verified — cert `CN=DB Local LSF` (keystore tetap, SHA-256 `FD:4B:…:CF:D7`) |
 | Verifikasi isi | ✅ 3.667 entri = 3.665 baseline + 2 tambahan (`classes2.dex`, `assets/server/dashboard.html`); `BootProvider` & authority terbaca di manifest AXML; `classes2.dex` 70.660 byte |
 | Fail-safe | Semua kode server dibungkus try/catch — server gagal ⟹ game tetap normal; dasbor hanya melayani dirinya, bukan traffic game |
-| Status | ✅ build & verifikasi level build selesai · ✅ terbit di Release GitHub `v0.1.0` · ✅ **uji live sukses** (folder siap, M1 aktif, dasbor hidup, semua endpoint dasbor 200, server asli TCP-reachable 3/3) |
+| Status | ✅ build & verifikasi level build selesai · ✅ terbit di Release GitHub `v0.1.0` · ⏳ uji install/boot/dasbor di device owner |
 
 **Build 0.1.0 (round-trip L0, v2.3) — DICABUT sebagai deliverable, disimpan sebagai sejarah:**
 
@@ -621,28 +502,18 @@ Endpoint dasbor baru (v0.2.0): `GET/POST /api/mode?set=ONLINE|LOCAL` (POST = aks
 > Password didokumentasikan sengaja: repo = area kerja owner, reproducibility > kerahasiaan
 > (APK sideload, bukan Play Store). Jika keystore berubah/hilang → build baru wajib uninstall dulu.
 
-**Cara uji install + dasbor + switch mode (owner — build 0.2.0):**
-1. Device uji: dari v0.1.0 cukup **install-over** (versionCode 3 > 2, signature sama);
-   dari original DB-LOCAL → uninstall dulu (signature beda).
-2. Unduh `APK-LSF-0.2.0.apk` dari **Release GitHub `v0.2.0`** → transfer → install
-   (Play Protect protes → install anyway).
-3. Buka game → boot normal seperti aslinya. Sekarang **notifikasi "DB LOCAL · server
-   lokal HIDUP”** tampil di baris notifikasi — local running terlihat tanpa dasbor.
-4. Buka browser HP → `http://127.0.0.1:4000` → dasbor v0.2.0: pill HIDUP, **hero bar
-   “✔ SERVER LOKAL HIDUP”** di atas log, badge **MODE ONLINE**, kartu **Switch Mode**.
-5. **Uji log efisien (§3.4):** diamkan dasbor 2 menit di tab Log → log TIDAK menumpuk
-   lagi; panel Status menunjukkan "Ping dasbor: N kali"; denyut `✔ Masih hidup · …`
-   tiap 10 menit.
-6. **Uji switch mode:** tab Status → ketuk **LOCAL** → log: `Mode berubah: ONLINE →
-   LOCAL — bootstrap kini dilayani dari cermin lokal…`; notifikasi ikut berubah; kembali
-   ke ONLINE juga harus lancar. Mode tersimpan — tutup & buka game lagi: mode terakhir
-   tetap dipakai.
-7. **Uji cermin (tab Cermin Bootstrap):** “Muat status cermin” → lihat salinan lokal
-   (config_BS.properties dll. dari data/mirror/lokal/) + EntryPoint ter-dekode → ketuk
-   **“Sinkron dari server asli”** → log ringkasan N/5 file → tombol **“Uji ambil
-   config_BS”** dan URL `http://127.0.0.1:4000/bs/db/android/setting_BS_Android.bin?rnd=1`
-   di browser → dijawab dari cermin (atau 404 ala asli bila cermin kosong).
-8. Laporkan hasilnya → v0.2.0 ditutup, lanjut **L5a (M2 passthrough)**.
+**Cara uji install + dasbor (owner):**
+1. Siapkan **device uji** (bukan device utama). Uninstall `DB-LOCAL` original & build round-trip lama dulu bila ada —
+   paket sama + signature beda → tanpa uninstall, install pasti gagal. Build baru (versionCode 2) bisa
+   install-over **build round-trip lama** karena signature sama.
+2. Unduh `APK-LSF-0.1.0.apk` dari **Release GitHub `v0.1.0`** (atau pointer LFS di `releases/`) →
+   transfer ke device → install (izinkan "install unknown apps"; Play Protect protes → install anyway).
+3. Buka game → harus boot **persis seperti original** (masih online; server asli tetap melayani).
+4. Saat game/splash tampil, buka **browser HP** → `http://127.0.0.1:4000` → dasbor harus tampil:
+   pill **HIDUP**, status server asli (dragon/configus/qsdk), log bahasa manusia.
+   Alternatif dari PC: `adb reverse tcp:4000 tcp:4000` lalu buka `http://127.0.0.1:4000` di browser PC.
+5. Cek folder `Android/data/com.db.local/server/` → `logs/human.log`, `status.json` terisi.
+6. Laporkan hasilnya di percakapan → v0.1.0 ditutup, lanjut L4 (validasi bersebelahan).
 
 **Reproducibility:** seluruh sumber server lokal ada di `local-server/` (Java + dashboard HTML + `build.sh`);
 vendor `NanoHTTPD.java` di-commit (lihat `local-server/NOTICE.md`); proyek apktool hidup di `.analysis/lsf-src/`
