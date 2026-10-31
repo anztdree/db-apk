@@ -8,6 +8,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.ArrayDeque;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -17,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class StatusStore {
     private static final Object LOCK = new Object();
-    private static final String VERSION = "0.1.0";
+    private static final String VERSION = "0.3.0";
 
     private static String bind = "127.0.0.1";
     private static int port = 4000;
@@ -34,6 +36,10 @@ public final class StatusStore {
     private static volatile long lastReqAt = 0;
     private static long tick = 0;
     private static File statusFile = null;
+    private static volatile long wwwBytes = 0;
+
+    /** Lima permintaan game terakhir — bukti "local running" di dasbor (tertua di depan). */
+    private static final ArrayDeque<String[]> lastPaths = new ArrayDeque<String[]>();
 
     /** target -> {ok(1/0), note, latencyMs, lastCheck} */
     private static final LinkedHashMap<String, String[]> originals = new LinkedHashMap<String, String[]>();
@@ -57,10 +63,21 @@ public final class StatusStore {
         }
     }
 
-    /** Jumlah file payload config asli yang terpasang di www/ (ekstraksi otomatis). */
-    static void markWww(int files) {
+    /** Jumlah file mirror server asli yang terpasang di www/ (ekstraksi otomatis). */
+    static void markWww(int files, long bytes) {
         synchronized (LOCK) {
             wwwFiles = files;
+            wwwBytes = bytes;
+        }
+    }
+
+    /** Catat permintaan port game (uri, status HTTP, lama proses) — maksimal 6 terakhir. */
+    static void recordGame(String uri, int status, long ms) {
+        synchronized (LOCK) {
+            lastPaths.addLast(new String[]{uri, String.valueOf(status), String.valueOf(ms)});
+            while (lastPaths.size() > 6) {
+                lastPaths.removeFirst();
+            }
         }
     }
 
@@ -121,6 +138,7 @@ public final class StatusStore {
                     .append(Json.num("gamePort", gamePort)).append(',')
                     .append(Json.bool("gameAlive", gameAlive)).append(',')
                     .append(Json.num("wwwFiles", wwwFiles)).append(',')
+                    .append(Json.num("wwwBytes", wwwBytes)).append(',')
                     .append(Json.str("package", packageName)).append(',')
                     .append(Json.str("version", VERSION)).append(',')
                     .append(Json.num("uptimeMs", up)).append(',')
@@ -128,7 +146,20 @@ public final class StatusStore {
                     .append(Json.num("errors", errCount.get())).append(',')
                     .append(Json.num("lastReqAt", lastReqAt)).append(',')
                     .append(Json.str("root", rootPath))
-                    .append("},\"original\":[");
+                    .append("},\"last\":[");
+            boolean firstLast = true;
+            Iterator<String[]> it = lastPaths.descendingIterator();
+            while (it.hasNext()) {
+                String[] p = it.next();
+                if (!firstLast) {
+                    sb.append(',');
+                }
+                firstLast = false;
+                sb.append("{\"p\":\"").append(Json.esc(p[0])).append('\"')
+                        .append(",\"s\":").append(p[1])
+                        .append(",\"ms\":").append(p[2]).append('}');
+            }
+            sb.append("],\"original\":[");
             boolean first = true;
             for (Map.Entry<String, String[]> e : originals.entrySet()) {
                 String[] r = e.getValue();

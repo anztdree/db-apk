@@ -1,7 +1,7 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (v2.8) — **payload config asli diekstrak OTOMATIS** saat aplikasi pertama jalan (koreksi owner: "taruh manual tidak relevan — semua itu terekstrak ke sana"); port game terpisah (8080) + passthrough ONLINE + switch mode tombol melayang + endpoint client → lokal; build 0.2.0 (cermin otomatis) DITARIK
-> **Temuan 2026-10-31:** **server asli SUDAH MATI** — configus hidup tapi seluruh key dihapus (HTTP 404 `NoSuchKey`), dragon tak terjangkau (HTTP 000). Mode ONLINE otomatis kehilangan sumber jawaban → **mode LOCAL (payload) kini jalur utama**.
+> **Status dokumen:** Fondasi & Implementasi (**v3.0 — build 0.3.0**) — **MIRROR PENUH server asli** (31 file, ±56 MB: setting bin, H5 Egret + 15 JS, resource properties, version, upgrade.json/size.json, base.zip, all.zip, 4 zip incremental, setting bin lzceshi) dibawa APK (`assets/server/www/`) & diekstrak OTOMATIS ke www/; **tombol melayang BISA DIGESER** (posisi tersimpan); folder server anti-sampah (pembersih whitelist); dasbor 4000 baru (mode + 5 path terakhir + penjelajah www/ + switch mode)
+> **Temuan 2026-10-31 (probe ulang, mengoreksi catatan lama):** **SERVER ASLI MASIH HIDUP** — `setting_BS_Android.bin` (711 B, terenkripsi XOR kunci **`DragonBall`**) berhasil didekripsi → membongkar host sesungguhnya: **dragonh5cdn.popoh5.com** (H5 game + folder upgrade). Seluruh file fisik server asli berhasil diunduh & menjadi isi mirror (daftar lengkap §2.9). Catatan lama "server asli sudah mati" TERBANTAHKAN — server hanya memindahkan file ke host CDN.
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-10-31
 > **Riwayat strategi:**
@@ -56,6 +56,21 @@
 >   port game lokal (assets hanya gudang payload, BUKAN jalur baca game) — aturan
 >   "baca seakan dari server" tetap terjaga. Payload = 4 file cermin byte-identik
 >   versi bawaan APK (`base.version` `110`, `resource.version` `11220`, `upgrade.json`/`size.json` `{}`).
+> - **v3.0 — RENCANA FINAL DISepAKTI OWNER & DIEKSEKUSI (build 0.3.0).** Koreksi owner:
+>   (1) **"namanya floating kok gk bisa di geser"** → tombol melayang kini **bisa digeser**
+>   (drag bebas, dibatasi layar, posisi tersimpan di `server.json`, tap = panel mode dengan
+>   konfirmasi dua-tahap, hanya tampil saat game di depan); (2) **"config fisik server ada
+>   banyak contoh all.zip!! clientversion.json!! dan banyak lainnya"** → mirror www/ kini
+>   **PENUH** (31 file nyata dari server asli yang masih hidup — daftar §2.9), bukan 4 file
+>   minimal; `clientversion.json` **ditemukan** di `resource/properties/` (dipanggil JS game);
+>   (3) **"android/data server isinya banyak sampah"** → folder server hanya boleh berisi
+>   `config/ www/ logs/ tmp/` — **pembersih whitelist** menghapus apa pun di luarnya tiap
+>   boot (menyapu sampah peninggalan build lama otomatis); penanda versi pindah ke
+>   `config/www.stamp` (www/ murni cermin server); endpoint `/api/apk/*`, `/api/analyze`,
+>   `/api/monitor/run` dihapus; (4) penemuan analisis: setting bin terenkripsi XOR
+>   `DragonBall` → didekripsi → **host H5 asli = dragonh5cdn.popoh5.com** → seluruh file
+>   fisik server diunduh & dibawa APK; setting bin yang disajikan di mode LOCAL di-rewrite
+>   3 URL-nya ke `127.0.0.1:8080` (satu-satunya konten yang berubah — bukan edit client).
 
 ---
 
@@ -150,17 +165,20 @@ Hasil dekode `EntryPoint` (Base64) sudah tercantum di atas — tidak ada endpoin
 yang terlihat jelas di lapisan shell; **endpoint game sesungguhnya kemungkinan besar
 dikirim via respons `config_BS`** (dinamis), lalu dipakai oleh JS di dalam bundle terenkripsi.
 
-### 2.4 Status Kesehatan Endpoint (hasil probe, 2026-10-30)
+### 2.4 Status Kesehatan Endpoint (hasil probe ulang, 2026-10-31 — MENGOREKSI catatan lama)
 
 | Endpoint | Status | Catatan |
 |---|---|---|
-| `dragon.sjmobilegame.com:82` | ❌ **MATI** | Koneksi gagal total (DNS/timeout) |
-| `configus.sjmobilegame.com/bs/db/android` | ⚠️ Domain hidup, **404** | Path konfigurasi sudah dihapus |
-| Tencent COS (fallback) | ⚠️ Bucket hidup, **404** | Path konfigurasi sudah dihapus |
-| `qsdk.t4game.com` | ❓ Belum diprobe mendalam | Server SDK pihak ketiga |
+| `configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin` | ✅ **HIDUP — 200 OK** | 711 B, terenkripsi XOR kunci `DragonBall` (berhasil didekripsi → JSON peta server) |
+| `dragonh5cdn.popoh5.com/bs/…` | ✅ **HIDUP** | **Host baru yang ditemukan** dari isi setting bin — H5 game (`index-native.html`, `manifest.json`, 15 JS) + folder `upgrade/` (zip + versi) |
+| `dragon.sjmobilegame.com:82` | ✅ HIDUP (flaky dari luar negeri) | `lzceshi/native_setting/Android/setting_BS_Android.bin` → 200 OK (350 B, kunci XOR sama) |
+| `qsdk.t4game.com` | ✅ HIDUP | Respon `Hello,<ip>` — server SDK (fase berikutnya) |
+| `configus …/base.version`, `resource.version`, dll | 404 | Memang bukan di sini — file versi/zip ada di `dragonh5cdn/bs/upgrade/` (temuan setting bin). Fallback dex terbukti benar |
 
-**Kesimpulan:** rantai bootstrap sudah terputus. APK saat ini **tidak mungkin** mendapatkan
-konfigurasi server game → sesuai prediksi "game akan segera mati".
+**Kesimpulan baru:** rantai bootstrap **UTUH**. Kesimpulan lama "server mati" keliru — server
+hanya memindahkan isi ke host CDN (`dragonh5cdn.popoh5.com`). Karena masih hidup, seluruh
+isi fisik berhasil di-SNAPSHOT dan dibawa dalam APK sebagai mirror (§2.9) — pondasi tidak
+lagi menebak format dari dex, tapi memakai file nyata.
 
 **Catatan arsip (v1.1):** pencarian arsip publik (Wayback Machine + CDX API) untuk
 `sjmobilegame.com` dan `t4game.com` **tidak menemukan snapshot sama sekali**. Artinya
@@ -199,6 +217,41 @@ Implikasi untuk strategi v2.0 (kita pegang client-nya langsung — tidak perlu i
 **Kesimpulan v2.0:** hambatan TLS praktis hilang karena kita mengedit client sendiri.
 Prioritas tetap jalur HTTP; Fase L1 memverifikasi endpoint mana yang benar-benar
 dipanggil client + protokolnya.
+
+### 2.9 Peta Server Asli yang Nyata (temuan 2026-10-31 — hasil dekripsi setting bin + probe)
+
+Rantai bootstrap penuh, kini tersambung sampai ujung:
+
+```
+config_BS.properties EntryPoint (Base64) → configus/bs/db/android
+  └─ setting_BS_Android.bin (XOR "DragonBall") → JSON peta:
+       url        → dragonh5cdn.popoh5.com/bs/index-native.html   (H5 Egret, langkah 5)
+       tsUrl      → dragon.sjmobilegame.com:82/bs103/…            (varian uji)
+       update     → dragonh5cdn.popoh5.com/bs/upgrade             (zip + versi, langkah 4)
+       loginServer→ login.popoh5.com (+loginPort 610)             (fase login — berikutnya)
+  └─ JS game (main.min.js) meminta:
+       resource/properties/clientversion.json  ("clientVersion":"20260929_180158-EN")
+       resource/properties/serversetting.json  ("loginserver":"login.popoh5.com:610")
+```
+
+**Daftar file fisik server asli — SEMUA diunduh & menjadi isi mirror www/ (31 file, ±56 MB):**
+
+| Lokasi (path URL) | Ukuran | Isi |
+|---|---|---|
+| `bs/db/android/setting_BS_Android.bin` | 711 B | peta server (XOR `DragonBall`) |
+| `bs/index-native.html` | 10.792 B | halaman Egret (entry `Main`) |
+| `bs/manifest.json` | 533 B | daftar 15 JS |
+| `bs/js/*.js` (15 file) | ±6,5 MB | engine + game (`main.min` 4,9 MB dst.) |
+| `bs/resource/properties/clientversion.json` | 38 B | `20260929_180158-EN` |
+| `bs/resource/properties/serversetting.json` | 73 B | loginserver (fase berikutnya) |
+| `bs/upgrade/base.version` | 4 B | `110` |
+| `bs/upgrade/resource.version` | 5 B | `11390` |
+| `bs/upgrade/upgrade.json` | 130 B | `11386–11389_11390.zip` + `all.zip` |
+| `bs/upgrade/size.json` | 105 B | `base` 31.015.076 · `all` 19.385.098 |
+| `bs/upgrade/base.zip` | 31.015.076 B | SHA256 `31dedf27…` — 2.367 file terbongkar |
+| `bs/upgrade/all.zip` | 19.385.098 B | SHA256 `6b838206…` — 591 file terbongkar |
+| `bs/upgrade/1138[6-9]_11390.zip` | 4 × 252.562 B | zip incremental |
+| `lzceshi/native_setting/Android/setting_BS_Android.bin` | 350 B | varian uji (kunci XOR sama) |
 
 ---
 
@@ -304,37 +357,47 @@ Aturan penulisan log:
 5. Panel status di atas dashboard juga kalimat manusia, mis.:
    `Server lokal HIDUP sejak 14:30 · sudah menjawab 37 permintaan · 0 gagal · port 4000`.
 
-**Root folder server (tetap sesuai v1.4):**
+**Root folder server — ANTI-SAMPAH (v3.0, aturan keras):**
 
 ```
-Android/data/com.db.local/server/
-├── config/        ← server.json (mode local/online, gamePort 8080, debugPort 4000)
-├── logs/          ← log bahasa manusia + status server (indikator hidup)
-├── tmp/
-└── www/           ← PAYLOAD config asli — diekstrak OTOMATIS dari APK saat pertama jalan
-    ├── .payload.txt                      ← penanda versi payload (ekstraksi ulang bila berubah)
-    ├── bs/db/android/                    ← cermin configus.sjmobilegame.com/bs/db/android
-    │   ├── base.version                  ← "110"  (byte-identik assets/game/base.version)
-    │   ├── resource.version              ← "11220" (byte-identik assets/game/resource.version)
-    │   ├── upgrade.json                  ← "{}"   (minimum — tidak ada info upgrade)
-    │   └── size.json                     ← "{}"   (minimum — tidak ada info size)
-    └── lzceshi/native_setting/Android/   ← cermin dragon.sjmobilegame.com:82/lzceshi
-                                            (setting_BS_Android.bin tidak tersedia —
-                                             server asli mati; dijawab 404 → fallback dex)
+Android/data/com.db.local/server/          ← HANYA 4 entri ini, tidak boleh lain
+├── config/
+│   ├── server.json                        ← mode (local/online), gamePort, debugPort,
+│   │                                        toggleX/toggleY (posisi terakhir tombol melayang)
+│   ├── www.stamp                          ← penanda versi mirror (bukan di dalam www/!)
+│   └── status.json                        ← snapshot status (alat bantu luar dasbor)
+├── logs/                                  ← human.log + events.jsonl (ring 800, rotasi 4 MB)
+├── tmp/                                   ← DIKOSONGKAN setiap boot
+└── www/                                   ← MIRROR PENUH SERVER ASLI — ekstraksi OTOMATIS dari APK
+    ├── bs/db/android/setting_BS_Android.bin
+    ├── bs/index-native.html · manifest.json · js/ (15 file) · resource/properties/ (2 json)
+    ├── bs/upgrade/ (base.version, resource.version, upgrade.json, size.json,
+    │               base.zip, all.zip, 11386–11389_11390.zip)
+    └── lzceshi/native_setting/Android/setting_BS_Android.bin
 ```
 
-Aturan pemilik (v2.8, koreksi atas v2.7): **TIDAK ADA langkah manual** — isi config asli
-**dibawa di dalam APK** (`assets/server/payload/`, dikemas oleh `build.sh`) dan otomatis
-diekstrak `Payload.java` → `www/` saat aplikasi pertama jalan. Penanda `.payload.txt`
-mengatur ekstraksi ulang: versi payload naik / ada file hilang / clear data → terisi ulang
-otomatis. File tambahan di luar payload tidak dihapus — owner bebas menambah isi baru ke
-`www/` tanpa rebuild bila nanti berhasil mendapat isi aslinya.
-Server lokal hanya **melayani file yang ada**; yang tidak dibawa payload dijawab 404 dan
-game melanjutkan boot (terbukti dari analisis §2.8 — `Server base.version is Not Exist`).
-Mode ONLINE (default) = permintaan diteruskan ke server asli (passthrough, fallback
-COS otomatis untuk path `/bs/db/android`) — **catatan: server asli terkonfirmasi mati
-(2026-10-31, configus 404 NoSuchKey / dragon tak terjangkau), jadi mode LOCAL kini
-jalur utama; mode ONLINE dipertahankan untuk keaslian perilaku bila server asli aktif kembali**.
+**Pembersih whitelist (`Cleaner.java`, v3.0):** setiap boot, apa pun di dalam `server/` di luar
+4 entri di atas — dan di dalam `config/` di luar 3 file di atas — DIHAPUS otomatis (jumlah +
+ukuran tercatat di log). Ini menyapu sampah peninggalan build lama tanpa langkah manual.
+Sumber sampah lama dihilangkan dari akarnya: `ApkReader` (dan endpoint `/api/apk/*`,
+`/api/analyze`, `/api/monitor/run`) DIHAPUS dari server — tidak ada lagi pembacaan/cadangan
+APK yang menumpuk.
+
+**Mirror & ekstraksi otomatis (v3.0):** seluruh isi fisik server asli (31 file — daftar §2.9)
+dibawa di dalam APK (`assets/server/www/`) dan diekstrak otomatis `Payload.java` → `www/`
+sebelum server menyala (penanda versi = `config/www.stamp`; www/ dihapus / clear data →
+terisi ulang otomatis). Game TETAP membaca via HTTP dari port game lokal — assets hanya
+gudang, BUKAN jalur baca game. Mode LOCAL menyajikan mirror apa adanya KECUALI setting
+bin yang di-rewrite hostnya (lihat bawah). File yang diminta game tapi belum ada di mirror
+dicoba diambil SEKALI dari server asli lalu DISIMPAN ke www/ (mirror melengkapi dirinya
+sendiri); bila server asli juga tidak memberikannya → 404 dan game melanjutkan boot
+(fallback dex terbukti §2.8: `Server base.version is Not Exist`).
+
+**Rewrite sisi server (v3.0 — BUKAN edit client):** satu-satunya konten yang berubah saat
+disajikan di mode LOCAL = field `url` + `update` di setting bin (`https://dragonh5cdn.popoh5.com`
+→ `http://127.0.0.1:8080`) — dekripsi XOR `DragonBall` → ganti host → enkripsi ulang
+(`SettingBin.java`). `tsUrl` (varian uji), `loginServer`, `tsLoginServer` TIDAK disentuh
+(fase login berikutnya). Mode ONLINE menyajikan file asli tanpa perubahan apa pun.
 
 **Dua port, dua peran (v2.7):**
 
@@ -343,11 +406,21 @@ jalur utama; mode ONLINE dipertahankan untuk keaslian perilaku bila server asli 
 | **4000** (debugPort) | Developer | Dasbor debug + log + APK Reader — game tidak tahu port ini |
 | **8080** (gamePort) | Game client | Melayani kontrak server: LOCAL = www/, ONLINE = passthrough |
 
-**Switch mode (v2.7):** tombol melayang bulat di atas game (`L`/`O`). Ditekan → mode
-ditulis ke `config/server.json` → aplikasi direstart via AlarmManager → BootProvider
-menyalakan server lagi → game membaca config sesuai mode. Izin overlay
-(SYSTEM_ALERT_WINDOW) sudah ada di manifest original; di Android 6+ pemilik
-mengaktifkannya sekali di Setelan → “Tampil di atas aplikasi lain”.
+**Switch mode (v3.0 — tombol melayang BISA DIGESER):** bulatan overlay (`L`/`O`, warna
+mengikuti mode) di atas game.
+- **GESER**: ikut jari, dibatasi tetap di dalam layar; lepas → posisi tersimpan ke
+  `server.json` (`toggleX`/`toggleY`) dan dipulihkan saat tampil lagi. Geser vs tekan
+  dibedakan lewat ambang touch-slop Android.
+- **TEKAN**: panel mode muncul di dekat bulatan → tombol "Ganti ke X + restart aplikasi"
+  dengan **konfirmasi dua-tahap** (tekan sekali → "tekan SEKALI LAGI untuk restart") →
+  mode ditulis ke `config/server.json` → aplikasi direstart via AlarmManager
+  (`RestartHelper`) → BootProvider menyalakan server lagi → game membaca config sesuai
+  mode baru. Panel juga punya "Tutup".
+- **Hanya tampil saat game di depan** — dipasang/lepas lewat `ActivityLifecycleCallbacks`
+  (resumed/paused), tanpa mengubah kode game sama sekali.
+- Izin overlay (SYSTEM_ALERT_WINDOW) sudah ada di manifest original; di Android 6+ pemilik
+  mengaktifkannya sekali di Setelan → “Tampil di atas aplikasi lain”. Cara kedua: tombol
+  switch di dasbor 4000.
 
 Keuntungan: mudah di-backup/diintip dari PC (USB), terhapus bersih saat uninstall,
 tanpa izin storage tambahan (folder own-app).
@@ -460,15 +533,30 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
-| **0.1.0** | **(v2.8) + payload config asli dibawa APK & diekstrak OTOMATIS ke www/ saat pertama jalan (tanpa langkah manual) + port game terpisah 8080 (LOCAL www/ / ONLINE passthrough) + switch mode tombol melayang + restart otomatis + endpoint client → 127.0.0.1:8080 + log tenang** | **L1–L2b ✓ (build — v2.8)** |
+| **0.3.0** | **(v3.0) + mirror PENUH server asli 31 file (setting bin, H5+15 JS, properties, versi, base.zip/all.zip, incremental, lzceshi) diekstrak otomatis + tombol melayang BISA DIGESER (posisi tersimpan) + pembersih whitelist anti-sampah + rewrite setting bin (XOR DragonBall) + peta dragonh5cdn + self-seed mirror + dasbor baru (5 path terakhir + penjelajah www/ + switch mode)** | **L1–L2b ✓ (build — v3.0)** |
+| 0.1.0 | (v2.8) + payload config asli dibawa APK & diekstrak OTOMATIS ke www/ saat pertama jalan (tanpa langkah manual) + port game terpisah 8080 (LOCAL www/ / ONLINE passthrough) + switch mode tombol melayang + restart otomatis + endpoint client → 127.0.0.1:8080 + log tenang | L1–L2b ✓ (build — v2.8) |
 | 0.1.x | Uji device: switch mode, payload www/ otomatis, pantau log | L4b |
-| 0.3.0 | Passthrough penuh + rekam jawaban ASLI dua arah (M2) | L5a |
 | 0.4.0 | Ambil alih bertahap per-endpoint (M3) | L5b |
 | 1.0.0 | Fondasi lulus penuh — paritas endpoint terbukti | L5b ✓ |
 | 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.1.0 (PAYLOAD OTOMATIS, v2.8) — 2026-10-31 — SUPERSEDE build v2.7 di bawah:**
+**Build 0.3.0 (MIRROR PENUH + FLOATING DRAGGABLE, v3.0) — 2026-10-31 — BUILD TERKINI:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.3.0.apk` (pointer Git LFS — 163.356.589 byte) + **asset Release GitHub `v0.3.0`** |
+| SHA-256 | `0af16244981400efa7d122280036def9f73f8db2e170219d7d27a1c25731050e` |
+| versionCode / versionName | **4 / 0.1.0** (manifest TIDAK disentuh — alur PATCH; identitas versi dibawa dasbor/Release) |
+| Toolchain | ECJ 3.33.0 · r8 8.5.35 (D8 → `classes2.dex`) · uber-apk-signer 1.3.0 · JDK 21 (tanpa apktool — patch langsung ke APK release 0.1.0 v2.8) |
+| **Fitur baru (v3.0 — 3 koreksi owner)** | **(1) FLOATING BISA DIGESER** — drag bebas (ambang touch-slop membedakan geser/tekan), clamp layar, posisi tersimpan `server.json` (`toggleX/toggleY`), tap → panel mode konfirmasi dua-tahap, hanya tampil saat game di depan (`ActivityLifecycleCallbacks`); **(2) MIRROR PENUH** — 31 file server asli (§2.9; `assets/server/www/`, versi payload `3`) diekstrak otomatis → www/; penanda pindah ke `config/www.stamp`; **(3) ANTI-SAMPAH** — `Cleaner.java` whitelist `config/www/logs/tmp` tiap boot; `ApkReader` + endpoint `/api/apk/*`, `/api/analyze`, `/api/monitor/run` DIHAPUS; `status.json` pindah ke `config/` |
+| Fitur baru (analisis) | Setting bin didekripsi (XOR `DragonBall`) → host **dragonh5cdn.popoh5.com**; semua file fisik diunduh & dibawa APK; `GameServer` LOCAL me-rewrite field `url`+`update` setting bin → `127.0.0.1:8080` (`SettingBin.java`, cache per file+port); peta passthrough `/bs/` → dragonh5cdn; **self-seed**: file yang belum ada di mirror diambil sekali dari server asli & disimpan ke www/ |
+| Perubahan client | **TIDAK ADA** — `classes.dex` game CRC `281225eb`, manifest `2486fd1c`, `resources.arsc` `c6b5e22c`, `QHinfo` `af014748`, config `62eab0f4`/`1cc6e06c` — SEMUA identik dengan dasar 0.1.0 |
+| Signature | ✅ v1 + v2 + v3 — cert `CN=DB Local LSF` (keystore tetap) |
+| Verifikasi isi | ✅ classes2.dex baru 99.272 B; dashboard 16.449 B; mirror www/ 31 entri Stored; payload lama terhapus; ukuran APK 155,8 MB (±48 MB = zip mirror, wajar) |
+| Status | ✅ build & verifikasi level build selesai · ⏳ uji device owner (geser floating, switch mode, mirror www/, dasbor baru) |
+
+**Build 0.1.0 (PAYLOAD OTOMATIS, v2.8) — 2026-10-31 — DASAR BUILD 0.3.0:**
 
 | Item | Nilai |
 |---|---|
@@ -586,6 +674,13 @@ artefak build wajib hidup di repo (seperti sekarang), bukan hanya di workspace.
 8. **Library server embedded:** NanoHTTPD (ringan, murni Java — rekomendasi) vs AndServer.
 9. ~~Mode transisi sebelum ambil alih~~ → **DIPUTUSKAN (v2.2): monitor/passthrough** —
    request diteruskan ke server asli & dicatat dua arah; game tetap menerima data asli.
+10. ~~Port game terpisah~~ → **DIPUTUSKAN (v2.7): 8080** — dasbor 4000 murni developer;
+    client menunjuk 8080.
+11. ~~Isi www/~~ → **DIPUTUSKAN (v3.0): mirror PENUH server asli** (31 file, termasuk
+    `all.zip`, `clientversion.json`, dst. — daftar §2.9), ekstraksi otomatis dari APK;
+    file yang belum ada diisi otomatis (self-seed) saat diminta game.
+12. ~~Nasib Release v0.2.0~~ → **DIPUTUSKAN (v3.0): dibiarkan sebagai histori** — tidak
+    dipakai sebagai dasar apa pun (build 0.3.0 dibangun dari dasar 0.1.0).
 
 ---
 

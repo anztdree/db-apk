@@ -18,7 +18,9 @@ import java.io.Writer;
  *   "gamePort": 8080,     // port GAME — endpoint di assets client menunjuk ke sini
  *   "debugPort": 4000,    // port dasbor debug developer (game tidak tahu port ini)
  *   "bind": "127.0.0.1",
- *   "monitorSec": 60
+ *   "monitorSec": 60,
+ *   "toggleX": -1,        // posisi terakhir tombol melayang (drag); -1 = posisi bawaan
+ *   "toggleY": -1
  * }
  *
  * Sumber kebenaran mode: file ini. Tombol melayang mengubah mode → file ditulis
@@ -31,6 +33,8 @@ public final class Config {
     private static volatile int gamePort = 8080;
     private static volatile int debugPort = 4000;
     private static volatile int monitorSec = 60;
+    private static volatile int toggleX = -1;
+    private static volatile int toggleY = -1;
 
     public static final String DEFAULT_JSON =
             "{\n"
@@ -38,7 +42,9 @@ public final class Config {
                     + "  \"gamePort\": 8080,\n"
                     + "  \"debugPort\": 4000,\n"
                     + "  \"bind\": \"127.0.0.1\",\n"
-                    + "  \"monitorSec\": 60\n"
+                    + "  \"monitorSec\": 60,\n"
+                    + "  \"toggleX\": -1,\n"
+                    + "  \"toggleY\": -1\n"
                     + "}\n";
 
     private Config() {
@@ -74,6 +80,12 @@ public final class Config {
                     if (ms >= 10 && ms <= 3600) {
                         monitorSec = ms;
                     }
+                    int tx = (int) grepLong(raw, "\"toggleX\"", toggleX);
+                    int ty = (int) grepLong(raw, "\"toggleY\"", toggleY);
+                    if (tx >= -1 && ty >= -1) {
+                        toggleX = tx;
+                        toggleY = ty;
+                    }
                 }
             } catch (Throwable t) {
                 HumanLog.ev('⚠', "server.json gagal dibaca — memakai nilai bawaan (mode ONLINE, port game 8080, dasbor 4000)",
@@ -96,6 +108,34 @@ public final class Config {
 
     public static int monitorSec() {
         return monitorSec;
+    }
+
+    /** Posisi terakhir tombol melayang; -1 = belum pernah digeser (pakai bawaan). */
+    public static int toggleX() {
+        return toggleX;
+    }
+
+    public static int toggleY() {
+        return toggleY;
+    }
+
+    /** Simpan posisi terakhir tombol melayang hasil digeser — tahan lama konfigurasi. */
+    public static void setTogglePos(int x, int y) {
+        synchronized (LOCK) {
+            toggleX = x;
+            toggleY = y;
+            try {
+                if (file != null) {
+                    writeText(file, json());
+                }
+            } catch (Throwable t) {
+                try {
+                    HumanLog.ev('⚠', "Posisi tombol melayang gagal disimpan ke server.json — tetap dipakai sampai proses mati",
+                            String.valueOf(t));
+                } catch (Throwable ignored) {
+                }
+            }
+        }
     }
 
     public static File file() {
@@ -126,7 +166,9 @@ public final class Config {
                 + "  \"gamePort\": " + gamePort + ",\n"
                 + "  \"debugPort\": " + debugPort + ",\n"
                 + "  \"bind\": \"127.0.0.1\",\n"
-                + "  \"monitorSec\": " + monitorSec + "\n"
+                + "  \"monitorSec\": " + monitorSec + ",\n"
+                + "  \"toggleX\": " + toggleX + ",\n"
+                + "  \"toggleY\": " + toggleY + "\n"
                 + "}\n";
     }
 

@@ -43,15 +43,8 @@
   .summary{
     font-size:13.5px; color:var(--mut); background:var(--card); border:1px solid var(--line);
     border-radius:10px; padding:10px 14px; margin-bottom:14px; box-shadow:var(--shadow);
+    word-break:break-all;
   }
-  .tabs{display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap}
-  .tab{
-    min-height:44px; padding:8px 16px; border-radius:10px; border:1px solid var(--line);
-    background:var(--card); color:var(--tx); font-weight:600; font-size:14px; cursor:pointer;
-  }
-  .tab.active{background:var(--acc); color:var(--acctx); border-color:var(--acc)}
-  .pane{display:none}
-  .pane.active{display:block}
   .cards{display:grid; grid-template-columns:1fr; gap:12px}
   @media(min-width:720px){ .cards{grid-template-columns:1fr 1fr} }
   .card{
@@ -59,13 +52,15 @@
     padding:14px 16px; box-shadow:var(--shadow);
   }
   .card h2{margin:0 0 10px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
+  .modebig{font-size:30px; font-weight:800; letter-spacing:1px; margin:2px 0 8px}
+  .modebig.local{color:var(--ok)} .modebig.online{color:var(--mut)}
   .kv{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:14px}
   .kv b{color:var(--mut); font-weight:600; white-space:nowrap}
   .dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:var(--mut)}
   .dot.up{background:var(--ok)} .dot.down{background:var(--err)}
   table{width:100%; border-collapse:collapse; font-size:13.5px}
   th{ text-align:left; color:var(--mut); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--line)}
-  td{padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top}
+  td{padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; word-break:break-all}
   tr:last-child td{border-bottom:none}
   .toolbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px}
   button.act{
@@ -73,439 +68,316 @@
     background:var(--card); color:var(--tx); font-weight:600; font-size:13px; cursor:pointer;
   }
   button.act.primary{background:var(--acc); color:var(--acctx); border-color:var(--acc)}
+  button.act.danger{background:var(--err); color:#fff; border-color:var(--err)}
   button.act:active{transform:translateY(1px)}
-  input[type=text]{
-    flex:1; min-width:180px; min-height:40px; padding:8px 12px; border-radius:9px;
-    border:1px solid var(--line); background:var(--card); color:var(--tx); font-size:14px;
+  button.act:disabled{opacity:.55; cursor:default}
+  .tabs{display:flex; gap:6px; margin:16px 0 12px; flex-wrap:wrap}
+  .tab{
+    min-height:44px; padding:8px 16px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:var(--tx); font-weight:600; font-size:14px; cursor:pointer;
   }
-  label.chk{display:flex; gap:6px; align-items:center; font-size:13px; color:var(--mut); font-weight:600}
-  #logs{
-    background:var(--card); border:1px solid var(--line); border-radius:12px; padding:6px;
-    max-height:62vh; overflow-y:auto; font-size:13.5px;
+  .tab.active{background:var(--acc); color:var(--acctx); border-color:var(--acc)}
+  .pane{display:none}
+  .pane.active{display:block}
+  #logbox{
+    background:var(--code); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    max-height:52vh; overflow-y:auto; white-space:pre-wrap; word-break:break-all;
   }
-  #logs::-webkit-scrollbar{width:8px}
-  #logs::-webkit-scrollbar-thumb{background:var(--line); border-radius:8px}
-  .logrow{padding:8px 10px; border-bottom:1px solid var(--line); cursor:pointer}
-  .logrow:last-child{border-bottom:none}
-  .logrow .t{color:var(--mut); font-variant-numeric:tabular-nums; margin-right:8px; font-size:12px}
-  .logrow .ic{display:inline-block; width:18px; font-weight:700}
-  .ic.warn{color:var(--warn)} .ic.ok{color:var(--ok)} .ic.info{color:var(--mut)}
-  .logrow .tx{word-break:break-word}
-  .logrow .detail{
-    display:none; margin-top:8px; background:var(--code); border:1px solid var(--line);
-    border-radius:8px; padding:8px 10px; font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;
-    white-space:pre-wrap; word-break:break-all; color:var(--mut);
-  }
-  .logrow.open .detail{display:block}
-  .copybtn{
-    margin-top:6px; min-height:32px; padding:4px 10px; font-size:12px; font-weight:700;
-    border-radius:7px; border:1px solid var(--line); background:var(--card); color:var(--tx); cursor:pointer;
-  }
-  .apk-list{background:var(--card); border:1px solid var(--line); border-radius:12px; max-height:38vh; overflow-y:auto}
-  .apk-row{display:flex; gap:10px; align-items:baseline; padding:9px 12px; border-bottom:1px solid var(--line); cursor:pointer; font-size:13.5px}
-  .apk-row:last-child{border-bottom:none}
-  .apk-row:hover{background:var(--code)}
-  .apk-row .p{flex:1; word-break:break-all; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px}
-  .apk-row .s{color:var(--mut); white-space:nowrap; font-size:12px}
-  pre.view{
-    background:var(--code); border:1px solid var(--line); border-radius:12px; padding:12px;
-    font:12px/1.55 ui-monospace,Menlo,Consolas,monospace; white-space:pre-wrap; word-break:break-all;
-    max-height:44vh; overflow:auto; margin:0 0 10px;
-  }
-  .hint{font-size:12.5px; color:var(--mut); margin:8px 0}
+  .ic-ok{color:var(--ok)} .ic-warn{color:var(--err)} .ic-info{color:var(--mut)} .ic-in{color:var(--warn)}
   footer{
-    border-top:1px solid var(--line); padding:12px 16px calc(12px + env(safe-area-inset-bottom));
-    font-size:12.5px; color:var(--mut); text-align:center;
+    margin-top:auto; padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line); color:var(--mut); font-size:12.5px; text-align:center;
   }
-  .toast{
-    position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
-    background:var(--tx); color:var(--bg); font-weight:700; font-size:13px;
-    padding:10px 18px; border-radius:999px; opacity:0; pointer-events:none; transition:opacity .2s;
-    z-index:99;
-  }
-  .toast.show{opacity:.96}
-  .empty{padding:24px; text-align:center; color:var(--mut); font-size:13px}
+  .note{font-size:12.5px; color:var(--mut); margin-top:8px}
 </style>
 </head>
 <body>
 <header>
   <h1>DB LOCAL · Dasbor Server Lokal</h1>
-  <span class="badge" id="bVer">v0.1.0</span>
-  <span class="badge" id="bMode">MODE …</span>
-  <span class="badge" id="bPkg">com.db.local</span>
-  <span class="pill" id="pill">MENGHUBUNGI…</span>
+  <span class="badge" id="ver">v…</span>
+  <span class="pill" id="pill">menyambung…</span>
 </header>
 <main>
-  <div class="summary" id="summary">Menyambung ke server lokal…</div>
+  <div class="summary" id="summary">memuat status…</div>
 
-  <div class="tabs" role="tablist">
-    <button class="tab active" data-pane="status" role="tab">Status</button>
-    <button class="tab" data-pane="log" role="tab">Log</button>
-    <button class="tab" data-pane="apk" role="tab">APK Reader</button>
-    <button class="tab" data-pane="cfg" role="tab">Config</button>
+  <div class="cards">
+    <div class="card">
+      <h2>Mode aktif</h2>
+      <div class="modebig" id="mode">…</div>
+      <div class="kv">
+        <b>Artinya</b><span id="modemeans">—</span>
+      </div>
+      <div class="toolbar" style="margin-top:12px">
+        <button class="act primary" id="switchbtn" disabled>Switch…</button>
+      </div>
+      <div class="note" id="switchnote">Mode disimpan ke config/server.json · aplikasi restart otomatis setelah konfirmasi.</div>
+    </div>
+    <div class="card">
+      <h2>Port game (dipakai client)</h2>
+      <div class="kv">
+        <b>Status</b><span><span class="dot" id="gamedot"></span><span id="gamealive">…</span></span>
+        <b>Alamat</b><span id="gameaddr">…</span>
+        <b>Permintaan</b><span id="reqs">…</span>
+        <b>Gagal</b><span id="errs">…</span>
+        <b>Uptime</b><span id="uptime">…</span>
+        <b>Mirror www/</b><span id="www">…</span>
+      </div>
+    </div>
   </div>
 
-  <!-- STATUS -->
-  <section class="pane active" id="pane-status">
-    <div class="cards">
-      <div class="card">
-        <h2>Server Lokal (di HP ini)</h2>
-        <div class="kv" id="localKv">
-          <b>Status</b><span>—</span>
-        </div>
-        <p class="hint">Dasbor debug = port khusus developer. Port game (dipakai client) ditampilkan di baris “Port game” — keduanya terpisah.</p>
-      </div>
-      <div class="card">
-        <h2>Server Asli (remote) — pantauan</h2>
-        <table id="origTbl">
-          <thead><tr><th>Target</th><th>Kondisi</th><th>Cek terakhir</th></tr></thead>
-          <tbody><tr><td colspan="3" class="empty">Belum ada data — tunggu siklus pantauan.</td></tr></tbody>
-        </table>
-        <div class="toolbar" style="margin-top:10px">
-          <button class="act primary" id="btnRun">Cek server asli sekarang</button>
-        </div>
-        <p class="hint">Mode ONLINE = permintaan game diteruskan ke server asli di atas. Mode LOCAL = dilayani dari folder www/ — isi config asli diekstrak <b>otomatis</b> dari payload APK saat aplikasi pertama jalan. Ganti mode lewat tombol melayang di atas game — aplikasi restart otomatis.</p>
-      </div>
-    </div>
-  </section>
+  <div class="card" style="margin-top:12px">
+    <h2>5 permintaan game terakhir — bukti local running</h2>
+    <table>
+      <thead><tr><th>Path</th><th>Status</th><th>Lama</th></tr></thead>
+      <tbody id="lastbody"><tr><td colspan="3" style="color:var(--mut)">belum ada permintaan game</td></tr></tbody>
+    </table>
+  </div>
 
-  <!-- LOG -->
-  <section class="pane" id="pane-log">
-    <div class="toolbar">
-      <label class="chk"><input type="checkbox" id="autoChk" checked> segarkan otomatis</label>
-      <button class="act" id="btnCopyAll">Salin semua log</button>
-      <button class="act" id="btnClear">Bersihkan</button>
-    </div>
-    <div id="logs"><div class="empty">Belum ada log.</div></div>
-    <p class="hint">Ketuk satu baris untuk melihat detail teknis + tombol salin. ▶ permintaan · ✔ sehat · ⚠ perlu perhatian · ℹ info.</p>
-  </section>
+  <div class="tabs">
+    <button class="tab active" data-pane="log">Log</button>
+    <button class="tab" data-pane="www">Isi www/</button>
+    <button class="tab" data-pane="orig">Server asli</button>
+  </div>
 
-  <!-- APK READER -->
-  <section class="pane" id="pane-apk">
+  <div class="pane active" id="pane-log">
     <div class="toolbar">
-      <input type="text" id="apkQ" placeholder="cari nama file… contoh: config atau .so">
-      <button class="act primary" id="btnApk">Muat daftar</button>
+      <button class="act" id="copylog">Copy log</button>
+      <button class="act" id="clearlog">Bersihkan log dasbor</button>
+      <span class="note" style="margin:0">polling dasbor tidak dicatat — log tetap tenang</span>
     </div>
-    <div class="apk-list" id="apkList"><div class="empty">Ketik kata kunci lalu tekan “Muat daftar”.</div></div>
-    <div id="apkWrap" style="margin-top:12px; display:none">
-      <div class="toolbar">
-        <b id="apkName" style="font-size:13px; word-break:break-all"></b>
-        <button class="act" id="btnApkCopy">Salin isi</button>
-        <a class="act" id="apkDl" download style="text-decoration:none; display:inline-flex; align-items:center">Unduh</a>
-      </div>
-      <pre class="view" id="apkView">(pratinjau)</pre>
-    </div>
-  </section>
+    <div id="logbox">memuat…</div>
+  </div>
 
-  <!-- CONFIG -->
-  <section class="pane" id="pane-cfg">
+  <div class="pane" id="pane-www">
     <div class="toolbar">
-      <button class="act primary" id="btnCfg">Analisis config sekarang</button>
+      <button class="act" id="refreshwww">Muat ulang</button>
+      <span class="note" style="margin:0" id="wwwtotal"></span>
     </div>
-    <p class="hint">Membaca <code>assets/config.properties</code>, <code>assets/config_BS.properties</code>, <code>assets/QHinfo</code> dari APK, lalu mendekode nilai yang terlihat seperti Base64. Ini bahan utama menyusun endpoint lokal di fase berikutnya.</p>
-    <div id="cfgView"><div class="empty">Belum dianalisis.</div></div>
-  </section>
+    <div style="max-height:52vh; overflow-y:auto">
+      <table>
+        <thead><tr><th>File di www/</th><th>Ukuran</th></tr></thead>
+        <tbody id="wwwbody"><tr><td colspan="2" style="color:var(--mut)">memuat…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-orig">
+    <table>
+      <thead><tr><th>Server asli</th><th>Status</th><th>Catat</th><th>Laten</th><th>Cek</th></tr></thead>
+      <tbody id="origbody"><tr><td colspan="5" style="color:var(--mut)">memuat…</td></tr></tbody>
+    </table>
+  </div>
 </main>
-
 <footer>
-  Dasbor debug port <span id="fDbg">4000</span> · port game <span id="fGame">8080</span> · isi <b>www/</b> = payload APK (ekstraksi otomatis) ·
-  root folder: <span id="rootTxt">Android/data/com.db.local/server</span>
+  Port 4000 = dasbor developer saja · client game menunjuk port game (127.0.0.1:8080) ·
+  tombol melayang di layar HP juga bisa digeser &amp; dipakai ganti mode.
 </footer>
 
-<div class="toast" id="toast">Tersalin</div>
-
 <script>
-"use strict";
-function $(id){ return document.getElementById(id); }
-var state = { lastId: 0, auto: true, logs: [], apkText: "", apkPath: "" };
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var logSince = 0, lastStatus = null, armed = false, armedTimer = null;
 
-/* ---------- util ---------- */
-function fmtBytes(n){
-  if (n < 0) return "?";
-  if (n < 1024) return n + " B";
-  var kb = n / 1024;
-  if (kb < 1024) return kb.toFixed(1).replace(".", ",") + " KB";
-  return (kb / 1024).toFixed(1).replace(".", ",") + " MB";
-}
-function fmtUptime(ms){
-  if (!ms || ms < 1000) return "baru saja";
-  var s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), d = s % 60;
-  var out = [];
-  if (h) out.push(h + " j");
-  if (m) out.push(m + " mnt");
-  if (!h && d) out.push(d + " dtk");
-  return out.join(" ") || "baru saja";
-}
-function toast(msg){
-  var t = $("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  clearTimeout(t._h);
-  t._h = setTimeout(function(){ t.classList.remove("show"); }, 1600);
-}
-function copyText(txt, okMsg){
-  function done(){ toast(okMsg || "Tersalin"); }
-  function fallback(){
-    var ta = document.createElement("textarea");
-    ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0";
-    document.body.appendChild(ta); ta.select();
-    try { document.execCommand("copy"); done(); } catch (e) { toast("Gagal menyalin"); }
-    document.body.removeChild(ta);
+  function fmtBytes(n){
+    if(n < 0) return "?";
+    if(n < 1024) return n + " B";
+    if(n < 1048576) return (n/1024).toFixed(1).replace('.',',') + " KB";
+    return (n/1048576).toFixed(1).replace('.',',') + " MB";
   }
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(txt).then(done, fallback);
-  } else fallback();
-}
-function esc(s){
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-function api(path){
-  return fetch(path, { cache: "no-store" }).then(function(r){
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    return r.json();
-  });
-}
-
-/* ---------- status ---------- */
-function renderStatus(st){
-  var s = st.server || {};
-  var pill = $("pill");
-  pill.textContent = s.alive ? "HIDUP" : "MATI";
-  pill.className = "pill" + (s.alive ? " up" : "");
-  var md = (s.mode || "?").toUpperCase();
-  var bMode = $("bMode");
-  bMode.textContent = "MODE " + md;
-  if (s.mode === "local") bMode.style.color = "var(--acc)"; else bMode.style.color = "";
-  $("summary").textContent = "Server lokal " + (s.alive ? "HIDUP" : "MATI")
-    + " · dasbor :" + s.port + " · port game :" + s.gamePort + " (" + (s.gameAlive ? "hidup" : "mati") + ")"
-    + " · " + (s.requests || 0) + " permintaan · mode " + md;
-  if (s.root) $("rootTxt").textContent = s.root;
-  $("fDbg").textContent = s.port || 4000;
-  $("fGame").textContent = s.gamePort || 8080;
-
-  $("localKv").innerHTML =
-    "<b>Status</b><span><span class='dot " + (s.alive ? "up" : "down") + "'></span>" + (s.alive ? "Hidup" : "Mati") + "</span>" +
-    "<b>Mode</b><span><b>" + md + "</b> — " + (s.mode === "local"
-      ? "melayani dari folder www/ (isi config asli)"
-      : "meneruskan ke server asli (passthrough)") + "</span>" +
-    "<b>Port game</b><span><span class='dot " + (s.gameAlive ? "up" : "down") + "'></span>:" + s.gamePort
-      + " — endpoint client menunjuk ke sini</span>" +
-    "<b>Payload www/</b><span>" + (s.wwwFiles || 0) + " file config asli — ekstraksi otomatis dari APK</span>" +
-    "<b>Uptime</b><span>" + fmtUptime(s.uptimeMs) + "</span>" +
-    "<b>Dasbor</b><span>http://127.0.0.1:" + s.port + " (bind " + esc(s.bind || "127.0.0.1") + ")</span>" +
-    "<b>Permintaan</b><span>" + (s.requests || 0) + "</span>" +
-    "<b>Folder</b><span style='word-break:break-all'>" + esc(s.root || "—") + "</span>";
-
-  var rows = st.original || [];
-  var tb = $("origTbl").getElementsByTagName("tbody")[0];
-  if (!rows.length) {
-    tb.innerHTML = "<tr><td colspan='3' class='empty'>Belum ada data — tunggu siklus pantauan.</td></tr>";
-    return;
+  function fmtMs(ms){
+    if(ms < 0) return "-";
+    if(ms < 1000) return ms + " ms";
+    return (ms/1000).toFixed(1).replace('.',',') + " dtk";
   }
-  var html = "";
-  for (var i = 0; i < rows.length; i++){
-    var o = rows[i];
-    var lat = o.ok ? (" · " + o.latencyMs + " ms") : "";
-    html += "<tr><td style='font-family:ui-monospace,Menlo,monospace;font-size:12px'>" + esc(o.target) + "</td>" +
-      "<td><span class='dot " + (o.ok ? "up" : "down") + "'></span>" + esc(o.note) + lat + "</td>" +
-      "<td>" + esc(o.last) + "</td></tr>";
+  function fmtUptime(ms){
+    if(ms <= 0) return "—";
+    var s = Math.floor(ms/1000), m = Math.floor(s/60), h = Math.floor(m/60);
+    if(h > 0) return h + " jam " + (m%60) + " mnt";
+    if(m > 0) return m + " mnt " + (s%60) + " dtk";
+    return s + " dtk";
   }
-  tb.innerHTML = html;
-}
-
-/* ---------- log ---------- */
-function iconClass(ic){
-  if (ic === "⚠") return "warn";
-  if (ic === "✔") return "ok";
-  if (ic === "ℹ") return "info";
-  return "";
-}
-function logRowHtml(ev){
-  return "<div class='logrow' data-id='" + ev.id + "'>" +
-    "<span class='t'>" + esc(ev.t) + "</span>" +
-    "<span class='ic " + iconClass(ev.icon) + "'>" + esc(ev.icon) + "</span>" +
-    "<span class='tx'>" + esc(ev.text) + "</span>" +
-    "<div class='detail'>" + esc(ev.detail || "-") +
-    "<br><button class='copybtn' data-copy='1'>Salin baris ini</button></div>" +
-    "</div>";
-}
-function renderLogsAppend(list){
-  if (!list.length) return;
-  var box = $("logs");
-  var emptyEl = box.querySelector(".empty");
-  if (emptyEl) emptyEl.remove();
-  var nearBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 60;
-  var html = "";
-  for (var i = 0; i < list.length; i++) html += logRowHtml(list[i]);
-  box.insertAdjacentHTML("beforeend", html);
-  for (var j = 0; j < list.length; j++) state.logs.push(list[j]);
-  if (state.logs.length > 800) state.logs.splice(0, state.logs.length - 800);
-  if (nearBottom) box.scrollTop = box.scrollHeight;
-}
-function fetchLogs(){
-  api("/api/logs?since=" + state.lastId).then(function(list){
-    if (list && list.length){
-      state.lastId = list[list.length - 1].id;
-      renderLogsAppend(list);
-    }
-  }).catch(function(){});
-}
-function fetchAllLogs(){
-  api("/api/logs?since=0").then(function(list){
-    var box = $("logs");
-    box.innerHTML = "";
-    state.logs = [];
-    state.lastId = 0;
-    if (list && list.length){
-      state.lastId = list[list.length - 1].id;
-      renderLogsAppend(list);
-    } else {
-      box.innerHTML = "<div class='empty'>Belum ada log.</div>";
-    }
-  }).catch(function(){});
-}
-
-/* ---------- apk reader ---------- */
-function renderApkList(data){
-  var box = $("apkList");
-  if (data.error){ box.innerHTML = "<div class='empty'>" + esc(data.error) + "</div>"; return; }
-  if (!data.shown || !data.shown.length){ box.innerHTML = "<div class='empty'>Tidak ada yang cocok.</div>"; return; }
-  var html = "<div class='apk-row' style='cursor:default;color:var(--mut)'><span class='p'>" +
-    data.total + " file cocok · menampilkan " + data.shown.length + "</span><span class='s'>ukuran</span></div>";
-  for (var i = 0; i < data.shown.length; i++){
-    var f = data.shown[i];
-    html += "<div class='apk-row' data-path='" + esc(f.path) + "'>" +
-      "<span class='p'>" + esc(f.path) + "</span><span class='s'>" + fmtBytes(f.size) + "</span></div>";
-  }
-  box.innerHTML = html;
-}
-function openApkFile(path){
-  $("apkWrap").style.display = "block";
-  $("apkName").textContent = path;
-  $("apkView").textContent = "memuat…";
-  state.apkPath = path;
-  $("apkDl").href = "/api/apk/get?path=" + encodeURIComponent(path);
-  fetch("/api/apk/get?path=" + encodeURIComponent(path), { cache: "no-store" })
-    .then(function(r){ return r.text(); })
-    .then(function(txt){
-      state.apkText = txt;
-      if (txt.length > 200000) txt = txt.slice(0, 200000) + "\n…(pratinjau dipotong, gunakan Unduh untuk isi penuh)";
-      $("apkView").textContent = txt || "(kosong / file biner)";
-    })
-    .catch(function(e){ $("apkView").textContent = "gagal memuat: " + e; });
-}
-
-/* ---------- config ---------- */
-function renderCfg(data){
-  var box = $("cfgView");
-  if (data.error){ box.innerHTML = "<div class='empty'>" + esc(data.error) + "</div>"; return; }
-  var html = "";
-  var files = data.files || [];
-  for (var i = 0; i < files.length; i++){
-    var f = files[i];
-    html += "<div class='card' style='margin-bottom:12px'><h2>" + esc(f.path) + "</h2>";
-    if (f.error){ html += "<div class='empty'>" + esc(f.error) + "</div></div>"; continue; }
-    html += "<div class='toolbar'><button class='act' data-rawcopy='" + esc(f.path) + "'>Salin isi mentah</button>" +
-      "<span class='hint' style='margin:0'>" + fmtBytes(f.size) + "</span></div>";
-    html += "<table><thead><tr><th style='width:30%'>kunci</th><th>nilai</th><th style='width:30%'>dekode Base64</th></tr></thead><tbody>";
-    var lines = f.lines || [];
-    for (var j = 0; j < lines.length; j++){
-      var L = lines[j];
-      html += "<tr><td style='font-family:ui-monospace,monospace;font-size:12px;word-break:break-all'>" + esc(L.k) + "</td>" +
-        "<td style='word-break:break-all'>" + esc(L.v) + "</td>";
-      if (L.dec){
-        html += "<td style='word-break:break-all'><code>" + esc(L.dec) + "</code> " +
-          "<button class='copybtn' data-dec='1' data-v='" + esc(L.dec) + "'>Salin</button></td>";
-      } else {
-        html += "<td style='color:var(--mut)'>—</td>";
-      }
-      html += "</tr>";
-    }
-    html += "</tbody></table></div>";
-  }
-  box.innerHTML = html || "<div class='empty'>Tidak ada data.</div>";
-}
-
-/* ---------- wiring ---------- */
-document.addEventListener("click", function(ev){
-  var t = ev.target;
-  var tab = t.closest ? t.closest(".tab") : null;
-  if (tab){
-    document.querySelectorAll(".tab").forEach(function(x){ x.classList.remove("active"); });
-    tab.classList.add("active");
-    document.querySelectorAll(".pane").forEach(function(x){ x.classList.remove("active"); });
-    $("pane-" + tab.dataset.pane).classList.add("active");
-    return;
-  }
-  var cp = t.getAttribute && t.getAttribute("data-copy");
-  if (cp){
-    var row = t.closest(".logrow");
-    var line = row.querySelector(".t").textContent + " " + row.querySelector(".ic").textContent + " " +
-               row.querySelector(".tx").textContent + "\n    detail: " + row.querySelector(".detail").childNodes[0].textContent;
-    copyText(line);
-    return;
-  }
-  var dec = t.getAttribute && t.getAttribute("data-dec");
-  if (dec){ copyText(t.getAttribute("data-v")); return; }
-  var rc = t.getAttribute && t.getAttribute("data-rawcopy");
-  if (rc){
-    var f = state.cfgData && (state.cfgData.files || []).filter(function(x){ return x.path === rc; })[0];
-    if (f) copyText(f.raw);
-    return;
-  }
-  var ap = t.closest ? t.closest(".apk-row") : null;
-  if (ap && ap.dataset.path){
-    openApkFile(ap.dataset.path);
-    return;
-  }
-  var lr = t.closest ? t.closest(".logrow") : null;
-  if (lr){ lr.classList.toggle("open"); }
-});
-$("autoChk").addEventListener("change", function(){ state.auto = this.checked; });
-$("btnRun").addEventListener("click", function(){
-  var b = this;
-  b.textContent = "Memeriksa…";
-  b.disabled = true;
-  api("/api/monitor/run").then(function(st){ renderStatus(st); fetchLogs(); })
-    .catch(function(e){ toast("Gagal: " + e); })
-    .then(function(){
-      b.textContent = "Cek server asli sekarang";
-      b.disabled = false;
+  function esc(s){
+    return String(s).replace(/[&<>"]/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];
     });
-});
-$("btnClear").addEventListener("click", function(){
-  api("/api/logs/clear").then(function(){ $("logs").innerHTML = "<div class='empty'>Log dibersihkan.</div>"; state.lastId = 0; state.logs = []; });
-});
-$("btnCopyAll").addEventListener("click", function(){
-  var txt = state.logs.map(function(e){
-    return e.t + " [" + e.icon + "] " + e.text + (e.detail && e.detail !== "-" ? "  ||  " + e.detail : "");
-  }).join("\n");
-  copyText(txt || "(kosong)");
-});
-$("btnApk").addEventListener("click", function(){
-  var q = $("apkQ").value.trim();
-  $("apkList").innerHTML = "<div class='empty'>memuat…</div>";
-  api("/api/apk/list?limit=200&prefix=" + encodeURIComponent(q)).then(renderApkList)
-    .catch(function(e){ $("apkList").innerHTML = "<div class='empty'>gagal: " + esc(String(e)) + "</div>"; });
-});
-$("btnApkCopy").addEventListener("click", function(){ copyText(state.apkText || ""); });
-$("btnCfg").addEventListener("click", function(){
-  $("cfgView").innerHTML = "<div class='empty'>menganalisis…</div>";
-  api("/api/analyze").then(function(d){ state.cfgData = d; renderCfg(d); })
-    .catch(function(e){ $("cfgView").innerHTML = "<div class='empty'>gagal: " + esc(String(e)) + "</div>"; });
-});
-$("apkQ").addEventListener("keydown", function(e){ if (e.key === "Enter") $("btnApk").click(); });
+  }
 
-function tick(){
-  api("/api/status").then(renderStatus).catch(function(){
-    var pill = $("pill");
-    pill.textContent = "TAK TERJANGKAU";
-    pill.className = "pill";
+  // ---------- tabs ----------
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.addEventListener("click", function(){
+      document.querySelectorAll(".tab").forEach(function(x){ x.classList.remove("active"); });
+      document.querySelectorAll(".pane").forEach(function(x){ x.classList.remove("active"); });
+      t.classList.add("active");
+      $("pane-" + t.dataset.pane).classList.add("active");
+      if(t.dataset.pane === "www") loadWww();
+    });
   });
-  if (state.auto) fetchLogs();
-}
-tick();
-setInterval(tick, 3000);
+
+  // ---------- status ----------
+  function renderStatus(s){
+    lastStatus = s;
+    $("ver").textContent = "v" + (s.server.version || "?");
+    $("pill").textContent = s.server.alive ? "DASBOR HIDUP" : "DASBOR MATI";
+    $("pill").className = "pill" + (s.server.alive ? " up" : "");
+
+    $("summary").textContent = "root: " + (s.server.root || "?") + " · paket: " + (s.server["package"] || "?")
+      + " · dasbor port " + s.server.port + " · port game " + s.server.gamePort;
+
+    var mode = s.server.mode || "?";
+    var mEl = $("mode");
+    mEl.textContent = mode.toUpperCase();
+    mEl.className = "modebig " + mode;
+    $("modemeans").textContent = (mode === "local")
+      ? "permintaan game dilayani folder www/ (mirror server asli, ekstraksi otomatis dari APK)"
+      : "permintaan game diteruskan apa adanya ke server asli (passthrough)";
+
+    var btn = $("switchbtn");
+    btn.disabled = false;
+    if(armed){
+      btn.textContent = "Tekan SEKALI LAGI — restart dengan " + (mode === "local" ? "ONLINE" : "LOCAL");
+      btn.classList.add("danger");
+    } else {
+      btn.textContent = "Switch ke " + (mode === "local" ? "ONLINE" : "LOCAL") + " + restart aplikasi";
+      btn.classList.remove("danger");
+    }
+
+    $("gamedot").className = "dot " + (s.server.gameAlive ? "up" : "down");
+    $("gamealive").textContent = s.server.gameAlive ? "HIDUP — local running" : "MATI";
+    $("gameaddr").textContent = "http://127.0.0.1:" + s.server.gamePort;
+    $("reqs").textContent = s.server.requests + " sejak server nyala";
+    $("errs").textContent = s.server.errors;
+    $("uptime").textContent = fmtUptime(s.server.uptimeMs);
+    $("www").textContent = (s.server.wwwFiles || 0) + " file · " + fmtBytes(s.server.wwwBytes || 0);
+
+    // 5 path terakhir (terbaru di atas)
+    var arr = (s.last || []).slice(0, 5);
+    var tb = $("lastbody");
+    if(!arr.length){
+      tb.innerHTML = "<tr><td colspan='3' style='color:var(--mut)'>belum ada permintaan game — buka game-nya</td></tr>";
+    } else {
+      tb.innerHTML = arr.map(function(p){
+        var col = (p.s >= 200 && p.s < 400) ? "var(--ok)" : (p.s === 404 ? "var(--warn)" : "var(--err)");
+        return "<tr><td>" + esc(p.p) + "</td><td style='color:" + col + ";font-weight:700'>" + p.s
+          + "</td><td>" + fmtMs(p.ms) + "</td></tr>";
+      }).join("");
+    }
+
+    var ob = $("origbody");
+    if(s.original && s.original.length){
+      ob.innerHTML = s.original.map(function(o){
+        return "<tr><td>" + esc(o.target) + "</td><td><span class='dot " + (o.ok ? "up" : "down")
+          + "'></span>" + (o.ok ? "bisa" : "gagal") + "</td><td>" + esc(o.note)
+          + "</td><td>" + (o.latencyMs >= 0 ? fmtMs(o.latencyMs) : "—") + "</td><td>" + esc(o.last || "") + "</td></tr>";
+      }).join("");
+    } else {
+      ob.innerHTML = "<tr><td colspan='5' style='color:var(--mut)'>belum ada data pantauan</td></tr>";
+    }
+  }
+
+  function pollStatus(){
+    fetch("/api/status").then(function(r){ return r.json(); }).then(function(s){
+      renderStatus(s);
+    }).catch(function(){
+      $("pill").textContent = "DASBOR PUTUS";
+      $("pill").className = "pill";
+    });
+  }
+
+  // ---------- log ----------
+  function iconClass(ic){
+    return ic === "✔" ? "ic-ok" : (ic === "⚠" ? "ic-warn" : (ic === "▶" || ic === "◀" ? "ic-in" : "ic-info"));
+  }
+  function pollLog(){
+    fetch("/api/logs?since=" + logSince).then(function(r){ return r.json(); }).then(function(arr){
+      if(!arr.length) return;
+      var box = $("logbox");
+      var atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+      var frag = document.createDocumentFragment();
+      arr.forEach(function(e){
+        logSince = Math.max(logSince, e.id);
+        var d = document.createElement("div");
+        d.innerHTML = "<span class='" + iconClass(e.icon) + "'>" + esc(e.icon) + "</span> "
+          + esc(e.t) + "  " + esc(e.text)
+          + (e.detail && e.detail !== "-" ? "  <span style='color:var(--mut)'>" + esc(e.detail) + "</span>" : "");
+        frag.appendChild(d);
+      });
+      box.appendChild(frag);
+      while(box.childNodes.length > 800) box.removeChild(box.firstChild);
+      if(atEnd) box.scrollTop = box.scrollHeight;
+    }).catch(function(){});
+  }
+  $("copylog").addEventListener("click", function(){
+    var txt = Array.prototype.map.call($("logbox").childNodes, function(n){ return n.textContent; }).join("\n");
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function(){
+      $("copylog").textContent = "Tersalin ✓";
+      setTimeout(function(){ $("copylog").textContent = "Copy log"; }, 1500);
+    }).catch(function(){
+      var ta = document.createElement("textarea");
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); ta.remove();
+      $("copylog").textContent = "Tersalin ✓";
+      setTimeout(function(){ $("copylog").textContent = "Copy log"; }, 1500);
+    });
+  });
+  $("clearlog").addEventListener("click", function(){
+    fetch("/api/logs/clear").then(function(){ 
+      $("logbox").textContent = ""; 
+    }).catch(function(){});
+  });
+
+  // ---------- switch mode ----------
+  $("switchbtn").addEventListener("click", function(){
+    var mode = lastStatus && lastStatus.server ? lastStatus.server.mode : null;
+    if(!mode) return;
+    if(!armed){
+      armed = true;
+      renderStatus(lastStatus); // tombol jadi konfirmasi
+      if(armedTimer) clearTimeout(armedTimer);
+      armedTimer = setTimeout(function(){ armed = false; renderStatus(lastStatus); }, 5000);
+      return;
+    }
+    armed = false;
+    if(armedTimer) clearTimeout(armedTimer);
+    var target = mode === "local" ? "online" : "local";
+    var btn = $("switchbtn");
+    btn.disabled = true; btn.textContent = "mengganti mode…";
+    fetch("/api/mode?mode=" + target, {method:"POST"}).then(function(r){ return r.json(); }).then(function(j){
+      $("switchnote").textContent = j.note || "selesai";
+      setTimeout(function(){
+        $("switchnote").textContent = "Mode disimpan ke config/server.json · aplikasi restart otomatis setelah konfirmasi.";
+      }, 6000);
+      pollStatus();
+    }).catch(function(e){
+      $("switchnote").textContent = "gagal: " + e;
+      btn.disabled = false;
+    });
+  });
+
+  // ---------- www list ----------
+  function loadWww(){
+    fetch("/api/www/list").then(function(r){ return r.json(); }).then(function(j){
+      $("wwwtotal").textContent = j.count + " file · " + fmtBytes(j.bytes);
+      var tb = $("wwwbody");
+      if(!j.files || !j.files.length){
+        tb.innerHTML = "<tr><td colspan='2' style='color:var(--mut)'>www/ kosong</td></tr>";
+        return;
+      }
+      tb.innerHTML = j.files.map(function(f){
+        return "<tr><td>" + esc(f.p) + "</td><td>" + fmtBytes(f.s) + "</td></tr>";
+      }).join("");
+    }).catch(function(){
+      $("wwwbody").innerHTML = "<tr><td colspan='2' style='color:var(--err)'>gagal memuat</td></tr>";
+    });
+  }
+  $("refreshwww").addEventListener("click", loadWww);
+
+  pollStatus();
+  pollLog();
+  setInterval(pollStatus, 3000);
+  setInterval(pollLog, 3000);
+})();
 </script>
 </body>
 </html>

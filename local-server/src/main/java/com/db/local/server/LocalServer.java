@@ -4,6 +4,7 @@ import android.content.Context;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,16 @@ import fi.iki.elonen.NanoHTTPD;
  * Port ini TIDAK diketahui game; permintaan client game dilayani port game terpisah
  * (GameServer, default 8080). Polling dasbor (/api/*) TIDAK dicatat sebagai event
  * agar log tetap tenang — hanya kejadian nyata yang dicatat.
+ *
+ * Endpoint (README §6):
+ *   GET  /                → halaman dasbor
+ *   GET  /api/status      → status server + mode + port game + 5 path terakhir
+ *   GET  /api/logs?since= → log baru sejak id tertentu
+ *   GET  /api/logs/clear  → bersihkan log di dasbor (file tetap)
+ *   GET  /api/www/list    → isi folder www/ (bukti folder bersih & lengkap)
+ *   POST /api/mode?mode=… → ganti mode LOCAL/ONLINE + restart aplikasi
+ *   Endpoint /api/apk/*, /api/analyze, /api/monitor/run versi 0.1.0 DIHAPUS
+ *   (sumber sampah Android/data — keputusan final README §2).
  */
 public final class LocalServer extends NanoHTTPD {
     private final Context appCtx;
@@ -69,10 +80,10 @@ public final class LocalServer extends NanoHTTPD {
         int status = 200;
         long bytes = 0;
         try {
-            if (Method.GET != m && Method.HEAD != m) {
+            if (Method.GET != m && Method.HEAD != m && Method.POST != m) {
                 status = 405;
                 return jsonResp(Response.Status.METHOD_NOT_ALLOWED,
-                        "{\"error\":\"Metode " + m + " tidak didukung — dasbor hanya butuh GET\"}");
+                        "{\"error\":\"Metode " + m + " tidak didukung — dasbor butuh GET/POST\"}");
             }
             if ("/".equals(uri) || "/index.html".equals(uri)) {
                 byte[] d = dashboard;
@@ -100,47 +111,35 @@ public final class LocalServer extends NanoHTTPD {
                 bytes = j.length();
                 return jsonResp(Response.Status.OK, j);
             }
-            if ("/api/monitor/run".equals(uri)) {
-                Monitor mtr = Starter.monitor();
-                if (mtr != null) {
-                    mtr.runOnce();
-                }
-                String j = StatusStore.toJson();
+            if ("/api/www/list".equals(uri)) {
+                String j = wwwListJson();
                 bytes = j.length();
                 return jsonResp(Response.Status.OK, j);
             }
-            if ("/api/apk/list".equals(uri)) {
-                String prefix = first(session.getParameters().get("prefix"));
-                int limit = (int) parseLong(session.getParameters().get("limit"));
-                String j = ApkReader.listJson(prefix, limit);
-                bytes = j.length();
-                return jsonResp(Response.Status.OK, j);
-            }
-            if ("/api/apk/get".equals(uri)) {
-                String path = first(session.getParameters().get("path"));
-                if (path == null || path.length() == 0) {
+            if ("/api/mode".equals(uri)) {
+                String target = first(session.getParameters().get("mode"));
+                if (!"local".equals(target) && !"online".equals(target)) {
                     status = 400;
                     return jsonResp(Response.Status.BAD_REQUEST,
-                            "{\"error\":\"Parameter path wajib — contoh: /api/apk/get?path=assets/config.properties\"}");
+                            "{\"error\":\"Parameter mode wajib local|online — contoh: POST /api/mode?mode=local\"}");
                 }
-                byte[] b = ApkReader.get(path);
-                if (b == null) {
-                    status = 404;
-                    return jsonResp(Response.Status.NOT_FOUND,
-                            "{\"error\":\"File tidak ada di APK: " + Json.esc(path) + "\"}");
+                String now = Config.mode();
+                if (target.equals(now)) {
+                    String j = "{\"ok\":true,\"mode\":\"" + target + "\",\"changed\":false," +
+                            "\"note\":\"mode sudah " + target + " — tidak ada restart\"}";
+                    bytes = j.length();
+                    return jsonResp(Response.Status.OK, j);
                 }
-                if (b.length == 0) {
-                    status = 403;
-                    return jsonResp(Response.Status.FORBIDDEN,
-                            "{\"error\":\"File terlalu besar untuk pratinjau (>8 MB): " + Json.esc(path) + "\"}");
-                }
-                bytes = b.length;
-                return fileResp(b, path);
-            }
-            if ("/api/analyze".equals(uri)) {
-                String j = ApkReader.analyzeJson();
+                Config.setMode(target);
+                HumanLog.ev('ℹ', "SWITCH MODE dari dasbor: " + now.toUpperCase() + " → " + target.toUpperCase()
+                        + " (tersimpan di server.json) — aplikasi direstart agar game membaca mode baru", null);
+                StatusStore.persist();
+                String j = "{\"ok\":true,\"mode\":\"" + target + "\",\"changed\":true," +
+                        "\"note\":\"mode diganti — aplikasi direstart otomatis\"}";
                 bytes = j.length();
-                return jsonResp(Response.Status.OK, j);
+                Response r = jsonResp(Response.Status.OK, j);
+                RestartHelper.restart(appCtx); // jawaban dikirim dulu; proses mati ~0,6 dtk kemudian
+                return r;
             }
             status = 404;
             return jsonResp(Response.Status.NOT_FOUND,
@@ -177,6 +176,47 @@ public final class LocalServer extends NanoHTTPD {
         }
     }
 
+    /** JSON isi folder www/ — daftar file + ukuran; bukti folder root bersih & lengkap. */
+    private String wwwListJson() {
+        File root = Starter.serverRoot();
+        File www = (root != null) ? new File(root, "www") : null;
+        StringBuilder sb = new StringBuilder(8192);
+        sb.append("{\"files\":[");
+        final int[] count = {0};
+        final long[] total = {0};
+        if (www != null && www.exists()) {
+            walk(www, www, sb, count, total);
+        }
+        sb.append("],")
+                .append(Json.num("count", count[0])).append(',')
+                .append(Json.num("bytes", total[0])).append(',')
+                .append(Json.str("path", www != null ? www.getAbsolutePath() : ""))
+                .append('}');
+        return sb.toString();
+    }
+
+    private static void walk(File www, File dir, StringBuilder sb, int[] count, long[] total) {
+        File[] kids = dir.listFiles();
+        if (kids == null) {
+            return;
+        }
+        for (int i = 0; i < kids.length; i++) {
+            File k = kids[i];
+            if (k.isDirectory()) {
+                walk(www, k, sb, count, total);
+            } else if (k.isFile()) {
+                if (count[0] > 0) {
+                    sb.append(',');
+                }
+                String rel = www.toURI().relativize(k.toURI()).getPath();
+                sb.append("{\"p\":\"").append(Json.esc(rel)).append('\"')
+                        .append(",\"s\":").append(k.length()).append('}');
+                count[0]++;
+                total[0] += k.length();
+            }
+        }
+    }
+
     private static String joinParams(Map<String, List<String>> params) {
         if (params == null || params.isEmpty()) {
             return null;
@@ -203,14 +243,6 @@ public final class LocalServer extends NanoHTTPD {
         Response r = newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8",
                 new ByteArrayInputStream(d), d.length);
         r.addHeader("Cache-Control", "no-store");
-        return r;
-    }
-
-    private static Response fileResp(byte[] b, String path) {
-        Response r = newFixedLengthResponse(Response.Status.OK, "application/octet-stream",
-                new ByteArrayInputStream(b), b.length);
-        String fname = path.substring(path.lastIndexOf('/') + 1).replaceAll("[^A-Za-z0-9._-]", "_");
-        r.addHeader("Content-Disposition", "attachment; filename=\"" + fname + "\"");
         return r;
     }
 

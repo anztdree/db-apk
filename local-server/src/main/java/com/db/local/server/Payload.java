@@ -12,24 +12,34 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Payload config ASLI — dibawa DI DALAM APK (assets/server/payload/) dan
- * diekstrak OTOMATIS ke &lt;root&gt;/www/ saat aplikasi pertama kali hidup.
+ * MIRROR SERVER ASLI — dibawa DI DALAM APK (assets/server/www/) dan diekstrak
+ * OTOMATIS ke &lt;root&gt;/www/ saat aplikasi hidup (BootProvider), SEBELUM server
+ * menyala. TIDAK ADA langkah manual — "semua itu terekstrak ke sana".
  *
- * Koreksi pemilik (v2.8): TIDAK ADA langkah manual — "semua itu terekstrak ke sana".
- * - Struktur folder www/ = path URL server asli, sehingga port game lokal menjawab
- *   di alamat yang sama seperti server asli (configus / dragon).
- * - Ekstraksi ulang otomatis bila: penanda belum ada, versi payload naik, atau
- *   ada file payload yang hilang dari www/ (mis. setelah sebagian dihapus).
- * - File tambahan di luar payload TIDAK dihapus (mis. isi tambahan dari owner).
- * - Gagal ekstraksi TIDAK PERNAH menggagalkan boot — game tetap jalan (fallback 404,
- *   terbukti dari analisis dex §2.8: "Server base.version is Not Exist" → lanjut boot).
+ * Isi mirror v3 (snapshot nyata server asli yang masih hidup, hasil probe 2025):
+ *   bs/db/android/setting_BS_Android.bin      (cermin configus, XOR "DragonBall")
+ *   bs/index-native.html · bs/manifest.json · bs/js/* (15 file H5 Egret)
+ *   bs/resource/properties/clientversion.json · serversetting.json
+ *   bs/upgrade/base.version · resource.version · upgrade.json · size.json
+ *   bs/upgrade/base.zip · all.zip · 11386–11389_11390.zip (zip resource)
+ *   lzceshi/native_setting/Android/*          (cermin dragon, bila tersedia)
+ *
+ * - Struktur folder www/ = path URL server asli, sehingga port game lokal
+ *   menjawab di alamat yang sama seperti server asli.
+ * - Ekstraksi ulang otomatis bila: penanda versi berubah, atau ada file mirror
+ *   yang hilang (mis. sebagian dihapus / clear data sebagian).
+ * - PENANDA disimpan di config/www.stamp (BUKAN di dalam www/) — www/ tetap
+ *   murni cermin server, tanpa file asing (aturan folder bersih §2).
+ * - File tambahan di luar mirror TIDAK dihapus (mis. hasil self-seed).
+ * - Gagal ekstraksi TIDAK PERNAH menggagalkan boot — game tetap jalan
+ *   (fallback 404, terbukti dari analisis dex §2.8).
  */
 public final class Payload {
-    /** Versi isi payload — NAIKKAN bila isi file payload berubah, www/ ikut diperbarui. */
-    public static final String VERSION = "1";
+    /** Versi isi mirror — NAIKKAN bila isi berubah, www/ ikut diperbarui otomatis. */
+    public static final String VERSION = "3";
 
-    private static final String ASSET_DIR = "server/payload";
-    private static final String MARKER_FILE = ".payload.txt";
+    private static final String ASSET_DIR = "server/www";
+    private static final String MARKER_NAME = "www.stamp";
 
     private Payload() {
     }
@@ -37,12 +47,13 @@ public final class Payload {
     /** Ringkasan hasil ekstraksi untuk log/dasbor. */
     public static final class Result {
         public int files;
+        public long bytes;
         public boolean extracted;
         public String note = "";
     }
 
     /**
-     * Pastikan www/ berisi payload terbaru. Dipanggil Starter SEBELUM server hidup.
+     * Pastikan www/ berisi mirror terbaru. Dipanggil Starter SEBELUM server hidup.
      * Tidak pernah melempar exception — kegagalan dilaporkan lewat note.
      */
     public static Result extract(Context ctx, File wwwRoot) {
@@ -60,16 +71,16 @@ public final class Payload {
             collect(am, ASSET_DIR, rel);
             r.files = rel.size();
             if (rel.isEmpty()) {
-                r.note = "payload kosong di APK (assets/" + ASSET_DIR + " tidak berisi file)";
+                r.note = "mirror kosong di APK (assets/" + ASSET_DIR + " tidak berisi file)";
                 return r;
             }
             if (!needsExtract(wwwRoot) && allPresent(wwwRoot, rel)) {
                 r.extracted = false;
-                r.note = "penanda " + MARKER_FILE + " cocok (versi " + VERSION + ", "
-                        + rel.size() + " file utuh)";
+                r.note = "penanda cocok (versi " + VERSION + ", " + rel.size() + " file utuh)";
                 return r;
             }
             int ok = 0;
+            long bytes = 0;
             StringBuilder gagal = new StringBuilder();
             for (int i = 0; i < rel.size(); i++) {
                 String relPath = rel.get(i);
@@ -81,6 +92,7 @@ public final class Payload {
                     }
                     copyStream(am.open(ASSET_DIR + "/" + relPath), out);
                     ok++;
+                    bytes += out.length();
                 } catch (Throwable t) {
                     if (gagal.length() > 0) {
                         gagal.append(", ");
@@ -89,9 +101,10 @@ public final class Payload {
                 }
             }
             r.files = ok;
-            writeMarker(wwwRoot, ok);
+            r.bytes = bytes;
+            writeMarker(wwwRoot, ok, bytes);
             r.extracted = true;
-            r.note = "sumber: assets/" + ASSET_DIR + " · versi payload " + VERSION
+            r.note = "sumber: assets/" + ASSET_DIR + " · versi mirror " + VERSION
                     + (gagal.length() > 0 ? " · gagal: " + gagal : "");
             return r;
         } catch (Throwable t) {
@@ -102,21 +115,27 @@ public final class Payload {
 
     // ---------- internal ----------
 
-    /** Ekstraksi diperlukan bila penanda tidak ada / versi atau jumlah file tidak cocok. */
+    private static File markerFile(File wwwRoot) {
+        File parent = wwwRoot.getParentFile();
+        File conf = (parent != null) ? new File(parent, "config") : new File("config");
+        return new File(conf, MARKER_NAME);
+    }
+
+    /** Ekstraksi diperlukan bila penanda tidak ada / versi tidak cocok. */
     private static boolean needsExtract(File wwwRoot) {
         try {
-            File m = new File(wwwRoot, MARKER_FILE);
+            File m = markerFile(wwwRoot);
             if (!m.exists()) {
                 return true;
             }
             String txt = readText(m);
-            return !(txt.contains("payload-version=" + VERSION));
+            return !(txt.contains("mirror-version=" + VERSION));
         } catch (Throwable t) {
             return true;
         }
     }
 
-    /** true bila SEMUA file payload sudah ada di www/ (walau versi penanda cocok). */
+    /** true bila SEMUA file mirror sudah ada di www/ (walau versi penanda cocok). */
     private static boolean allPresent(File wwwRoot, List<String> rel) {
         for (int i = 0; i < rel.size(); i++) {
             File f = new File(wwwRoot, rel.get(i));
@@ -127,10 +146,16 @@ public final class Payload {
         return true;
     }
 
-    private static void writeMarker(File wwwRoot, int count) {
+    private static void writeMarker(File wwwRoot, int count, long bytes) {
         try {
-            OutputStream w = new FileOutputStream(new File(wwwRoot, MARKER_FILE), false);
-            w.write(("payload-version=" + VERSION + "\nfiles=" + count + "\n").getBytes("UTF-8"));
+            File m = markerFile(wwwRoot);
+            File parent = m.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            OutputStream w = new FileOutputStream(m, false);
+            w.write(("mirror-version=" + VERSION + "\nfiles=" + count + "\nbytes=" + bytes + "\n")
+                    .getBytes("UTF-8"));
             w.close();
         } catch (Throwable ignored) {
         }
@@ -161,7 +186,7 @@ public final class Payload {
 
     private static void copyStream(InputStream in, File out) throws Exception {
         OutputStream os = new FileOutputStream(out, false);
-        byte[] buf = new byte[8192];
+        byte[] buf = new byte[65536];
         int n;
         while ((n = in.read(buf)) > 0) {
             os.write(buf, 0, n);
