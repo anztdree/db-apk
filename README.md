@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (v2.3) — **L0 dieksekusi: build 0.1.0 selesai di level build**; fase lain masih rencana
+> **Status dokumen:** Fondasi & Implementasi (v2.4) — **build 0.1.0 DIBANGUN ULANG dengan fitur nyata: local server embedded (M1) + dashboard lengkap**; uji device menunggu owner
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-10-30
 > **Riwayat strategi:**
@@ -21,6 +21,12 @@
 > - **v2.3 — EKSEKUSI DIMULAI (Fase L0).** Build custom pertama **`APK-LSF-0.1.0.apk`**
 >   sukses dibuat & diverifikasi (round-trip murni, tanpa server). Keystore tetap dibuat
 >   & di-commit agar signature konsisten lintas sesi/build. Uji install di device menunggu owner.
+> - **v2.4 — Build 0.1.0 DIBANGUN ULANG dari LSF original, kini DENGAN FITUR NYATA.**
+>   Round-trip kosong dinilai tidak bermanfaat (keputusan owner). Hasil baru = **L0+L2+L3
+>   digabung di level build**: local server (NanoHTTPD, port 4000) **embedded & auto-start**
+>   via `BootProvider` (jalan sebelum `Application.onCreate`), dashboard web lengkap
+>   (log bahasa manusia, monitoring dua sisi, APK Reader, analisis config, copy-first),
+>   **kode game & traffic TIDAK disentuh** (dex original byte-identical; mode M1).
 
 ---
 
@@ -390,15 +396,30 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
-| **0.1.0** | Round-trip custom dasar — game tidak disentuh; hanya identitas versi | L0 ✓ (build) |
-| 0.2.0 | + local server embedded (M1 pajangan) | L2 |
-| 0.3.0 | + Web Dashboard (logging, monitoring, debugging, APK reader, copy-first) | L3 |
-| 1.0.0 | Fondasi lulus penuh — game & server lokal hidup bersebelahan terbukti | L4 |
-| 1.1.0 | Mode monitor/passthrough (M2) — game tetap data asli | L5a |
-| 1.2.0 | Ambil alih bertahap per-endpoint (M3) | L5b |
+| **0.1.0** | **+ local server embedded (NanoHTTPD, port 4000, auto-start via BootProvider) + dashboard web (log bahasa manusia, monitoring dua sisi, APK Reader, analisis config, copy-first) — game & traffic tetap TIDAK disentuh (M1)** | **L0+L2+L3 ✓ (build — v2.4)** |
+| 0.2.0 | Validasi device (L4): install + boot + dasbor terbukti bersebelahan dengan server asli; perbaikan lapangan | L4 |
+| 0.3.0 | Mode monitor/passthrough (M2) — repoint + teruskan ke server asli, jawaban ASLI dicatat dua arah | L5a |
+| 0.4.0 | Ambil alih bertahap per-endpoint (M3) | L5b |
+| 1.0.0 | Fondasi lulus penuh — paritas endpoint terbukti | L5b ✓ |
+| 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.1.0 — 2026-10-30:**
+**Build 0.1.0 (REBUILT, v2.4) — 2026-10-30 — SUPERSEDE build round-trip di bawah:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.1.0.apk` (pointer Git LFS — 105.026.632 byte) + **asset Release GitHub `v0.1.0`** |
+| SHA-256 | `c5d6a5d4284aab0ad7995be6b45d8312a50d1280b634c5467e68adb83720fc12` |
+| versionCode / versionName | **2** / **0.1.0** (bump code agar bisa install-over build round-trip lama, signature sama) |
+| Toolchain | apktool 3.0.3 · ECJ 3.33.0 (javac tidak tersedia di workspace) · r8 8.5.35 (D8, `classes2.dex`) · uber-apk-signer 1.3.0 · JDK 21 |
+| **Fitur baru** | **Local server embedded (M1):** NanoHTTPD 2.3.1 bind `127.0.0.1:4000` · **auto-start via `BootProvider`** (provider di-init Android SEBELUM `Application.onCreate` → pasti jalan duluan) · dasbor `http://127.0.0.1:4000` · log bahasa manusia (▶ ◀ ⚠ ✔ ℹ, satu event satu kalimat) · **monitoring dua sisi** (server lokal + server asli: dragon/configus/qsdk, TCP-connect tiap 60 dtk) · **APK Reader** (list/pratinjau/unduh isi APK) · **analisis config** (config.properties, config_BS.properties, QHinfo + dekode Base64 otomatis) · copy-first (tombol salin di semua nilai) · root folder `Android/data/com.db.local/server/{logs,config,data,responses}` + `status.json` |
+| Perubahan vs baseline | **PENAMBAHAN MURNI — kode game tidak disentuh:** (1) `classes2.dex` baru (8 kelas `com.db.local.server.*` + NanoHTTPD), dex original di-carry byte-identical; (2) manifest: +1 baris `<provider com.db.local.server.boot>` (exported=false, authorities unik); (3) asset baru `assets/server/dashboard.html`; (4) versionName 0.1.0 / versionCode 2. Tidak ada resource game yang berubah |
+| Signature | ✅ v1 + v2 + v3 verified — cert `CN=DB Local LSF` (keystore tetap, SHA-256 `FD:4B:…:CF:D7`) |
+| Verifikasi isi | ✅ 3.667 entri = 3.665 baseline + 2 tambahan (`classes2.dex`, `assets/server/dashboard.html`); `BootProvider` & authority terbaca di manifest AXML; `classes2.dex` 70.660 byte |
+| Fail-safe | Semua kode server dibungkus try/catch — server gagal ⟹ game tetap normal; dasbor hanya melayani dirinya, bukan traffic game |
+| Status | ✅ build & verifikasi level build selesai · ✅ terbit di Release GitHub `v0.1.0` · ⏳ uji install/boot/dasbor di device owner |
+
+**Build 0.1.0 (round-trip L0, v2.3) — DICABUT sebagai deliverable, disimpan sebagai sejarah:**
 
 | Item | Nilai |
 |---|---|
@@ -422,7 +443,24 @@ tanpa izin storage tambahan (folder own-app).
 > Password didokumentasikan sengaja: repo = area kerja owner, reproducibility > kerahasiaan
 > (APK sideload, bukan Play Store). Jika keystore berubah/hilang → build baru wajib uninstall dulu.
 
-**Cara uji install (owner):**
+**Cara uji install + dasbor (owner):**
+1. Siapkan **device uji** (bukan device utama). Uninstall `DB-LOCAL` original & build round-trip lama dulu bila ada —
+   paket sama + signature beda → tanpa uninstall, install pasti gagal. Build baru (versionCode 2) bisa
+   install-over **build round-trip lama** karena signature sama.
+2. Unduh `APK-LSF-0.1.0.apk` dari **Release GitHub `v0.1.0`** (atau pointer LFS di `releases/`) →
+   transfer ke device → install (izinkan "install unknown apps"; Play Protect protes → install anyway).
+3. Buka game → harus boot **persis seperti original** (masih online; server asli tetap melayani).
+4. Saat game/splash tampil, buka **browser HP** → `http://127.0.0.1:4000` → dasbor harus tampil:
+   pill **HIDUP**, status server asli (dragon/configus/qsdk), log bahasa manusia.
+   Alternatif dari PC: `adb reverse tcp:4000 tcp:4000` lalu buka `http://127.0.0.1:4000` di browser PC.
+5. Cek folder `Android/data/com.db.local/server/` → `logs/human.log`, `status.json` terisi.
+6. Laporkan hasilnya di percakapan → v0.1.0 ditutup, lanjut L4 (validasi bersebelahan).
+
+**Reproducibility:** seluruh sumber server lokal ada di `local-server/` (Java + dashboard HTML + `build.sh`);
+vendor `NanoHTTPD.java` di-commit (lihat `local-server/NOTICE.md`); proyek apktool hidup di `.analysis/lsf-src/`
+(gitignored — dibangkitkan dari `DB-LOCAL.apk` via `apktool d -s` bila workspace reset).
+
+**Cara uji install (build lama — sejarah):**
 1. Siapkan **device uji** (bukan device utama). Uninstall `DB-LOCAL` original dulu —
    paket sama + signature beda → tanpa uninstall, install pasti gagal.
 2. Unduh `releases/APK-LSF-0.1.0.apk` dari repo ini → transfer ke device → install

@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DB LOCAL · Dasbor Server Lokal</title>
+<style>
+  :root{
+    --bg:#f5f5f4; --card:#ffffff; --line:#e7e5e4; --tx:#1c1917; --mut:#78716c;
+    --ok:#059669; --okbg:#ecfdf5; --warn:#d97706; --warnbg:#fffbeb; --err:#dc2626; --errbg:#fef2f2;
+    --acc:#059669; --acctx:#ffffff; --code:#f5f5f4; --shadow:0 1px 2px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0c0a09; --card:#1c1917; --line:#292524; --tx:#fafaf9; --mut:#a8a29e;
+      --ok:#34d399; --okbg:#064e3b33; --warn:#fbbf24; --warnbg:#78350f33; --err:#f87171; --errbg:#7f1d1d33;
+      --acc:#10b981; --acctx:#052e1a; --code:#111111; --shadow:0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--tx);
+    font:15px/1.55 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh; display:flex; flex-direction:column;
+  }
+  header{
+    padding:16px 16px 12px; border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+    position:sticky; top:0; background:var(--bg); z-index:20;
+  }
+  header h1{font-size:17px; margin:0; font-weight:700; letter-spacing:.2px}
+  .badge{
+    font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px;
+    border:1px solid var(--line); background:var(--card); color:var(--mut); letter-spacing:.4px;
+  }
+  .pill{
+    margin-left:auto; font-size:12px; font-weight:800; padding:5px 12px; border-radius:999px;
+    background:var(--errbg); color:var(--err); border:1px solid var(--line);
+  }
+  .pill.up{background:var(--okbg); color:var(--ok)}
+  main{flex:1; padding:14px 16px 24px; max-width:980px; width:100%; margin:0 auto}
+  .summary{
+    font-size:13.5px; color:var(--mut); background:var(--card); border:1px solid var(--line);
+    border-radius:10px; padding:10px 14px; margin-bottom:14px; box-shadow:var(--shadow);
+  }
+  .tabs{display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap}
+  .tab{
+    min-height:44px; padding:8px 16px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:var(--tx); font-weight:600; font-size:14px; cursor:pointer;
+  }
+  .tab.active{background:var(--acc); color:var(--acctx); border-color:var(--acc)}
+  .pane{display:none}
+  .pane.active{display:block}
+  .cards{display:grid; grid-template-columns:1fr; gap:12px}
+  @media(min-width:720px){ .cards{grid-template-columns:1fr 1fr} }
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; box-shadow:var(--shadow);
+  }
+  .card h2{margin:0 0 10px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
+  .kv{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:14px}
+  .kv b{color:var(--mut); font-weight:600; white-space:nowrap}
+  .dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:var(--mut)}
+  .dot.up{background:var(--ok)} .dot.down{background:var(--err)}
+  table{width:100%; border-collapse:collapse; font-size:13.5px}
+  th{ text-align:left; color:var(--mut); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--line)}
+  td{padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px}
+  button.act{
+    min-height:40px; padding:8px 14px; border-radius:9px; border:1px solid var(--line);
+    background:var(--card); color:var(--tx); font-weight:600; font-size:13px; cursor:pointer;
+  }
+  button.act.primary{background:var(--acc); color:var(--acctx); border-color:var(--acc)}
+  button.act:active{transform:translateY(1px)}
+  input[type=text]{
+    flex:1; min-width:180px; min-height:40px; padding:8px 12px; border-radius:9px;
+    border:1px solid var(--line); background:var(--card); color:var(--tx); font-size:14px;
+  }
+  label.chk{display:flex; gap:6px; align-items:center; font-size:13px; color:var(--mut); font-weight:600}
+  #logs{
+    background:var(--card); border:1px solid var(--line); border-radius:12px; padding:6px;
+    max-height:62vh; overflow-y:auto; font-size:13.5px;
+  }
+  #logs::-webkit-scrollbar{width:8px}
+  #logs::-webkit-scrollbar-thumb{background:var(--line); border-radius:8px}
+  .logrow{padding:8px 10px; border-bottom:1px solid var(--line); cursor:pointer}
+  .logrow:last-child{border-bottom:none}
+  .logrow .t{color:var(--mut); font-variant-numeric:tabular-nums; margin-right:8px; font-size:12px}
+  .logrow .ic{display:inline-block; width:18px; font-weight:700}
+  .ic.warn{color:var(--warn)} .ic.ok{color:var(--ok)} .ic.info{color:var(--mut)}
+  .logrow .tx{word-break:break-word}
+  .logrow .detail{
+    display:none; margin-top:8px; background:var(--code); border:1px solid var(--line);
+    border-radius:8px; padding:8px 10px; font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;
+    white-space:pre-wrap; word-break:break-all; color:var(--mut);
+  }
+  .logrow.open .detail{display:block}
+  .copybtn{
+    margin-top:6px; min-height:32px; padding:4px 10px; font-size:12px; font-weight:700;
+    border-radius:7px; border:1px solid var(--line); background:var(--card); color:var(--tx); cursor:pointer;
+  }
+  .apk-list{background:var(--card); border:1px solid var(--line); border-radius:12px; max-height:38vh; overflow-y:auto}
+  .apk-row{display:flex; gap:10px; align-items:baseline; padding:9px 12px; border-bottom:1px solid var(--line); cursor:pointer; font-size:13.5px}
+  .apk-row:last-child{border-bottom:none}
+  .apk-row:hover{background:var(--code)}
+  .apk-row .p{flex:1; word-break:break-all; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px}
+  .apk-row .s{color:var(--mut); white-space:nowrap; font-size:12px}
+  pre.view{
+    background:var(--code); border:1px solid var(--line); border-radius:12px; padding:12px;
+    font:12px/1.55 ui-monospace,Menlo,Consolas,monospace; white-space:pre-wrap; word-break:break-all;
+    max-height:44vh; overflow:auto; margin:0 0 10px;
+  }
+  .hint{font-size:12.5px; color:var(--mut); margin:8px 0}
+  footer{
+    border-top:1px solid var(--line); padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    font-size:12.5px; color:var(--mut); text-align:center;
+  }
+  .toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+    background:var(--tx); color:var(--bg); font-weight:700; font-size:13px;
+    padding:10px 18px; border-radius:999px; opacity:0; pointer-events:none; transition:opacity .2s;
+    z-index:99;
+  }
+  .toast.show{opacity:.96}
+  .empty{padding:24px; text-align:center; color:var(--mut); font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>DB LOCAL · Dasbor Server Lokal</h1>
+  <span class="badge" id="bVer">v0.1.0</span>
+  <span class="badge" id="bMode">MODE M1</span>
+  <span class="badge" id="bPkg">com.db.local</span>
+  <span class="pill" id="pill">MENGHUBUNGI…</span>
+</header>
+<main>
+  <div class="summary" id="summary">Menyambung ke server lokal…</div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-pane="status" role="tab">Status</button>
+    <button class="tab" data-pane="log" role="tab">Log</button>
+    <button class="tab" data-pane="apk" role="tab">APK Reader</button>
+    <button class="tab" data-pane="cfg" role="tab">Config</button>
+  </div>
+
+  <!-- STATUS -->
+  <section class="pane active" id="pane-status">
+    <div class="cards">
+      <div class="card">
+        <h2>Server Lokal (di HP ini)</h2>
+        <div class="kv" id="localKv">
+          <b>Status</b><span>—</span>
+        </div>
+        <p class="hint">Server lokal hidup selama aplikasi DB dibuka. Tidak perlu internet untuk dasbor ini.</p>
+      </div>
+      <div class="card">
+        <h2>Server Asli (remote) — pantauan</h2>
+        <table id="origTbl">
+          <thead><tr><th>Target</th><th>Kondisi</th><th>Cek terakhir</th></tr></thead>
+          <tbody><tr><td colspan="3" class="empty">Belum ada data — tunggu siklus pantauan.</td></tr></tbody>
+        </table>
+        <div class="toolbar" style="margin-top:10px">
+          <button class="act primary" id="btnRun">Cek server asli sekarang</button>
+        </div>
+        <p class="hint">Pantauan hanya <i>melihat</i> (uji sambungan). Traffic game tidak pernah disentuh — server asli tetap melayani seperti biasa (Mode M1).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOG -->
+  <section class="pane" id="pane-log">
+    <div class="toolbar">
+      <label class="chk"><input type="checkbox" id="autoChk" checked> segarkan otomatis</label>
+      <button class="act" id="btnCopyAll">Salin semua log</button>
+      <button class="act" id="btnClear">Bersihkan</button>
+    </div>
+    <div id="logs"><div class="empty">Belum ada log.</div></div>
+    <p class="hint">Ketuk satu baris untuk melihat detail teknis + tombol salin. ▶ permintaan · ✔ sehat · ⚠ perlu perhatian · ℹ info.</p>
+  </section>
+
+  <!-- APK READER -->
+  <section class="pane" id="pane-apk">
+    <div class="toolbar">
+      <input type="text" id="apkQ" placeholder="cari nama file… contoh: config atau .so">
+      <button class="act primary" id="btnApk">Muat daftar</button>
+    </div>
+    <div class="apk-list" id="apkList"><div class="empty">Ketik kata kunci lalu tekan “Muat daftar”.</div></div>
+    <div id="apkWrap" style="margin-top:12px; display:none">
+      <div class="toolbar">
+        <b id="apkName" style="font-size:13px; word-break:break-all"></b>
+        <button class="act" id="btnApkCopy">Salin isi</button>
+        <a class="act" id="apkDl" download style="text-decoration:none; display:inline-flex; align-items:center">Unduh</a>
+      </div>
+      <pre class="view" id="apkView">(pratinjau)</pre>
+    </div>
+  </section>
+
+  <!-- CONFIG -->
+  <section class="pane" id="pane-cfg">
+    <div class="toolbar">
+      <button class="act primary" id="btnCfg">Analisis config sekarang</button>
+    </div>
+    <p class="hint">Membaca <code>assets/config.properties</code>, <code>assets/config_BS.properties</code>, <code>assets/QHinfo</code> dari APK, lalu mendekode nilai yang terlihat seperti Base64. Ini bahan utama menyusun endpoint lokal di fase berikutnya.</p>
+    <div id="cfgView"><div class="empty">Belum dianalisis.</div></div>
+  </section>
+</main>
+
+<footer>
+  Mode M1 — traffic game <b>tidak diubah</b> · server asli tetap melayani ·
+  root folder: <span id="rootTxt">Android/data/com.db.local/server</span>
+</footer>
+
+<div class="toast" id="toast">Tersalin</div>
+
+<script>
+"use strict";
+function $(id){ return document.getElementById(id); }
+var state = { lastId: 0, auto: true, logs: [], apkText: "", apkPath: "" };
+
+/* ---------- util ---------- */
+function fmtBytes(n){
+  if (n < 0) return "?";
+  if (n < 1024) return n + " B";
+  var kb = n / 1024;
+  if (kb < 1024) return kb.toFixed(1).replace(".", ",") + " KB";
+  return (kb / 1024).toFixed(1).replace(".", ",") + " MB";
+}
+function fmtUptime(ms){
+  if (!ms || ms < 1000) return "baru saja";
+  var s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), d = s % 60;
+  var out = [];
+  if (h) out.push(h + " j");
+  if (m) out.push(m + " mnt");
+  if (!h && d) out.push(d + " dtk");
+  return out.join(" ") || "baru saja";
+}
+function toast(msg){
+  var t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._h);
+  t._h = setTimeout(function(){ t.classList.remove("show"); }, 1600);
+}
+function copyText(txt, okMsg){
+  function done(){ toast(okMsg || "Tersalin"); }
+  function fallback(){
+    var ta = document.createElement("textarea");
+    ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { toast("Gagal menyalin"); }
+    document.body.removeChild(ta);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(done, fallback);
+  } else fallback();
+}
+function esc(s){
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function api(path){
+  return fetch(path, { cache: "no-store" }).then(function(r){
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  });
+}
+
+/* ---------- status ---------- */
+function renderStatus(st){
+  var s = st.server || {};
+  var pill = $("pill");
+  pill.textContent = s.alive ? "HIDUP" : "MATI";
+  pill.className = "pill" + (s.alive ? " up" : "");
+  $("summary").textContent = "Server lokal " + (s.alive ? "HIDUP" : "MATI")
+    + " · port " + s.port + " · " + (s.requests || 0) + " permintaan · " + (s.errors || 0) + " gagal"
+    + " · mode " + s.mode;
+  if (s.root) $("rootTxt").textContent = s.root;
+
+  var lastReq = s.lastReqAt ? new Date(s.lastReqAt).toLocaleTimeString("id-ID") : "—";
+  $("localKv").innerHTML =
+    "<b>Status</b><span><span class='dot " + (s.alive ? "up" : "down") + "'></span>" + (s.alive ? "Hidup" : "Mati") + "</span>" +
+    "<b>Uptime</b><span>" + fmtUptime(s.uptimeMs) + "</span>" +
+    "<b>Alamat</b><span>http://127.0.0.1:" + s.port + " (bind " + esc(s.bind || "127.0.0.1") + ")</span>" +
+    "<b>Permintaan</b><span>" + (s.requests || 0) + "</span>" +
+    "<b>Gagal</b><span>" + (s.errors || 0) + "</span>" +
+    "<b>Terakhir</b><span>" + lastReq + "</span>" +
+    "<b>Folder</b><span style='word-break:break-all'>" + esc(s.root || "—") + "</span>";
+
+  var rows = st.original || [];
+  var tb = $("origTbl").getElementsByTagName("tbody")[0];
+  if (!rows.length) {
+    tb.innerHTML = "<tr><td colspan='3' class='empty'>Belum ada data — tunggu siklus pantauan.</td></tr>";
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < rows.length; i++){
+    var o = rows[i];
+    var lat = o.ok ? (" · " + o.latencyMs + " ms") : "";
+    html += "<tr><td style='font-family:ui-monospace,Menlo,monospace;font-size:12px'>" + esc(o.target) + "</td>" +
+      "<td><span class='dot " + (o.ok ? "up" : "down") + "'></span>" + esc(o.note) + lat + "</td>" +
+      "<td>" + esc(o.last) + "</td></tr>";
+  }
+  tb.innerHTML = html;
+}
+
+/* ---------- log ---------- */
+function iconClass(ic){
+  if (ic === "⚠") return "warn";
+  if (ic === "✔") return "ok";
+  if (ic === "ℹ") return "info";
+  return "";
+}
+function logRowHtml(ev){
+  return "<div class='logrow' data-id='" + ev.id + "'>" +
+    "<span class='t'>" + esc(ev.t) + "</span>" +
+    "<span class='ic " + iconClass(ev.icon) + "'>" + esc(ev.icon) + "</span>" +
+    "<span class='tx'>" + esc(ev.text) + "</span>" +
+    "<div class='detail'>" + esc(ev.detail || "-") +
+    "<br><button class='copybtn' data-copy='1'>Salin baris ini</button></div>" +
+    "</div>";
+}
+function renderLogsAppend(list){
+  if (!list.length) return;
+  var box = $("logs");
+  var emptyEl = box.querySelector(".empty");
+  if (emptyEl) emptyEl.remove();
+  var nearBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 60;
+  var html = "";
+  for (var i = 0; i < list.length; i++) html += logRowHtml(list[i]);
+  box.insertAdjacentHTML("beforeend", html);
+  for (var j = 0; j < list.length; j++) state.logs.push(list[j]);
+  if (state.logs.length > 800) state.logs.splice(0, state.logs.length - 800);
+  if (nearBottom) box.scrollTop = box.scrollHeight;
+}
+function fetchLogs(){
+  api("/api/logs?since=" + state.lastId).then(function(list){
+    if (list && list.length){
+      state.lastId = list[list.length - 1].id;
+      renderLogsAppend(list);
+    }
+  }).catch(function(){});
+}
+function fetchAllLogs(){
+  api("/api/logs?since=0").then(function(list){
+    var box = $("logs");
+    box.innerHTML = "";
+    state.logs = [];
+    state.lastId = 0;
+    if (list && list.length){
+      state.lastId = list[list.length - 1].id;
+      renderLogsAppend(list);
+    } else {
+      box.innerHTML = "<div class='empty'>Belum ada log.</div>";
+    }
+  }).catch(function(){});
+}
+
+/* ---------- apk reader ---------- */
+function renderApkList(data){
+  var box = $("apkList");
+  if (data.error){ box.innerHTML = "<div class='empty'>" + esc(data.error) + "</div>"; return; }
+  if (!data.shown || !data.shown.length){ box.innerHTML = "<div class='empty'>Tidak ada yang cocok.</div>"; return; }
+  var html = "<div class='apk-row' style='cursor:default;color:var(--mut)'><span class='p'>" +
+    data.total + " file cocok · menampilkan " + data.shown.length + "</span><span class='s'>ukuran</span></div>";
+  for (var i = 0; i < data.shown.length; i++){
+    var f = data.shown[i];
+    html += "<div class='apk-row' data-path='" + esc(f.path) + "'>" +
+      "<span class='p'>" + esc(f.path) + "</span><span class='s'>" + fmtBytes(f.size) + "</span></div>";
+  }
+  box.innerHTML = html;
+}
+function openApkFile(path){
+  $("apkWrap").style.display = "block";
+  $("apkName").textContent = path;
+  $("apkView").textContent = "memuat…";
+  state.apkPath = path;
+  $("apkDl").href = "/api/apk/get?path=" + encodeURIComponent(path);
+  fetch("/api/apk/get?path=" + encodeURIComponent(path), { cache: "no-store" })
+    .then(function(r){ return r.text(); })
+    .then(function(txt){
+      state.apkText = txt;
+      if (txt.length > 200000) txt = txt.slice(0, 200000) + "\n…(pratinjau dipotong, gunakan Unduh untuk isi penuh)";
+      $("apkView").textContent = txt || "(kosong / file biner)";
+    })
+    .catch(function(e){ $("apkView").textContent = "gagal memuat: " + e; });
+}
+
+/* ---------- config ---------- */
+function renderCfg(data){
+  var box = $("cfgView");
+  if (data.error){ box.innerHTML = "<div class='empty'>" + esc(data.error) + "</div>"; return; }
+  var html = "";
+  var files = data.files || [];
+  for (var i = 0; i < files.length; i++){
+    var f = files[i];
+    html += "<div class='card' style='margin-bottom:12px'><h2>" + esc(f.path) + "</h2>";
+    if (f.error){ html += "<div class='empty'>" + esc(f.error) + "</div></div>"; continue; }
+    html += "<div class='toolbar'><button class='act' data-rawcopy='" + esc(f.path) + "'>Salin isi mentah</button>" +
+      "<span class='hint' style='margin:0'>" + fmtBytes(f.size) + "</span></div>";
+    html += "<table><thead><tr><th style='width:30%'>kunci</th><th>nilai</th><th style='width:30%'>dekode Base64</th></tr></thead><tbody>";
+    var lines = f.lines || [];
+    for (var j = 0; j < lines.length; j++){
+      var L = lines[j];
+      html += "<tr><td style='font-family:ui-monospace,monospace;font-size:12px;word-break:break-all'>" + esc(L.k) + "</td>" +
+        "<td style='word-break:break-all'>" + esc(L.v) + "</td>";
+      if (L.dec){
+        html += "<td style='word-break:break-all'><code>" + esc(L.dec) + "</code> " +
+          "<button class='copybtn' data-dec='1' data-v='" + esc(L.dec) + "'>Salin</button></td>";
+      } else {
+        html += "<td style='color:var(--mut)'>—</td>";
+      }
+      html += "</tr>";
+    }
+    html += "</tbody></table></div>";
+  }
+  box.innerHTML = html || "<div class='empty'>Tidak ada data.</div>";
+}
+
+/* ---------- wiring ---------- */
+document.addEventListener("click", function(ev){
+  var t = ev.target;
+  var tab = t.closest ? t.closest(".tab") : null;
+  if (tab){
+    document.querySelectorAll(".tab").forEach(function(x){ x.classList.remove("active"); });
+    tab.classList.add("active");
+    document.querySelectorAll(".pane").forEach(function(x){ x.classList.remove("active"); });
+    $("pane-" + tab.dataset.pane).classList.add("active");
+    return;
+  }
+  var cp = t.getAttribute && t.getAttribute("data-copy");
+  if (cp){
+    var row = t.closest(".logrow");
+    var line = row.querySelector(".t").textContent + " " + row.querySelector(".ic").textContent + " " +
+               row.querySelector(".tx").textContent + "\n    detail: " + row.querySelector(".detail").childNodes[0].textContent;
+    copyText(line);
+    return;
+  }
+  var dec = t.getAttribute && t.getAttribute("data-dec");
+  if (dec){ copyText(t.getAttribute("data-v")); return; }
+  var rc = t.getAttribute && t.getAttribute("data-rawcopy");
+  if (rc){
+    var f = state.cfgData && (state.cfgData.files || []).filter(function(x){ return x.path === rc; })[0];
+    if (f) copyText(f.raw);
+    return;
+  }
+  var ap = t.closest ? t.closest(".apk-row") : null;
+  if (ap && ap.dataset.path){
+    openApkFile(ap.dataset.path);
+    return;
+  }
+  var lr = t.closest ? t.closest(".logrow") : null;
+  if (lr){ lr.classList.toggle("open"); }
+});
+$("autoChk").addEventListener("change", function(){ state.auto = this.checked; });
+$("btnRun").addEventListener("click", function(){
+  var b = this;
+  b.textContent = "Memeriksa…";
+  b.disabled = true;
+  api("/api/monitor/run").then(function(st){ renderStatus(st); fetchLogs(); })
+    .catch(function(e){ toast("Gagal: " + e); })
+    .then(function(){
+      b.textContent = "Cek server asli sekarang";
+      b.disabled = false;
+    });
+});
+$("btnClear").addEventListener("click", function(){
+  api("/api/logs/clear").then(function(){ $("logs").innerHTML = "<div class='empty'>Log dibersihkan.</div>"; state.lastId = 0; state.logs = []; });
+});
+$("btnCopyAll").addEventListener("click", function(){
+  var txt = state.logs.map(function(e){
+    return e.t + " [" + e.icon + "] " + e.text + (e.detail && e.detail !== "-" ? "  ||  " + e.detail : "");
+  }).join("\n");
+  copyText(txt || "(kosong)");
+});
+$("btnApk").addEventListener("click", function(){
+  var q = $("apkQ").value.trim();
+  $("apkList").innerHTML = "<div class='empty'>memuat…</div>";
+  api("/api/apk/list?limit=200&prefix=" + encodeURIComponent(q)).then(renderApkList)
+    .catch(function(e){ $("apkList").innerHTML = "<div class='empty'>gagal: " + esc(String(e)) + "</div>"; });
+});
+$("btnApkCopy").addEventListener("click", function(){ copyText(state.apkText || ""); });
+$("btnCfg").addEventListener("click", function(){
+  $("cfgView").innerHTML = "<div class='empty'>menganalisis…</div>";
+  api("/api/analyze").then(function(d){ state.cfgData = d; renderCfg(d); })
+    .catch(function(e){ $("cfgView").innerHTML = "<div class='empty'>gagal: " + esc(String(e)) + "</div>"; });
+});
+$("apkQ").addEventListener("keydown", function(e){ if (e.key === "Enter") $("btnApk").click(); });
+
+function tick(){
+  api("/api/status").then(renderStatus).catch(function(){
+    var pill = $("pill");
+    pill.textContent = "TAK TERJANGKAU";
+    pill.className = "pill";
+  });
+  if (state.auto) fetchLogs();
+}
+tick();
+setInterval(tick, 3000);
+</script>
+</body>
+</html>
