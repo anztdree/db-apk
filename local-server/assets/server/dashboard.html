@@ -34,6 +34,7 @@
     font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px;
     border:1px solid var(--line); background:var(--card); color:var(--mut); letter-spacing:.4px;
   }
+  .badge.local{background:var(--warnbg); color:var(--warn); border-color:var(--warn)}
   .pill{
     margin-left:auto; font-size:12px; font-weight:800; padding:5px 12px; border-radius:999px;
     background:var(--errbg); color:var(--err); border:1px solid var(--line);
@@ -59,6 +60,7 @@
     padding:14px 16px; box-shadow:var(--shadow);
   }
   .card h2{margin:0 0 10px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
+  .card h2 .sub{ text-transform:none; letter-spacing:0; font-weight:500; color:var(--mut); font-size:12px }
   .kv{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:14px}
   .kv b{color:var(--mut); font-weight:600; white-space:nowrap}
   .dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:var(--mut)}
@@ -69,19 +71,34 @@
   tr:last-child td{border-bottom:none}
   .toolbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px}
   button.act{
-    min-height:40px; padding:8px 14px; border-radius:9px; border:1px solid var(--line);
+    min-height:44px; padding:8px 14px; border-radius:9px; border:1px solid var(--line);
     background:var(--card); color:var(--tx); font-weight:600; font-size:13px; cursor:pointer;
   }
   button.act.primary{background:var(--acc); color:var(--acctx); border-color:var(--acc)}
   button.act:active{transform:translateY(1px)}
+  button.act:disabled{opacity:.55}
+  .modebtns{display:flex; gap:10px; margin:6px 0 4px}
+  button.modebtn{
+    flex:1; min-height:52px; border-radius:12px; border:2px solid var(--line); background:var(--card);
+    color:var(--tx); font-weight:700; font-size:14px; cursor:pointer; line-height:1.3;
+  }
+  button.modebtn small{display:block; font-weight:500; font-size:11px; color:var(--mut)}
+  button.modebtn.on{border-color:var(--acc); background:var(--okbg); color:var(--ok)}
   input[type=text]{
     flex:1; min-width:180px; min-height:40px; padding:8px 12px; border-radius:9px;
     border:1px solid var(--line); background:var(--card); color:var(--tx); font-size:14px;
   }
   label.chk{display:flex; gap:6px; align-items:center; font-size:13px; color:var(--mut); font-weight:600}
+  #hero{
+    display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:center;
+    font-weight:800; font-size:13.5px; padding:10px 12px; border-radius:10px 10px 0 0;
+    border:1px solid var(--ok); background:var(--okbg); color:var(--ok); cursor:pointer;
+  }
+  #hero.down{border-color:var(--err); background:var(--errbg); color:var(--err)}
+  #hero small{font-weight:600; color:var(--mut)}
   #logs{
-    background:var(--card); border:1px solid var(--line); border-radius:12px; padding:6px;
-    max-height:62vh; overflow-y:auto; font-size:13.5px;
+    background:var(--card); border:1px solid var(--line); border-top:none; border-radius:0 0 12px 12px; padding:6px;
+    max-height:55vh; overflow-y:auto; font-size:13.5px;
   }
   #logs::-webkit-scrollbar{width:8px}
   #logs::-webkit-scrollbar-thumb{background:var(--line); border-radius:8px}
@@ -101,7 +118,7 @@
     margin-top:6px; min-height:32px; padding:4px 10px; font-size:12px; font-weight:700;
     border-radius:7px; border:1px solid var(--line); background:var(--card); color:var(--tx); cursor:pointer;
   }
-  .apk-list{background:var(--card); border:1px solid var(--line); border-radius:12px; max-height:38vh; overflow-y:auto}
+  .apk-list, .mirror-list{background:var(--card); border:1px solid var(--line); border-radius:12px; max-height:38vh; overflow-y:auto}
   .apk-row{display:flex; gap:10px; align-items:baseline; padding:9px 12px; border-bottom:1px solid var(--line); cursor:pointer; font-size:13.5px}
   .apk-row:last-child{border-bottom:none}
   .apk-row:hover{background:var(--code)}
@@ -130,8 +147,8 @@
 <body>
 <header>
   <h1>DB LOCAL · Dasbor Server Lokal</h1>
-  <span class="badge" id="bVer">v0.1.0</span>
-  <span class="badge" id="bMode">MODE M1</span>
+  <span class="badge" id="bVer">v0.2.0</span>
+  <span class="badge" id="bMode">MODE …</span>
   <span class="badge" id="bPkg">com.db.local</span>
   <span class="pill" id="pill">MENGHUBUNGI…</span>
 </header>
@@ -141,6 +158,7 @@
   <div class="tabs" role="tablist">
     <button class="tab active" data-pane="status" role="tab">Status</button>
     <button class="tab" data-pane="log" role="tab">Log</button>
+    <button class="tab" data-pane="mirror" role="tab">Cermin Bootstrap</button>
     <button class="tab" data-pane="apk" role="tab">APK Reader</button>
     <button class="tab" data-pane="cfg" role="tab">Config</button>
   </div>
@@ -148,12 +166,20 @@
   <!-- STATUS -->
   <section class="pane active" id="pane-status">
     <div class="cards">
+      <div class="card" style="grid-column:1/-1">
+        <h2>Switch Mode <span class="sub">— pilihan owner; tersimpan di config/server.json</span></h2>
+        <div class="modebtns">
+          <button class="modebtn" id="btnOnline" type="button">ONLINE<small>game online ke server ASLI seperti biasa · lokal hanya memantau</small></button>
+          <button class="modebtn" id="btnLocal" type="button">LOCAL<small>bootstrap dilayani dari CERMIN LOKAL · game belum diarahkan (M3)</small></button>
+        </div>
+        <p class="hint" id="modeHint">Kedua mode tidak pernah mengubah file game — semuanya penambahan bersebelahan.</p>
+      </div>
       <div class="card">
         <h2>Server Lokal (di HP ini)</h2>
         <div class="kv" id="localKv">
           <b>Status</b><span>—</span>
         </div>
-        <p class="hint">Server lokal hidup selama aplikasi DB dibuka. Tidak perlu internet untuk dasbor ini.</p>
+        <p class="hint">Server lokal hidup selama aplikasi DB dibuka. Statusnya juga terpampang di notifikasi HP.</p>
       </div>
       <div class="card">
         <h2>Server Asli (remote) — pantauan</h2>
@@ -164,7 +190,7 @@
         <div class="toolbar" style="margin-top:10px">
           <button class="act primary" id="btnRun">Cek server asli sekarang</button>
         </div>
-        <p class="hint">Pantauan hanya <i>melihat</i> (uji sambungan). Traffic game tidak pernah disentuh — server asli tetap melayani seperti biasa (Mode M1).</p>
+        <p class="hint">Pantauan hanya <i>melihat</i> (uji sambungan). Traffic game tidak pernah disentuh — server asli tetap melayani seperti biasa.</p>
       </div>
     </div>
   </section>
@@ -176,8 +202,25 @@
       <button class="act" id="btnCopyAll">Salin semua log</button>
       <button class="act" id="btnClear">Bersihkan</button>
     </div>
+    <div id="hero" title="Ketuk untuk ke tab Status">MENYAMBUNG…</div>
     <div id="logs"><div class="empty">Belum ada log.</div></div>
-    <p class="hint">Ketuk satu baris untuk melihat detail teknis + tombol salin. ▶ permintaan · ✔ sehat · ⚠ perlu perhatian · ℹ info.</p>
+    <p class="hint">Ketuk satu baris untuk detail teknis + tombol salin. ▶ permintaan · ◀ jawaban cermin · ✔ sehat · ⚠ perlu perhatian · ℹ info. Polling dasbor tidak lagi dicatat di sini (hanya dihitung) — log kini berisi peristiwa sungguhan.</p>
+  </section>
+
+  <!-- CERMIN BOOTSTRAP -->
+  <section class="pane" id="pane-mirror">
+    <div class="toolbar">
+      <button class="act primary" id="btnMirSync">Sinkron dari server asli</button>
+      <button class="act" id="btnMir">Muat status cermin</button>
+      <button class="act" id="btnMirTest">Uji ambil config_BS</button>
+    </div>
+    <p class="hint">Cermin = salinan <b>bersebelahan</b> dari config yang dibaca game saat pertama terhubung
+      (<code>config_BS.properties</code> dibaca lebih dulu, lalu <code>config.properties</code>, <code>QHinfo</code>, <code>base.version</code>).
+      File asli di APK <b>tidak diganti</b>. Saat mode LOCAL, server lokal menjawab kontrak bootstrap
+      (<code>/bs/db/android/…</code>: setting_BS_Android.bin, base.version, resource.version, upgrade.json, size.json)
+      dari cermin ini — pola request persis seperti game. Sinkron menarik jawaban ASLI dari server bootstrap
+      ( EntryPoint1 → fallback COS ) supaya cermin berisi data nyata, bukan tebakan.</p>
+    <div id="mirrorView"><div class="empty">Ketuk “Muat status cermin”.</div></div>
   </section>
 
   <!-- APK READER -->
@@ -202,13 +245,14 @@
     <div class="toolbar">
       <button class="act primary" id="btnCfg">Analisis config sekarang</button>
     </div>
-    <p class="hint">Membaca <code>assets/config.properties</code>, <code>assets/config_BS.properties</code>, <code>assets/QHinfo</code> dari APK, lalu mendekode nilai yang terlihat seperti Base64. Ini bahan utama menyusun endpoint lokal di fase berikutnya.</p>
+    <p class="hint">Membaca <code>assets/config.properties</code>, <code>assets/config_BS.properties</code>, <code>assets/QHinfo</code> dari APK, lalu mendekode nilai yang terlihat seperti Base64. Ini sumber cermin bootstrap (tab Cermin).</p>
     <div id="cfgView"><div class="empty">Belum dianalisis.</div></div>
   </section>
 </main>
 
 <footer>
-  Mode M1 — traffic game <b>tidak diubah</b> · server asli tetap melayani ·
+  <span id="footMode">Mode ONLINE — traffic game tidak diubah</span> ·
+  server asli tetap melayani ·
   root folder: <span id="rootTxt">Android/data/com.db.local/server</span>
 </footer>
 
@@ -217,7 +261,7 @@
 <script>
 "use strict";
 function $(id){ return document.getElementById(id); }
-var state = { lastId: 0, auto: true, logs: [], apkText: "", apkPath: "" };
+var state = { lastId: 0, auto: true, logs: [], apkText: "", apkPath: "", mode: "", mirror: null };
 
 /* ---------- util ---------- */
 function fmtBytes(n){
@@ -265,6 +309,16 @@ function api(path){
     return r.json();
   });
 }
+function post(path){
+  return fetch(path, { method: "POST", cache: "no-store" }).then(function(r){
+    if (!r.ok) return r.json().then(function(j){ throw new Error(j.error || ("HTTP " + r.status)); });
+    return r.json();
+  });
+}
+function activePane(){
+  var t = document.querySelector(".tab.active");
+  return t ? t.dataset.pane : "status";
+}
 
 /* ---------- status ---------- */
 function renderStatus(st){
@@ -272,19 +326,32 @@ function renderStatus(st){
   var pill = $("pill");
   pill.textContent = s.alive ? "HIDUP" : "MATI";
   pill.className = "pill" + (s.alive ? " up" : "");
+  var mode = s.mode || state.mode || "ONLINE";
+  state.mode = mode;
+  var bm = $("bMode");
+  bm.textContent = "MODE " + mode;
+  bm.className = "badge" + (mode === "LOCAL" ? " local" : "");
   $("summary").textContent = "Server lokal " + (s.alive ? "HIDUP" : "MATI")
     + " · port " + s.port + " · " + (s.requests || 0) + " permintaan · " + (s.errors || 0) + " gagal"
-    + " · mode " + s.mode;
+    + " · mode " + mode;
   if (s.root) $("rootTxt").textContent = s.root;
 
+  renderHero(s, mode);
+  renderModeButtons(mode);
+  $("footMode").textContent = (mode === "LOCAL")
+    ? "Mode LOCAL — bootstrap dilayani dari cermin lokal (game belum diarahkan)"
+    : "Mode ONLINE — traffic game tidak diubah";
+
   var lastReq = s.lastReqAt ? new Date(s.lastReqAt).toLocaleTimeString("id-ID") : "—";
+  var lastPing = s.lastPingAt ? new Date(s.lastPingAt).toLocaleTimeString("id-ID") : "—";
   $("localKv").innerHTML =
     "<b>Status</b><span><span class='dot " + (s.alive ? "up" : "down") + "'></span>" + (s.alive ? "Hidup" : "Mati") + "</span>" +
     "<b>Uptime</b><span>" + fmtUptime(s.uptimeMs) + "</span>" +
     "<b>Alamat</b><span>http://127.0.0.1:" + s.port + " (bind " + esc(s.bind || "127.0.0.1") + ")</span>" +
+    "<b>Mode</b><span>" + esc(mode) + "</span>" +
+    "<b>Ping dasbor</b><span>" + (s.pings || 0) + " kali · terakhir " + lastPing + "</span>" +
     "<b>Permintaan</b><span>" + (s.requests || 0) + "</span>" +
     "<b>Gagal</b><span>" + (s.errors || 0) + "</span>" +
-    "<b>Terakhir</b><span>" + lastReq + "</span>" +
     "<b>Folder</b><span style='word-break:break-all'>" + esc(s.root || "—") + "</span>";
 
   var rows = st.original || [];
@@ -302,6 +369,24 @@ function renderStatus(st){
       "<td>" + esc(o.last) + "</td></tr>";
   }
   tb.innerHTML = html;
+}
+function renderHero(s, mode){
+  var h = $("hero");
+  if (s.alive){
+    h.className = "";
+    h.innerHTML = "&#10004; SERVER LOKAL HIDUP &nbsp;<small>port " + s.port + " · mode " + esc(mode) +
+      " · uptime " + fmtUptime(s.uptimeMs) + " · ping dasbor " + (s.pings || 0) + "×</small>";
+  } else {
+    h.className = "down";
+    h.innerHTML = "&#10008; SERVER LOKAL MATI <small>— traffic game tetap aman, server asli bekerja sendiri</small>";
+  }
+}
+function renderModeButtons(mode){
+  $("btnOnline").className = "modebtn" + (mode === "ONLINE" ? " on" : "");
+  $("btnLocal").className = "modebtn" + (mode === "LOCAL" ? " on" : "");
+  $("modeHint").innerHTML = (mode === "LOCAL")
+    ? "Mode <b>LOCAL</b>: server lokal menjawab bootstrap dari cermin (<code>/bs/db/android/…</code> uji sendiri di tab Cermin). File asli di APK tetap tidak diganti."
+    : "Mode <b>ONLINE</b>: game bermain ke server asli seperti biasa; server lokal hanya memantau. Pindah ke LOCAL untuk menguji cermin bootstrap.";
 }
 
 /* ---------- log ---------- */
@@ -354,6 +439,62 @@ function fetchAllLogs(){
       box.innerHTML = "<div class='empty'>Belum ada log.</div>";
     }
   }).catch(function(){});
+}
+
+/* ---------- cermin bootstrap ---------- */
+function renderMirror(d){
+  state.mirror = d;
+  var box = $("mirrorView");
+  if (d.error){ box.innerHTML = "<div class='empty'>" + esc(d.error) + "</div>"; return; }
+  var html = "";
+  html += "<div class='card' style='margin-bottom:12px'><h2>Alamat bootstrap (didekode dari config_BS.properties)</h2>" +
+    "<div class='kv'>" +
+    "<b>Channel</b><span>" + esc(d.channel || "-") + "</span>" +
+    "<b>EntryPoint1</b><span style='word-break:break-all'><code>" + esc(d.entry1 || "-") + "</code> " +
+      (d.entry1 ? "<button class='copybtn' data-mcopy='" + esc(d.entry1) + "'>Salin</button>" : "") + "</span>" +
+    "<b>EntryPoint2</b><span style='word-break:break-all'><code>" + esc(d.entry2 || "-") + "</code> " +
+      (d.entry2 ? "<button class='copybtn' data-mcopy='" + esc(d.entry2) + "'>Salin</button>" : "") + "</span>" +
+    "<b>Sinkron terakhir</b><span>" + (d.lastSync ? new Date(d.lastSync).toLocaleTimeString("id-ID") : "—") +
+      " · " + esc(d.lastSyncNote || "-") + "</span>" +
+    "</div></div>";
+
+  html += "<div class='card' style='margin-bottom:12px'><h2>Cermin hasil sinkron (jawaban ASLI dari server bootstrap)</h2>";
+  if (!d.synced || !d.synced.length){
+    html += "<div class='empty'>Kosong — ketuk “Sinkron dari server asli”. Kalau server asli 404, itu perilaku aslinya juga.</div>";
+  } else {
+    html += "<table><thead><tr><th>File</th><th>Ukuran</th><th>Waktu</th><th></th></tr></thead><tbody>";
+    for (var i = 0; i < d.synced.length; i++){
+      var f = d.synced[i];
+      html += "<tr><td style='font-family:ui-monospace,monospace;font-size:12px;word-break:break-all'>" + esc(f.name) + "</td>" +
+        "<td>" + fmtBytes(f.size) + "</td><td>" + esc(f.at) + "</td>" +
+        "<td><a class='act' style='text-decoration:none;display:inline-flex;align-items:center' href='/api/mirror/get?name=" +
+        encodeURIComponent(f.name) + "' download>Unduh</a></td></tr>";
+    }
+    html += "</tbody></table>";
+  }
+  html += "</div>";
+
+  html += "<div class='card'><h2>Salinan lokal APK (bersebelahan — dibaca juga oleh server lokal)</h2>";
+  if (!d.local || !d.local.length){
+    html += "<div class='empty'>Kosong — config game tidak bisa dibaca dari APK.</div>";
+  } else {
+    html += "<table><thead><tr><th>File</th><th>Ukuran</th><th>Dibaca</th><th></th></tr></thead><tbody>";
+    for (var j = 0; j < d.local.length; j++){
+      var g = d.local[j];
+      html += "<tr><td style='font-family:ui-monospace,monospace;font-size:12px;word-break:break-all'>" + esc(g.name) + "</td>" +
+        "<td>" + fmtBytes(g.size) + "</td><td>" + esc(g.at) + "</td>" +
+        "<td><a class='act' style='text-decoration:none;display:inline-flex;align-items:center' href='/api/mirror/get?name=" +
+        encodeURIComponent(g.name) + "' download>Unduh</a></td></tr>";
+    }
+    html += "</tbody></table>";
+  }
+  html += "<p class='hint'>Layanan uji (mode LOCAL): <code>GET /config_BS.properties</code> · <code>GET /bs/db/android/setting_BS_Android.bin?rnd=1</code> — query anti-cache diabaikan.</p></div>";
+  box.innerHTML = html;
+}
+function fetchMirror(){
+  api("/api/mirror").then(renderMirror).catch(function(e){
+    $("mirrorView").innerHTML = "<div class='empty'>gagal: " + esc(String(e)) + "</div>";
+  });
 }
 
 /* ---------- apk reader ---------- */
@@ -426,8 +567,12 @@ document.addEventListener("click", function(ev){
     tab.classList.add("active");
     document.querySelectorAll(".pane").forEach(function(x){ x.classList.remove("active"); });
     $("pane-" + tab.dataset.pane).classList.add("active");
+    if (tab.dataset.pane === "mirror" && !state.mirror) fetchMirror();
     return;
   }
+  if (t.id === "hero"){ document.querySelector(".tab[data-pane='status']").click(); return; }
+  var mc = t.getAttribute && t.getAttribute("data-mcopy");
+  if (mc){ copyText(mc); return; }
   var cp = t.getAttribute && t.getAttribute("data-copy");
   if (cp){
     var row = t.closest(".logrow");
@@ -452,6 +597,17 @@ document.addEventListener("click", function(ev){
   var lr = t.closest ? t.closest(".logrow") : null;
   if (lr){ lr.classList.toggle("open"); }
 });
+function setMode(want){
+  var btns = [$("btnOnline"), $("btnLocal")];
+  btns.forEach(function(b){ b.disabled = true; });
+  post("/api/mode?set=" + want).then(function(){
+    toast("Mode diubah ke " + want);
+    fetchLogs();
+  }).catch(function(e){ toast("Gagal: " + e); })
+    .then(function(){ btns.forEach(function(b){ b.disabled = false; }); });
+}
+$("btnOnline").addEventListener("click", function(){ setMode("ONLINE"); });
+$("btnLocal").addEventListener("click", function(){ setMode("LOCAL"); });
 $("autoChk").addEventListener("change", function(){ state.auto = this.checked; });
 $("btnRun").addEventListener("click", function(){
   var b = this;
@@ -485,6 +641,24 @@ $("btnCfg").addEventListener("click", function(){
   api("/api/analyze").then(function(d){ state.cfgData = d; renderCfg(d); })
     .catch(function(e){ $("cfgView").innerHTML = "<div class='empty'>gagal: " + esc(String(e)) + "</div>"; });
 });
+$("btnMir").addEventListener("click", fetchMirror);
+$("btnMirSync").addEventListener("click", function(){
+  var b = this;
+  b.textContent = "Menarik dari server asli…";
+  b.disabled = true;
+  post("/api/mirror/sync").then(function(d){ renderMirror(d); fetchLogs(); })
+    .catch(function(e){ toast("Gagal: " + e); })
+    .then(function(){ b.textContent = "Sinkron dari server asli"; b.disabled = false; });
+});
+$("btnMirTest").addEventListener("click", function(){
+  fetch("/bs/db/android/setting_BS_Android.bin?rnd=" + Math.random(), { cache: "no-store" })
+    .then(function(r){ return r.text().then(function(txt){ return { ok: r.ok, txt: txt }; }); })
+    .then(function(res){
+      toast(res.ok ? ("Uji: bootstrap dijawab " + res.txt.length + " byte") : ("Uji: " + (res.txt || "404").slice(0, 120)));
+      if (activePane() === "mirror") fetchLogs();
+    })
+    .catch(function(e){ toast("Uji gagal: " + e); });
+});
 $("apkQ").addEventListener("keydown", function(e){ if (e.key === "Enter") $("btnApk").click(); });
 
 function tick(){
@@ -492,8 +666,12 @@ function tick(){
     var pill = $("pill");
     pill.textContent = "TAK TERJANGKAU";
     pill.className = "pill";
+    var h = $("hero");
+    h.className = "down";
+    h.innerHTML = "&#10008; TAK TERJANGKAU <small>— dasbor kehilangan sambungan ke server lokal</small>";
   });
   if (state.auto) fetchLogs();
+  if (activePane() === "mirror" && state.mirror) api("/api/mirror").then(renderMirror).catch(function(){});
 }
 tick();
 setInterval(tick, 3000);

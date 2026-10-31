@@ -58,7 +58,15 @@ public final class HumanLog {
 
     /** Catat event dengan simbol + kalimat manusia + detail teknis (opsional). */
     public static void ev(char icon, String sentence, String detail) {
-        evInternal(icon, sentence, detail);
+        evInternal(icon, sentence, detail, false);
+    }
+
+    /**
+     * Event PEMANTAUAN (polling dasbor) — README §3.4: tampilan dasbor dibersihkan,
+     * file teknis tetap merekam penuh. Tidak masuk ring memori → tak dikirim ke dasbor.
+     */
+    public static void evDiskOnly(char icon, String sentence, String detail) {
+        evInternal(icon, sentence, detail, true);
     }
 
     public static void ok(String sentence) {
@@ -78,10 +86,10 @@ public final class HumanLog {
         String sentence = "Dasbor " + method + " " + uri + " — dijawab " + status
                 + " · " + fmtMs(ms) + " · " + fmtBytes(bytes);
         char icon = (status >= 500) ? '⚠' : '▶';
-        evInternal(icon, sentence, query == null || query.length() == 0 ? "-" : query);
+        evInternal(icon, sentence, query == null || query.length() == 0 ? "-" : query, false);
     }
 
-    private static void evInternal(char icon, String sentence, String detail) {
+    private static void evInternal(char icon, String sentence, String detail, boolean diskOnly) {
         long id;
         String t;
         String jo;
@@ -95,9 +103,11 @@ public final class HumanLog {
                     .append(",\"text\":\"").append(Json.esc(sentence)).append('"')
                     .append(",\"detail\":\"").append(Json.esc(detail == null ? "" : detail)).append("\"}");
             jo = sb.toString();
-            mem.add(jo);
-            while (mem.size() > CAP) {
-                mem.remove(0);
+            if (!diskOnly) {
+                mem.add(jo);
+                while (mem.size() > CAP) {
+                    mem.remove(0);
+                }
             }
         }
         if (logDir != null && humanFile != null) {

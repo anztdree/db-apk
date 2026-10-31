@@ -17,18 +17,20 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class StatusStore {
     private static final Object LOCK = new Object();
-    private static final String VERSION = "0.1.0";
+    private static final String VERSION = "0.2.0";
 
     private static String bind = "127.0.0.1";
     private static int port = 4000;
-    private static String mode = "M1";
+    private static String mode = "ONLINE";
     private static String packageName = "com.db.local";
     private static String rootPath = "";
     private static long startedAt = 0;
     private static volatile boolean serverAlive = false;
     private static final AtomicLong reqCount = new AtomicLong();
     private static final AtomicLong errCount = new AtomicLong();
+    private static final AtomicLong pingCount = new AtomicLong();
     private static volatile long lastReqAt = 0;
+    private static volatile long lastPingAt = 0;
     private static long tick = 0;
     private static File statusFile = null;
 
@@ -48,6 +50,12 @@ public final class StatusStore {
         }
     }
 
+    static void setMode(String m) {
+        synchronized (LOCK) {
+            mode = m;
+        }
+    }
+
     static void markStarted(long ms, boolean alive) {
         synchronized (LOCK) {
             startedAt = ms;
@@ -62,6 +70,28 @@ public final class StatusStore {
 
     static void countErr() {
         errCount.incrementAndGet();
+    }
+
+    /** Detak polling dasbor — dihitung, TIDAK dicatat per-baris di tampilan log (README §3.4). */
+    static void countPing() {
+        pingCount.incrementAndGet();
+        lastPingAt = System.currentTimeMillis();
+    }
+
+    static long pings() {
+        return pingCount.get();
+    }
+
+    static int port() {
+        synchronized (LOCK) {
+            return port;
+        }
+    }
+
+    static long uptimeMs() {
+        synchronized (LOCK) {
+            return (serverAlive && startedAt > 0) ? (System.currentTimeMillis() - startedAt) : 0;
+        }
     }
 
     /** true setiap 25 permintaan — sinyal untuk menulis status.json ke disk. */
@@ -108,6 +138,8 @@ public final class StatusStore {
                     .append(Json.num("requests", reqCount.get())).append(',')
                     .append(Json.num("errors", errCount.get())).append(',')
                     .append(Json.num("lastReqAt", lastReqAt)).append(',')
+                    .append(Json.num("pings", pingCount.get())).append(',')
+                    .append(Json.num("lastPingAt", lastPingAt)).append(',')
                     .append(Json.str("root", rootPath))
                     .append("},\"original\":[");
             boolean first = true;

@@ -34,7 +34,7 @@ public final class Starter {
             "{\n"
                     + "  \"port\": 4000,\n"
                     + "  \"bind\": \"127.0.0.1\",\n"
-                    + "  \"mode\": \"M1\",\n"
+                    + "  \"mode\": \"ONLINE\",\n"
                     + "  \"monitorSec\": 60,\n"
                     + "  \"targets\": [\"dragon.sjmobilegame.com:82\", \"configus.sjmobilegame.com:80\", \"qsdk.t4game.com:443\"]\n"
                     + "}\n";
@@ -164,9 +164,20 @@ public final class Starter {
         if (port <= 0 || port > 65535) {
             port = 4000;
         }
-        StatusStore.configure(port, "127.0.0.1", "M1", root.getAbsolutePath(), c.getPackageName());
+        try {
+            ServerMode.init(cfg); // switch mode ONLINE/LOCAL (server.json) — nilai lama "M1" dimaknai ONLINE
+        } catch (Throwable t) {
+            HumanLog.ev('⚠', "Switch mode gagal dibaca — memakai mode ONLINE", String.valueOf(t));
+        }
+        StatusStore.configure(port, "127.0.0.1", ServerMode.get(), root.getAbsolutePath(), c.getPackageName());
         StatusStore.setStatusFile(new File(root, "status.json"));
-        HumanLog.ev('ℹ', "Mode M1 aktif — traffic game TIDAK diubah; server asli tetap melayani seperti biasa", null);
+        if (ServerMode.isLocal()) {
+            HumanLog.ev('ℹ', "Mode LOCAL aktif — server lokal siap melayani konfigurasi bootstrap dari cermin lokal ("
+                    + Mirror.bspathShort() + "); game belum diarahkan ke sini (itu fasa M3)", null);
+        } else {
+            HumanLog.ev('ℹ', "Mode ONLINE aktif — traffic game TIDAK diubah; server asli tetap melayani seperti biasa. "
+                    + "Ganti ke mode LOCAL lewat dasbor bila ingin bootstrap dilayani dari cermin", null);
+        }
 
         // ---------- 3) hidupkan HTTP ----------
         try {
@@ -177,6 +188,7 @@ public final class Starter {
             StatusStore.markStarted(System.currentTimeMillis(), true);
             HumanLog.ev('✔', "Server lokal hidup di port " + port + " (hanya di HP ini) — buka http://127.0.0.1:"
                     + port + " di browser HP untuk dasbor", null);
+            Notifier.show(c, ServerMode.get(), port);
         } catch (Throwable t) {
             StatusStore.markStarted(System.currentTimeMillis(), false);
             HumanLog.ev('⚠', "Server lokal GAGAL hidup di port " + port + " — kemungkinan port sedang dipakai proses lain; "
@@ -190,11 +202,17 @@ public final class Starter {
             ApkReader.init(c);
         } catch (Throwable ignored) {
         }
+        try {
+            Mirror.init(); // cermin bootstrap — salinan bersebelahan, asli tidak disentuh
+        } catch (Throwable t) {
+            HumanLog.ev('⚠', "Cermin bootstrap gagal disiapkan — mode LOCAL tetap bisa dipakai tanpa cermin",
+                    String.valueOf(t));
+        }
         monitor = new Monitor(targets, monSec);
         HumanLog.ev('▶', "Mulai memantau " + targets.length + " server asli setiap " + monSec
                 + " dtk: " + joinShort(targets), null);
         monitor.startBackground();
-        monitor.runOnce();
+        monitor.runOnce(false);
         StatusStore.persist();
     }
 
@@ -204,6 +222,15 @@ public final class Starter {
             return f;
         }
         return new File(System.getProperty("java.io.tmpdir", "/tmp"));
+    }
+
+    static File serverRoot() {
+        File f = serverRoot;
+        return (f != null) ? f : new File(".");
+    }
+
+    static String defaultConfigJson() {
+        return DEFAULT_CONFIG_JSON;
     }
 
     static Monitor monitor() {
