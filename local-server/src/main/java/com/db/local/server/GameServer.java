@@ -15,10 +15,11 @@ import fi.iki.elonen.NanoHTTPD;
  * Endpoint di assets APK sudah diarahkan ke http://127.0.0.1:&lt;gamePort&gt;,
  * jadi semua permintaan bootstrap client lewat sini. Dua mode (config/server.json):
  *
- * - LOCAL : layani file dari <root>/www/ — isi config ASLI yang ditaruh MANUAL,
- *           struktur folder = path URL server asli (bukan salinan otomatis).
- *           File yang belum ada dijawab 404 — dari analisis §2.8, client boleh
- *           lanjut boot saat beberapa jawaban tidak ada (mis. base.version).
+ * - LOCAL : layani file dari <root>/www/ — hasil ekstraksi OTOMATIS payload
+ *           config ASLI yang dibawa APK (assets/server/payload); struktur folder
+ *           = path URL server asli. File yang tidak dibawa payload dijawab 404 —
+ *           dari analisis §2.8 client boleh lanjut boot saat jawaban tidak ada
+ *           (mis. "Server base.version is Not Exist").
  * - ONLINE: teruskan permintaan ke server asli (passthrough) — server asli
  *           tetap sumber jawaban, client tidak tahu bedanya.
  *
@@ -102,11 +103,12 @@ public final class GameServer extends NanoHTTPD {
         File f = resolveLocal(uri);
         long ms = System.currentTimeMillis() - t0;
         if (f == null) {
-            HumanLog.ev('⚠', "LOCAL Game GET " + uri + " → belum ada di www/ (404) · " + HumanLog.fmtMs(ms)
-                    + " — salin jawaban asli secara manual ke folder ini, atau pindah mode ONLINE", nullSafe(query));
+            HumanLog.ev('ℹ', "LOCAL Game GET " + uri + " → tidak dibawa payload www/ (404) · " + HumanLog.fmtMs(ms)
+                    + " — game melanjutkan boot (fallback dex terbukti §2.8)", nullSafe(query));
             return textResp(Response.Status.NOT_FOUND,
-                    "Belum ada di www/" + uri + " — mode LOCAL hanya melayani file yang ada. "
-                            + "Salin jawaban asli secara manual ke folder www/, atau pindah mode ONLINE lewat tombol melayang.");
+                    "Tidak dibawa payload www/" + uri + " — mode LOCAL melayani isi config asli hasil ekstraksi "
+                            + "otomatis dari APK. Game melanjutkan boot saat jawaban tidak ada. Bila isi aslinya "
+                            + "berhasil didapat, file dapat ditambahkan ke folder www/ tanpa rebuild.");
         }
         try {
             long len = f.length();

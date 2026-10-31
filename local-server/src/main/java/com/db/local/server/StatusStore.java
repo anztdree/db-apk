@@ -23,6 +23,7 @@ public final class StatusStore {
     private static int port = 4000;
     private static int gamePort = 8080;
     private static volatile boolean gameAlive = false;
+    private static volatile int wwwFiles = 0;
     private static String mode = "online";
     private static String packageName = "com.db.local";
     private static String rootPath = "";
@@ -53,6 +54,13 @@ public final class StatusStore {
     static void markGame(boolean alive) {
         synchronized (LOCK) {
             gameAlive = alive;
+        }
+    }
+
+    /** Jumlah file payload config asli yang terpasang di www/ (ekstraksi otomatis). */
+    static void markWww(int files) {
+        synchronized (LOCK) {
+            wwwFiles = files;
         }
     }
 
@@ -112,6 +120,7 @@ public final class StatusStore {
                     .append(Json.str("mode", mode)).append(',')
                     .append(Json.num("gamePort", gamePort)).append(',')
                     .append(Json.bool("gameAlive", gameAlive)).append(',')
+                    .append(Json.num("wwwFiles", wwwFiles)).append(',')
                     .append(Json.str("package", packageName)).append(',')
                     .append(Json.str("version", VERSION)).append(',')
                     .append(Json.num("uptimeMs", up)).append(',')

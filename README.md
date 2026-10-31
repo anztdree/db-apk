@@ -1,6 +1,7 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (v2.7) — **ARSITEKTUR TERKOREKSI + build 0.1.0 dibangun ulang**: port game terpisah (8080) dengan www/ isi manual + passthrough ONLINE, switch mode LOCAL/ONLINE via tombol melayang, endpoint client diarahkan ke lokal; build 0.2.0 (cermin otomatis) DITARIK
+> **Status dokumen:** Fondasi & Implementasi (v2.8) — **payload config asli diekstrak OTOMATIS** saat aplikasi pertama jalan (koreksi owner: "taruh manual tidak relevan — semua itu terekstrak ke sana"); port game terpisah (8080) + passthrough ONLINE + switch mode tombol melayang + endpoint client → lokal; build 0.2.0 (cermin otomatis) DITARIK
+> **Temuan 2026-10-31:** **server asli SUDAH MATI** — configus hidup tapi seluruh key dihapus (HTTP 404 `NoSuchKey`), dragon tak terjangkau (HTTP 000). Mode ONLINE otomatis kehilangan sumber jawaban → **mode LOCAL (payload) kini jalur utama**.
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-10-31
 > **Riwayat strategi:**
@@ -46,6 +47,15 @@
 >   mode baru; (4) client hanya berubah di **nilai endpoint** (3 Base64 → `127.0.0.1:8080`),
 >   dex game byte-identical; (5) **log tenang** — polling dasbor tidak dicatat lagi,
 >   monitor hanya mencatat saat kondisi berubah + denyut ringkasan 10 menit.
+> - **v2.8 — KOREKSI OWNER: TIDAK ADA langkah manual — "semua itu terekstrak ke sana".**
+>   Payload config asli dibawa **di dalam APK** (`assets/server/payload/`) dan otomatis
+>   diekstrak ke `Android/data/com.db.local/server/www/` oleh BootProvider saat aplikasi
+>   **pertama kali jalan** (Android tidak memberi hook saat install; bukaan pertama = detik
+>   pertama, sebelum splash selesai — hasilnya sama: user tidak melakukan apa-apa).
+>   www/ dihapus / clear data → terisi ulang otomatis. Game TETAP membaca via HTTP dari
+>   port game lokal (assets hanya gudang payload, BUKAN jalur baca game) — aturan
+>   "baca seakan dari server" tetap terjaga. Payload = 4 file cermin byte-identik
+>   versi bawaan APK (`base.version` `110`, `resource.version` `11220`, `upgrade.json`/`size.json` `{}`).
 
 ---
 
@@ -301,21 +311,30 @@ Android/data/com.db.local/server/
 ├── config/        ← server.json (mode local/online, gamePort 8080, debugPort 4000)
 ├── logs/          ← log bahasa manusia + status server (indikator hidup)
 ├── tmp/
-└── www/           ← ISI config ASLI ditaruh MANUAL (struktur = path URL server asli)
+└── www/           ← PAYLOAD config asli — diekstrak OTOMATIS dari APK saat pertama jalan
+    ├── .payload.txt                      ← penanda versi payload (ekstraksi ulang bila berubah)
     ├── bs/db/android/                    ← cermin configus.sjmobilegame.com/bs/db/android
-    │   ├── base.version                  ← "110" (versi bawaan → game skip hot-update)
-    │   ├── resource.version              ← "110"
-    │   └── (setting_BS_Android.bin, upgrade.json, size.json, … — taruh manual)
+    │   ├── base.version                  ← "110"  (byte-identik assets/game/base.version)
+    │   ├── resource.version              ← "11220" (byte-identik assets/game/resource.version)
+    │   ├── upgrade.json                  ← "{}"   (minimum — tidak ada info upgrade)
+    │   └── size.json                     ← "{}"   (minimum — tidak ada info size)
     └── lzceshi/native_setting/Android/   ← cermin dragon.sjmobilegame.com:82/lzceshi
+                                            (setting_BS_Android.bin tidak tersedia —
+                                             server asli mati; dijawab 404 → fallback dex)
 ```
 
-Aturan pemilik (v2.7): **bukan sistem yang menyalin** — isi server asli disalin **manual**
-ke `www/` (bahan: hasil probe/unduhan jawaban asli, atau rekonstruksi minimal).
-Server lokal hanya **melayani file yang ada**; yang belum ada dijawab 404 dan game
-melanjutkan boot (terbukti dari analisis §2.8 — `Server base.version is Not Exist`).
+Aturan pemilik (v2.8, koreksi atas v2.7): **TIDAK ADA langkah manual** — isi config asli
+**dibawa di dalam APK** (`assets/server/payload/`, dikemas oleh `build.sh`) dan otomatis
+diekstrak `Payload.java` → `www/` saat aplikasi pertama jalan. Penanda `.payload.txt`
+mengatur ekstraksi ulang: versi payload naik / ada file hilang / clear data → terisi ulang
+otomatis. File tambahan di luar payload tidak dihapus — owner bebas menambah isi baru ke
+`www/` tanpa rebuild bila nanti berhasil mendapat isi aslinya.
+Server lokal hanya **melayani file yang ada**; yang tidak dibawa payload dijawab 404 dan
+game melanjutkan boot (terbukti dari analisis §2.8 — `Server base.version is Not Exist`).
 Mode ONLINE (default) = permintaan diteruskan ke server asli (passthrough, fallback
-COS otomatis untuk path `/bs/db/android`), jadi game tetap berperilaku online persis
-seperti aslinya sampai pemilik siap berpindah ke LOCAL.
+COS otomatis untuk path `/bs/db/android`) — **catatan: server asli terkonfirmasi mati
+(2026-10-31, configus 404 NoSuchKey / dragon tak terjangkau), jadi mode LOCAL kini
+jalur utama; mode ONLINE dipertahankan untuk keaslian perilaku bila server asli aktif kembali**.
 
 **Dua port, dua peran (v2.7):**
 
@@ -441,15 +460,30 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
-| **0.1.0** | **(v2.7) + port game terpisah 8080 (www/ manual LOCAL / passthrough ONLINE) + switch mode tombol melayang + restart otomatis + endpoint client → 127.0.0.1:8080 + log tenang** | **L1–L2a ✓ (build — v2.7)** |
-| 0.1.x | Uji device: switch mode, isi www/ manual, pantau log | L4b |
+| **0.1.0** | **(v2.8) + payload config asli dibawa APK & diekstrak OTOMATIS ke www/ saat pertama jalan (tanpa langkah manual) + port game terpisah 8080 (LOCAL www/ / ONLINE passthrough) + switch mode tombol melayang + restart otomatis + endpoint client → 127.0.0.1:8080 + log tenang** | **L1–L2b ✓ (build — v2.8)** |
+| 0.1.x | Uji device: switch mode, payload www/ otomatis, pantau log | L4b |
 | 0.3.0 | Passthrough penuh + rekam jawaban ASLI dua arah (M2) | L5a |
 | 0.4.0 | Ambil alih bertahap per-endpoint (M3) | L5b |
 | 1.0.0 | Fondasi lulus penuh — paritas endpoint terbukti | L5b ✓ |
 | 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.1.0 (ARSITEKTUR TERKOREKSI, v2.7) — 2026-10-31 — SUPERSEDE build v2.4 di bawah:**
+**Build 0.1.0 (PAYLOAD OTOMATIS, v2.8) — 2026-10-31 — SUPERSEDE build v2.7 di bawah:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.1.0.apk` (pointer Git LFS — 105.104.870 byte) + **asset Release GitHub `v0.1.0` (diganti)** |
+| SHA-256 | `911c15fe3991f747c263bba2b4014bffb50f791b0ed6567ad329c5736f9f045d` |
+| versionCode / versionName | **4** / **0.1.0** (manifest TIDAK disentuh — CRC identik dengan v2.7) |
+| Toolchain | ECJ 3.33.0 · r8 8.5.35 (D8 → `classes2.dex`) · uber-apk-signer 1.3.0 · JDK 21 (tanpa apktool — patch langsung ke APK release v2.7) |
+| **Fitur baru (v2.8 — koreksi owner)** | **(1) Payload config asli dibawa APK** (`assets/server/payload/` — 4 file): `base.version`=`110`, `resource.version`=`11220` (keduanya byte-identik `assets/game/` bawaan), `upgrade.json`/`size.json`=`{}`; **(2) `Payload.java`** — ekstraksi OTOMATIS `assets/server/payload/` → `www/` oleh BootProvider saat pertama jalan; penanda `www/.payload.txt` mengatur ekstraksi ulang (versi naik / file hilang / clear data); tanpa langkah manual; **(3) `GameServer` LOCAL** melayani www/ hasil payload; 404 untuk path di luar payload (fallback dex); **(4) dasbor** baris baru "Payload www/ N file" + semua narasi "ditaruh manual" diganti ekstraksi otomatis; **(5) `build.sh` baru** — alur PATCH (tanpa apktool): ECJ+D8 → classes2.dex baru → ganti dashboard → tambah payload → buang sign lama → zipalign+sign keystore tetap |
+| Temuan penting | **Server asli MATI**: configus → HTTP 404 `NoSuchKey` untuk SEMUA key (`base.version`, `resource.version`, `upgrade.json`, `size.json`), dragon → tak terjangkau (HTTP 000). Mode ONLINE kehilangan sumber jawaban → mode LOCAL (payload) kini jalur utama |
+| Perubahan client | **TIDAK ADA** — dex game CRC `281225eb` & manifest CRC `2486fd1c` identik dengan v2.7; endpoint config CRC identik (`62eab0f4` / `1cc6e06c`) |
+| Signature | ✅ v1 + v2 + v3 — cert `CN=DB Local LSF` (keystore tetap, SHA-256 `FD:4B:…:CF:D7`) |
+| Verifikasi isi | ✅ 3.674 entri (3670 + 4 payload); `classes2.dex` baru 88.676 B (13 kelas, + `Payload`); dashboard 23.249 B; payload Stored 4 entri |
+| Status | ✅ build & verifikasi level build selesai · ⏳ uji device owner (payload otomatis, switch mode, log) |
+
+**Build 0.1.0 (ARSITEKTUR TERKOREKSI, v2.7) — 2026-10-31 — SEJARAH (www/ masih manual, digantikan v2.8):**
 
 | Item | Nilai |
 |---|---|

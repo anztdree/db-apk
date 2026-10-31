@@ -129,24 +129,24 @@ public final class Starter {
         }
         HumanLog.init(logs);
 
-        // ---------- 2) www/ = tempat isi config ASLI ditaruh MANUAL ----------
-        // Aturan pemilik: BUKAN sistem yang menyalin — salinan dilakukan manual.
-        // Yang disiapkan otomatis hanya struktur folder + dua file versi minimum
-        // (110 = versi bawaan APK → game tidak minta hot-update; hasil analisis §2.8).
+        // ---------- 2) www/ = payload config ASLI diekstrak OTOMATIS dari APK ----------
+        // Koreksi pemilik (v2.8): TIDAK ADA langkah manual — isi config asli dibawa
+        // APK (assets/server/payload) dan otomatis terekstrak ke www/ saat aplikasi
+        // pertama jalan (BootProvider). www/ dihapus / clear data → terisi ulang
+        // otomatis. Struktur folder = path URL server asli (cermin configus & dragon).
         try {
-            writeOnce(new File(wwwBs, "base.version"), "110\n");
-            writeOnce(new File(wwwBs, "resource.version"), "110\n");
-            writeOnce(new File(www, "README.txt"),
-                    "Folder www = tempat ISI config ASLI ditaruh MANUAL (bukan salinan otomatis).\n"
-                            + "Struktur folder = path URL server asli, sehingga game yang menunjuk ke port lokal\n"
-                            + "menemukan file di alamat yang sama seperti di server asli:\n"
-                            + "  www/bs/db/android/...                  <- cermin configus.sjmobilegame.com/bs/db/android\n"
-                            + "  www/lzceshi/native_setting/Android/... <- cermin dragon.sjmobilegame.com:82/lzceshi/native_setting/Android\n"
-                            + "\n"
-                            + "base.version / resource.version diisi '110' (= versi bawaan APK) supaya game\n"
-                            + "tidak meminta hot-update. File lain ditaruh manual; yang belum ada dijawab 404\n"
-                            + "dan game melanjutkan boot (terbukti dari analisis smali - 'Server base.version is Not Exist').\n");
-        } catch (Throwable ignored) {
+            Payload.Result pr = Payload.extract(appCtx, www);
+            if (pr.extracted) {
+                HumanLog.ev('✔', "Payload config ASLI diekstrak OTOMATIS dari APK → www/ ("
+                        + pr.files + " file) — tanpa langkah manual", pr.note);
+            } else {
+                HumanLog.ev('ℹ', "Payload www/ sudah terpasang (" + pr.files
+                        + " file) — tidak ada yang perlu diulang", pr.note);
+            }
+            StatusStore.markWww(pr.files);
+        } catch (Throwable t) {
+            HumanLog.ev('⚠', "Ekstraksi payload www/ gagal — mode LOCAL melayani apa yang ada; game tetap boot (fallback 404)",
+                    String.valueOf(t));
         }
         HumanLog.ev('✔', "Folder server siap: " + root.getAbsolutePath()
                         + " (" + (ext ? "penyimpanan eksternal" : "penyimpanan internal — folder eksternal tidak tersedia") + ")",
@@ -158,7 +158,7 @@ public final class Starter {
                 root.getAbsolutePath(), c.getPackageName());
         StatusStore.setStatusFile(new File(root, "status.json"));
         HumanLog.ev('ℹ', "Mode aktif: " + Config.mode().toUpperCase() + " — ONLINE = permintaan game diteruskan ke "
-                + "server asli · LOCAL = dilayani dari folder www/ (isi config asli yang ditaruh manual)", null);
+                + "server asli · LOCAL = dilayani dari folder www/ (payload config asli, ekstraksi otomatis dari APK)", null);
 
         // ---------- 4) dasbor debug (port 4000) ----------
         boolean dashOk = false;
@@ -230,19 +230,4 @@ public final class Starter {
         }
     }
 
-    private static void writeOnce(File f, String content) {
-        try {
-            if (!f.exists()) {
-                File p = f.getParentFile();
-                if (p != null && !p.exists()) {
-                    p.mkdirs();
-                }
-                java.io.Writer w = new java.io.OutputStreamWriter(
-                        new java.io.FileOutputStream(f, false), "UTF-8");
-                w.write(content);
-                w.close();
-            }
-        } catch (Throwable ignored) {
-        }
-    }
 }

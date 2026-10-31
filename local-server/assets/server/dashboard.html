@@ -164,7 +164,7 @@
         <div class="toolbar" style="margin-top:10px">
           <button class="act primary" id="btnRun">Cek server asli sekarang</button>
         </div>
-        <p class="hint">Mode ONLINE = permintaan game diteruskan ke server asli di atas. Mode LOCAL = dilayani dari folder www/ (isi config asli ditaruh manual). Ganti mode lewat tombol melayang di atas game — aplikasi restart otomatis.</p>
+        <p class="hint">Mode ONLINE = permintaan game diteruskan ke server asli di atas. Mode LOCAL = dilayani dari folder www/ — isi config asli diekstrak <b>otomatis</b> dari payload APK saat aplikasi pertama jalan. Ganti mode lewat tombol melayang di atas game — aplikasi restart otomatis.</p>
       </div>
     </div>
   </section>
@@ -208,7 +208,7 @@
 </main>
 
 <footer>
-  Dasbor debug port <span id="fDbg">4000</span> · port game <span id="fGame">8080</span> · isi <b>www/</b> ditaruh manual ·
+  Dasbor debug port <span id="fDbg">4000</span> · port game <span id="fGame">8080</span> · isi <b>www/</b> = payload APK (ekstraksi otomatis) ·
   root folder: <span id="rootTxt">Android/data/com.db.local/server</span>
 </footer>
 
@@ -290,6 +290,7 @@ function renderStatus(st){
       : "meneruskan ke server asli (passthrough)") + "</span>" +
     "<b>Port game</b><span><span class='dot " + (s.gameAlive ? "up" : "down") + "'></span>:" + s.gamePort
       + " — endpoint client menunjuk ke sini</span>" +
+    "<b>Payload www/</b><span>" + (s.wwwFiles || 0) + " file config asli — ekstraksi otomatis dari APK</span>" +
     "<b>Uptime</b><span>" + fmtUptime(s.uptimeMs) + "</span>" +
     "<b>Dasbor</b><span>http://127.0.0.1:" + s.port + " (bind " + esc(s.bind || "127.0.0.1") + ")</span>" +
     "<b>Permintaan</b><span>" + (s.requests || 0) + "</span>" +
