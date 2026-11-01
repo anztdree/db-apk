@@ -192,12 +192,13 @@ public final class Starter {
 
         // ---------- 5) port GAME (dipakai client) ----------
         try {
-            GameServer gs = new GameServer("127.0.0.1", Config.gamePort(), www);
+            GameServer gs = new GameServer(c, "127.0.0.1", Config.gamePort(), www);
             gs.start(2000, true);
             gameServer = gs;
             StatusStore.markGame(true);
             HumanLog.ev('✔', "Port game hidup di " + Config.gamePort() + " — endpoint client menunjuk ke sini "
-                    + "(mode " + Config.mode().toUpperCase() + ")", null);
+                    + "(mode " + Config.mode().toUpperCase() + ") · halaman http://127.0.0.1:" + Config.gamePort()
+                    + " di browser berisi tombol ganti mode", null);
         } catch (Throwable t) {
             StatusStore.markGame(false);
             HumanLog.ev('⚠', "Port game GAGAL hidup di " + Config.gamePort()

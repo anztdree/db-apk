@@ -52,8 +52,23 @@
     padding:14px 16px; box-shadow:var(--shadow);
   }
   .card h2{margin:0 0 10px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
-  .modebig{font-size:30px; font-weight:800; letter-spacing:1px; margin:2px 0 8px}
-  .modebig.local{color:var(--ok)} .modebig.online{color:var(--mut)}
+  .modehero{grid-column:1/-1; border-width:2px}
+  .modenow{font-size:14px; margin:2px 0 10px}
+  .modenow b{font-size:16px; letter-spacing:.5px}
+  .modenow b.local{color:var(--ok)} .modenow b.online{color:var(--warn)}
+  .modebtns{display:flex; gap:10px; flex-wrap:wrap}
+  .modebtn{
+    flex:1 1 220px; min-height:76px; border-radius:12px; border:2px solid var(--line);
+    background:var(--card); color:var(--tx); cursor:pointer; padding:12px 14px;
+    text-align:left; font-family:inherit;
+  }
+  .modebtn .t{display:block; font-size:22px; font-weight:800; letter-spacing:.5px}
+  .modebtn small{display:block; margin-top:4px; font-size:12.5px; color:var(--mut); font-weight:500; line-height:1.45}
+  .modebtn.active{border-color:var(--ok); background:var(--okbg)}
+  .modebtn.active .t{color:var(--ok)}
+  .modebtn.armed{border-color:var(--err); background:var(--errbg)}
+  .modebtn.armed .t{color:var(--err)}
+  .modebtn:disabled{opacity:.55; cursor:default}
   .kv{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:14px}
   .kv b{color:var(--mut); font-weight:600; white-space:nowrap}
   .dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:var(--mut)}
@@ -102,16 +117,20 @@
   <div class="summary" id="summary">memuat status…</div>
 
   <div class="cards">
-    <div class="card">
-      <h2>Mode aktif</h2>
-      <div class="modebig" id="mode">…</div>
-      <div class="kv">
-        <b>Artinya</b><span id="modemeans">—</span>
+    <div class="card modehero">
+      <h2>Mode server — tekan untuk ganti</h2>
+      <div class="modenow">Mode aktif sekarang: <b id="mode">…</b> · port game <span id="modeport">…</span></div>
+      <div class="modebtns">
+        <button class="modebtn" id="btn-local" data-m="local">
+          <span class="t">LOCAL</span>
+          <small>dilayani dari folder www/ — mirror server asli (ekstraksi otomatis dari APK)</small>
+        </button>
+        <button class="modebtn" id="btn-online" data-m="online">
+          <span class="t">ONLINE</span>
+          <small>diteruskan apa adanya ke server asli (butuh internet)</small>
+        </button>
       </div>
-      <div class="toolbar" style="margin-top:12px">
-        <button class="act primary" id="switchbtn" disabled>Switch…</button>
-      </div>
-      <div class="note" id="switchnote">Mode disimpan ke config/server.json · aplikasi restart otomatis setelah konfirmasi.</div>
+      <div class="note" id="switchnote">Ganti mode → tersimpan di config/server.json → aplikasi game dibuka ulang otomatis. Tombol melayang di layar HP juga bisa: GESER = pindah posisi · TEKAN = ganti mode.</div>
     </div>
     <div class="card">
       <h2>Port game (dipakai client)</h2>
@@ -129,7 +148,7 @@
   <div class="card" style="margin-top:12px">
     <h2>5 permintaan game terakhir — bukti local running</h2>
     <table>
-      <thead><tr><th>Path</th><th>Status</th><th>Lama</th></tr></thead>
+      <thead><tr><th>Permintaan (URL asli yang diminta client)</th><th>Status</th><th>Lama</th></tr></thead>
       <tbody id="lastbody"><tr><td colspan="3" style="color:var(--mut)">belum ada permintaan game</td></tr></tbody>
     </table>
   </div>
@@ -178,7 +197,12 @@
 (function(){
   "use strict";
   var $ = function(id){ return document.getElementById(id); };
-  var logSince = 0, lastStatus = null, armed = false, armedTimer = null;
+  var logSince = 0, lastStatus = null, pending = null, pendingTimer = null;
+  var NOTE_DEFAULT = "Ganti mode → tersimpan di config/server.json → aplikasi game dibuka ulang otomatis. Tombol melayang di layar HP juga bisa: GESER = pindah posisi · TEKAN = ganti mode.";
+  var MODE_DESC = {
+    local: "dilayani dari folder www/ — mirror server asli (ekstraksi otomatis dari APK)",
+    online: "diteruskan apa adanya ke server asli (butuh internet)"
+  };
 
   function fmtBytes(n){
     if(n < 0) return "?";
@@ -228,20 +252,9 @@
     var mode = s.server.mode || "?";
     var mEl = $("mode");
     mEl.textContent = mode.toUpperCase();
-    mEl.className = "modebig " + mode;
-    $("modemeans").textContent = (mode === "local")
-      ? "permintaan game dilayani folder www/ (mirror server asli, ekstraksi otomatis dari APK)"
-      : "permintaan game diteruskan apa adanya ke server asli (passthrough)";
-
-    var btn = $("switchbtn");
-    btn.disabled = false;
-    if(armed){
-      btn.textContent = "Tekan SEKALI LAGI — restart dengan " + (mode === "local" ? "ONLINE" : "LOCAL");
-      btn.classList.add("danger");
-    } else {
-      btn.textContent = "Switch ke " + (mode === "local" ? "ONLINE" : "LOCAL") + " + restart aplikasi";
-      btn.classList.remove("danger");
-    }
+    mEl.className = mode;
+    $("modeport").textContent = "http://127.0.0.1:" + s.server.gamePort;
+    paintMode();
 
     $("gamedot").className = "dot " + (s.server.gameAlive ? "up" : "down");
     $("gamealive").textContent = s.server.gameAlive ? "HIDUP — local running" : "MATI";
@@ -257,9 +270,10 @@
     if(!arr.length){
       tb.innerHTML = "<tr><td colspan='3' style='color:var(--mut)'>belum ada permintaan game — buka game-nya</td></tr>";
     } else {
+      var gp = "http://127.0.0.1:" + (s.server.gamePort || 8080);
       tb.innerHTML = arr.map(function(p){
         var col = (p.s >= 200 && p.s < 400) ? "var(--ok)" : (p.s === 404 ? "var(--warn)" : "var(--err)");
-        return "<tr><td>" + esc(p.p) + "</td><td style='color:" + col + ";font-weight:700'>" + p.s
+        return "<tr><td>" + esc(gp + p.p) + "</td><td style='color:" + col + ";font-weight:700'>" + p.s
           + "</td><td>" + fmtMs(p.ms) + "</td></tr>";
       }).join("");
     }
@@ -327,33 +341,55 @@
     }).catch(function(){});
   });
 
-  // ---------- switch mode ----------
-  $("switchbtn").addEventListener("click", function(){
-    var mode = lastStatus && lastStatus.server ? lastStatus.server.mode : null;
-    if(!mode) return;
-    if(!armed){
-      armed = true;
-      renderStatus(lastStatus); // tombol jadi konfirmasi
-      if(armedTimer) clearTimeout(armedTimer);
-      armedTimer = setTimeout(function(){ armed = false; renderStatus(lastStatus); }, 5000);
+  // ---------- switch mode (dua tombol besar — konfirmasi dua-tahap) ----------
+  function paintMode(){
+    var cur = lastStatus && lastStatus.server ? lastStatus.server.mode : null;
+    ["local","online"].forEach(function(m){
+      var b = $("btn-" + m);
+      if(!b) return;
+      b.disabled = false;
+      var active = (m === cur);
+      b.classList.toggle("active", active && pending !== m);
+      b.classList.toggle("armed", pending === m);
+      var sm = b.querySelector("small");
+      if(pending === m){
+        sm.textContent = "TEKAN SEKALI LAGI — restart aplikasi dengan " + m.toUpperCase();
+      } else if(active){
+        sm.textContent = "✓ AKTIF — " + MODE_DESC[m];
+      } else {
+        sm.textContent = "tekan untuk pindah ke " + m.toUpperCase() + " — " + MODE_DESC[m];
+      }
+    });
+  }
+  function modeClick(target){
+    var cur = lastStatus && lastStatus.server ? lastStatus.server.mode : null;
+    if(!cur) return;
+    if(target === cur && !pending) return;
+    if(pending === target){
+      pending = null;
+      if(pendingTimer) clearTimeout(pendingTimer);
+      var b = $("btn-" + target);
+      b.disabled = true;
+      b.querySelector("small").textContent = "mengganti mode ke " + target.toUpperCase() + " … aplikasi akan dibuka ulang";
+      $("switchnote").textContent = "menyimpan mode & merestart aplikasi…";
+      fetch("/api/mode?mode=" + target, {method:"POST"}).then(function(r){ return r.json(); }).then(function(j){
+        $("switchnote").textContent = j.note || "selesai";
+        setTimeout(function(){ $("switchnote").textContent = NOTE_DEFAULT; }, 8000);
+        pollStatus();
+      }).catch(function(e){
+        $("switchnote").textContent = "gagal: " + e;
+        pending = null;
+        paintMode();
+      });
       return;
     }
-    armed = false;
-    if(armedTimer) clearTimeout(armedTimer);
-    var target = mode === "local" ? "online" : "local";
-    var btn = $("switchbtn");
-    btn.disabled = true; btn.textContent = "mengganti mode…";
-    fetch("/api/mode?mode=" + target, {method:"POST"}).then(function(r){ return r.json(); }).then(function(j){
-      $("switchnote").textContent = j.note || "selesai";
-      setTimeout(function(){
-        $("switchnote").textContent = "Mode disimpan ke config/server.json · aplikasi restart otomatis setelah konfirmasi.";
-      }, 6000);
-      pollStatus();
-    }).catch(function(e){
-      $("switchnote").textContent = "gagal: " + e;
-      btn.disabled = false;
-    });
-  });
+    pending = target;
+    if(pendingTimer) clearTimeout(pendingTimer);
+    pendingTimer = setTimeout(function(){ pending = null; paintMode(); }, 6000);
+    paintMode();
+  }
+  $("btn-local").addEventListener("click", function(){ modeClick("local"); });
+  $("btn-online").addEventListener("click", function(){ modeClick("online"); });
 
   // ---------- www list ----------
   function loadWww(){

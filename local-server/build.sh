@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.3.0 — MIRROR PENUH SERVER ASLI + FLOATING BISA DIGESER
+# Build APK-LSF 0.3.1 — LOG URL ASLI + SWITCH MODE DI KEDUA WEBSITE
 #
 # Dasar: releases/APK-LSF-0.1.0.apk (sudah memuat manifest provider +
 # endpoint 127.0.0.1:8080 + dex game asli). Patch yang diterapkan
@@ -9,11 +9,17 @@
 #   2) ganti assets/server/dashboard.html
 #   3) HAPUS assets/server/payload/** versi lama (4 file minimal)
 #   4) tambah assets/server/www/**  — MIRROR PENUH server asli (31 file,
-#      ±56 MB: setting bin, H5 Egret + 15 JS, resource properties,
-#      base.version/resource.version/upgrade.json/size.json, base.zip,
-#      all.zip, 4 zip incremental, setting bin lzceshi) yang diekstrak
-#      OTOMATIS ke Android/data/<paket>/server/www/ saat aplikasi hidup
+#      ±56 MB) yang diekstrak OTOMATIS ke Android/data/<paket>/server/www/
 #   5) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#
+# Koreksi 0.3.1 (umpan balik uji device owner):
+#   a) log request menulis URL ASLI http://127.0.0.1:8080/… — tanpa label
+#      "LOCAL"/"ONLINE"; 404 normal (com_db_local.bin dll) ikut jelas
+#   b) switch mode ada di KEDUA website: halaman port game 8080 DASBOR 4000
+#      (dua tombol besar LOCAL/ONLINE, konfirmasi dua-tahap, restart otomatis)
+#   c) log "tombol melayang tampil" hanya sekali per proses (dulu 6x)
+#   d) dedupe request kembar <10 dtk (log tidak membanjiri saat game
+#      me-bootstrap ulang berkali-kali)
 #
 # Prasyarat: tools/snapshot.sh sudah jalan (zip besar tersedia).
 # =============================================================
@@ -31,7 +37,7 @@ SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.3.0.apk"
+OUT="$REPO/releases/APK-LSF-0.3.1.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"

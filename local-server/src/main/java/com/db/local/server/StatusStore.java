@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class StatusStore {
     private static final Object LOCK = new Object();
-    private static final String VERSION = "0.3.0";
+    private static final String VERSION = "0.3.1";
 
     private static String bind = "127.0.0.1";
     private static int port = 4000;
@@ -60,6 +60,13 @@ public final class StatusStore {
     static void markGame(boolean alive) {
         synchronized (LOCK) {
             gameAlive = alive;
+        }
+    }
+
+    /** Jumlah file mirror www/ — dipakai halaman root port game (switch mode). */
+    public static int wwwFileCount() {
+        synchronized (LOCK) {
+            return wwwFiles;
         }
     }
 

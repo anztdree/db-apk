@@ -42,6 +42,7 @@ public final class FloatingToggle {
     private static volatile boolean added = false;
     private static volatile boolean panelAdded = false;
     private static volatile boolean panelArmed = false; // konfirmasi dua-tahap
+    private static volatile boolean shownOnceLogged = false; // log "tampil" sekali per proses
     private static WindowManager wm;
     private static TextView btn;
     private static LinearLayout panel;
@@ -165,8 +166,13 @@ public final class FloatingToggle {
             }
             wm.addView(btn, lp);
             added = true;
-            HumanLog.ev('✔', "Tombol melayang switch mode tampil — GESER untuk memindah (posisi tersimpan), "
-                    + "TEKAN untuk ganti LOCAL/ONLINE (aplikasi restart setelah konfirmasi)", null);
+            // Log "tampil" HANYA SEKALI per proses (koreksi owner 0.3.1 — game Egret
+            // me-pause/resume activity beberapa kali saat boot, dulu lognya berulang).
+            if (!shownOnceLogged) {
+                shownOnceLogged = true;
+                HumanLog.ev('✔', "Tombol melayang switch mode tampil — GESER untuk memindah (posisi tersimpan), "
+                        + "TEKAN untuk ganti LOCAL/ONLINE (aplikasi restart setelah konfirmasi)", null);
+            }
         } catch (Throwable t) {
             logSilent("Tombol melayang gagal tampil", t);
         }

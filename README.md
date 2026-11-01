@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (**v3.0 — build 0.3.0**) — **MIRROR PENUH server asli** (31 file, ±56 MB: setting bin, H5 Egret + 15 JS, resource properties, version, upgrade.json/size.json, base.zip, all.zip, 4 zip incremental, setting bin lzceshi) dibawa APK (`assets/server/www/`) & diekstrak OTOMATIS ke www/; **tombol melayang BISA DIGESER** (posisi tersimpan); folder server anti-sampah (pembersih whitelist); dasbor 4000 baru (mode + 5 path terakhir + penjelajah www/ + switch mode)
+> **Status dokumen:** Fondasi & Implementasi (**v3.1 — build 0.3.1**) — **LOG REQUEST MENULIS URL ASLI** (`GET http://127.0.0.1:8080/bs/upgrade/all.zip → 200 dari www/ · 18,5 MB · 1 ms` — tanpa label "LOCAL"/"ONLINE", koreksi owner) + **SWITCH MODE ADA DI KEDUA WEBSITE** (halaman port game 8080 & dasbor 4000, dua tombol besar LOCAL/ONLINE) + log anti-banjir (dedupe request kembar <10 dtk, log floating sekali per proses). Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) dibawa APK (`assets/server/www/`) & diekstrak OTOMATIS ke www/; **tombol melayang BISA DIGESER** (posisi tersimpan); folder server anti-sampah (pembersih whitelist)
 > **Temuan 2026-10-31 (probe ulang, mengoreksi catatan lama):** **SERVER ASLI MASIH HIDUP** — `setting_BS_Android.bin` (711 B, terenkripsi XOR kunci **`DragonBall`**) berhasil didekripsi → membongkar host sesungguhnya: **dragonh5cdn.popoh5.com** (H5 game + folder upgrade). Seluruh file fisik server asli berhasil diunduh & menjadi isi mirror (daftar lengkap §2.9). Catatan lama "server asli sudah mati" TERBANTAHKAN — server hanya memindahkan file ke host CDN.
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-10-31
@@ -339,22 +339,33 @@ apa, server menjawab apa, seberapa lama. Detail teknis (header, body raw, curl) 
 lengkap tapi ditaruh di balik expand + tombol copy (copy-first tetap berlaku).
 
 ```
-14:32:01  ▶ Game meminta konfigurasi bootstrap     (GET /bs/db/android)
-          ◀ Dijawab 200 OK · 12 ms · 1,4 KB · sumber: mock bs_android.json
-14:32:05  ▶ Game membuka pengaturan native         (GET /lzceshi/native_setting/Android)
-          ◀ Dijawab 200 OK · 8 ms · 0,6 KB · sumber: template bawaan
-14:32:09  ⚠ Endpoint belum dikenal: POST /game/login — belum ada handler, dijawab 404
-14:32:10  ✔ Server lokal siap di port 4000 — menunggu panggilan game
+09:05:57  ✔ Folder server siap: /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
+09:05:58  ◀ GET http://127.0.0.1:8080/bs/db/android/setting_BS_Android.bin → 200 dari www/ · 693 B · 1 ms — host di dalam bin ditulis-ulang ke http://127.0.0.1:8080
+09:05:58  ℹ GET http://127.0.0.1:8080/bs/db/android/com_db_local.bin → 404 · tidak ada di www/ (di server asli juga tidak ada) · 0 ms — game melanjutkan boot (perilaku normal)
+09:05:58  ◀ GET http://127.0.0.1:8080/bs/upgrade/all.zip → 200 dari www/ · 18,5 MB · 2 ms
+09:05:58  ◀ GET http://127.0.0.1:8080/bs/upgrade/base.version → HTTP 200 dari server asli · diteruskan ke https://dragonh5cdn.popoh5.com/bs/upgrade/base.version · 4 B · 214 ms   (mode ONLINE)
 ```
 
 Aturan penulisan log:
 1. **Satu event = satu kalimat manusia** — "siapa minta apa → jawab apa · berapa lama".
-2. Simbol visual konsisten: `▶` permintaan masuk · `◀` jawaban keluar · `⚠` perlu
+2. **Baris request memuat URL ASLI yang diminta client** (`http://127.0.0.1:8080/…`) —
+   koreksi owner 0.3.1: TIDAK ada lagi label `LOCAL`/`ONLINE` di baris request (mode
+   cukup diceritakan di baris status saat boot); mode ONLINE menambahkan keterangan
+   `diteruskan ke <server asli>` di baris yang sama.
+3. **Anti-banjir (0.3.1):** request kembar (status+path sama) dalam jendela 10 detik
+   tidak dicatat ulang — saat jendela lewat, jumlahnya dilaporkan sekali
+   (`· (+N request kembar dalam 10 dtk tidak dicatat)`); polling dasbor tetap tidak
+   dicatat; log "tombol melayang tampil" hanya SEKALI per proses (game Egret me-
+   pause/resume activity beberapa kali saat boot — dulu lognya berulang 6×).
+4. 404 normal tetap tenang: `com_db_local.bin` & kawan-kawan dilog `ℹ` dengan
+   keterangan "di server asli juga tidak ada — perilaku normal"; hanya setting bin
+   yang hilang dari mirror yang dilog `⚠` (itu benar-benar perlu perhatian).
+5. Simbol visual konsisten: `▶` permintaan masuk · `◀` jawaban keluar · `⚠` perlu
    perhatian · `✔` sehat/selesai.
-3. Angka ramah manusia: waktu lokal, ukuran dalam KB, durasi dalam ms.
-4. Baris `⚠` wajib menjelaskan **apa yang kurang** dan **langkah berikutnya**
+6. Angka ramah manusia: waktu lokal, ukuran dalam KB, durasi dalam ms.
+7. Baris `⚠` wajib menjelaskan **apa yang kurang** dan **langkah berikutnya**
    (mis. "belum ada handler → buat mock dari dashboard").
-5. Panel status di atas dashboard juga kalimat manusia, mis.:
+8. Panel status di atas dashboard juga kalimat manusia, mis.:
    `Server lokal HIDUP sejak 14:30 · sudah menjawab 37 permintaan · 0 gagal · port 4000`.
 
 **Root folder server — ANTI-SAMPAH (v3.0, aturan keras):**
@@ -406,8 +417,8 @@ disajikan di mode LOCAL = field `url` + `update` di setting bin (`https://dragon
 | **4000** (debugPort) | Developer | Dasbor debug + log + APK Reader — game tidak tahu port ini |
 | **8080** (gamePort) | Game client | Melayani kontrak server: LOCAL = www/, ONLINE = passthrough |
 
-**Switch mode (v3.0 — tombol melayang BISA DIGESER):** bulatan overlay (`L`/`O`, warna
-mengikuti mode) di atas game.
+**Switch mode (v3.0 — tombol melayang BISA DIGESER; v3.1 — switch ada di KEDUA website):**
+bulatan overlay (`L`/`O`, warna mengikuti mode) di atas game.
 - **GESER**: ikut jari, dibatasi tetap di dalam layar; lepas → posisi tersimpan ke
   `server.json` (`toggleX`/`toggleY`) dan dipulihkan saat tampil lagi. Geser vs tekan
   dibedakan lewat ambang touch-slop Android.
@@ -421,6 +432,12 @@ mengikuti mode) di atas game.
 - Izin overlay (SYSTEM_ALERT_WINDOW) sudah ada di manifest original; di Android 6+ pemilik
   mengaktifkannya sekali di Setelan → “Tampil di atas aplikasi lain”. Cara kedua: tombol
   switch di dasbor 4000.
+- **Switch mode di KEDUA website (0.3.1 — koreksi owner "tidak ada mode switch di dalam
+  website"):** (a) halaman **port game** `http://127.0.0.1:8080` di browser sekarang
+  memuat dua tombol besar LOCAL/ONLINE (+ `POST /api/mode` + tautan dasbor lengkap);
+  (b) dasbor **4000** ditata ulang — kartu **MODE SERVER — TEKAN UNTUK GANTI** di paling
+  atas berisi dua tombol besar (mode aktif = ✓ hijau, tombol lain jelas fungsinya) dengan
+  konfirmasi dua-tahap. Jadi di mana pun owner membuka, switch pasti terlihat.
 
 Keuntungan: mudah di-backup/diintip dari PC (USB), terhapus bersih saat uninstall,
 tanpa izin storage tambahan (folder own-app).
@@ -533,7 +550,8 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
-| **0.3.0** | **(v3.0) + mirror PENUH server asli 31 file (setting bin, H5+15 JS, properties, versi, base.zip/all.zip, incremental, lzceshi) diekstrak otomatis + tombol melayang BISA DIGESER (posisi tersimpan) + pembersih whitelist anti-sampah + rewrite setting bin (XOR DragonBall) + peta dragonh5cdn + self-seed mirror + dasbor baru (5 path terakhir + penjelajah www/ + switch mode)** | **L1–L2b ✓ (build — v3.0)** |
+| **0.3.1** | **(v3.1) + log request menulis URL ASLI `http://127.0.0.1:8080/…` (tanpa label LOCAL/ONLINE — koreksi owner) + switch mode di KEDUA website (halaman port game 8080 + kartu mode besar di dasbor 4000 — koreksi owner "tidak ada mode switch di website") + log anti-banjir (dedupe request kembar <10 dtk + log floating sekali per proses) + 404 normal (com_db_local.bin) dilog tenang & jelas** | **L1–L2b ✓ (build — v3.1)** |
+| 0.3.0 | (v3.0) + mirror PENUH server asli 31 file (setting bin, H5+15 JS, properties, versi, base.zip/all.zip, incremental, lzceshi) diekstrak otomatis + tombol melayang BISA DIGESER (posisi tersimpan) + pembersih whitelist anti-sampah + rewrite setting bin (XOR DragonBall) + peta dragonh5cdn + self-seed mirror + dasbor baru (5 path terakhir + penjelajah www/ + switch mode) | L1–L2b ✓ (build — v3.0) |
 | 0.1.0 | (v2.8) + payload config asli dibawa APK & diekstrak OTOMATIS ke www/ saat pertama jalan (tanpa langkah manual) + port game terpisah 8080 (LOCAL www/ / ONLINE passthrough) + switch mode tombol melayang + restart otomatis + endpoint client → 127.0.0.1:8080 + log tenang | L1–L2b ✓ (build — v2.8) |
 | 0.1.x | Uji device: switch mode, payload www/ otomatis, pantau log | L4b |
 | 0.4.0 | Ambil alih bertahap per-endpoint (M3) | L5b |
@@ -541,7 +559,21 @@ tanpa izin storage tambahan (folder own-app).
 | 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.3.0 (MIRROR PENUH + FLOATING DRAGGABLE, v3.0) — 2026-10-31 — BUILD TERKINI:**
+**Build 0.3.1 (LOG URL ASLI + SWITCH MODE DI KEDUA WEBSITE, v3.1) — 2026-11-01 — BUILD TERKINI:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.3.1.apk` (pointer Git LFS — 163.364.781 byte) |
+| SHA-256 | `252984ce190d4e2ebbb9dd9693c9ca0d48b3521c48a02d98cac5d07f7602436d` |
+| versionCode / versionName | **4 / 0.1.0** (manifest TIDAK disentuh — alur PATCH; identitas versi dibawa dasbor/Release) |
+| Toolchain | ECJ 3.33.0 · r8 8.5.35 (D8 → `classes2.dex`) · uber-apk-signer 1.3.0 · JDK 21 (tanpa apktool — patch langsung ke APK release 0.1.0 v2.8) |
+| **Koreksi owner (uji device 0.3.0)** | **(1) "log ini gak jelas sih, jangan di tulis LOCAL tapi emang request asli jika 127.0.0.1:8080 ya tulis itu"** → semua baris request kini memuat URL utuh: `GET http://127.0.0.1:8080/bs/upgrade/all.zip → 200 dari www/ · 18,5 MB · 1 ms`; mode ONLINE menulis `→ HTTP 200 dari server asli · diteruskan ke https://dragonh5cdn.popoh5.com/…`; 404 normal (`com_db_local.bin` — di server asli juga tidak ada) dilog `ℹ` tenang & jelas, bukan `⚠`; **(2) "Tidak ada mode switch di dalam website"** → switch kini ada di KEDUA website: halaman port game `http://127.0.0.1:8080` (dua tombol besar + `POST /api/mode` + tautan dasbor) dan dasbor 4000 (kartu **MODE SERVER — TEKAN UNTUK GANTI** paling atas, dua tombol besar, mode aktif ✓ hijau, konfirmasi dua-tahap); **(3) log banjir** → dedupe request kembar (status+path sama <10 dtk dienyuh, dilaporkan `+N request kembar`), log "tombol melayang tampil" hanya sekali per proses (dulu 6× karena game Egret pause/resume activity berulang saat boot) |
+| Verifikasi (sandbox) | ✅ harness JVM: 6 request → hanya 3 baris log (kembar ditenyapkan); baris log memuat URL asli & tanpa label LOCAL/ONLINE; halaman port game ter-render (2.773 B); ✅ dasbor & halaman port game diuji di browser nyata (mock API): switch dua-tahap berfungsi (mode berubah), tampilan desktop + mobile (390 px) rapi, tabel request menampilkan URL asli, tanpa error JS |
+| Perubahan client | **TIDAK ADA** — `classes.dex` game, manifest, `resources.arsc`, `QHinfo`, config endpoint: semua identik dasar 0.1.0 (diverifikasi CRC saat build) |
+| Signature | ✅ v1 + v2 + v3 — cert `CN=DB Local LSF` (keystore tetap) |
+| Status | ✅ build & verifikasi level build selesai · ⏳ uji device owner (log URL asli, switch di kedua website, log tidak banjir) |
+
+**Build 0.3.0 (MIRROR PENUH + FLOATING DRAGGABLE, v3.0) — 2026-10-31:**
 
 | Item | Nilai |
 |---|---|
