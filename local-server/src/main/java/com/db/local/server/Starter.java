@@ -199,6 +199,7 @@ public final class Starter {
                 HumanLog.ev('✔', "Default login lokal siap — " + note, null);
             }
             LoginData.init(confDir);
+            SdkData.init(confDir);
             HumanLog.ev('ℹ', "Login lokal: guest " + LoginData.localUserId()
                     + " · daftar server " + LoginData.serverCount() + " server", null);
         } catch (Throwable t) {
@@ -265,7 +266,8 @@ public final class Starter {
             StatusStore.markLogin(true);
             HumanLog.ev('✔', "Server login lokal hidup di port " + Config.loginPort()
                     + " — protokol engine.io v3 + socket.io v2 (action: loginGame, GetServerList, "
-                    + "LoginAnnounce, Save*) — dipakai mode LOCAL", null);
+                    + "LoginAnnounce, Save*) + TAHAP SDK (API quickgame /v1/* + loginchecknative — "
+                    + "layar login SDK asli dilayani lokal, 0.4.2)", null);
         } catch (Throwable t) {
             StatusStore.markLogin(false);
             HumanLog.ev('⚠', "Server login lokal GAGAL hidup di port " + Config.loginPort()

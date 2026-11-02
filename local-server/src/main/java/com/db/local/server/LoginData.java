@@ -132,6 +132,73 @@ public final class LoginData {
         writeText(f, sb.toString());
     }
 
+    // ---------------- akun untuk tahap SDK (0.4.2 — dipakai SdkData) ----------------
+
+    /** Password (sudah MD5) akun lokal; null = akun tidak ada. */
+    public static String accountPassword(String userId) {
+        synchronized (LOCK) {
+            try {
+                String[] p = findAccount(userId);
+                return p == null ? null : p[1];
+            } catch (Throwable t) {
+                return null;
+            }
+        }
+    }
+
+    /** Pastikan akun ada (tanpa menimpa password lama bila sudah terdaftar). */
+    public static void ensureAccount(String userId, String passwordMd5) {
+        synchronized (LOCK) {
+            try {
+                if (findAccount(userId) == null) {
+                    upsertAccount(userId, passwordMd5 == null ? "" : passwordMd5, true);
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    /** Catat login ulang (kolom waktu/jumlah). */
+    public static void touchAccount(String userId) {
+        synchronized (LOCK) {
+            try {
+                upsertAccount(userId, null, false);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    /** Semua baris akun (userId\tpassword\t…) — untuk pencarian token autoLogin. */
+    public static String[] allAccounts() {
+        synchronized (LOCK) {
+            try {
+                File f = new File(confDir, "accounts.txt");
+                if (!f.exists()) {
+                    return new String[0];
+                }
+                String[] lines = readText(f).split("\n");
+                int n = 0;
+                for (String line : lines) {
+                    String q = line.trim();
+                    if (q.length() > 0 && !q.startsWith("#")) {
+                        n++;
+                    }
+                }
+                String[] out = new String[n];
+                int i = 0;
+                for (String line : lines) {
+                    String q = line.trim();
+                    if (q.length() > 0 && !q.startsWith("#")) {
+                        out[i++] = q;
+                    }
+                }
+                return out;
+            } catch (Throwable t) {
+                return new String[0];
+            }
+        }
+    }
+
     /** Jumlah akun lokal (untuk dasbor). */
     public static int accountCount() {
         synchronized (LOCK) {
@@ -166,6 +233,20 @@ public final class LoginData {
      */
     public static String loginGameResponse(String userId, String password) {
         synchronized (LOCK) {
+            // 0.4.2 ALUR SDK: identitas mengikuti sesi SDK terakhir — H5 membawa userid
+            // dari url setting bin (disajikan SEBELUM layar SDK boot ini), sedangkan
+            // pemilik bisa memilih akun/tamu lain di layar SDK (loginchecknative sudah
+            // dicatat). Jawab dengan identitas sesi SDK agar akun pilihan layar SDK
+            // yang dipakai game — client tidak diubah sama sekali (README §2.11).
+            String sdkUid = SdkData.lastKnownUid();
+            if (sdkUid != null && sdkUid.length() > 0 && !sdkUid.equals(userId)) {
+                try {
+                    HumanLog.ev('ℹ', "loginGame: url minta \"" + userId + "\" — mengikuti sesi SDK: "
+                            + sdkUid + " (pilihan layar SDK)", null);
+                } catch (Throwable ignored) {
+                }
+                userId = sdkUid;
+            }
             boolean isNew = false;
             try {
                 isNew = (findAccount(userId) == null);

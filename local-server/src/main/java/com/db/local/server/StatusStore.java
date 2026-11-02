@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class StatusStore {
     private static final Object LOCK = new Object();
-    private static final String VERSION = "0.4.0";
+    private static final String VERSION = "0.4.2";
 
     private static String bind = "127.0.0.1";
     private static int port = 4000;
@@ -163,6 +163,9 @@ public final class StatusStore {
                     .append(Json.num("loginAccounts", LoginData.accountCount())).append(',')
                     .append(Json.num("loginServers", LoginData.serverCount())).append(',')
                     .append(Json.str("loginUser", loginUserId)).append(',')
+                    .append(Json.str("sdkUid", SdkData.lastKnownUid() == null ? "" : SdkData.lastKnownUid())).append(',')
+                    .append(Json.str("sdkGuest", SdkData.primaryGuest() == null ? "" : SdkData.primaryGuest())).append(',')
+                    .append(Json.num("sdkDevices", SdkData.guestDeviceCount())).append(',')
                     .append(Json.num("wwwFiles", wwwFiles)).append(',')
                     .append(Json.num("wwwBytes", wwwBytes)).append(',')
                     .append(Json.str("package", packageName)).append(',')

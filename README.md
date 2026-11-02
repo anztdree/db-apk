@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (**v4.1 — build 0.4.1**) — **ANTI "ERROR NETWORK" DI LOCAL** (laporan owner "ada error network saat mode local": (1) FIX Payload.collect — default login tertulis ke config/login/ bukan config/servers.json → "daftar darurat 1 server"; (2) loop accept NanoHTTPD kini tahan Throwable — dulu satu RuntimeException/Error = thread accept mati diam-diam, port "hidup mati" tanpa log, game menampilkan "Read Upgrade Config File Fail,Please Check NetWork!"; (3) watchdog port 8080+8610 tiap 5 dtk — port mati/pulih kini terlihat di log). Di bawahnya (v4.0): **LOGIN LOKAL** (tahap SDK dilokalkan: server login lokal port 8610 memakai protokol engine.io v3 + socket.io v2 PERSIS client game — guest/login/daftar server dilayani dari data lokal; endpoint login di setting bin & serversetting.json ditulis-ulang ke 127.0.0.1 di mode LOCAL; dasbor log baru: font 11px + baris terpisah garis). Di bawahnya (v3.2): **WEBSITE TANPA SWITCH MODE** (ganti mode cukup tombol melayang; `POST /api/mode` dihapus). Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) dibawa APK (`assets/server/www/`) & diekstrak OTOMATIS ke www/; tombol melayang BISA DIGESER; folder server anti-sampah
+> **Status dokumen:** Fondasi & Implementasi (**v4.2 — build 0.4.2**) — **ALUR SDK: LAYAR LOGIN SDK ASLI DULUAN, SEMUA TAHAP SDK DILAYANI LOKAL** (koreksi owner "SDK itu lebih dulu, tapi malah config loginserver anda sudah munculkan — jangan ngawur bikin config SDK"): dex quickgame dibedah + **server asli qsdk.t4game.com & login.popoh5.com:510 DIPROBE LANGSUNG** (rahasia tanda, skema respons semuanya salinan asli — §2.11); `assets/QHinfo` → 127.0.0.1:8610 (endpoint saja); layar SDK asli (HWLoginActivity: tamu/akun/daftar) tampil duluan; `loginchecknative` dilayani lokal; FIX bin `loginServer` dobel-port; userid url H5 = uid sesi SDK (tamu dipetakan per deviceId — tamu pertama = guest lama pemilik). Di bawahnya (v4.1): **ANTI "ERROR NETWORK"** (FIX servers.json + loop accept tahan Throwable + watchdog port). Di bawahnya (v4.0): **LOGIN LOKAL** (server login port 8610 — engine.io v3 + socket.io v2 persis client; endpoint login di bin & serversetting.json ditulis-ulang; dasbor log baru). Di bawahnya (v3.2): **WEBSITE TANPA SWITCH MODE**. Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) + tombol melayang bisa digeser
 > **Temuan 2026-10-31 (probe ulang, mengoreksi catatan lama):** **SERVER ASLI MASIH HIDUP** — `setting_BS_Android.bin` (711 B, terenkripsi XOR kunci **`DragonBall`**) berhasil didekripsi → membongkar host sesungguhnya: **dragonh5cdn.popoh5.com** (H5 game + folder upgrade). Seluruh file fisik server asli berhasil diunduh & menjadi isi mirror (daftar lengkap §2.9). Catatan lama "server asli sudah mati" TERBANTAHKAN — server hanya memindahkan file ke host CDN.
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-11-02
@@ -283,6 +283,54 @@ setting bin (XOR "DragonBall") → loginServer https://login.popoh5.com + loginP
 **Jalur tanpa-SDK di H5 (kunci PR3):** `main.min checkLastLogin()` — bila URL H5 memuat `?userid=X`, H5 **TIDAK memanggil SDK sama sekali** dan langsung `doOriginLoginRequest({username:X, password:""})` → password diisi `"game_origin"` → `clientLoginUser` → aksi `loginGame` → `GetServerList` → pilih server → masuk. Artinya: **guest/login lokal cukup dengan (1) url H5 + `?userid=<guest>` (rewrite endpoint, bukan edit client) + (2) server login lokal yang memakai wire-format yang sama.** Layar SDK (guest button QuickGame) tetap ada di mode ONLINE apa adanya.
 
 **Implikasi:** tahap SDK bisa dilokalkan penuh tanpa menyentuh client — `LoginServer.java` (0.4.0) memakai wire-format di atas.
+
+### 2.11 Protokol TAHAP SDK quickgame/zhuhuan — layar login SDK ASLI dilayani lokal (temuan 0.4.2: bedah dex com.quickgame.android.sdk + PROBE LANGSUNG qsdk.t4game.com & login.popoh5.com:510)
+
+**Alur asli APK (testMode 1 di setting bin — sudah terbukti dari dex `MainActivity`):**
+
+```
+LaunchActivity (channel "BS", LaunchActivity.onCreate:388)
+  └─ QuickGameManager.init(activity, product_code="75880787318053043365515388491588", callback)
+       └─ POST http://qsdk.t4game.com/v1/system/init   (host dari assets/QHinfo)
+  └─ onInitFinished(true) → QuickGameManager.login(activity)
+       └─ HWLoginActivity (UI SDK ASLI: tamu 1-klik / akun+password / daftar / lupa sandi)
+            ├─ tamu  → POST /v1/user/registerVisitor
+            ├─ masuk → POST /v1/user/loginByName {username, password=MD5}
+            ├─ daftar→ POST /v1/user/registerUser {vcode?, username, password=MD5}
+            └─ auto  → POST /v1/user/autoLogin {authToken}   (sesi tersimpan model.b)
+  └─ onLoginFinished(QGUserData{uid, username, token, isGuest})
+       └─ shell: GET <loginServer>:<loginWebPort>/loginchecknative?uid=…&username=…&token=…
+            &usermode=…&osVersion=…&packageName=…&appVersion=…&sourceVersion=…
+            &brand=…&model=…&os=Android&sdk=BS
+       └─ {"code":0} → MainActivity.customreading() → boot Egret (startGame JSON)
+  └─ H5 checkLastLogin() → url ?userid=<uid> → doOriginLoginRequest(uid,"game_origin")
+       → loginGame → GetServerList → pilih server → masuk
+```
+
+**Wire-format SDK (body form-urlencoded — BUKAN JSON):**
+
+| Aspek | Temuan (probe server ASLI, 2026-11-02) |
+|---|---|
+| Body | `sv=v2&data=<base64(JSON param)>&sign=<md5>` — header `application/x-www-form-urlencoded` |
+| `sign` | md5 dari `k=v&k=v&…` **urut abjad** + rahasia **`0b2a18e45d7df321`** (dex `unnecessarysperrylites.seventygenom.nationalcommunitymissing`) |
+| Param dasar | `sdkVersion=223, gameVersion, deviceId, serialNum, devIDShort, platform=1, productCode, channelCode, authToken, clientLang, suggestCurrency, time` + param per-endpoint |
+| Envelope jawaban | `{"result":bool,"data":…,"error":{"id":N,"message":"…"}}` — pesan galat mengikuti `clientLang` (`in` → "Otorisasi gagal", "akun atau password tidak ada") |
+| `/v1/system/init` | `data:{payTypes:[], version:{…all "empty"}, productConfig:{useServiceCenter,isShowFloat,showShare,guestShowBind,…}, loginTypes:["1","13"], nodes:{…}, requestIp, countryCode, first_install}` |
+| `/v1/user/registerVisitor` | `data:{authToken:"@…", userData:{uid, username, token, isGuest:1, isNewUser, mobile:"", bindInfo:{bindFB,bindGameCenter,bindGoogle,bindEmail,bindNaver,bindTwitter,bindLine,bindVK,signApple,bindPlay,bd94hi,bdhw}}, checkRealName:0}` — **deviceId sama = tamu sama (isNewUser→0)** |
+| `/v1/user/loginByName` | data sama dgn isGuest:0; salah → `{"result":false,"error":{"id":40101,"message":"akun atau password tidak ada"}}` |
+| `/v1/user/autoLogin` | token valid → sesi diperbarui; token asal → `{"id":40005,"message":"Otorisasi gagal"}` |
+| `/v1/user/ckRegVistor` | `data:{"isReged":1}` |
+| `loginchecknative` (GET login.popoh5.com:**510**) | token valid → `{"code":0,"sdk":"BSNative","nickName":…,"loginToken":"<32hex>","userId":…,"sign":"<md5>","sdkType":"BS","osType":"Android"}`; token asal → `{"code":500,"msg":"登录参数验证失败"}`; `sdk=BS` WAJIB (tanpa itu `{"code":500,"msg":"no sdk"}`) |
+
+**Implementasi lokal (0.4.2):**
+
+1. `assets/QHinfo` ditulis-ulang `http://qsdk.t4game.com` → `http://127.0.0.1:8610` (endpoint saja — dex/UI SDK tidak disentuh). Layar login SDK ASLI tampil duluan dan bertanya ke server SDK lokal.
+2. `SdkApi.java` + `SdkData.java` (port 8610, sebelahan socket.io): semua endpoint di atas dengan **skema respons salinan respons asli** (hasil probe). Tamu dipetakan per `deviceId` (`config/sdk-guests.txt`); **tamu pertama = guest lama pemilik** (`config/local-user.txt` — progres tidak lekat). Akun = `config/accounts.txt` (dipakai bersama loginGame).
+3. FIX 0.4.1→0.4.2: bin `loginServer` kini **TANPA port** (`http://127.0.0.1` + `loginPort`/`loginWebPort` 8610) — dulu `http://127.0.0.1:8610:8610` (dobel port) → `new URL` gagal → rantai SDK tidak pernah selesai.
+4. `userid` url H5 = **uid sesi SDK terakhir** (`config/sdk-last.txt`), bukan guest karangan. Karena bin disajikan SEBELUM layar SDK boot berjalan, `loginGame` mengikuti sesi SDK terakhir bila url membawa userid lain — identitas layar SDK = identitas game, tanpa mengubah client.
+5. Mode ONLINE: `/v1/*` diteruskan utuh ke `qsdk.t4game.com`, `loginchecknative` ke `login.popoh5.com:510` — perilaku online = perilaku asli.
+
+**Verifikasi sandbox (harness 0.4.2 — 39/39 LULUS):** envelope+sign, init (loginTypes `["1","13"]`, versi "empty"), registerVisitor (migrasi guest, isGuest/isNewUser/bindInfo), tamu ulang (isNewUser 0), autoLogin (token benar/asal→40005), registerUser (+dobel ditolak), loginByName (benar/salah→40101), ckRegVistor, loginchecknative (code 0 skema BSNative + code 500), loginGame mengikuti sesi SDK, handshake+GetServerList (regresi 0.4.0), rewrite bin (loginServer tanpa port, userid sesi SDK, tanpa host asli).
 
 ---
 
@@ -587,6 +635,7 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
+| **0.4.2** | **(v4.2) + ALUR SDK — layar login SDK ASLI DULUAN, seluruh tahap SDK dilayani LOKAL (koreksi owner "SDK itu lebih dulu … jangan ngawur bikin config SDK"): dex `com.quickgame.android.sdk` dibedah + server asli qsdk.t4game.com & login.popoh5.com:510 DIPROBE langsung → `SdkApi.java`+`SdkData.java` (port 8610) melayani `/v1/system/init, getNotice, getAgreement, onNewToken`, `/v1/user/registerVisitor (tamu per deviceId — tamu pertama = guest lama pemilik), autoLogin, loginByName (password MD5), registerUser, ckRegVistor, findPassByEmail, postGooglePlayVerify`, `/v1/auth/* (bindMail, changePassword, setGameRoleInfo, …)` + `GET /loginchecknative` — SEMUA skema respons = salinan respons asli (body form `{sv,data,sign}` md5 rahasia "0b2a18e45d7df321" dari dex; pesan galat Indonesia seperti asli) + `assets/QHinfo` → `http://127.0.0.1:8610` (endpoint saja, dex/UI SDK tidak disentuh) + FIX bin `loginServer` TANPA port (dulu `127.0.0.1:8610:8610` dobel → URL loginchecknative shell rusak) + userid url H5 = uid SESI SDK terakhir (config/sdk-last.txt; loginGame mengikuti sesi SDK bila url beda) + mode ONLINE: API SDK diteruskan utuh ke qsdk asli + dasbor kartu Tahap SDK (sesi, perangkat)** | **L5a–L5b ✓ (alur SDK lokal penuh — harness 39/39)** |
 | **0.4.1** | **(v4.1) + ANTI "ERROR NETWORK" — FIX Payload.collect (prefix ASSET_DIR dipakai buat path login → servers.json salah tulis ke config/login/; kini base eksplisit + sisa config/login/ dibersihkan) + loop accept NanoHTTPD tahan Throwable (dulu RuntimeException/Error = thread accept mati diam-diam → port "hidup mati" → game "Read Upgrade Config File Fail,Please Check NetWork!" TANPA log; kini dicatat via CrashListener + loop lanjut) + watchdog port 8080+8610 tiap 5 dtk (mati = ⚠, pulih = ✔)** | **L5a–L5b ✓ (stabilisasi LOCAL)** |
 | **0.4.0** | **(v4.0) + LOGIN LOKAL — server login lokal port 8610 memakai protokol PERSIS client game (engine.io v3 + socket.io v2, event `handler.process`: loginGame/GetServerList/LoginAnnounce/Save*) + endpoint login di setting bin (loginServer, tsLoginServer, loginPort 610→8610, loginWebPort 510→8610) & serversetting.json (loginserver) ditulis-ulang ke 127.0.0.1 di mode LOCAL (koreksi owner "endpoint masih menunjuk server pusat") + guest lokal tahan lama via url H5 `?userid=<guest>` (config `useSdk`, bawaan mati) + akun lokal config/accounts.txt + daftar server snapshot ASLI 2109 server (config/servers.json, boleh disunting) + dasbor log baru: font 11px + baris terpisah garis + rincian redup (koreksi owner "font kegedean & nyampur")** | **L5a–L5b ✓ (tahap SDK dilokalkan)** |
 | **0.3.2** | **(v3.2) + WEBSITE TANPA SWITCH MODE — switch dihapus dari dasbor 4000 & halaman 8080 (status mini tanpa tombol), ganti mode cukup tombol melayang (koreksi owner "website pindah mode itu salah cuma menuhin tempat") + `POST /api/mode` dihapus + badge mode baca-saja di dasbor + baris "memuat…" tak pernah tersisa di kotak log + narasi mode di log dirampingkan** | **L1–L2b ✓ (build — v3.2)** |

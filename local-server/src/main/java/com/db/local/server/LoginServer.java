@@ -76,12 +76,29 @@ public final class LoginServer extends NanoHTTPD {
         Method m = session.getMethod();
         String uri = session.getUri();
         Map<String, String> parms = session.getParms();
-        if (!"/socket.io/".equals(uri) && !"/socket.io".equals(uri)) {
-            return text(Response.Status.NOT_FOUND,
-                    "Server login lokal hanya melayani /socket.io/ (protokol game) — bukan halaman web. "
-                            + "Dasbor developer ada di port " + Config.debugPort() + ".");
-        }
         try {
+            // 0.4.2 ALUR SDK: rute API quickgame + loginchecknative — dibaca dulu agar
+            // tidak jatuh ke 404 socket.io. Body POST dibaca SEKALI di sini (stream
+            // tidak bisa dibaca dua kali) lalu diteruskan ke SdkApi.
+            if ((uri.startsWith("/v1/") || uri.equals("/loginchecknative")
+                    || uri.equals("/loginchecknative/")) && m == Method.POST) {
+                String sdkBody = readBody(session);
+                Response r = SdkApi.handle(m, uri, parms, sdkBody);
+                if (r != null) {
+                    return r;
+                }
+            } else if (uri.startsWith("/v1/") || uri.equals("/loginchecknative")
+                    || uri.equals("/loginchecknative/")) {
+                Response r = SdkApi.handle(m, uri, parms, "");
+                if (r != null) {
+                    return r;
+                }
+            }
+            if (!"/socket.io/".equals(uri) && !"/socket.io".equals(uri)) {
+                return text(Response.Status.NOT_FOUND,
+                        "Server login lokal melayani /socket.io/ (protokol game) + API SDK (/v1/*, "
+                                + "/loginchecknative). Dasbor developer ada di port " + Config.debugPort() + ".");
+            }
             if (Method.GET == m) {
                 String sid = parm(parms, "sid");
                 if (sid == null || sid.length() == 0) {

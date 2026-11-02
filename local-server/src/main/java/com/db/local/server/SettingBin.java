@@ -19,13 +19,18 @@ import java.io.ByteArrayOutputStream;
  *
  * Mode LOCAL (koreksi PR1 — "endpoint masih menunjuk server pusat"):
  *   url/tsUrl/update  → http://127.0.0.1:<gamePort>     (sudah sejak 0.1.0)
- *   loginServer       → http://127.0.0.1:<loginPort>    (BARU 0.4.0 — server login lokal)
- *   tsLoginServer     → http://127.0.0.1:<loginPort>    (BARU 0.4.0)
- *   loginPort         → <loginPort>                     (BARU 0.4.0; asal 610)
- *   loginWebPort      → <loginPort>                     (BARU 0.4.0; asal 510)
- *   url               → + "&userid=<guest lokal>"       (BARU 0.4.0 — PR3: jalur login
- *                       tanpa-SDK di H5, main.min checkLastLogin → doOriginLoginRequest;
- *                       bisa dimatikan lewat server.json "useSdk": true)
+ *   loginServer       → http://127.0.0.1   (TANPA PORT — 0.4.2; dulu salah tulis
+ *                       ":8610" sehingga URL loginchecknative shell jadi
+ *                       "127.0.0.1:8610:8610" — MalformedURLException, rantai SDK
+ *                       tidak pernah selesai; shell menyambung loginServer+":"+
+ *                       loginPort/loginWebPort sendiri)
+ *   tsLoginServer     → http://127.0.0.1:<loginPort>    (dipakai utuh, varian uji)
+ *   loginPort         → <loginPort>                     (asal 610)
+ *   loginWebPort      → <loginPort>                     (asal 510 — loginchecknative)
+ *   url               → + "&userid=<uid>"               (0.4.0 PR3; 0.4.2 = uid SESI
+ *                       SDK terakhir — hasil layar login SDK asli, bukan guest
+ *                       karangan; fallback guest lokal bila sesi SDK belum ada.
+ *                       H5: checkLastLogin → doOriginLoginRequest — README §2.11)
  * Mode ONLINE: file asli diteruskan apa adanya (tanpa rewrite).
  *
  * Skema XOR simetris: operasi enkripsi = dekripsi. Gagal apa pun → file asli
@@ -55,7 +60,23 @@ public final class SettingBin {
      * kombinasi file+port agar tidak menghitung ulang tiap permintaan.
      */
     public static byte[] rewrittenLocal(File f, int gamePort) {
-        return rewrittenLocal(f, gamePort, Config.loginPort(), Config.useSdk() ? null : LoginData.localUserId());
+        return rewrittenLocal(f, gamePort, Config.loginPort(), Config.useSdk() ? null : currentUserIdSuffix());
+    }
+
+    /**
+     * userid untuk url H5 — uid SESI SDK TERAKHIR (layar login SDK asli; tahan-lama
+     * karena tamu SDK dipetakan per deviceId). Fallback: guest lokal tahan-lama.
+     * Publik — dipakai GameServer untuk log.
+     */
+    public static String currentUserIdSuffix() {
+        try {
+            String sdkUid = SdkData.lastKnownUid();
+            if (sdkUid != null && sdkUid.length() >= 4) {
+                return sdkUid;
+            }
+        } catch (Throwable ignored) {
+        }
+        return LoginData.localUserId();
     }
 
     /** Versi lengkap — dipanggil GameServer dengan nilai config aktif. */
@@ -84,13 +105,14 @@ public final class SettingBin {
             byte[] plain = xor(enc);
             String s = new String(plain, "UTF-8");
             String replaced = s.replace(HOST_ORIGINAL, "http://127.0.0.1:" + gamePort);
-            // PR1: login endpoint → server login lokal
-            replaced = replaced.replace(LOGIN_ORIGINAL, "http://127.0.0.1:" + loginPort);
+            // PR1: login endpoint → server login lokal. 0.4.2: TANPA PORT — shell
+            // menyambung ":"+loginPort / ":"+loginWebPort sendiri (loginchecknative).
+            replaced = replaced.replace(LOGIN_ORIGINAL, "http://127.0.0.1");
             replaced = replaced.replace(TS_LOGIN_ORIGINAL, "http://127.0.0.1:" + loginPort);
             // port login asli (610 web socket login, 510 web login SDK) → port login lokal
             replaced = setJsonValue(replaced, "loginPort", String.valueOf(loginPort));
             replaced = setJsonValue(replaced, "loginWebPort", String.valueOf(loginPort));
-            // PR3: jalur login tanpa-SDK — url H5 + userid guest lokal (bisa dimatikan)
+            // PR3/0.4.2: userid url H5 = identitas sesi SDK (fallback guest lokal)
             if (userIdSuffix != null && userIdSuffix.length() > 0) {
                 String url = getJsonValue(replaced, "url");
                 if (url != null && url.indexOf("userid=") < 0) {

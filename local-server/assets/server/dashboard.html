@@ -117,6 +117,7 @@
       <b>Alamat</b><span id="gameaddr">…</span>
       <b>Login lokal</b><span><span class="dot" id="logindot"></span><span id="loginalive">…</span></span>
       <b>Login alamat</b><span id="loginaddr">…</span>
+      <b>Tahap SDK</b><span id="sdkline">…</span>
       <b>Akun lokal</b><span id="loginacc">…</span>
       <b>Permintaan</b><span id="reqs">…</span>
       <b>Gagal</b><span id="errs">…</span>
@@ -235,8 +236,11 @@
     $("gamealive").textContent = s.server.gameAlive ? "HIDUP — local running" : "MATI";
     $("gameaddr").textContent = "http://127.0.0.1:" + s.server.gamePort;
     $("logindot").className = "dot " + (s.server.loginAlive ? "up" : "down");
-    $("loginalive").textContent = s.server.loginAlive ? "HIDUP — guest/login/daftar server dilayani lokal" : "MATI";
+    $("loginalive").textContent = s.server.loginAlive ? "HIDUP — tahap SDK + guest/login/daftar server dilayani lokal" : "MATI";
     $("loginaddr").textContent = "http://127.0.0.1:" + s.server.loginPort + " (engine.io v3 + socket.io v2)";
+    var sdkUid = s.server.sdkUid || s.server.sdkGuest || "";
+    $("sdkline").textContent = "layar login SDK ASLI dilayani lokal (/v1/* + loginchecknative) · sesi: "
+      + (sdkUid || "belum ada") + " · " + (s.server.sdkDevices || 0) + " perangkat";
     $("loginacc").textContent = (s.server.loginAccounts || 0) + " akun · guest: " + (s.server.loginUser || "—")
       + " · " + (s.server.loginServers || 0) + " server";
     $("reqs").textContent = s.server.requests + " sejak server nyala";

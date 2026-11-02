@@ -206,8 +206,9 @@ public final class GameServer extends NanoHTTPD {
             return textResp(Response.Status.NOT_FOUND, "Mirror www/ tidak berisi " + uri);
         }
         try {
+            String uidSuffix = SettingBin.currentUserIdSuffix();
             byte[] b = SettingBin.rewrittenLocal(f, Config.gamePort(), Config.loginPort(),
-                    Config.useSdk() ? null : LoginData.localUserId());
+                    Config.useSdk() ? null : uidSuffix);
             long ms = System.currentTimeMillis() - t0;
             Response r = newFixedLengthResponse(Response.Status.OK, "application/octet-stream",
                     new ByteArrayInputStream(b), b.length);
@@ -216,7 +217,8 @@ public final class GameServer extends NanoHTTPD {
                     "GET " + gameUrl(uri) + " → 200 dari www/ · " + HumanLog.fmtBytes(b.length)
                             + " · " + HumanLog.fmtMs(ms) + " — endpoint di dalam bin ditulis-ulang ke lokal: game "
                             + "http://127.0.0.1:" + Config.gamePort() + " · login http://127.0.0.1:"
-                            + Config.loginPort() + (Config.useSdk() ? " · layar SDK asli" : " · userid guest lokal"),
+                            + Config.loginPort() + (Config.useSdk() ? " · layar SDK asli"
+                            : " · userid url H5 = " + uidSuffix),
                     nullSafe(query));
             return r;
         } catch (Throwable t) {
