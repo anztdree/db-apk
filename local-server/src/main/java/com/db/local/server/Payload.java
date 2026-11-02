@@ -69,7 +69,7 @@ public final class Payload {
             }
             AssetManager am = ctx.getAssets();
             List<String> rel = new ArrayList<String>();
-            collect(am, ASSET_DIR, rel);
+            collect(am, ASSET_DIR, ASSET_DIR, rel);
             r.files = rel.size();
             if (rel.isEmpty()) {
                 r.note = "mirror kosong di APK (assets/" + ASSET_DIR + " tidak berisi file)";
@@ -130,9 +130,15 @@ public final class Payload {
             if (!confDir.exists()) {
                 confDir.mkdirs();
             }
+            // bersihkan sisa bug 0.4.0: file login default pernah salah tulis ke
+            // config/login/ (prefix "server/www" dipakai buat path "server/login")
+            File legacy = new File(confDir, "login");
+            if (legacy.exists()) {
+                deleteTree(legacy);
+            }
             AssetManager am = ctx.getAssets();
             List<String> rel = new ArrayList<String>();
-            collect(am, LOGIN_ASSET_DIR, rel);
+            collect(am, LOGIN_ASSET_DIR, LOGIN_ASSET_DIR, rel);
             if (rel.isEmpty()) {
                 return null;
             }
@@ -226,15 +232,15 @@ public final class Payload {
         }
     }
 
-    /** Kumpulkan semua file di bawah dir (rekursif) sebagai path relatif dari ASSET_DIR. */
-    private static void collect(AssetManager am, String dir, List<String> out) {
+    /** Kumpulkan semua file di bawah dir (rekursif) sebagai path relatif dari base. */
+    private static void collect(AssetManager am, String base, String dir, List<String> out) {
         try {
             String[] items = am.list(dir);
             if (items == null || items.length == 0) {
                 InputStream test = null;
                 try {
                     test = am.open(dir); // bisa dibuka = file
-                    out.add(dir.substring(ASSET_DIR.length() + 1));
+                    out.add(dir.substring(base.length() + 1));
                 } catch (Throwable notFile) {
                     // folder kosong — abaikan
                 } finally {
@@ -243,7 +249,7 @@ public final class Payload {
                 return;
             }
             for (int i = 0; i < items.length; i++) {
-                collect(am, dir + "/" + items[i], out);
+                collect(am, base, dir + "/" + items[i], out);
             }
         } catch (Throwable ignored) {
         }
@@ -277,6 +283,20 @@ public final class Payload {
             if (in != null) {
                 in.close();
             }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** Hapus folder/file rekursif — hanya dipakai untuk sisa bug 0.4.0 (config/login/). */
+    private static void deleteTree(File f) {
+        try {
+            File[] kids = f.listFiles();
+            if (kids != null) {
+                for (int i = 0; i < kids.length; i++) {
+                    deleteTree(kids[i]);
+                }
+            }
+            f.delete();
         } catch (Throwable ignored) {
         }
     }

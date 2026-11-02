@@ -1,6 +1,7 @@
 package com.db.local.server;
 
 import android.content.Context;
+import fi.iki.elonen.NanoHTTPD;
 
 import java.io.File;
 
@@ -130,6 +131,24 @@ public final class Starter {
         }
         HumanLog.init(logs);
 
+        // ---------- 1a) hook kejadian loop accept (0.4.1) ----------
+        // Error tak terduga di loop penerima koneksi NanoHTTPD kini TERCATAT —
+        // dulu thread accept bisa mati diam-diam sehingga port “hidup mati”:
+        // game hanya melihat koneksi ditolak tanpa satu baris log (gejala dialog
+        // “Please Check NetWork” tanpa petunjuk — koreksi 0.4.1).
+        try {
+            NanoHTTPD.acceptCrashListener = new NanoHTTPD.CrashListener() {
+                public void onAcceptLoopCrash(String port, Throwable t) {
+                    try {
+                        HumanLog.ev('⚠', "Port " + port + " menangkap error tak terduga di loop penerima koneksi — server LANJUT melayani",
+                                String.valueOf(t));
+                    } catch (Throwable ignored) {
+                    }
+                }
+            };
+        } catch (Throwable ignored) {
+        }
+
         // ---------- 1b) PEMBERSIH: folder server hanya boleh config/www/logs/tmp ----------
         // Aturan folder bersih (README §2): apa pun di luar whitelist — peninggalan
         // build lama, salinan APK, file analisis, status.json nyasar — DIHAPUS.
@@ -258,6 +277,35 @@ public final class Starter {
             return; // tidak ada yang bisa dilanjutkan
         }
 
+        // ---------- 5c) PENJAGA PORT (0.4.1) ----------
+        // Probe 8080 + 8610 tiap 5 dtk. Dulu kegagalan level KONEKSI tidak
+        // terlihat sama sekali di log (server hanya mencatat permintaan yang
+        // sampai) — game menampilkan “Please Check NetWork” tanpa petunjuk.
+        // Kini: port mati = ⚠ di log (laporan pertama + tiap ±1 menit),
+        // pemulihan = ✔. Probe = koneksi kosong, tidak dihitung permintaan.
+        try {
+            Thread wd = new Thread(new Runnable() {
+                public void run() {
+                    int gameMiss = 0;
+                    int loginMiss = 0;
+                    while (true) {
+                        try {
+                            Thread.sleep(5000L);
+                        } catch (InterruptedException ie) {
+                            return;
+                        }
+                        gameMiss = watchdogProbe(Config.gamePort(), "game", gameMiss);
+                        loginMiss = watchdogProbe(Config.loginPort(), "login", loginMiss);
+                    }
+                }
+            }, "dblsf-watchdog");
+            wd.setDaemon(true);
+            wd.setPriority(Thread.MIN_PRIORITY);
+            wd.start();
+        } catch (Throwable t) {
+            HumanLog.ev('⚠', "Penjaga port gagal dinyalakan — pemantauan kesehatan port tidak aktif", String.valueOf(t));
+        }
+
         // ---------- 6) monitor server asli ----------
         monitor = new Monitor(DEFAULT_TARGETS, Config.monitorSec());
         monitor.startBackground();
@@ -286,6 +334,45 @@ public final class Starter {
     }
 
     // ---------- helper kecil ----------
+
+    /**
+     * Probe satu port lokal (koneksi kosong, 1,5 dtk timeout). return jumlah
+     * kegagalan beruntun — 0 berarti port sehat. Laporan log: kegagalan PERTAMA
+     * + tiap 12 kegagalan beruntun (±1 menit) + pemulihan.
+     */
+    private static int watchdogProbe(int port, String nama, int missCount) {
+        boolean ok;
+        java.net.Socket s = new java.net.Socket();
+        try {
+            s.connect(new java.net.InetSocketAddress("127.0.0.1", port), 1500);
+            ok = true;
+        } catch (Throwable t) {
+            ok = false;
+        } finally {
+            try {
+                s.close();
+            } catch (Throwable ignored) {
+            }
+        }
+        if (ok) {
+            if (missCount >= 3) {
+                try {
+                    HumanLog.ev('✔', "Port " + nama + " (" + port + ") HIDUP KEMBALI — sebelumnya tidak merespons", null);
+                } catch (Throwable ignored) {
+                }
+            }
+            return 0;
+        }
+        int miss = missCount + 1;
+        if (miss == 1 || miss % 12 == 0) {
+            try {
+                HumanLog.ev('⚠', "Port " + nama + " (" + port + ") TIDAK merespons (" + (miss * 5)
+                        + " dtk) — game tidak akan bisa menghubungi server lokal bila berlanjut", null);
+            } catch (Throwable ignored) {
+            }
+        }
+        return miss;
+    }
 
     private static void mk(File d) {
         if (!d.exists()) {

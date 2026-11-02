@@ -151,6 +151,18 @@ import fi.iki.elonen.NanoHTTPD.Response.Status;
 public abstract class NanoHTTPD {
 
     /**
+     * Hook laporan kejadian luar biasa di loop accept (dipakai server lokal untuk
+     * mencatat ke log HumanLog — loop TETAP LANJUT, server tidak mati diam-diam).
+     */
+    public interface CrashListener {
+
+        void onAcceptLoopCrash(String port, Throwable t);
+    }
+
+    /** Listener kejadian loop accept — diset pemilik server (GameServer/LoginServer). */
+    public static volatile CrashListener acceptCrashListener;
+
+    /**
      * Pluggable strategy for asynchronously executing requests.
      */
     public interface AsyncRunner {
@@ -1774,6 +1786,20 @@ public abstract class NanoHTTPD {
                     NanoHTTPD.this.asyncRunner.exec(createClientHandler(finalAccept, inputStream));
                 } catch (IOException e) {
                     NanoHTTPD.LOG.log(Level.FINE, "Communication with the client broken", e);
+                } catch (Throwable t) {
+                    // PENGAMAN LOKAL (0.4.1): error non-IO (RuntimeException/Error)
+                    // TIDAK BOLEH membunuh loop accept diam-diam — kalau thread ini
+                    // mati, port server “hidup mati”: game mendapat koneksi ditolak
+                    // tanpa satu baris log (gejala “Read Upgrade Config File Fail,
+                    // Please Check NetWork!”). Catat + LANJUT menerima koneksi.
+                    NanoHTTPD.LOG.log(Level.SEVERE, "Accept loop caught non-IO throwable - continuing", t);
+                    CrashListener l = NanoHTTPD.acceptCrashListener;
+                    if (l != null) {
+                        try {
+                            l.onAcceptLoopCrash(String.valueOf(NanoHTTPD.this.myPort), t);
+                        } catch (Throwable ignored) {
+                        }
+                    }
                 }
             } while (!NanoHTTPD.this.myServerSocket.isClosed());
         }

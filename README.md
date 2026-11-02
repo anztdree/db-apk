@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (**v4.0 — build 0.4.0**) — **LOGIN LOKAL** (tahap SDK dilokalkan: server login lokal port 8610 memakai protokol engine.io v3 + socket.io v2 PERSIS client game — guest/login/daftar server dilayani dari data lokal; endpoint login di setting bin & serversetting.json ditulis-ulang ke 127.0.0.1 di mode LOCAL; dasbor log baru: font 11px + baris terpisah garis). Di bawahnya (v3.2): **WEBSITE TANPA SWITCH MODE** (ganti mode cukup tombol melayang; `POST /api/mode` dihapus). Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) dibawa APK (`assets/server/www/`) & diekstrak OTOMATIS ke www/; tombol melayang BISA DIGESER; folder server anti-sampah
+> **Status dokumen:** Fondasi & Implementasi (**v4.1 — build 0.4.1**) — **ANTI "ERROR NETWORK" DI LOCAL** (laporan owner "ada error network saat mode local": (1) FIX Payload.collect — default login tertulis ke config/login/ bukan config/servers.json → "daftar darurat 1 server"; (2) loop accept NanoHTTPD kini tahan Throwable — dulu satu RuntimeException/Error = thread accept mati diam-diam, port "hidup mati" tanpa log, game menampilkan "Read Upgrade Config File Fail,Please Check NetWork!"; (3) watchdog port 8080+8610 tiap 5 dtk — port mati/pulih kini terlihat di log). Di bawahnya (v4.0): **LOGIN LOKAL** (tahap SDK dilokalkan: server login lokal port 8610 memakai protokol engine.io v3 + socket.io v2 PERSIS client game — guest/login/daftar server dilayani dari data lokal; endpoint login di setting bin & serversetting.json ditulis-ulang ke 127.0.0.1 di mode LOCAL; dasbor log baru: font 11px + baris terpisah garis). Di bawahnya (v3.2): **WEBSITE TANPA SWITCH MODE** (ganti mode cukup tombol melayang; `POST /api/mode` dihapus). Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) dibawa APK (`assets/server/www/`) & diekstrak OTOMATIS ke www/; tombol melayang BISA DIGESER; folder server anti-sampah
 > **Temuan 2026-10-31 (probe ulang, mengoreksi catatan lama):** **SERVER ASLI MASIH HIDUP** — `setting_BS_Android.bin` (711 B, terenkripsi XOR kunci **`DragonBall`**) berhasil didekripsi → membongkar host sesungguhnya: **dragonh5cdn.popoh5.com** (H5 game + folder upgrade). Seluruh file fisik server asli berhasil diunduh & menjadi isi mirror (daftar lengkap §2.9). Catatan lama "server asli sudah mati" TERBANTAHKAN — server hanya memindahkan file ke host CDN.
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-11-02
@@ -587,6 +587,7 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
+| **0.4.1** | **(v4.1) + ANTI "ERROR NETWORK" — FIX Payload.collect (prefix ASSET_DIR dipakai buat path login → servers.json salah tulis ke config/login/; kini base eksplisit + sisa config/login/ dibersihkan) + loop accept NanoHTTPD tahan Throwable (dulu RuntimeException/Error = thread accept mati diam-diam → port "hidup mati" → game "Read Upgrade Config File Fail,Please Check NetWork!" TANPA log; kini dicatat via CrashListener + loop lanjut) + watchdog port 8080+8610 tiap 5 dtk (mati = ⚠, pulih = ✔)** | **L5a–L5b ✓ (stabilisasi LOCAL)** |
 | **0.4.0** | **(v4.0) + LOGIN LOKAL — server login lokal port 8610 memakai protokol PERSIS client game (engine.io v3 + socket.io v2, event `handler.process`: loginGame/GetServerList/LoginAnnounce/Save*) + endpoint login di setting bin (loginServer, tsLoginServer, loginPort 610→8610, loginWebPort 510→8610) & serversetting.json (loginserver) ditulis-ulang ke 127.0.0.1 di mode LOCAL (koreksi owner "endpoint masih menunjuk server pusat") + guest lokal tahan lama via url H5 `?userid=<guest>` (config `useSdk`, bawaan mati) + akun lokal config/accounts.txt + daftar server snapshot ASLI 2109 server (config/servers.json, boleh disunting) + dasbor log baru: font 11px + baris terpisah garis + rincian redup (koreksi owner "font kegedean & nyampur")** | **L5a–L5b ✓ (tahap SDK dilokalkan)** |
 | **0.3.2** | **(v3.2) + WEBSITE TANPA SWITCH MODE — switch dihapus dari dasbor 4000 & halaman 8080 (status mini tanpa tombol), ganti mode cukup tombol melayang (koreksi owner "website pindah mode itu salah cuma menuhin tempat") + `POST /api/mode` dihapus + badge mode baca-saja di dasbor + baris "memuat…" tak pernah tersisa di kotak log + narasi mode di log dirampingkan** | **L1–L2b ✓ (build — v3.2)** |
 | 0.3.1 | (v3.1) + log request menulis URL ASLI `http://127.0.0.1:8080/…` (tanpa label LOCAL/ONLINE — koreksi owner) + switch mode di KEDUA website (DIBATALKAN di 0.3.2) + log anti-banjir (dedupe request kembar <10 dtk + log floating sekali per proses) + 404 normal (com_db_local.bin) dilog tenang & jelas | L1–L2b ✓ (build — v3.1) |
@@ -598,7 +599,20 @@ tanpa izin storage tambahan (folder own-app).
 | 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.4.0 (LOGIN LOKAL, v4.0) — 2026-11-02 — BUILD TERKINI:**
+**Build 0.4.1 (ANTI "ERROR NETWORK", v4.1) — 2026-11-02 — BUILD TERKINI:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.4.1.apk` (163.909.627 byte) + **asset Release GitHub `v0.4.1`** |
+| SHA-256 | `97a9674c096e609b2aab2eabe685fd3718b6edfe300626e9c555d7079e985ba3` |
+| Dasar | **Release 0.3.2** (`b64cba53…`) — alur PATCH tanpa apktool (dex game & resource tidak disentuh) |
+| Laporan owner | "ada error network saat mode local" — dialog game **"Read Upgrade Config File Fail,Please Check NetWork！"** (string ditemukan di dex LaunchActivity — catch persis di alur cek pembaruan) |
+| Akar (bedah jadx + log device) | (1) `Payload.collect()` memangkas prefix dengan `ASSET_DIR` = "server/www" yang hardcoded — dipanggil juga untuk "server/login" → `servers.json` tertulis ke `config/login/` (BUKAN `config/servers.json`) → log "daftar darurat 1 server"; (2) setelah `resource.version` (200, 17:42:02) game berhenti meminta apa pun — upgrade.json/size.json tak pernah sampai server (kegagalan level koneksi TIDAK terlihat log) → dialog Check NetWork; lubang kematian: loop accept vendored NanoHTTPD hanya menangkap `IOException` — satu `RuntimeException/Error` = thread accept mati diam-diam → port "hidup mati" (dasbor 4000 tetap hidup, monitor jalan) |
+| Perbaikan | (a) `collect(am, base, dir, out)` — prefix eksplisit + bersihkan sisa `config/login/` warisan bug; (b) loop accept menangkap `Throwable` → dicatat via hook `NanoHTTPD.acceptCrashListener` (HumanLog) → loop LANJUT melayani; (c) watchdog: probe `127.0.0.1:8080`+`8610` tiap 5 dtk — gagal pertama + tiap ±1 mnt = ⚠, pulih = ✔ |
+| Verifikasi (sandbox) | ✅ ECJ bersih 62 kelas; ✅ harness protokol 7/7 cek (READY servers=**2109**, handshake + PING→PONG `1:3`, probe TCP OK); ✅ CRC diff dasar 0.3.2: dex game `281225eb`, `resources.arsc` `c6b5e22c`, `QHinfo` `af014748` IDENTIK — hanya `classes2.dex` (`0587eb7f`, 118.512 B) + `dashboard.html` + `login/servers.json`; sign v1/v2/v3 keystore tetap |
+| Perubahan client | **TIDAK ADA** — identik dasar (CRC) |
+
+**Build 0.4.0 (LOGIN LOKAL, v4.0) — 2026-11-02:**
 
 | Item | Nilai |
 |---|---|

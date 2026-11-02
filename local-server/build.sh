@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.4.0 — LOGIN LOKAL (guest/login/daftar server) + LOG DASBOR BARU
+# Build APK-LSF 0.4.1 — FIX servers.json + ANTI "HIDUP MATI" PORT (accept loop + watchdog)
 #
 # Dasar: releases/APK-LSF-0.3.2.apk (sudah memuat manifest provider +
 # endpoint 127.0.0.1:8080 + dex game asli + mirror www/ 31 file).
@@ -31,6 +31,20 @@
 #   c) PR2 — dasbor: log font 11px + baris terpisah garis + waktu redup +
 #      rincian di baris kedua; kartu port game kini memuat status login lokal
 #
+# Koreksi 0.4.1 (laporan owner "ada error network saat mode local" 2026-11-02):
+#   a) FIX Payload.collect — prefix path ASSET_DIR ("server/www") dipakai buat
+#      SEMUA panggilan sehingga default login salah tulis ke config/login/
+#      servers.json (bukan config/servers.json) → "daftar darurat 1 server";
+#      kini prefix dikirim eksplisit (base) + sisa config/login/ dibersihkan
+#   b) ANTI "HIDUP MATI": loop accept NanoHTTPD kini menangkap Throwable
+#      (dulu hanya IOException — satu RuntimeException/Error = thread accept
+#      mati diam-diam, port tidak menerima koneksi lagi, game menampilkan
+#      "Read Upgrade Config File Fail,Please Check NetWork!" TANPA satu baris
+#      log karena permintaan gagal tidak pernah sampai ke handler); kejadian
+#      kini dicatat lewat hook CrashListener + loop LANJUT
+#   c) WATCHDOG port: probe 8080 + 8610 tiap 5 dtk — port mati = ⚠ di log
+#      (laporan pertama + tiap ±1 mnt), pemulihan = ✔
+#
 # Prasyarat: tools/snapshot.sh sudah jalan (zip besar tersedia).
 # =============================================================
 set -euo pipefail
@@ -47,7 +61,7 @@ SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.4.0.apk"
+OUT="$REPO/releases/APK-LSF-0.4.1.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"
