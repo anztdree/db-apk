@@ -17,6 +17,9 @@ import java.io.Writer;
  *   "mode": "online",     // "online" = teruskan ke server asli; "local" = layani dari www/
  *   "gamePort": 8080,     // port GAME — endpoint di assets client menunjuk ke sini
  *   "debugPort": 4000,    // port dasbor debug developer (game tidak tahu port ini)
+ *   "loginPort": 8610,    // port server LOGIN lokal — engine.io v3 + socket.io v2 (0.4.0)
+ *   "useSdk": false,      // false = login guest lokal via url ?userid=… (PR3);
+ *                         // true = layar SDK asli dipakai (SDK tetap ke server asli)
  *   "bind": "127.0.0.1",
  *   "monitorSec": 60,
  *   "toggleX": -1,        // posisi terakhir tombol melayang (drag); -1 = posisi bawaan
@@ -32,6 +35,8 @@ public final class Config {
     private static volatile String mode = "online";
     private static volatile int gamePort = 8080;
     private static volatile int debugPort = 4000;
+    private static volatile int loginPort = 8610;
+    private static volatile boolean useSdk = false;
     private static volatile int monitorSec = 60;
     private static volatile int toggleX = -1;
     private static volatile int toggleY = -1;
@@ -41,6 +46,8 @@ public final class Config {
                     + "  \"mode\": \"online\",\n"
                     + "  \"gamePort\": 8080,\n"
                     + "  \"debugPort\": 4000,\n"
+                    + "  \"loginPort\": 8610,\n"
+                    + "  \"useSdk\": false,\n"
                     + "  \"bind\": \"127.0.0.1\",\n"
                     + "  \"monitorSec\": 60,\n"
                     + "  \"toggleX\": -1,\n"
@@ -76,6 +83,14 @@ public final class Config {
                     if (dp >= 1024 && dp <= 65535) {
                         debugPort = dp;
                     }
+                    int lp = (int) grepLong(raw, "\"loginPort\"", loginPort);
+                    if (lp >= 1024 && lp <= 65535) {
+                        loginPort = lp;
+                    }
+                    String us = grepStr(raw, "\"useSdk\"");
+                    if (us != null) {
+                        useSdk = "true".equalsIgnoreCase(us.trim());
+                    }
                     int ms = (int) grepLong(raw, "\"monitorSec\"", monitorSec);
                     if (ms >= 10 && ms <= 3600) {
                         monitorSec = ms;
@@ -104,6 +119,16 @@ public final class Config {
 
     public static int debugPort() {
         return debugPort;
+    }
+
+    /** Port server LOGIN lokal (engine.io v3 + socket.io v2) — bawaan 8610. */
+    public static int loginPort() {
+        return loginPort;
+    }
+
+    /** true = layar SDK asli dipakai; false (bawaan) = guest lokal via url ?userid=… */
+    public static boolean useSdk() {
+        return useSdk;
     }
 
     public static int monitorSec() {
@@ -165,6 +190,8 @@ public final class Config {
                 + "  \"mode\": \"" + mode + "\",\n"
                 + "  \"gamePort\": " + gamePort + ",\n"
                 + "  \"debugPort\": " + debugPort + ",\n"
+                + "  \"loginPort\": " + loginPort + ",\n"
+                + "  \"useSdk\": " + useSdk + ",\n"
                 + "  \"bind\": \"127.0.0.1\",\n"
                 + "  \"monitorSec\": " + monitorSec + ",\n"
                 + "  \"toggleX\": " + toggleX + ",\n"

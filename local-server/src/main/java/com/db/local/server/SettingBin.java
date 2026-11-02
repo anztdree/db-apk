@@ -8,16 +8,24 @@ import java.io.ByteArrayOutputStream;
  * Penulis-ulang setting bin — SATU-SATUNYA isi mirror yang diubah saat disajikan
  * di mode LOCAL (README §4: "rewrite sisi server, bukan edit client").
  *
- * Latar (hasil analisis 2025, terverifikasi probe langsung):
+ * Latar (hasil analisis 2025 + probe 2026-11-02, README §2.10):
  * - assets bs/db/android/setting_BS_Android.bin dari server asli TERENKRIPSI
  *   XOR dengan kunci "DragonBall" (711 byte); didekripsi berisi JSON peta server:
  *     url      → https://dragonh5cdn.popoh5.com/bs/index-native.html?v=…   (H5 game)
  *     tsUrl    → http://dragon.sjmobilegame.com:82/bs103/index-native.html  (varian uji)
  *     update   → https://dragonh5cdn.popoh5.com/bs/upgrade                  (zip + versi)
- *     loginServer / tsLoginServer → TIDAK disentuh (fase login berikutnya)
+ *     loginServer   → https://login.popoh5.com  (+loginPort 610, +loginWebPort 510)
+ *     tsLoginServer → http://118.24.68.91:7003                   (varian uji login)
  *
- * Mode LOCAL: host dragonh5cdn.popoh5.com diganti http://127.0.0.1:<gamePort>
- * supaya H5 + resource + zip semuanya dilayani folder www/ milik sendiri.
+ * Mode LOCAL (koreksi PR1 — "endpoint masih menunjuk server pusat"):
+ *   url/tsUrl/update  → http://127.0.0.1:<gamePort>     (sudah sejak 0.1.0)
+ *   loginServer       → http://127.0.0.1:<loginPort>    (BARU 0.4.0 — server login lokal)
+ *   tsLoginServer     → http://127.0.0.1:<loginPort>    (BARU 0.4.0)
+ *   loginPort         → <loginPort>                     (BARU 0.4.0; asal 610)
+ *   loginWebPort      → <loginPort>                     (BARU 0.4.0; asal 510)
+ *   url               → + "&userid=<guest lokal>"       (BARU 0.4.0 — PR3: jalur login
+ *                       tanpa-SDK di H5, main.min checkLastLogin → doOriginLoginRequest;
+ *                       bisa dimatikan lewat server.json "useSdk": true)
  * Mode ONLINE: file asli diteruskan apa adanya (tanpa rewrite).
  *
  * Skema XOR simetris: operasi enkripsi = dekripsi. Gagal apa pun → file asli
@@ -31,6 +39,10 @@ public final class SettingBin {
     /** Host yang ditulis-ulang ke server lokal di mode LOCAL. */
     static final String HOST_ORIGINAL = "https://dragonh5cdn.popoh5.com";
 
+    /** Host/alamat login yang ditulis-ulang ke server login lokal (PR1/PR3 0.4.0). */
+    static final String LOGIN_ORIGINAL = "https://login.popoh5.com";
+    static final String TS_LOGIN_ORIGINAL = "http://118.24.68.91:7003";
+
     private static final Object LOCK = new Object();
     private static volatile byte[] cache;
     private static volatile String cacheKey = "";
@@ -43,7 +55,13 @@ public final class SettingBin {
      * kombinasi file+port agar tidak menghitung ulang tiap permintaan.
      */
     public static byte[] rewrittenLocal(File f, int gamePort) {
-        String key = f.length() + ":" + f.lastModified() + ":" + gamePort;
+        return rewrittenLocal(f, gamePort, Config.loginPort(), Config.useSdk() ? null : LoginData.localUserId());
+    }
+
+    /** Versi lengkap — dipanggil GameServer dengan nilai config aktif. */
+    public static byte[] rewrittenLocal(File f, int gamePort, int loginPort, String userIdSuffix) {
+        String key = f.length() + ":" + f.lastModified() + ":" + gamePort + ":" + loginPort
+                + ":" + (userIdSuffix == null ? "-" : userIdSuffix);
         byte[] c = cache;
         if (c != null && key.equals(cacheKey)) {
             return c;
@@ -53,19 +71,33 @@ public final class SettingBin {
             if (c != null && key.equals(cacheKey)) {
                 return c;
             }
-            byte[] out = compute(f, gamePort);
+            byte[] out = compute(f, gamePort, loginPort, userIdSuffix);
             cache = out;
             cacheKey = key;
             return out;
         }
     }
 
-    private static byte[] compute(File f, int gamePort) {
+    private static byte[] compute(File f, int gamePort, int loginPort, String userIdSuffix) {
         try {
             byte[] enc = readAll(f);
             byte[] plain = xor(enc);
             String s = new String(plain, "UTF-8");
             String replaced = s.replace(HOST_ORIGINAL, "http://127.0.0.1:" + gamePort);
+            // PR1: login endpoint → server login lokal
+            replaced = replaced.replace(LOGIN_ORIGINAL, "http://127.0.0.1:" + loginPort);
+            replaced = replaced.replace(TS_LOGIN_ORIGINAL, "http://127.0.0.1:" + loginPort);
+            // port login asli (610 web socket login, 510 web login SDK) → port login lokal
+            replaced = setJsonValue(replaced, "loginPort", String.valueOf(loginPort));
+            replaced = setJsonValue(replaced, "loginWebPort", String.valueOf(loginPort));
+            // PR3: jalur login tanpa-SDK — url H5 + userid guest lokal (bisa dimatikan)
+            if (userIdSuffix != null && userIdSuffix.length() > 0) {
+                String url = getJsonValue(replaced, "url");
+                if (url != null && url.indexOf("userid=") < 0) {
+                    String sep = (url.indexOf('?') >= 0) ? "&" : "?";
+                    replaced = setJsonValue(replaced, "url", url + sep + "userid=" + userIdSuffix);
+                }
+            }
             if (replaced.equals(s)) {
                 // tidak ada host yang cocok — sampaikan apa adanya (defensif)
                 return enc;
@@ -82,6 +114,89 @@ public final class SettingBin {
             } catch (Throwable t2) {
                 return new byte[0];
             }
+        }
+    }
+
+    /**
+     * Ganti nilai string/angka suatu kunci level atas dalam JSON teks — tanpa
+     * dependensi parser. Aman bila kunci tidak ada (teks kembali apa adanya).
+     */
+    static String setJsonValue(String json, String key, String newValue) {
+        try {
+            String needle = "\"" + key + "\"";
+            int i = json.indexOf(needle);
+            if (i < 0) {
+                return json;
+            }
+            int c = json.indexOf(':', i + needle.length());
+            if (c < 0) {
+                return json;
+            }
+            int j = c + 1;
+            final int len = json.length();
+            while (j < len && (json.charAt(j) == ' ' || json.charAt(j) == '\t')) {
+                j++;
+            }
+            int valStart = j; // posisi karakter pertama nilai (kutip pembuka bila string)
+            int end;
+            boolean wasString = (j < len && json.charAt(j) == '"');
+            if (wasString) {
+                j++;
+                end = j;
+                while (end < len && json.charAt(end) != '"') {
+                    if (json.charAt(end) == '\\') {
+                        end++;
+                    }
+                    end++;
+                }
+            } else {
+                end = j;
+                while (end < len && json.charAt(end) >= '0' && json.charAt(end) <= '9') {
+                    end++;
+                }
+                if (end == j) {
+                    return json; // bukan angka — biarkan
+                }
+            }
+            String replacement = wasString ? ("\"" + newValue + "\"") : newValue;
+            // cabang string: end menunjuk kutip PENUTUP — kutip itu ikut diganti (end+1);
+            // cabang angka: end sudah satu posisi DI BELAKANG digit terakhir
+            return json.substring(0, valStart) + replacement + json.substring(wasString ? end + 1 : end);
+        } catch (Throwable t) {
+            return json;
+        }
+    }
+
+    /** Baca nilai string level atas dari JSON teks; null bila tidak ada. */
+    static String getJsonValue(String json, String key) {
+        try {
+            String needle = "\"" + key + "\"";
+            int i = json.indexOf(needle);
+            if (i < 0) {
+                return null;
+            }
+            int c = json.indexOf(':', i + needle.length());
+            if (c < 0) {
+                return null;
+            }
+            int a = json.indexOf('"', c);
+            if (a < 0) {
+                return null;
+            }
+            int b = a + 1;
+            final int len = json.length();
+            while (b < len && json.charAt(b) != '"') {
+                if (json.charAt(b) == '\\') {
+                    b++;
+                }
+                b++;
+            }
+            if (b >= len) {
+                return null;
+            }
+            return json.substring(a + 1, b);
+        } catch (Throwable t) {
+            return null;
         }
     }
 

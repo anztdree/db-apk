@@ -1,30 +1,35 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.3.2 — WEBSITE TANPA SWITCH MODE
+# Build APK-LSF 0.4.0 — LOGIN LOKAL (guest/login/daftar server) + LOG DASBOR BARU
 #
-# Dasar: releases/APK-LSF-0.3.1.apk (sudah memuat manifest provider +
-# endpoint 127.0.0.1:8080 + dex game asli). Bila file dasar belum ada:
-#   unduh https://github.com/anztdree/db-apk/releases/download/v0.3.1/APK-LSF-0.3.1.apk
-#   (sha256 252984ce190d4e2ebbb9dd9693c9ca0d48b3521c48a02d98cac5d07f7602436d)
+# Dasar: releases/APK-LSF-0.3.2.apk (sudah memuat manifest provider +
+# endpoint 127.0.0.1:8080 + dex game asli + mirror www/ 31 file).
+# Bila file dasar belum ada:
+#   unduh https://github.com/anztdree/db-apk/releases/download/v0.3.2/APK-LSF-0.3.2.apk
+#   (sha256 b64cba53bf96fd6de3bcb5b15c33f6bb9f84c1c170a7808fea7b897dc9ab96d2)
 # Patch yang diterapkan (TANPA apktool — dex game & resource tidak disentuh):
 #   1) javac(ECJ) + d8  -> classes2.dex baru (kode server lokal)
 #   2) ganti assets/server/dashboard.html
 #   3) tambah assets/server/www/** — MIRROR PENUH server asli (31 file, ±56 MB)
 #      yang diekstrak OTOMATIS ke Android/data/<paket>/server/www/
-#   4) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#   4) tambah assets/server/login/** — DEFAULT LOGIN LOKAL (servers.json:
+#      snapshot ASLI daftar server login.popoh5.com — 2109 server, probe §2.10)
+#   5) buang tanda tangan lama -> zipalign + sign (keystore tetap)
 #
-# Koreksi 0.3.2 (umpan balik owner: "website pindah mode itu salah cuma
-# menuhin tempat" + bukti baris "memuar…" tersisa di kotak log):
-#   a) switch mode DIHAPUS dari SEMUA halaman web — dasbor 4000 TANPA kartu
-#      mode besar, halaman root port game 8080 jadi status mini tanpa tombol.
-#      Ganti mode cukup lewat tombol melayang di layar game (satu tempat).
-#   b) endpoint POST /api/mode dihapus dari kedua port (tidak ada lagi
-#      pemakainya — kontrak API bersih)
-#   c) dasbor: mode tampil sebagai badge read-only di header; baris placeholder
-#      "memuat…" di kotak log dibuang saat jawaban pertama masuk; bila dasbor
-#      gagal dihubungi muncul pesan jelas, bukan "memuat…" menggantung
-#   d) narasi mode di log dirampingkan: baris boot lebih pendek, tanpa iklan
-#      "halaman 8080 berisi tombol ganti mode", baris tombol melayang 1 kalimat
+# Koreksi 0.4.0 (3 PR — umpan balik owner "endpoint masih ke server pusat",
+# "log panel kegedean & nyampur", "SDK stage harus lokal"):
+#   a) PR1 — mode LOCAL menulis-ulang SEMUA endpoint login: setting bin
+#      (loginServer, tsLoginServer, loginPort 610→8610, loginWebPort 510→8610)
+#      + serversetting.json (loginserver → http://127.0.0.1:8610)
+#   b) PR3 — server LOGIN LOKAL port 8610: protokol engine.io v3 + socket.io v2
+#      (persis client game socket.io.min v2.1.0) dengan event handler.process:
+#      loginGame (daftar/masuk otomatis — akun lokal config/accounts.txt),
+#      GetServerList (config/servers.json — snapshot asli 2109 server),
+#      LoginAnnounce, SaveHistory/SaveLanguage/SaveUserEnterInfo. Jalur guest
+#      lokal: url H5 + ?userid=<guest> (config useSdk:false) — H5 memakai
+#      doOriginLoginRequest (tanpa SDK); guest tahan lama (config/local-user.txt)
+#   c) PR2 — dasbor: log font 11px + baris terpisah garis + waktu redup +
+#      rincian di baris kedua; kartu port game kini memuat status login lokal
 #
 # Prasyarat: tools/snapshot.sh sudah jalan (zip besar tersedia).
 # =============================================================
@@ -37,12 +42,12 @@ ECJ="${ECJ:-$REPO/tools/ecj-3.33.0.jar}"               # compiler Java 8 (sandbo
 KS="${KS:-$REPO/keystore/lsf.keystore}"
 KS_ALIAS="${KS_ALIAS:-lsf}"
 KS_PASS="${KS_PASS:-lsf-local-2025}"
-BASE="${BASE:-$REPO/releases/APK-LSF-0.3.1.apk}"       # APK dasar (rilis 0.3.1)
+BASE="${BASE:-$REPO/releases/APK-LSF-0.3.2.apk}"         # APK dasar (rilis 0.3.2)
 SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.3.2.apk"
+OUT="$REPO/releases/APK-LSF-0.4.0.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"
@@ -64,22 +69,25 @@ java -cp "$TOOLS/r8.jar" com.android.tools.r8.D8 --release \
   --output "$BUILD/dex" "${CLASS_FILES[@]}"
 cp "$BUILD/dex/classes.dex" "$BUILD/stage/classes2.dex"
 
-echo "[3/8] siapkan aset server (dashboard + mirror www/) ..."
+echo "[3/8] siapkan aset server (dashboard + mirror www/ + default login) ..."
 mkdir -p "$BUILD/stage/assets/server"
 cp "$ASSETS/server/dashboard.html" "$BUILD/stage/assets/server/dashboard.html"
 cp -R "$WWW" "$BUILD/stage/assets/server/www"
+if [ -d "$ASSETS/server/login" ]; then
+  cp -R "$ASSETS/server/login" "$BUILD/stage/assets/server/login"
+fi
 
 echo "[4/8] salin APK dasar + buang tanda tangan lama + hapus payload lama ..."
 cp "$BASE" "$BUILD/work.apk"
 zip -d "$BUILD/work.apk" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.DSA' 'META-INF/MANIFEST.MF' >/dev/null 2>&1 || true
 zip -d "$BUILD/work.apk" 'assets/server/payload/*' >/dev/null 2>&1 || true
 
-echo "[5/8] sisipkan classes2.dex + dashboard + mirror www/ ..."
+echo "[5/8] sisipkan classes2.dex + dashboard + mirror www/ + login ..."
 (
   cd "$BUILD/stage"
   # shellcheck disable=SC2046
   zip -X -0 ../work.apk classes2.dex assets/server/dashboard.html \
-    $(cd "$BUILD/stage" && find assets/server/www -type f | sort) >/dev/null
+    $(cd "$BUILD/stage" && find assets/server/www assets/server/login -type f | sort) >/dev/null
 )
 
 echo "[6/8] zipalign + sign (keystore tetap) ..."

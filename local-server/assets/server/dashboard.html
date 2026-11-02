@@ -79,9 +79,19 @@
   .pane.active{display:block}
   #logbox{
     background:var(--code); border:1px solid var(--line); border-radius:10px;
-    padding:10px 12px; font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    max-height:52vh; overflow-y:auto; white-space:pre-wrap; word-break:break-all;
+    padding:0; font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    max-height:52vh; overflow-y:auto; word-break:break-all;
   }
+  /* PR2 0.4.0 — koreksi owner "font terlalu besar, baris susah dibedakan":
+     font 11px + tiap baris = satu baris tabel dengan garis pemisah + waktu redup */
+  .logrow{display:flex; gap:7px; padding:3px 9px; border-bottom:1px solid var(--line); align-items:baseline}
+  .logrow:last-child{border-bottom:none}
+  .logrow:hover{background:rgba(128,128,128,.08)}
+  .logtime{color:var(--mut); flex:none; font-size:10px}
+  .logic{flex:none; width:13px; text-align:center}
+  .logtext{flex:1; min-width:0; word-break:break-word}
+  .logdetail{color:var(--mut); font-size:10px; margin:1px 0 3px 29px; padding-left:2px; word-break:break-all}
+  .logempty{padding:12px 10px; color:var(--mut)}
   .ic-ok{color:var(--ok)} .ic-warn{color:var(--err)} .ic-info{color:var(--mut)} .ic-in{color:var(--warn)}
   footer{
     margin-top:auto; padding:14px 16px calc(14px + env(safe-area-inset-bottom));
@@ -105,6 +115,9 @@
     <div class="kv">
       <b>Status</b><span><span class="dot" id="gamedot"></span><span id="gamealive">…</span></span>
       <b>Alamat</b><span id="gameaddr">…</span>
+      <b>Login lokal</b><span><span class="dot" id="logindot"></span><span id="loginalive">…</span></span>
+      <b>Login alamat</b><span id="loginaddr">…</span>
+      <b>Akun lokal</b><span id="loginacc">…</span>
       <b>Permintaan</b><span id="reqs">…</span>
       <b>Gagal</b><span id="errs">…</span>
       <b>Uptime</b><span id="uptime">…</span>
@@ -221,6 +234,11 @@
     $("gamedot").className = "dot " + (s.server.gameAlive ? "up" : "down");
     $("gamealive").textContent = s.server.gameAlive ? "HIDUP — local running" : "MATI";
     $("gameaddr").textContent = "http://127.0.0.1:" + s.server.gamePort;
+    $("logindot").className = "dot " + (s.server.loginAlive ? "up" : "down");
+    $("loginalive").textContent = s.server.loginAlive ? "HIDUP — guest/login/daftar server dilayani lokal" : "MATI";
+    $("loginaddr").textContent = "http://127.0.0.1:" + s.server.loginPort + " (engine.io v3 + socket.io v2)";
+    $("loginacc").textContent = (s.server.loginAccounts || 0) + " akun · guest: " + (s.server.loginUser || "—")
+      + " · " + (s.server.loginServers || 0) + " server";
     $("reqs").textContent = s.server.requests + " sejak server nyala";
     $("errs").textContent = s.server.errors;
     $("uptime").textContent = fmtUptime(s.server.uptimeMs);
@@ -281,18 +299,30 @@
       var frag = document.createDocumentFragment();
       arr.forEach(function(e){
         logSince = Math.max(logSince, e.id);
-        var d = document.createElement("div");
-        d.innerHTML = "<span class='" + iconClass(e.icon) + "'>" + esc(e.icon) + "</span> "
-          + esc(e.t) + "  " + esc(e.text)
-          + (e.detail && e.detail !== "-" ? "  <span style='color:var(--mut)'>" + esc(e.detail) + "</span>" : "");
-        frag.appendChild(d);
+        // PR2 0.4.0 — baris terstruktur: waktu + ikon + teks, rincian di baris kedua redup
+        var row = document.createElement("div");
+        row.className = "logrow";
+        var tm = document.createElement("span"); tm.className = "logtime"; tm.textContent = e.t;
+        var ic = document.createElement("span"); ic.className = "logic " + iconClass(e.icon); ic.textContent = e.icon;
+        var tx = document.createElement("span"); tx.className = "logtext"; tx.textContent = e.text;
+        row.appendChild(tm); row.appendChild(ic); row.appendChild(tx);
+        frag.appendChild(row);
+        if(e.detail && e.detail !== "-"){
+          var det = document.createElement("div");
+          det.className = "logdetail";
+          det.textContent = e.detail;
+          frag.appendChild(det);
+        }
       });
       box.appendChild(frag);
-      while(box.childNodes.length > 800) box.removeChild(box.firstChild);
+      while(box.childNodes.length > 1600) box.removeChild(box.firstChild);
       if(atEnd) box.scrollTop = box.scrollHeight;
     }).catch(function(){
       if(!logLoaded){
-        $("logbox").textContent = "gagal memuat log — dasbor tidak bisa dihubungi (coba muat ulang halaman)";
+        var b = $("logbox"); b.textContent = "";
+        var d = document.createElement("div"); d.className = "logempty";
+        d.textContent = "gagal memuat log — dasbor tidak bisa dihubungi (coba muat ulang halaman)";
+        b.appendChild(d);
       }
     });
   }

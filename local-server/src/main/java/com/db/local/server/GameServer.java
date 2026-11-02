@@ -21,8 +21,10 @@ import fi.iki.elonen.NanoHTTPD;
  *
  * - LOCAL : layani file dari &lt;root&gt;/www/ — hasil ekstraksi OTOMATIS mirror
  *           server ASLI yang dibawa APK (assets/server/www/); struktur folder =
- *           path URL server asli. File setting bin ditulis-ulang hostnya
- *           (SettingBin — satu-satunya konten yang berubah). File yang belum
+ *           path URL server asli. File yang ditulis-ulang (PR1/PR3 0.4.0):
+ *           1) setting bin — host H5 + endpoint LOGIN (SettingBin)
+ *           2) serversetting.json — "loginserver" → server login lokal
+ *           (dua-duanya satu-satunya konten yang berubah). File yang belum
  *           ada di mirror dicoba diambil SEKALI dari server asli lalu disimpan
  *           ke www/ (mirror melengkapi dirinya sendiri); bila server asli juga
  *           tidak bisa dihubungi → 404 — client melanjutkan boot (fallback dex
@@ -138,7 +140,9 @@ public final class GameServer extends NanoHTTPD {
                 .append("Server lokal hidup — mode <b>").append(Config.mode().toUpperCase())
                 .append("</b> · port game ").append(Config.gamePort())
                 .append(" · endpoint client menunjuk ke sini.<br>")
-                .append("Dasbor developer: http://127.0.0.1:").append(Config.debugPort())
+                .append("Login lokal: http://127.0.0.1:").append(Config.loginPort())
+                .append(" (engine.io v3 + socket.io v2) · dasbor developer: http://127.0.0.1:")
+                .append(Config.debugPort())
                 .append(" · ganti mode: tombol melayang di layar game.")
                 .append("</body></html>");
         return htmlResp(sb.toString().getBytes());
@@ -147,12 +151,18 @@ public final class GameServer extends NanoHTTPD {
     // ---------------- mode LOCAL: layani dari www/ ----------------
 
     private Response serveLocal(String uri, String query, long t0) {
-        // Setting bin = satu-satunya file yang ditulis-ulang saat disajikan (README §4).
+        // Setting bin = ditulis-ulang saat disajikan (README §4 + PR1 0.4.0).
         // Berlaku untuk kedua jalur: bs/db/android (configus) & lzceshi/native_setting/Android
         // (dragon) — keduanya terenkripsi XOR "DragonBall" dan sama-sama menunjuk dragonh5cdn.
         if ((uri.startsWith("/bs/db/android/") || uri.startsWith("/lzceshi/native_setting/Android/"))
                 && uri.endsWith(".bin")) {
             return serveSettingBin(uri, query, t0);
+        }
+        // serversetting.json = peta login yang dibaca H5 (main.min connectToLogin →
+        // serversetting.json, karena bridge native getLoginServer TIDAK ada di dex — §2.10).
+        // "loginserver" ditulis-ulang ke server login lokal (PR1 — endpoint tak lagi ke pusat).
+        if (uri.endsWith("/serversetting.json")) {
+            return serveServersetting(uri, query, t0);
         }
         File f = resolveLocal(uri);
         long ms = System.currentTimeMillis() - t0;
@@ -196,21 +206,74 @@ public final class GameServer extends NanoHTTPD {
             return textResp(Response.Status.NOT_FOUND, "Mirror www/ tidak berisi " + uri);
         }
         try {
-            byte[] b = SettingBin.rewrittenLocal(f, Config.gamePort());
+            byte[] b = SettingBin.rewrittenLocal(f, Config.gamePort(), Config.loginPort(),
+                    Config.useSdk() ? null : LoginData.localUserId());
             long ms = System.currentTimeMillis() - t0;
             Response r = newFixedLengthResponse(Response.Status.OK, "application/octet-stream",
                     new ByteArrayInputStream(b), b.length);
             r.addHeader("Cache-Control", "no-store");
             ReqLog.ev('◀', "200 " + uri,
                     "GET " + gameUrl(uri) + " → 200 dari www/ · " + HumanLog.fmtBytes(b.length)
-                            + " · " + HumanLog.fmtMs(ms) + " — host di dalam bin ditulis-ulang ke http://127.0.0.1:"
-                            + Config.gamePort(),
+                            + " · " + HumanLog.fmtMs(ms) + " — endpoint di dalam bin ditulis-ulang ke lokal: game "
+                            + "http://127.0.0.1:" + Config.gamePort() + " · login http://127.0.0.1:"
+                            + Config.loginPort() + (Config.useSdk() ? " · layar SDK asli" : " · userid guest lokal"),
                     nullSafe(query));
             return r;
         } catch (Throwable t) {
             HumanLog.ev('⚠', "GET " + gameUrl(uri) + " gagal menyiapkan setting bin", String.valueOf(t));
             return textResp(Response.Status.INTERNAL_ERROR, "Gagal menyiapkan setting bin: " + uri);
         }
+    }
+
+    /**
+     * serversetting.json — nilai "loginserver" (asal https://login.popoh5.com:610)
+     * ditulis-ulang ke http://127.0.0.1:&lt;loginPort&gt; saat disajikan di mode LOCAL
+     * (PR1). File asli di www/ tidak pernah disentuh — hanya jawaban server ini.
+     */
+    private Response serveServersetting(String uri, String query, long t0) {
+        File f = resolveLocal(uri);
+        if (f == null) {
+            trySeed(uri, query, t0);
+            f = resolveLocal(uri);
+        }
+        if (f == null) {
+            ReqLog.ev('ℹ', "404 " + uri,
+                    "GET " + gameUrl(uri) + " → 404 · tidak ada di www/ dan server asli juga tidak memberikannya · "
+                            + HumanLog.fmtMs(System.currentTimeMillis() - t0) + " — game melanjutkan boot (perilaku normal)",
+                    nullSafe(query));
+            return textResp(Response.Status.NOT_FOUND, "Mirror www/ tidak berisi " + uri);
+        }
+        try {
+            String text = readFileText(f);
+            String rewritten = SettingBin.setJsonValue(text, "loginserver",
+                    "http://127.0.0.1:" + Config.loginPort());
+            byte[] out = rewritten.getBytes("UTF-8");
+            long ms = System.currentTimeMillis() - t0;
+            Response r = newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8",
+                    new ByteArrayInputStream(out), out.length);
+            r.addHeader("Cache-Control", "no-store");
+            ReqLog.ev('◀', "200 " + uri,
+                    "GET " + gameUrl(uri) + " → 200 dari www/ · " + HumanLog.fmtBytes(out.length)
+                            + " · " + HumanLog.fmtMs(ms) + " — loginserver ditulis-ulang ke http://127.0.0.1:"
+                            + Config.loginPort(),
+                    nullSafe(query));
+            return r;
+        } catch (Throwable t) {
+            HumanLog.ev('⚠', "GET " + gameUrl(uri) + " gagal menyiapkan serversetting.json", String.valueOf(t));
+            return textResp(Response.Status.INTERNAL_ERROR, "Gagal menyiapkan serversetting.json: " + uri);
+        }
+    }
+
+    private static String readFileText(File f) throws Exception {
+        java.io.FileInputStream in = new java.io.FileInputStream(f);
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream((int) Math.max(32, f.length()));
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = in.read(buf)) > 0) {
+            bos.write(buf, 0, n);
+        }
+        in.close();
+        return new String(bos.toByteArray(), "UTF-8");
     }
 
     /** Ambil file yang belum ada di mirror dari server asli, simpan ke www/, sajikan. */

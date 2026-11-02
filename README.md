@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (**v3.2 — build 0.3.2**) — **WEBSITE TANPA SWITCH MODE** (koreksi owner: "website pindah mode itu salah cuma menuhin tempat" — switch mode DIHAPUS dari dasbor 4000 & halaman 8080; satu-satunya cara ganti mode = tombol melayang di layar game; `POST /api/mode` dihapus; dasbor menampilkan mode sebagai badge baca-saja; baris "memuat…" tidak pernah tersisa di kotak log). Di bawahnya (v3.1): **LOG REQUEST MENULIS URL ASLI** (`GET http://127.0.0.1:8080/bs/upgrade/all.zip → 200 dari www/ · 18,5 MB · 1 ms` — tanpa label "LOCAL"/"ONLINE") + log anti-banjir. Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) dibawa APK (`assets/server/www/`) & diekstrak OTOMATIS ke www/; **tombol melayang BISA DIGESER** (posisi tersimpan); folder server anti-sampah (pembersih whitelist)
+> **Status dokumen:** Fondasi & Implementasi (**v4.0 — build 0.4.0**) — **LOGIN LOKAL** (tahap SDK dilokalkan: server login lokal port 8610 memakai protokol engine.io v3 + socket.io v2 PERSIS client game — guest/login/daftar server dilayani dari data lokal; endpoint login di setting bin & serversetting.json ditulis-ulang ke 127.0.0.1 di mode LOCAL; dasbor log baru: font 11px + baris terpisah garis). Di bawahnya (v3.2): **WEBSITE TANPA SWITCH MODE** (ganti mode cukup tombol melayang; `POST /api/mode` dihapus). Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) dibawa APK (`assets/server/www/`) & diekstrak OTOMATIS ke www/; tombol melayang BISA DIGESER; folder server anti-sampah
 > **Temuan 2026-10-31 (probe ulang, mengoreksi catatan lama):** **SERVER ASLI MASIH HIDUP** — `setting_BS_Android.bin` (711 B, terenkripsi XOR kunci **`DragonBall`**) berhasil didekripsi → membongkar host sesungguhnya: **dragonh5cdn.popoh5.com** (H5 game + folder upgrade). Seluruh file fisik server asli berhasil diunduh & menjadi isi mirror (daftar lengkap §2.9). Catatan lama "server asli sudah mati" TERBANTAHKAN — server hanya memindahkan file ke host CDN.
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-11-02
@@ -252,6 +252,37 @@ config_BS.properties EntryPoint (Base64) → configus/bs/db/android
 | `bs/upgrade/all.zip` | 19.385.098 B | SHA256 `6b838206…` — 591 file terbongkar |
 | `bs/upgrade/1138[6-9]_11390.zip` | 4 × 252.562 B | zip incremental |
 | `lzceshi/native_setting/Android/setting_BS_Android.bin` | 350 B | varian uji (kunci XOR sama) |
+
+### 2.10 Protokol LOGIN — tersambung sampai ujung (temuan 2026-11-02: bedah main.min + dex + probe langsung server asli)
+
+Rantai login lengkap, kini terpetakan 100% dari client sampai wire-format:
+
+```
+setting bin (XOR "DragonBall") → loginServer https://login.popoh5.com + loginPort 610 + loginWebPort 510
+  └─ native (LaunchActivity) membacanya (jsonObject.getString("loginServer") — ada di dex)
+  └─ H5 (main.min) connectToLogin():
+       TSBrowser.executeFunction("getLoginServer") → TIDAK ADA implementasinya di dex
+       (grep penuh jadx: 0 hasil) → SELALU fallback:
+       RES.getResByUrl("resource/properties/serversetting.json") → {"loginserver":"https://login.popoh5.com:610","requireSDK":false}
+  └─ loginClient.connectToServer(loginserver) → socket.io
+```
+
+**Wire-format (hasil probe langsung ke login.popoh5.com:610 yang MASIH HIDUP, 2026-11-02):**
+
+| Aspek | Temuan |
+|---|---|
+| Library client | **socket.io v2.1.0** (header `socket.io.min_57ea9db7.js` di bundle) → **engine.io v3** |
+| Transport | polling + websocket; handshake polling = framing `"<panjang>:<paket>"` berurutan, contoh nyata: `96:0{"sid":"…","upgrades":["websocket"],"pingInterval":25000,"pingTimeout":5000}2:40` (OPEN engine.io + OPEN socket.io `40`) |
+| Event | **`handler.process`** dengan args `(pesan, callback)` — callback TIDAK dikirim di args (socket.io v2: cukup ack-id di packet `42<id>["handler.process",{…}]`) |
+| Jawaban | ACK socket.io `43<id>[{ret, data}]` — `ret=0` sukses; `data` = **STRING berisi JSON** (di-parse H5 dengan `JSON.parse`, bisa LZString-compress bila `compress` flag) |
+| Aksi (5, SEMUanya — hasil grep penuh main.min) | `loginGame` (masuk; daftar otomatis), `GetServerList`, `LoginAnnounce`, `SaveHistory`, `SaveLanguage`, `SaveUserEnterInfo` — type `"User"` semua |
+| Skema `loginGame` | `{loginToken, userId, nickName, headerImage, isCreated, errorCode, errorMessage, channelCode}` — channel asing ditolak `errorCode 103` "本服务器只允许特定的渠道来源" (hanya channel tertentu) |
+| Skema `GetServerList` | `{errorCode:0, serverList:[{serverId,url,new,hot,name,online,openDate,offlineReason,merge,mergeTo,urlInner,chatInner}], history}` — **2109 server asli tertangkap utuh** (Server 1 → Server 2109, gateway `https://s<N>-bs.popoh5.com:<port>`) — snapshot jadi `assets/server/login/servers.json` |
+| POST polling | WAJIB berframing `"<panjang>:<paket>"` — probe berframing kini `200 "ok"` (kesimpulan lama "nginx 502" keliru — probe mentah tanpa framing yang ditolak) |
+
+**Jalur tanpa-SDK di H5 (kunci PR3):** `main.min checkLastLogin()` — bila URL H5 memuat `?userid=X`, H5 **TIDAK memanggil SDK sama sekali** dan langsung `doOriginLoginRequest({username:X, password:""})` → password diisi `"game_origin"` → `clientLoginUser` → aksi `loginGame` → `GetServerList` → pilih server → masuk. Artinya: **guest/login lokal cukup dengan (1) url H5 + `?userid=<guest>` (rewrite endpoint, bukan edit client) + (2) server login lokal yang memakai wire-format yang sama.** Layar SDK (guest button QuickGame) tetap ada di mode ONLINE apa adanya.
+
+**Implikasi:** tahap SDK bisa dilokalkan penuh tanpa menyentuh client — `LoginServer.java` (0.4.0) memakai wire-format di atas.
 
 ---
 
@@ -556,17 +587,34 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
+| **0.4.0** | **(v4.0) + LOGIN LOKAL — server login lokal port 8610 memakai protokol PERSIS client game (engine.io v3 + socket.io v2, event `handler.process`: loginGame/GetServerList/LoginAnnounce/Save*) + endpoint login di setting bin (loginServer, tsLoginServer, loginPort 610→8610, loginWebPort 510→8610) & serversetting.json (loginserver) ditulis-ulang ke 127.0.0.1 di mode LOCAL (koreksi owner "endpoint masih menunjuk server pusat") + guest lokal tahan lama via url H5 `?userid=<guest>` (config `useSdk`, bawaan mati) + akun lokal config/accounts.txt + daftar server snapshot ASLI 2109 server (config/servers.json, boleh disunting) + dasbor log baru: font 11px + baris terpisah garis + rincian redup (koreksi owner "font kegedean & nyampur")** | **L5a–L5b ✓ (tahap SDK dilokalkan)** |
 | **0.3.2** | **(v3.2) + WEBSITE TANPA SWITCH MODE — switch dihapus dari dasbor 4000 & halaman 8080 (status mini tanpa tombol), ganti mode cukup tombol melayang (koreksi owner "website pindah mode itu salah cuma menuhin tempat") + `POST /api/mode` dihapus + badge mode baca-saja di dasbor + baris "memuat…" tak pernah tersisa di kotak log + narasi mode di log dirampingkan** | **L1–L2b ✓ (build — v3.2)** |
 | 0.3.1 | (v3.1) + log request menulis URL ASLI `http://127.0.0.1:8080/…` (tanpa label LOCAL/ONLINE — koreksi owner) + switch mode di KEDUA website (DIBATALKAN di 0.3.2) + log anti-banjir (dedupe request kembar <10 dtk + log floating sekali per proses) + 404 normal (com_db_local.bin) dilog tenang & jelas | L1–L2b ✓ (build — v3.1) |
 | 0.3.0 | (v3.0) + mirror PENUH server asli 31 file (setting bin, H5+15 JS, properties, versi, base.zip/all.zip, incremental, lzceshi) diekstrak otomatis + tombol melayang BISA DIGESER (posisi tersimpan) + pembersih whitelist anti-sampah + rewrite setting bin (XOR DragonBall) + peta dragonh5cdn + self-seed mirror + dasbor baru (5 path terakhir + penjelajah www/ + switch mode) | L1–L2b ✓ (build — v3.0) |
 | 0.1.0 | (v2.8) + payload config asli dibawa APK & diekstrak OTOMATIS ke www/ saat pertama jalan (tanpa langkah manual) + port game terpisah 8080 (LOCAL www/ / ONLINE passthrough) + switch mode tombol melayang + restart otomatis + endpoint client → 127.0.0.1:8080 + log tenang | L1–L2b ✓ (build — v2.8) |
 | 0.1.x | Uji device: switch mode, payload www/ otomatis, pantau log | L4b |
-| 0.4.0 | Ambil alih bertahap per-endpoint (M3) | L5b |
+| 0.5.0 | Ambil alih bertahap per-endpoint (M3) | L5b |
 | 1.0.0 | Fondasi lulus penuh — paritas endpoint terbukti | L5b ✓ |
 | 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.3.2 (WEBSITE TANPA SWITCH MODE, v3.2) — 2026-11-02 — BUILD TERKINI:**
+**Build 0.4.0 (LOGIN LOKAL, v4.0) — 2026-11-02 — BUILD TERKINI:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.4.0.apk` (163.905.531 byte) + **asset Release GitHub `v0.4.0`** |
+| SHA-256 | `2fa3f59d14d9d76cc855bf7f11b9c4b3ffb78dab00626988466404fb481b9509` |
+| versionCode / versionName | **4 / 0.1.0** (manifest TIDAK disentuh — alur PATCH; identitas versi dibawa dasbor/Release) |
+| Dasar | **Release 0.3.2** (`b64cba53…`) — workspace dipulihkan dari GitHub setelah reset sandbox; APK dasar & baseline di-unduh ulang via LFS manual (batch API → unduh → verify sha256) sebelum dipakai |
+| Toolchain | ECJ 3.33.0 · r8 8.5.35 (D8 → `classes2.dex`) · uber-apk-signer 1.3.0 · JDK 21 · android.jar API 34 (`platform-34-ext7_r03.zip` dl.google.com) — tanpa apktool (patch langsung ke APK 0.3.2) |
+| **3 PR (permintaan owner)** | **(1) PR1 — endpoint login tak lagi ke server pusat**: mode LOCAL menulis-ulang `loginServer` (`https://login.popoh5.com` → `http://127.0.0.1:8610`), `tsLoginServer`, `loginPort` (610→8610), `loginWebPort` (510→8610) di setting bin + `loginserver` di `serversetting.json` (asal `https://login.popoh5.com:610`) — file mirror asli tak disentuh, hanya jawaban server; **(2) PR3 — SDK stage dilokalkan**: `LoginServer.java` port 8610 memakai wire-format PERSIS client (engine.io v3 polling + socket.io v2, framing `"<len>:<pkt>"`, event `handler.process`, ACK `43<id>[{ret,data}]`): `loginGame` = masuk + daftar otomatis (akun lokal `config/accounts.txt`, skema respons persis server asli + sign/sdk/newUser untuk jalur tanpa-SDK), `GetServerList` = snapshot ASLI 2109 server (`config/servers.json` — dibawa APK, boleh disunting tanpa rebuild), `LoginAnnounce`/`SaveHistory`/`SaveLanguage`/`SaveUserEnterInfo` = ret 0; guest lokal TAHAN LAMA (`config/local-user.txt`) di-inject ke url H5 sebagai `?userid=<guest>` (jalur tanpa-SDK di main.min — §2.10); bisa dimatikan dengan `server.json` `"useSdk": true` (layar SDK asli dipakai); **(3) PR2 — log dasbor baru**: font 11px (dulu 12,5px), setiap baris = baris tabel dengan **garis pemisah**, waktu redup, rincian teknis di baris kedua terpisah, hover jelas; kartu port game kini menampilkan status login lokal (dot hidup/mati, alamat, jumlah akun + guest + jumlah server) |
+| Perubahan server lokal | `LoginServer.java` + `LoginData.java` BARU; `SettingBin` (rewrite login endpoint + userid), `GameServer` (serversetting.json + log), `Starter` (LoginServer hidup + default login + target monitor `login.popoh5.com:610`), `Config` (`loginPort`, `useSdk`), `Payload` (`extractLoginDefaults`), `StatusStore` (field login) diubah; `dashboard.html` (PR2) |
+| Verifikasi (sandbox) | ✅ kompilasi ECJ bersih (59 kelas); ✅ **harness JVM protokol penuh LULUS**: handshake framing `81:0{…}2:40` (persis pola server asli), CONNECT 40 → ok, `loginGame` → `{ret:0, userId:guest…, isCreated:true}` lalu login ulang `isCreated:false` (akun persisten + sign terbentuk), `GetServerList` → `{ret:0, errorCode:0, 2109 server}` (paket 617 KB), PING→PONG `3` — semua LULUS di text/plain DAN application/x-www-form-urlencoded; ✅ hardening terakhir LoginServer: body POST dibaca LANGSUNG dari stream (`readBody`, persis Content-Length) — akar temuan: vendored NanoHTTPD memakai aturan form utk Content-Type `application/x-www-form-urlencoded` sehingga `files["postData"]` kosong dan framing engine.io hilang; baca langsung membuat server login tahan SEMUA Content-Type (client game asli tetap text/plain); ✅ rewrite setting bin diuji (JSON valid — semua endpoint ke lokal, `clientParams` utuh); ✅ probe server asli: POST polling BERFRAMING = `200 "ok"` (kesimpulan 502 lama terkoreksi — §2.10); ✅ CRC diff: hanya `classes2.dex` + `dashboard.html` + `assets/server/login/servers.json` (BARU) — dex game `281225eb`, manifest `2486fd1c`, `resources.arsc` `c6b5e22c`, config `62eab0f4`/`1cc6e06c`, `QHinfo` `af014748`, seluruh mirror www/ IDENTIK dasar 0.3.2 |
+| Perubahan client | **TIDAK ADA** — `classes.dex` game, manifest, `resources.arsc`, `QHinfo`, config endpoint: semua identik (diverifikasi CRC saat build). Perubahan endpoint ada di isi setting bin/serversetting.json yang DILAYANI server lokal (server-side, bukan edit APK) |
+| Signature | ✅ v1 + v2 + v3 — cert `CN=DB Local LSF` (keystore tetap) |
+| Status | ✅ build & verifikasi level build selesai · ⏳ uji device owner (mode LOCAL: boot → langsung daftar server (tanpa layar SDK) → pilih server → masuk dunia game via gateway asli; mode ONLINE: layar SDK asli seperti biasa; dasbor log baru) |
+
+**Build 0.3.2 (WEBSITE TANPA SWITCH MODE, v3.2) — 2026-11-02 — DIGANTIKAN 0.4.0:**
 
 | Item | Nilai |
 |---|---|

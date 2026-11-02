@@ -39,6 +39,7 @@ public final class Payload {
     public static final String VERSION = "3";
 
     private static final String ASSET_DIR = "server/www";
+    private static final String LOGIN_ASSET_DIR = "server/login";
     private static final String MARKER_NAME = "www.stamp";
 
     private Payload() {
@@ -111,6 +112,70 @@ public final class Payload {
             r.note = "kesalahan: " + t;
             return r;
         }
+    }
+
+    // ---------- default login lokal (PR3 0.4.0) ----------
+
+    /**
+     * Ekstrak default data login lokal: assets/server/login/* → &lt;root&gt;/config/.
+     * File yang SUDAH ada TIDAK PERNAH ditimpa (boleh diubah pemilik tanpa rebuild;
+     * versi baru ikut terpasang hanya lewat pemasangan bersih / hapus manual).
+     * return ringkasan untuk log, atau null bila tidak ada yang perlu dilakukan.
+     */
+    public static String extractLoginDefaults(Context ctx, File confDir) {
+        try {
+            if (confDir == null) {
+                return null;
+            }
+            if (!confDir.exists()) {
+                confDir.mkdirs();
+            }
+            AssetManager am = ctx.getAssets();
+            List<String> rel = new ArrayList<String>();
+            collect(am, LOGIN_ASSET_DIR, rel);
+            if (rel.isEmpty()) {
+                return null;
+            }
+            int ok = 0;
+            long bytes = 0;
+            StringBuilder names = new StringBuilder();
+            for (int i = 0; i < rel.size(); i++) {
+                String relPath = rel.get(i);
+                File out = new File(confDir, relPath);
+                if (out.exists()) {
+                    continue; // jangan timpa suntingan pemilik
+                }
+                try {
+                    File parent = out.getParentFile();
+                    if (parent != null && !parent.exists()) {
+                        parent.mkdirs();
+                    }
+                    copyStream(am.open(LOGIN_ASSET_DIR + "/" + relPath), out);
+                    ok++;
+                    bytes += out.length();
+                    if (names.length() > 0) {
+                        names.append(", ");
+                    }
+                    names.append(relPath);
+                } catch (Throwable ignored) {
+                }
+            }
+            return (ok > 0)
+                    ? ("config/ + " + names + " (" + ok + " file · " + fmt(bytes) + ") — snapshot asli, boleh disunting")
+                    : null;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static String fmt(long n) {
+        if (n < 1024) {
+            return n + " B";
+        }
+        if (n < 1048576) {
+            return (n / 1024) + " KB";
+        }
+        return (n / 1048576) + " MB";
     }
 
     // ---------- internal ----------
