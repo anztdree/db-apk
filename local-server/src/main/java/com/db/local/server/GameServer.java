@@ -11,8 +11,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -46,10 +44,11 @@ import fi.iki.elonen.NanoHTTPD;
  * diceritakan di baris status saat boot. Baris yang sama berulang dalam
  * 10 detik TIDAK dicatat ulang (dedupe) — hanya jumlahnya dilaporkan.
  *
- * Halaman root port ini (http://127.0.0.1:&lt;gamePort&gt;/ di browser) sekarang
- * juga berisi TOMBOL GANTI MODE (LOCAL/ONLINE) — koreksi owner "tidak ada mode
- * switch di dalam website": switch tidak hanya di dasbor 4000, tapi juga di
- * halaman port game, jadi di mana pun owner membuka, switch selalu ada.
+ * Halaman root port ini (http://127.0.0.1:&lt;gamePort&gt;/ di browser) = STATUS
+ * MINI tanpa tombol apa pun (koreksi owner 0.3.2 — "website pindah mode itu
+ * salah cuma menuhin tempat"): switch mode DIHAPUS dari semua halaman web.
+ * Satu-satunya cara ganti mode = tombol melayang di layar game (FloatingToggle).
+ * Endpoint POST /api/mode juga dihapus karena tidak ada lagi pemakainya.
  */
 public final class GameServer extends NanoHTTPD {
 
@@ -89,8 +88,6 @@ public final class GameServer extends NanoHTTPD {
             if (!post && Method.GET != m && Method.HEAD != m) {
                 resp = textResp(Response.Status.METHOD_NOT_ALLOWED,
                         "Metode " + m + " tidak didukung — kontrak bootstrap hanya GET");
-            } else if (post && "/api/mode".equals(uri)) {
-                resp = handleModeSwitch(session.getParameters());
             } else if ("/".equals(uri) || "/index.html".equals(uri)) {
                 resp = rootPage();
             } else if ("local".equals(mode)) {
@@ -121,95 +118,30 @@ public final class GameServer extends NanoHTTPD {
         return resp;
     }
 
-    // ---------------- halaman root port game: switch mode + status ringkas ----------------
+    // ---------------- halaman root port game: status mini tanpa tombol ----------------
 
-    /** Halaman http://127.0.0.1:&lt;gamePort&gt;/ — switch mode BESAR (koreksi owner 0.3.1). */
+    /**
+     * Halaman http://127.0.0.1:&lt;gamePort&gt;/ — status mini (koreksi owner 0.3.2:
+     * "website pindah mode itu salah cuma menuhin tempat"). TANPA tombol, TANPA
+     * JavaScript — cuma tiga baris keterangan supaya developer bisa memastikan
+     * port game hidup. Ganti mode = tombol melayang di layar game.
+     */
     private Response rootPage() {
-        String mode = Config.mode();
-        String clsLocal = "local".equals(mode) ? " on" : "";
-        String clsOnline = "online".equals(mode) ? " on" : "";
-        int wwwN = 0;
-        try {
-            wwwN = StatusStore.wwwFileCount();
-        } catch (Throwable ignored) {
-        }
-        StringBuilder sb = new StringBuilder(4096);
+        StringBuilder sb = new StringBuilder(512);
         sb.append("<!doctype html><html lang=\"id\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">")
                 .append("<title>DB LOCAL · Port Game</title><style>")
-                .append("body{background:#f5f5f4;color:#1c1917;font:15px/1.55 -apple-system,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;margin:0 auto;padding:20px;max-width:760px}")
+                .append("body{font:15px/1.6 -apple-system,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;")
+                .append("color:#1c1917;background:#f5f5f4;margin:0;padding:24px}")
                 .append("@media(prefers-color-scheme:dark){body{background:#0c0a09;color:#fafaf9}}")
-                .append("h1{font-size:19px;margin:8px 0 2px}")
-                .append(".sub{color:#78716c;font-size:13.5px;margin-bottom:16px}")
-                .append(".btns{display:flex;gap:10px;flex-wrap:wrap}")
-                .append(".mbtn{flex:1 1 220px;min-height:76px;border-radius:12px;border:2px solid #e7e5e4;background:#fff;padding:12px 14px;text-align:left;cursor:pointer;font-family:inherit}")
-                .append(".mbtn .t{display:block;font-size:22px;font-weight:800;letter-spacing:.5px}")
-                .append(".mbtn small{display:block;margin-top:4px;font-size:12.5px;color:#78716c}")
-                .append(".mbtn.on{border-color:#059669;background:#ecfdf5}")
-                .append(".mbtn.on .t{color:#059669}")
-                .append(".mbtn:disabled{opacity:.6;cursor:default}")
-                .append("#st{margin-top:14px;font-size:14px;min-height:22px;font-weight:600}")
-                .append(".box{background:#fff;border:1px solid #e7e5e4;border-radius:10px;padding:10px 14px;margin-top:16px;font-size:13.5px}")
-                .append("@media(prefers-color-scheme:dark){.mbtn{background:#1c1917;border-color:#292524}.mbtn.on{background:rgba(6,78,59,.35)}.box{background:#1c1917;border-color:#292524}}")
-                .append("a{color:#059669}")
                 .append("</style></head><body>")
-                .append("<h1>Port game server lokal</h1>")
-                .append("<div class=\"sub\">http://127.0.0.1:").append(Config.gamePort())
-                .append(" · endpoint client menunjuk ke sini · mirror www/: ").append(wwwN).append(" file</div>")
-                .append("<div class=\"btns\">")
-                .append("<button class=\"mbtn").append(clsLocal).append("\" id=\"btn-local\" onclick=\"ganti('local')\">")
-                .append("<span class=\"t\">LOCAL</span>")
-                .append("<small>dilayani dari folder www/ — mirror server asli (ekstraksi otomatis dari APK)</small></button>")
-                .append("<button class=\"mbtn").append(clsOnline).append("\" id=\"btn-online\" onclick=\"ganti('online')\">")
-                .append("<span class=\"t\">ONLINE</span>")
-                .append("<small>diteruskan apa adanya ke server asli (butuh internet)</small></button>")
-                .append("</div>")
-                .append("<div id=\"st\"></div>")
-                .append("<div class=\"box\">Ganti mode → tersimpan di config/server.json → aplikasi game dibuka ulang otomatis.<br>")
-                .append("Tombol melayang di layar game juga bisa: <b>GESER</b> = pindah posisi (tersimpan) · <b>TEKAN</b> = ganti mode.<br>")
-                .append("Dasbor lengkap (log, isi www/, pantauan server asli): <a href=\"http://127.0.0.1:")
-                .append(Config.debugPort()).append("\">http://127.0.0.1:").append(Config.debugPort()).append("</a></div>")
-                .append("<script>")
-                .append("var CUR=\"").append(mode).append("\";")
-                .append("function ganti(m){")
-                .append(" if(m===CUR) return;")
-                .append(" if(!confirm('Ganti mode ke '+m.toUpperCase()+'?\\nAplikasi akan dibuka ulang otomatis.')) return;")
-                .append(" var st=document.getElementById('st');")
-                .append(" st.textContent='mengganti mode…';")
-                .append(" fetch('/api/mode?mode='+m,{method:'POST'}).then(function(r){return r.json();}).then(function(j){")
-                .append("   st.textContent=j.note||'selesai';")
-                .append("   document.getElementById('btn-local').disabled=true;")
-                .append("   document.getElementById('btn-online').disabled=true;")
-                .append(" }).catch(function(e){st.textContent='gagal: '+e;});")
-                .append("}")
-                .append("</script></body></html>");
+                .append("Server lokal hidup — mode <b>").append(Config.mode().toUpperCase())
+                .append("</b> · port game ").append(Config.gamePort())
+                .append(" · endpoint client menunjuk ke sini.<br>")
+                .append("Dasbor developer: http://127.0.0.1:").append(Config.debugPort())
+                .append(" · ganti mode: tombol melayang di layar game.")
+                .append("</body></html>");
         return htmlResp(sb.toString().getBytes());
-    }
-
-    /** POST /api/mode?mode=local|online — sama seperti di dasbor 4000: tulis server.json + restart. */
-    private Response handleModeSwitch(Map<String, List<String>> params) {
-        String target = (params != null && params.get("mode") != null && !params.get("mode").isEmpty())
-                ? params.get("mode").get(0) : null;
-        if (!"local".equals(target) && !"online".equals(target)) {
-            return jsonResp(Response.Status.BAD_REQUEST,
-                    "{\"error\":\"Parameter mode wajib local|online — contoh: POST /api/mode?mode=local\"}");
-        }
-        String now = Config.mode();
-        if (target.equals(now)) {
-            return jsonResp(Response.Status.OK,
-                    "{\"ok\":true,\"mode\":\"" + target + "\",\"changed\":false,"
-                            + "\"note\":\"mode sudah " + target + " — tidak ada restart\"}");
-        }
-        Config.setMode(target);
-        StatusStore.persist();
-        HumanLog.ev('ℹ', "SWITCH MODE dari halaman port game (http://127.0.0.1:" + Config.gamePort()
-                + "): " + now.toUpperCase() + " → " + target.toUpperCase()
-                + " (tersimpan di server.json) — aplikasi direstart agar game membaca mode baru", null);
-        Response r = jsonResp(Response.Status.OK,
-                "{\"ok\":true,\"mode\":\"" + target + "\",\"changed\":true,"
-                        + "\"note\":\"mode diganti ke " + target.toUpperCase() + " — aplikasi direstart otomatis ±1 detik\"}");
-        RestartHelper.restart(appCtx);
-        return r;
     }
 
     // ---------------- mode LOCAL: layani dari www/ ----------------

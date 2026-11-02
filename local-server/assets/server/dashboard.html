@@ -34,6 +34,8 @@
     font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px;
     border:1px solid var(--line); background:var(--card); color:var(--mut); letter-spacing:.4px;
   }
+  .badge.mode-local{color:var(--ok); border-color:var(--ok)}
+  .badge.mode-online{color:var(--warn); border-color:var(--warn)}
   .pill{
     margin-left:auto; font-size:12px; font-weight:800; padding:5px 12px; border-radius:999px;
     background:var(--errbg); color:var(--err); border:1px solid var(--line);
@@ -45,30 +47,11 @@
     border-radius:10px; padding:10px 14px; margin-bottom:14px; box-shadow:var(--shadow);
     word-break:break-all;
   }
-  .cards{display:grid; grid-template-columns:1fr; gap:12px}
-  @media(min-width:720px){ .cards{grid-template-columns:1fr 1fr} }
   .card{
     background:var(--card); border:1px solid var(--line); border-radius:12px;
-    padding:14px 16px; box-shadow:var(--shadow);
+    padding:14px 16px; box-shadow:var(--shadow); margin-bottom:12px;
   }
   .card h2{margin:0 0 10px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
-  .modehero{grid-column:1/-1; border-width:2px}
-  .modenow{font-size:14px; margin:2px 0 10px}
-  .modenow b{font-size:16px; letter-spacing:.5px}
-  .modenow b.local{color:var(--ok)} .modenow b.online{color:var(--warn)}
-  .modebtns{display:flex; gap:10px; flex-wrap:wrap}
-  .modebtn{
-    flex:1 1 220px; min-height:76px; border-radius:12px; border:2px solid var(--line);
-    background:var(--card); color:var(--tx); cursor:pointer; padding:12px 14px;
-    text-align:left; font-family:inherit;
-  }
-  .modebtn .t{display:block; font-size:22px; font-weight:800; letter-spacing:.5px}
-  .modebtn small{display:block; margin-top:4px; font-size:12.5px; color:var(--mut); font-weight:500; line-height:1.45}
-  .modebtn.active{border-color:var(--ok); background:var(--okbg)}
-  .modebtn.active .t{color:var(--ok)}
-  .modebtn.armed{border-color:var(--err); background:var(--errbg)}
-  .modebtn.armed .t{color:var(--err)}
-  .modebtn:disabled{opacity:.55; cursor:default}
   .kv{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:14px}
   .kv b{color:var(--mut); font-weight:600; white-space:nowrap}
   .dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:var(--mut)}
@@ -111,41 +94,26 @@
 <header>
   <h1>DB LOCAL · Dasbor Server Lokal</h1>
   <span class="badge" id="ver">v…</span>
+  <span class="badge" id="modebadge">MODE …</span>
   <span class="pill" id="pill">menyambung…</span>
 </header>
 <main>
   <div class="summary" id="summary">memuat status…</div>
 
-  <div class="cards">
-    <div class="card modehero">
-      <h2>Mode server — tekan untuk ganti</h2>
-      <div class="modenow">Mode aktif sekarang: <b id="mode">…</b> · port game <span id="modeport">…</span></div>
-      <div class="modebtns">
-        <button class="modebtn" id="btn-local" data-m="local">
-          <span class="t">LOCAL</span>
-          <small>dilayani dari folder www/ — mirror server asli (ekstraksi otomatis dari APK)</small>
-        </button>
-        <button class="modebtn" id="btn-online" data-m="online">
-          <span class="t">ONLINE</span>
-          <small>diteruskan apa adanya ke server asli (butuh internet)</small>
-        </button>
-      </div>
-      <div class="note" id="switchnote">Ganti mode → tersimpan di config/server.json → aplikasi game dibuka ulang otomatis. Tombol melayang di layar HP juga bisa: GESER = pindah posisi · TEKAN = ganti mode.</div>
+  <div class="card">
+    <h2>Port game (dipakai client)</h2>
+    <div class="kv">
+      <b>Status</b><span><span class="dot" id="gamedot"></span><span id="gamealive">…</span></span>
+      <b>Alamat</b><span id="gameaddr">…</span>
+      <b>Permintaan</b><span id="reqs">…</span>
+      <b>Gagal</b><span id="errs">…</span>
+      <b>Uptime</b><span id="uptime">…</span>
+      <b>Mirror www/</b><span id="www">…</span>
     </div>
-    <div class="card">
-      <h2>Port game (dipakai client)</h2>
-      <div class="kv">
-        <b>Status</b><span><span class="dot" id="gamedot"></span><span id="gamealive">…</span></span>
-        <b>Alamat</b><span id="gameaddr">…</span>
-        <b>Permintaan</b><span id="reqs">…</span>
-        <b>Gagal</b><span id="errs">…</span>
-        <b>Uptime</b><span id="uptime">…</span>
-        <b>Mirror www/</b><span id="www">…</span>
-      </div>
-    </div>
+    <div class="note">Ganti mode = lewat tombol melayang di layar game (GESER = pindah posisi · TEKAN = ganti mode). Website sengaja tanpa tombol mode.</div>
   </div>
 
-  <div class="card" style="margin-top:12px">
+  <div class="card">
     <h2>5 permintaan game terakhir — bukti local running</h2>
     <table>
       <thead><tr><th>Permintaan (URL asli yang diminta client)</th><th>Status</th><th>Lama</th></tr></thead>
@@ -165,7 +133,7 @@
       <button class="act" id="clearlog">Bersihkan log dasbor</button>
       <span class="note" style="margin:0">polling dasbor tidak dicatat — log tetap tenang</span>
     </div>
-    <div id="logbox">memuat…</div>
+    <div id="logbox">(memuat log…)</div>
   </div>
 
   <div class="pane" id="pane-www">
@@ -190,19 +158,14 @@
 </main>
 <footer>
   Port 4000 = dasbor developer saja · client game menunjuk port game (127.0.0.1:8080) ·
-  tombol melayang di layar HP juga bisa digeser &amp; dipakai ganti mode.
+  ganti mode lewat tombol melayang di layar game.
 </footer>
 
 <script>
 (function(){
   "use strict";
   var $ = function(id){ return document.getElementById(id); };
-  var logSince = 0, lastStatus = null, pending = null, pendingTimer = null;
-  var NOTE_DEFAULT = "Ganti mode → tersimpan di config/server.json → aplikasi game dibuka ulang otomatis. Tombol melayang di layar HP juga bisa: GESER = pindah posisi · TEKAN = ganti mode.";
-  var MODE_DESC = {
-    local: "dilayani dari folder www/ — mirror server asli (ekstraksi otomatis dari APK)",
-    online: "diteruskan apa adanya ke server asli (butuh internet)"
-  };
+  var logSince = 0, logLoaded = false, lastStatus = null;
 
   function fmtBytes(n){
     if(n < 0) return "?";
@@ -246,15 +209,14 @@
     $("pill").textContent = s.server.alive ? "DASBOR HIDUP" : "DASBOR MATI";
     $("pill").className = "pill" + (s.server.alive ? " up" : "");
 
+    // mode hanya INFORMASI (read-only) — ganti mode lewat tombol melayang
+    var mode = String(s.server.mode || "?");
+    var mb = $("modebadge");
+    mb.textContent = "MODE " + mode.toUpperCase();
+    mb.className = "badge" + (mode === "local" ? " mode-local" : (mode === "online" ? " mode-online" : ""));
+
     $("summary").textContent = "root: " + (s.server.root || "?") + " · paket: " + (s.server["package"] || "?")
       + " · dasbor port " + s.server.port + " · port game " + s.server.gamePort;
-
-    var mode = s.server.mode || "?";
-    var mEl = $("mode");
-    mEl.textContent = mode.toUpperCase();
-    mEl.className = mode;
-    $("modeport").textContent = "http://127.0.0.1:" + s.server.gamePort;
-    paintMode();
 
     $("gamedot").className = "dot " + (s.server.gameAlive ? "up" : "down");
     $("gamealive").textContent = s.server.gameAlive ? "HIDUP — local running" : "MATI";
@@ -296,6 +258,8 @@
     }).catch(function(){
       $("pill").textContent = "DASBOR PUTUS";
       $("pill").className = "pill";
+      $("summary").textContent = "gagal memuat status — dasbor tidak bisa dihubungi (coba muat ulang halaman)";
+      $("origbody").innerHTML = "<tr><td colspan='5' style='color:var(--err)'>gagal memuat data pantauan</td></tr>";
     });
   }
 
@@ -305,8 +269,14 @@
   }
   function pollLog(){
     fetch("/api/logs?since=" + logSince).then(function(r){ return r.json(); }).then(function(arr){
-      if(!arr.length) return;
       var box = $("logbox");
+      // koreksi 0.3.2: baris "memuat…" TIDAK boleh tersisa di atas log —
+      // placeholder dibuang saat jawaban pertama masuk
+      if(!logLoaded){
+        logLoaded = true;
+        box.textContent = "";
+      }
+      if(!arr.length) return;
       var atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
       var frag = document.createDocumentFragment();
       arr.forEach(function(e){
@@ -320,7 +290,11 @@
       box.appendChild(frag);
       while(box.childNodes.length > 800) box.removeChild(box.firstChild);
       if(atEnd) box.scrollTop = box.scrollHeight;
-    }).catch(function(){});
+    }).catch(function(){
+      if(!logLoaded){
+        $("logbox").textContent = "gagal memuat log — dasbor tidak bisa dihubungi (coba muat ulang halaman)";
+      }
+    });
   }
   $("copylog").addEventListener("click", function(){
     var txt = Array.prototype.map.call($("logbox").childNodes, function(n){ return n.textContent; }).join("\n");
@@ -336,60 +310,10 @@
     });
   });
   $("clearlog").addEventListener("click", function(){
-    fetch("/api/logs/clear").then(function(){ 
-      $("logbox").textContent = ""; 
+    fetch("/api/logs/clear").then(function(){
+      $("logbox").textContent = "";
     }).catch(function(){});
   });
-
-  // ---------- switch mode (dua tombol besar — konfirmasi dua-tahap) ----------
-  function paintMode(){
-    var cur = lastStatus && lastStatus.server ? lastStatus.server.mode : null;
-    ["local","online"].forEach(function(m){
-      var b = $("btn-" + m);
-      if(!b) return;
-      b.disabled = false;
-      var active = (m === cur);
-      b.classList.toggle("active", active && pending !== m);
-      b.classList.toggle("armed", pending === m);
-      var sm = b.querySelector("small");
-      if(pending === m){
-        sm.textContent = "TEKAN SEKALI LAGI — restart aplikasi dengan " + m.toUpperCase();
-      } else if(active){
-        sm.textContent = "✓ AKTIF — " + MODE_DESC[m];
-      } else {
-        sm.textContent = "tekan untuk pindah ke " + m.toUpperCase() + " — " + MODE_DESC[m];
-      }
-    });
-  }
-  function modeClick(target){
-    var cur = lastStatus && lastStatus.server ? lastStatus.server.mode : null;
-    if(!cur) return;
-    if(target === cur && !pending) return;
-    if(pending === target){
-      pending = null;
-      if(pendingTimer) clearTimeout(pendingTimer);
-      var b = $("btn-" + target);
-      b.disabled = true;
-      b.querySelector("small").textContent = "mengganti mode ke " + target.toUpperCase() + " … aplikasi akan dibuka ulang";
-      $("switchnote").textContent = "menyimpan mode & merestart aplikasi…";
-      fetch("/api/mode?mode=" + target, {method:"POST"}).then(function(r){ return r.json(); }).then(function(j){
-        $("switchnote").textContent = j.note || "selesai";
-        setTimeout(function(){ $("switchnote").textContent = NOTE_DEFAULT; }, 8000);
-        pollStatus();
-      }).catch(function(e){
-        $("switchnote").textContent = "gagal: " + e;
-        pending = null;
-        paintMode();
-      });
-      return;
-    }
-    pending = target;
-    if(pendingTimer) clearTimeout(pendingTimer);
-    pendingTimer = setTimeout(function(){ pending = null; paintMode(); }, 6000);
-    paintMode();
-  }
-  $("btn-local").addEventListener("click", function(){ modeClick("local"); });
-  $("btn-online").addEventListener("click", function(){ modeClick("online"); });
 
   // ---------- www list ----------
   function loadWww(){

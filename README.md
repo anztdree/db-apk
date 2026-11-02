@@ -1,9 +1,9 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (**v3.1 — build 0.3.1**) — **LOG REQUEST MENULIS URL ASLI** (`GET http://127.0.0.1:8080/bs/upgrade/all.zip → 200 dari www/ · 18,5 MB · 1 ms` — tanpa label "LOCAL"/"ONLINE", koreksi owner) + **SWITCH MODE ADA DI KEDUA WEBSITE** (halaman port game 8080 & dasbor 4000, dua tombol besar LOCAL/ONLINE) + log anti-banjir (dedupe request kembar <10 dtk, log floating sekali per proses). Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) dibawa APK (`assets/server/www/`) & diekstrak OTOMATIS ke www/; **tombol melayang BISA DIGESER** (posisi tersimpan); folder server anti-sampah (pembersih whitelist)
+> **Status dokumen:** Fondasi & Implementasi (**v3.2 — build 0.3.2**) — **WEBSITE TANPA SWITCH MODE** (koreksi owner: "website pindah mode itu salah cuma menuhin tempat" — switch mode DIHAPUS dari dasbor 4000 & halaman 8080; satu-satunya cara ganti mode = tombol melayang di layar game; `POST /api/mode` dihapus; dasbor menampilkan mode sebagai badge baca-saja; baris "memuat…" tidak pernah tersisa di kotak log). Di bawahnya (v3.1): **LOG REQUEST MENULIS URL ASLI** (`GET http://127.0.0.1:8080/bs/upgrade/all.zip → 200 dari www/ · 18,5 MB · 1 ms` — tanpa label "LOCAL"/"ONLINE") + log anti-banjir. Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) dibawa APK (`assets/server/www/`) & diekstrak OTOMATIS ke www/; **tombol melayang BISA DIGESER** (posisi tersimpan); folder server anti-sampah (pembersih whitelist)
 > **Temuan 2026-10-31 (probe ulang, mengoreksi catatan lama):** **SERVER ASLI MASIH HIDUP** — `setting_BS_Android.bin` (711 B, terenkripsi XOR kunci **`DragonBall`**) berhasil didekripsi → membongkar host sesungguhnya: **dragonh5cdn.popoh5.com** (H5 game + folder upgrade). Seluruh file fisik server asli berhasil diunduh & menjadi isi mirror (daftar lengkap §2.9). Catatan lama "server asli sudah mati" TERBANTAHKAN — server hanya memindahkan file ke host CDN.
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
-> **Tanggal:** 2026-10-31
+> **Tanggal:** 2026-11-02
 > **Riwayat strategi:**
 > - v1.1 — original APK tidak disentuh; server lokal jadi APK pendamping terpisah.
 > - v1.2 — port 4000 terkunci (API game + Web Dashboard); server wajib jalan duluan.
@@ -322,11 +322,11 @@ online sama sekali.
 
 | Fitur | Isi |
 |---|---|
-| **Logging** | Semua request tercetak **dalam bahasa manusia yang mudah dibaca** (format di bawah) — live stream + riwayat SQLite; detail mentah tetap tersedia via expand. Endpoint tak dikenal otomatis ter-log dengan peringatan jelas |
+| **Logging** | Semua request tercetak **dalam bahasa manusia yang mudah dibaca** (format di bawah) — live stream di dasbor + file `logs/human.log`; polling dasbor tidak dicatat. Baris placeholder "memuat…" **tidak pernah tersisa** di kotak log (dibuang otomatis saat jawaban pertama masuk — koreksi owner 0.3.2); bila dasbor gagal mengambil data, pesan kesalahan jelas tampil, bukan teks memuat menggantung |
 | **Monitoring** | Kesehatan **dua sisi** dalam bahasa manusia: server lokal (hidup/uptime/jumlah request/gagal) + **server asli** (dicek berkala: bisa dihubungi / mati, latensi) — tanpa menyentuh traffic game |
-| **Debugging** | Detail request/response, replay request, mock override per-endpoint (edit respons on-the-fly, toggle on/off), template respons endpoint baru |
-| **APK Reader** | Buka APK dari device: tree assets, manifest, `config.properties` + auto-decode Base64, strings/dex grep endpoint |
-| **Copy / Export (copy-first)** | Salin **satu klik** semua data: raw body, headers, `curl` siap-replay, config ter-decode, **timeline alur** per sesi boot → ditempel ke asisten untuk dianalisis |
+| **Bukti local running** | Tabel **5 permintaan game terakhir** — URL asli yang diminta client + status HTTP + durasi; tab **Isi www/** = penjelajah mirror (nama file + ukuran, 31 file) |
+| **Mode server (baca-saja)** | Badge `MODE LOCAL` / `MODE ONLINE` di header — **informasi saja, TANPA tombol**. Ganti mode = tombol melayang di layar game (koreksi owner 0.3.2: "website pindah mode itu salah cuma menuhin tempat") |
+| **Copy / bersihkan log** | Tombol `Copy log` (salin semua baris) & `Bersihkan log dasbor` (memori dasbor dibersihkan; file `logs/human.log` tetap tersimpan) |
 
 **Posisi logging & dashboard:** **alat bantu**, bukan produk. Log = indikator bahwa
 (1) server lokal running dan (2) jawabannya mirip server asli. Jangan gold-plate —
@@ -340,6 +340,7 @@ lengkap tapi ditaruh di balik expand + tombol copy (copy-first tetap berlaku).
 
 ```
 09:05:57  ✔ Folder server siap: /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
+09:05:57  ℹ Mode: LOCAL — permintaan game dilayani dari www/ (mirror server asli)
 09:05:58  ◀ GET http://127.0.0.1:8080/bs/db/android/setting_BS_Android.bin → 200 dari www/ · 693 B · 1 ms — host di dalam bin ditulis-ulang ke http://127.0.0.1:8080
 09:05:58  ℹ GET http://127.0.0.1:8080/bs/db/android/com_db_local.bin → 404 · tidak ada di www/ (di server asli juga tidak ada) · 0 ms — game melanjutkan boot (perilaku normal)
 09:05:58  ◀ GET http://127.0.0.1:8080/bs/upgrade/all.zip → 200 dari www/ · 18,5 MB · 2 ms
@@ -357,6 +358,11 @@ Aturan penulisan log:
    (`· (+N request kembar dalam 10 dtk tidak dicatat)`); polling dasbor tetap tidak
    dicatat; log "tombol melayang tampil" hanya SEKALI per proses (game Egret me-
    pause/resume activity beberapa kali saat boot — dulu lognya berulang 6×).
+3b. **Narasi mode dirampingkan (0.3.2):** baris boot singkat satu kalimat —
+   `Mode: LOCAL — permintaan game dilayani dari www/ (mirror server asli)` ·
+   `Port game hidup di 8080 (mode LOCAL) — endpoint client menunjuk ke sini` ·
+   `Tombol melayang tampil — GESER = pindah posisi · TEKAN = ganti mode`.
+   Tanpa iklan "halaman 8080 berisi tombol ganti mode" (halaman itu sudah tidak ada).
 4. 404 normal tetap tenang: `com_db_local.bin` & kawan-kawan dilog `ℹ` dengan
    keterangan "di server asli juga tidak ada — perilaku normal"; hanya setting bin
    yang hilang dari mirror yang dilog `⚠` (itu benar-benar perlu perhatian).
@@ -414,10 +420,10 @@ disajikan di mode LOCAL = field `url` + `update` di setting bin (`https://dragon
 
 | Port | Untuk siapa | Fungsi |
 |---|---|---|
-| **4000** (debugPort) | Developer | Dasbor debug + log + APK Reader — game tidak tahu port ini |
+| **4000** (debugPort) | Developer | Dasbor debug + log + pantauan — game tidak tahu port ini |
 | **8080** (gamePort) | Game client | Melayani kontrak server: LOCAL = www/, ONLINE = passthrough |
 
-**Switch mode (v3.0 — tombol melayang BISA DIGESER; v3.1 — switch ada di KEDUA website):**
+**Switch mode (v3.0 — tombol melayang BISA DIGESER; sejak v3.2 SATU-satunya tempat):**
 bulatan overlay (`L`/`O`, warna mengikuti mode) di atas game.
 - **GESER**: ikut jari, dibatasi tetap di dalam layar; lepas → posisi tersimpan ke
   `server.json` (`toggleX`/`toggleY`) dan dipulihkan saat tampil lagi. Geser vs tekan
@@ -430,14 +436,14 @@ bulatan overlay (`L`/`O`, warna mengikuti mode) di atas game.
 - **Hanya tampil saat game di depan** — dipasang/lepas lewat `ActivityLifecycleCallbacks`
   (resumed/paused), tanpa mengubah kode game sama sekali.
 - Izin overlay (SYSTEM_ALERT_WINDOW) sudah ada di manifest original; di Android 6+ pemilik
-  mengaktifkannya sekali di Setelan → “Tampil di atas aplikasi lain”. Cara kedua: tombol
-  switch di dasbor 4000.
-- **Switch mode di KEDUA website (0.3.1 — koreksi owner "tidak ada mode switch di dalam
-  website"):** (a) halaman **port game** `http://127.0.0.1:8080` di browser sekarang
-  memuat dua tombol besar LOCAL/ONLINE (+ `POST /api/mode` + tautan dasbor lengkap);
-  (b) dasbor **4000** ditata ulang — kartu **MODE SERVER — TEKAN UNTUK GANTI** di paling
-  atas berisi dua tombol besar (mode aktif = ✓ hijau, tombol lain jelas fungsinya) dengan
-  konfirmasi dua-tahap. Jadi di mana pun owner membuka, switch pasti terlihat.
+  mengaktifkannya sekali di Setelan → “Tampil di atas aplikasi lain”.
+- **Website TANPA switch mode (0.3.2 — koreksi owner "website pindah mode itu salah cuma
+  menuhin tempat"):** switch yang di 0.3.1 ditaruh di dua halaman web (dasbor 4000 +
+  halaman port game 8080) **DIHAPUS semua** — dinilai owner hanya menempati tempat.
+  Dasbor 4000 kini menampilkan mode sebagai **badge baca-saja** di header; halaman root
+  `http://127.0.0.1:8080` di browser menjadi **status mini 3 baris tanpa tombol/JS**
+  (bukti port hidup + penunjuk dasbor & tombol melayang). Endpoint `POST /api/mode`
+  ikut dihapus dari kedua port (tidak ada lagi pemakainya).
 
 Keuntungan: mudah di-backup/diintip dari PC (USB), terhapus bersih saat uninstall,
 tanpa izin storage tambahan (folder own-app).
@@ -550,7 +556,8 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
-| **0.3.1** | **(v3.1) + log request menulis URL ASLI `http://127.0.0.1:8080/…` (tanpa label LOCAL/ONLINE — koreksi owner) + switch mode di KEDUA website (halaman port game 8080 + kartu mode besar di dasbor 4000 — koreksi owner "tidak ada mode switch di website") + log anti-banjir (dedupe request kembar <10 dtk + log floating sekali per proses) + 404 normal (com_db_local.bin) dilog tenang & jelas** | **L1–L2b ✓ (build — v3.1)** |
+| **0.3.2** | **(v3.2) + WEBSITE TANPA SWITCH MODE — switch dihapus dari dasbor 4000 & halaman 8080 (status mini tanpa tombol), ganti mode cukup tombol melayang (koreksi owner "website pindah mode itu salah cuma menuhin tempat") + `POST /api/mode` dihapus + badge mode baca-saja di dasbor + baris "memuat…" tak pernah tersisa di kotak log + narasi mode di log dirampingkan** | **L1–L2b ✓ (build — v3.2)** |
+| 0.3.1 | (v3.1) + log request menulis URL ASLI `http://127.0.0.1:8080/…` (tanpa label LOCAL/ONLINE — koreksi owner) + switch mode di KEDUA website (DIBATALKAN di 0.3.2) + log anti-banjir (dedupe request kembar <10 dtk + log floating sekali per proses) + 404 normal (com_db_local.bin) dilog tenang & jelas | L1–L2b ✓ (build — v3.1) |
 | 0.3.0 | (v3.0) + mirror PENUH server asli 31 file (setting bin, H5+15 JS, properties, versi, base.zip/all.zip, incremental, lzceshi) diekstrak otomatis + tombol melayang BISA DIGESER (posisi tersimpan) + pembersih whitelist anti-sampah + rewrite setting bin (XOR DragonBall) + peta dragonh5cdn + self-seed mirror + dasbor baru (5 path terakhir + penjelajah www/ + switch mode) | L1–L2b ✓ (build — v3.0) |
 | 0.1.0 | (v2.8) + payload config asli dibawa APK & diekstrak OTOMATIS ke www/ saat pertama jalan (tanpa langkah manual) + port game terpisah 8080 (LOCAL www/ / ONLINE passthrough) + switch mode tombol melayang + restart otomatis + endpoint client → 127.0.0.1:8080 + log tenang | L1–L2b ✓ (build — v2.8) |
 | 0.1.x | Uji device: switch mode, payload www/ otomatis, pantau log | L4b |
@@ -559,7 +566,23 @@ tanpa izin storage tambahan (folder own-app).
 | 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.3.1 (LOG URL ASLI + SWITCH MODE DI KEDUA WEBSITE, v3.1) — 2026-11-01 — BUILD TERKINI:**
+**Build 0.3.2 (WEBSITE TANPA SWITCH MODE, v3.2) — 2026-11-02 — BUILD TERKINI:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.3.2.apk` (163.356.589 byte) + **asset Release GitHub `v0.3.2`** |
+| SHA-256 | `b64cba53bf96fd6de3bcb5b15c33f6bb9f84c1c170a7808fea7b897dc9ab96d2` |
+| versionCode / versionName | **4 / 0.1.0** (manifest TIDAK disentuh — alur PATCH; identitas versi dibawa dasbor/Release) |
+| Dasar | **Release 0.3.1** (`252984ce…`, diunduh dari asset Release GitHub v0.3.1 — diverifikasi sha256 sebelum dipakai) |
+| Toolchain | ECJ 3.33.0 · r8 8.5.35 (D8 → `classes2.dex`) · uber-apk-signer 1.3.0 · JDK 21 · android.jar API 33 (mirror Sable — sandbox baru, toolchain lama hilang) — tanpa apktool (patch langsung ke APK 0.3.1) |
+| **Koreksi owner (uji device 0.3.1)** | **(1) "website pindah mode itu salah cuma menuhin tempat"** → switch mode DIHAPUS dari SEMUA halaman web: dasbor 4000 tanpa kartu MODE SERVER, halaman root port game 8080 jadi status mini 3 baris tanpa tombol/JavaScript; ganti mode cukup lewat **tombol melayang** di layar game (satu tempat); endpoint `POST /api/mode` dihapus dari kedua port; **(2) baris "memuar…" (memuat…) tersisa di atas kotak log** → placeholder kini dibuang otomatis saat jawaban `/api/logs` pertama masuk; bila dasbor gagal dihubungi muncul pesan jelas ("gagal memuat status/log — dasbor tidak bisa dihubungi"), bukan teks memuat menggantung; **(3) narasi mode di log dirampingkan** → `Mode: LOCAL — permintaan game dilayani dari www/ (mirror server asli)` · `Port game hidup di 8080 (mode LOCAL) — endpoint client menunjuk ke sini` · `Tombol melayang tampil — GESER = pindah posisi · TEKAN = ganti mode` (tanpa iklan halaman 8080) |
+| Perubahan dasbor 4000 | Kartu mode besar dihapus; mode = badge `MODE LOCAL/ONLINE` baca-saja di header (hijau/amber); catatan kecil di kartu port game: "Ganti mode = lewat tombol melayang di layar game … Website sengaja tanpa tombol mode"; footer dirampingkan |
+| Verifikasi (sandbox) | ✅ kompilasi ECJ bersih (55 kelas); ✅ CRC diff penuh 3.701 entri: **hanya** `classes2.dex` + `assets/server/dashboard.html` (+ META-INF hasil sign ulang) yang berubah — dex game `281225eb`, manifest, `resources.arsc`, `QHinfo`, config, seluruh mirror www/ IDENTIK; ✅ dasbor & halaman mini 8080 diuji di browser nyata (stub API): badge `MODE LOCAL` hijau, **0** elemen kartu mode, baris pertama kotak log = event nyata (bukan "memuat…"), halaman mini 8080 = 0 elemen interaktif, tata letak desktop + mobile 390 px + dark mode rapi, tanpa error JS |
+| Perubahan client | **TIDAK ADA** — `classes.dex` game, manifest, `resources.arsc`, `QHinfo`, config endpoint: semua identik (diverifikasi CRC penuh saat build) |
+| Signature | ✅ v1 + v2 + v3 — cert `CN=DB Local LSF` (keystore tetap) |
+| Status | ✅ build & verifikasi level build selesai · ⏳ uji device owner (website bersih tanpa switch, log tanpa "memuat…", ganti mode lewat tombol melayang) |
+
+**Build 0.3.1 (LOG URL ASLI + SWITCH MODE DI KEDUA WEBSITE, v3.1) — 2026-11-01 — DIGANTIKAN 0.3.2 (switch mode dari website dibatalkan owner):**
 
 | Item | Nilai |
 |---|---|

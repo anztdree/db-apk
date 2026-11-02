@@ -19,13 +19,14 @@ import fi.iki.elonen.NanoHTTPD;
  *
  * Endpoint (README §6):
  *   GET  /                → halaman dasbor
- *   GET  /api/status      → status server + mode + port game + 5 path terakhir
+ *   GET  /api/status      → status server + mode (baca-saja) + port game + 5 path terakhir
  *   GET  /api/logs?since= → log baru sejak id tertentu
  *   GET  /api/logs/clear  → bersihkan log di dasbor (file tetap)
  *   GET  /api/www/list    → isi folder www/ (bukti folder bersih & lengkap)
- *   POST /api/mode?mode=… → ganti mode LOCAL/ONLINE + restart aplikasi
- *   Endpoint /api/apk/*, /api/analyze, /api/monitor/run versi 0.1.0 DIHAPUS
- *   (sumber sampah Android/data — keputusan final README §2).
+ *   POST /api/mode DIHAPUS (koreksi owner 0.3.2 — "website pindah mode itu salah
+ *   cuma menuhin tempat"): website TANPA switch mode; ganti mode cukup lewat
+ *   tombol melayang di layar game. Endpoint /api/apk/*, /api/analyze,
+ *   /api/monitor/run versi 0.1.0 juga sudah DIHAPUS (sumber sampah Android/data).
  */
 public final class LocalServer extends NanoHTTPD {
     private final Context appCtx;
@@ -115,31 +116,6 @@ public final class LocalServer extends NanoHTTPD {
                 String j = wwwListJson();
                 bytes = j.length();
                 return jsonResp(Response.Status.OK, j);
-            }
-            if ("/api/mode".equals(uri)) {
-                String target = first(session.getParameters().get("mode"));
-                if (!"local".equals(target) && !"online".equals(target)) {
-                    status = 400;
-                    return jsonResp(Response.Status.BAD_REQUEST,
-                            "{\"error\":\"Parameter mode wajib local|online — contoh: POST /api/mode?mode=local\"}");
-                }
-                String now = Config.mode();
-                if (target.equals(now)) {
-                    String j = "{\"ok\":true,\"mode\":\"" + target + "\",\"changed\":false," +
-                            "\"note\":\"mode sudah " + target + " — tidak ada restart\"}";
-                    bytes = j.length();
-                    return jsonResp(Response.Status.OK, j);
-                }
-                Config.setMode(target);
-                HumanLog.ev('ℹ', "SWITCH MODE dari dasbor: " + now.toUpperCase() + " → " + target.toUpperCase()
-                        + " (tersimpan di server.json) — aplikasi direstart agar game membaca mode baru", null);
-                StatusStore.persist();
-                String j = "{\"ok\":true,\"mode\":\"" + target + "\",\"changed\":true," +
-                        "\"note\":\"mode diganti — aplikasi direstart otomatis\"}";
-                bytes = j.length();
-                Response r = jsonResp(Response.Status.OK, j);
-                RestartHelper.restart(appCtx); // jawaban dikirim dulu; proses mati ~0,6 dtk kemudian
-                return r;
             }
             status = 404;
             return jsonResp(Response.Status.NOT_FOUND,

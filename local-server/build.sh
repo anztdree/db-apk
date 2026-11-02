@@ -1,25 +1,30 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.3.1 — LOG URL ASLI + SWITCH MODE DI KEDUA WEBSITE
+# Build APK-LSF 0.3.2 — WEBSITE TANPA SWITCH MODE
 #
-# Dasar: releases/APK-LSF-0.1.0.apk (sudah memuat manifest provider +
-# endpoint 127.0.0.1:8080 + dex game asli). Patch yang diterapkan
-# (TANPA apktool — dex game & resource tidak disentuh):
+# Dasar: releases/APK-LSF-0.3.1.apk (sudah memuat manifest provider +
+# endpoint 127.0.0.1:8080 + dex game asli). Bila file dasar belum ada:
+#   unduh https://github.com/anztdree/db-apk/releases/download/v0.3.1/APK-LSF-0.3.1.apk
+#   (sha256 252984ce190d4e2ebbb9dd9693c9ca0d48b3521c48a02d98cac5d07f7602436d)
+# Patch yang diterapkan (TANPA apktool — dex game & resource tidak disentuh):
 #   1) javac(ECJ) + d8  -> classes2.dex baru (kode server lokal)
 #   2) ganti assets/server/dashboard.html
-#   3) HAPUS assets/server/payload/** versi lama (4 file minimal)
-#   4) tambah assets/server/www/**  — MIRROR PENUH server asli (31 file,
-#      ±56 MB) yang diekstrak OTOMATIS ke Android/data/<paket>/server/www/
-#   5) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#   3) tambah assets/server/www/** — MIRROR PENUH server asli (31 file, ±56 MB)
+#      yang diekstrak OTOMATIS ke Android/data/<paket>/server/www/
+#   4) buang tanda tangan lama -> zipalign + sign (keystore tetap)
 #
-# Koreksi 0.3.1 (umpan balik uji device owner):
-#   a) log request menulis URL ASLI http://127.0.0.1:8080/… — tanpa label
-#      "LOCAL"/"ONLINE"; 404 normal (com_db_local.bin dll) ikut jelas
-#   b) switch mode ada di KEDUA website: halaman port game 8080 DASBOR 4000
-#      (dua tombol besar LOCAL/ONLINE, konfirmasi dua-tahap, restart otomatis)
-#   c) log "tombol melayang tampil" hanya sekali per proses (dulu 6x)
-#   d) dedupe request kembar <10 dtk (log tidak membanjiri saat game
-#      me-bootstrap ulang berkali-kali)
+# Koreksi 0.3.2 (umpan balik owner: "website pindah mode itu salah cuma
+# menuhin tempat" + bukti baris "memuar…" tersisa di kotak log):
+#   a) switch mode DIHAPUS dari SEMUA halaman web — dasbor 4000 TANPA kartu
+#      mode besar, halaman root port game 8080 jadi status mini tanpa tombol.
+#      Ganti mode cukup lewat tombol melayang di layar game (satu tempat).
+#   b) endpoint POST /api/mode dihapus dari kedua port (tidak ada lagi
+#      pemakainya — kontrak API bersih)
+#   c) dasbor: mode tampil sebagai badge read-only di header; baris placeholder
+#      "memuat…" di kotak log dibuang saat jawaban pertama masuk; bila dasbor
+#      gagal dihubungi muncul pesan jelas, bukan "memuat…" menggantung
+#   d) narasi mode di log dirampingkan: baris boot lebih pendek, tanpa iklan
+#      "halaman 8080 berisi tombol ganti mode", baris tombol melayang 1 kalimat
 #
 # Prasyarat: tools/snapshot.sh sudah jalan (zip besar tersedia).
 # =============================================================
@@ -32,12 +37,12 @@ ECJ="${ECJ:-$REPO/tools/ecj-3.33.0.jar}"               # compiler Java 8 (sandbo
 KS="${KS:-$REPO/keystore/lsf.keystore}"
 KS_ALIAS="${KS_ALIAS:-lsf}"
 KS_PASS="${KS_PASS:-lsf-local-2025}"
-BASE="${BASE:-$REPO/releases/APK-LSF-0.1.0.apk}"       # APK dasar (release 0.1.0)
+BASE="${BASE:-$REPO/releases/APK-LSF-0.3.1.apk}"       # APK dasar (rilis 0.3.1)
 SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.3.1.apk"
+OUT="$REPO/releases/APK-LSF-0.3.2.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"

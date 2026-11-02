@@ -170,8 +170,7 @@ public final class FloatingToggle {
             // me-pause/resume activity beberapa kali saat boot, dulu lognya berulang).
             if (!shownOnceLogged) {
                 shownOnceLogged = true;
-                HumanLog.ev('✔', "Tombol melayang switch mode tampil — GESER untuk memindah (posisi tersimpan), "
-                        + "TEKAN untuk ganti LOCAL/ONLINE (aplikasi restart setelah konfirmasi)", null);
+                HumanLog.ev('✔', "Tombol melayang tampil — GESER = pindah posisi · TEKAN = ganti mode", null);
             }
         } catch (Throwable t) {
             logSilent("Tombol melayang gagal tampil", t);

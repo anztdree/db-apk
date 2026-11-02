@@ -170,8 +170,10 @@ public final class Starter {
                 root.getAbsolutePath(), c.getPackageName());
         // status.json hidup di config/ — root folder tetap bersih (aturan §2)
         StatusStore.setStatusFile(new File(root, "config/status.json"));
-        HumanLog.ev('ℹ', "Mode aktif: " + Config.mode().toUpperCase() + " — ONLINE = permintaan game diteruskan ke "
-                + "server asli · LOCAL = dilayani dari folder www/ (mirror server asli, ekstraksi otomatis dari APK)", null);
+        HumanLog.ev('ℹ', "Mode: " + Config.mode().toUpperCase()
+                + ("local".equals(Config.mode())
+                        ? " — permintaan game dilayani dari www/ (mirror server asli)"
+                        : " — permintaan game diteruskan ke server asli"), null);
 
         // ---------- 4) dasbor debug (port 4000) ----------
         boolean dashOk = false;
@@ -196,9 +198,8 @@ public final class Starter {
             gs.start(2000, true);
             gameServer = gs;
             StatusStore.markGame(true);
-            HumanLog.ev('✔', "Port game hidup di " + Config.gamePort() + " — endpoint client menunjuk ke sini "
-                    + "(mode " + Config.mode().toUpperCase() + ") · halaman http://127.0.0.1:" + Config.gamePort()
-                    + " di browser berisi tombol ganti mode", null);
+            HumanLog.ev('✔', "Port game hidup di " + Config.gamePort() + " (mode " + Config.mode().toUpperCase()
+                    + ") — endpoint client menunjuk ke sini", null);
         } catch (Throwable t) {
             StatusStore.markGame(false);
             HumanLog.ev('⚠', "Port game GAGAL hidup di " + Config.gamePort()
