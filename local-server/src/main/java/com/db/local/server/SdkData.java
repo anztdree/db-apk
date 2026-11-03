@@ -264,6 +264,11 @@ public final class SdkData {
 
     // ---------------- loginchecknative (validasi shell → url H5) ----------------
 
+    /** Dedupe baris OK beruntun (0.4.6): shell/H5 kadang memanggil dua kali —
+     *  uid sama dalam 10 dtk = denyut yang sama, cukup SATU baris ✔. */
+    private static String lastNativeOkUid = "";
+    private static long lastNativeOkAt = 0L;
+
     /**
      * Validasi login shell (uid/username/token/usermode) — SKEMA RESPONS PERSIS
      * server asli login.popoh5.com:510 (probe §2.11):
@@ -317,8 +322,15 @@ public final class SdkData {
                     uid, guest, now());
             saveLast(uid);
             try {
-                HumanLog.ev('✔', "SDK: loginchecknative OK — " + (guest ? "tamu " : "akun ") + uid
-                        + " (mode " + (guest ? "tamu" : "akun") + ")", null);
+                long nowMs = System.currentTimeMillis();
+                boolean dup = uid.equals(lastNativeOkUid)
+                        && (nowMs - lastNativeOkAt) < 10000L;
+                lastNativeOkUid = uid;
+                lastNativeOkAt = nowMs;
+                if (!dup) {
+                    HumanLog.ev('✔', "SDK: loginchecknative OK — " + (guest ? "tamu " : "akun ") + uid
+                            + " (mode " + (guest ? "tamu" : "akun") + ")", null);
+                }
             } catch (Throwable ignored) {
             }
             StringBuilder d = new StringBuilder(256);

@@ -12,13 +12,21 @@ import java.util.TreeMap;
 import com.db.local.server.Config;
 import com.db.local.server.Db;
 import com.db.local.server.HumanLog;
+import com.db.local.server.LogGroups;
 import com.db.local.server.LoginData;
 import com.db.local.server.LoginServer;
 import com.db.local.server.SdkData;
 import com.db.local.server.SettingBin;
 
 /**
- * HARNESS 0.4.5 — LOG BERSIH (dua tingkat) + regresi penuh 0.4.2/0.4.3/0.4.4.
+ * HARNESS 0.4.6 — MODEL FINAL LOG (grup batch) + regresi penuh 0.4.2–0.4.5.
+ *
+ * Baru 0.4.6 (kesepakatan owner "group itu kalau terdeteksi emang
+ * config/resource yg banyak. kalau alur ya gk usah di group"): LogGroups —
+ * mirror/request/404/passthrough masuk GRUP (judul + statistik hidup di
+ * dasbor, diklik = rincian per-file; human.log = ringkasan Σ satu baris);
+ * kegagalan naik ⚠ linear (jeda 30 dtk); grup kosong tak tampil;
+ * loginchecknative OK ganda didedupe; HumanLog.writeRawLine (Σ → file saja).
  *
  * Baru 0.4.5 (koreksi owner "jujur terus terang log anda bagi saya cuma sampah
  * apalagi UI website banyak informasi yg tidak bermanfaat"): log DUA TINGKAT —
@@ -323,6 +331,55 @@ public class HarnessSdk {
         Config.setLogTech(false);
         Config.load(new File(root, "config"));
         check("config: logTech=false batal tersimpan", !Config.logTech());
+
+        // ---------------- TAHAP 15: GRUP LOG BATCH (0.4.6 — model final owner:
+        // "group itu kalau terdeteksi emang config/resource yg banyak") ----------------
+        LogGroups.clear();
+        HumanLog.clearMem();
+        // grup kosong tidak tampil (aturan 1)
+        check("grup: kosong tidak tampil di /api/groups",
+                LogGroups.toJson().equals("{\"groups\":[]}"));
+        // item sukses masuk grup + statistik judul (count/bytes), bukan baris linear
+        LogGroups.item("grph", "GRPTES Mirror", "file", true,
+                "config/a.json — 1,0 KB dari cdn", 1024);
+        LogGroups.item("grph", "GRPTES Mirror", "file", true,
+                "config/b.json — 2,0 KB dari cdn", 2048);
+        String gj = LogGroups.toJson();
+        check("grup: item sukses tampil di /api/groups dengan statistik",
+                gj.contains("GRPTES Mirror") && gj.contains("\"count\":2")
+                        && gj.contains("\"bytes\":3072"));
+        check("grup: item sukses TIDAK jadi baris log linear",
+                !HumanLog.snapshotJson(0).contains("config/a.json"));
+        // item gagal naik ⚠ ke log linear (aturan 2) + dihitung di grup
+        LogGroups.item("grph", "GRPTES Mirror", "file", false,
+                "config/c.json — server asli tidak terjangkau", 0);
+        check("grup: kegagalan NAIK sebagai ⚠ linear",
+                HumanLog.snapshotJson(0).contains("GRPTES Mirror gagal")
+                        && HumanLog.snapshotJson(0).contains("config/c.json"));
+        check("grup: kegagalan dihitung di judul (fail:1)",
+                LogGroups.toJson().contains("\"fail\":1"));
+        // item gagal berikutnya TIDAK membanjiri log (jeda 30 dtk) — hanya hitung
+        int warnBefore = HumanLog.snapshotJson(0).split("GRPTES Mirror gagal", -1).length - 1;
+        LogGroups.item("grph", "GRPTES Mirror", "file", false,
+                "config/d.json — server asli tidak terjangkau", 0);
+        int warnAfter = HumanLog.snapshotJson(0).split("GRPTES Mirror gagal", -1).length - 1;
+        check("grup: gagal beruntun tidak membanjiri log linear (jeda 30 dtk)",
+                warnAfter == warnBefore);
+        // writeRawLine: Σ ringkasan ke human.log SAJA (bukan event dasbor)
+        HumanLog.writeRawLine("2026-11-03 00:00:00 [Σ] GRPTES: ringkasan uji — rincian di dasbor");
+        check("grup: Σ ringkasan masuk human.log (cerita tempel)",
+                readAll(new java.io.FileInputStream(hf)).contains("ringkasan uji"));
+        check("grup: Σ ringkasan TIDAK masuk memori dasbor",
+                !HumanLog.snapshotJson(0).contains("ringkasan uji"));
+        // dedupe loginchecknative OK ganda (0.4.6) — denyut dua kali = satu baris
+        LoginData.ensureAccount("dupuid", "");
+        HumanLog.clearMem();
+        SdkData.checkNative("dupuid", "dupuid", null, "1");
+        SdkData.checkNative("dupuid", "dupuid", null, "1");
+        int okLines = HumanLog.snapshotJson(0).split("loginchecknative OK", -1).length - 1;
+        check("grup: loginchecknative OK ganda didedupe (uid sama < 10 dtk = 1 baris)",
+                okLines == 1);
+        LogGroups.clear();
 
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");

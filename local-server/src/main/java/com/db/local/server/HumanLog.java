@@ -196,6 +196,22 @@ public final class HumanLog {
         }
     }
 
+    /**
+     * Tulis baris mentah ke human.log SAJA (tanpa memori dasbor, tanpa
+     * events.jsonl) — khusus ringkasan Σ grup batch (LogGroups 0.4.6): satu
+     * baris per grup per periode diam, bukan event alur.
+     */
+    public static void writeRawLine(String line) {
+        File f;
+        synchronized (LOCK) {
+            f = humanFile;
+        }
+        if (f == null) {
+            return;
+        }
+        appendLine(f, line);
+    }
+
     /** Ekor file human.log (teks mentah) — sumber "Copy penuh" di dasbor (0.4.5). */
     public static String tailText(int maxLines) {
         File f;

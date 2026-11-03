@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.4.5 — LOG BERSIH + DASBOR FOKUS
+# Build APK-LSF 0.4.6 — MODEL FINAL LOG (grup batch + alur linear)
 #
 # Dasar: releases/APK-LSF-0.3.2.apk (sudah memuat manifest provider +
 # endpoint 127.0.0.1:8080 + dex game asli + mirror www/ 31 file).
@@ -14,6 +14,23 @@
 #   4) tambah assets/server/login/** — DEFAULT LOGIN LOKAL (servers.json)
 #   5) assets/QHinfo → http://127.0.0.1:8610 (0.4.2: layar SDK asli → server SDK lokal)
 #   6) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#
+# Baru 0.4.6 (model final log — kesepakatan owner:
+#   "group itu kalau terdeteksi emang config/resource yg banyak. kalau alur ya
+#   gk usah di group"):
+#   a) LogGroups.java — GRUP BATCH: mirror CDN / request game / 404 fallback /
+#      passthrough ONLINE tidak pernah jadi baris log linear; satu baris judul
+#      dgn statistik hidup di dasbor (diklik = rincian per-file, cap 600 item),
+#      human.log = ringkasan Σ satu baris per periode diam (45 dtk), gagal
+#      NAIK OTOMATIS sebagai ⚠ linear (jeda 30 dtk), grup kosong tak tampil.
+#   b) GameServer — per-file 200/404/seed/passthrough pindah ke grup; baris
+#      PENTING tetap linear (setting bin hilang, 404 tak terpetakan, 502, 500).
+#   c) API dasbor baru: GET /api/groups; /api/logs/clear ikut mengosongkan grup.
+#   d) DASBOR dirombak sesuai model: panel status atas (game/login/sesi),
+#      alur linear, grup lipat di bawahnya; bukti teknis dilipat di bawah.
+#      Copy = cerita alur + ringkasan Σ per grup — rincian per-file di dasbor.
+#   e) Dedupe "loginchecknative OK" beruntun (uid sama < 10 dtk = satu baris).
+#   f) HumanLog.writeRawLine (Σ grup → human.log tanpa memori/jsonl).
 #
 # Baru 0.4.5 (laporan owner "jujur terus terang log anda bagi saya cuma sampah
 # apalagi UI website banyak informasi yg tidak bermanfaat.. perlu susun rencana"):
@@ -85,7 +102,7 @@ SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.4.5.apk"
+OUT="$REPO/releases/APK-LSF-0.4.6.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"

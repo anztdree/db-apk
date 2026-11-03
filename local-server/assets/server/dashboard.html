@@ -5,12 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DB LOCAL · Dasbor</title>
 <style>
-  /* 0.4.5 — REDESIGN (koreksi owner "UI website banyak informasi yg tidak
-     bermanfaat"): LOG jadi pusat; sisanya ringkas di tab Data & Teknis. */
+  /* 0.4.6 — MODEL FINAL LOG (kesepakatan owner):
+     "group itu kalau terdeteksi emang config/resource yg banyak. kalau alur
+     ya gk usah di group" —
+     • ALUR (boot → SDK → masuk) = baris linear, tidak pernah dikelompokkan.
+     • BATCH (mirror/requests/404/passthrough) = GRUP lipat: satu baris judul
+       dengan statistik hidup, diklik untuk rincian per-file; gagal naik
+       sendiri sebagai baris ⚠ di alur; grup kosong tidak tampil.
+     • Panel status di atas: game/login/sesi — apakah semuanya baik-baik saja. */
   :root{
     --bg:#0c0a09; --card:#1c1917; --line:#292524; --tx:#fafaf9; --mut:#a8a29e;
     --ok:#34d399; --warn:#fbbf24; --err:#f87171; --acc:#10b981; --acctx:#052e1a;
-    --code:#111111; --shadow:0 1px 2px rgba(0,0,0,.4);
+    --code:#111111;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
@@ -37,38 +43,40 @@
   }
   .pill.up{background:#064e3b33; color:var(--ok)}
   main{flex:1; padding:10px 14px 18px; max-width:900px; width:100%; margin:0 auto}
-  /* strip status: SATU baris ringkas, fakta yang penting saja */
-  #strip{
-    display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; color:var(--mut);
-    padding:8px 2px 10px;
+
+  /* ---- panel status: tiga keadaan inti, jawaban "apakah semua baik-baik saja" ---- */
+  #tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:10px 0 6px}
+  @media(max-width:560px){ #tiles{grid-template-columns:1fr 1fr} #tiles .tile:first-child{grid-column:1/-1} }
+  .tile{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:10px 12px; min-height:44px;
   }
+  .tile .k{font-size:10.5px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
+  .tile .v{font-size:14.5px; font-weight:700; margin-top:2px; word-break:break-all}
+  .tile .v .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px; background:var(--mut); vertical-align:1px}
+  .tile.up .v .dot{background:var(--ok)}
+  .tile.down .v{color:var(--err)}
+  .tile.down .v .dot{background:var(--err)}
+  #strip{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px; color:var(--mut); padding:2px 2px 10px}
   #strip b{color:var(--tx); font-weight:600}
-  .tabs{display:flex; gap:6px; margin:2px 0 10px}
-  .tab{
-    min-height:42px; padding:7px 16px; border-radius:10px; border:1px solid var(--line);
-    background:var(--card); color:var(--tx); font-weight:600; font-size:14px; cursor:pointer;
-  }
-  .tab.active{background:var(--acc); color:var(--acctx); border-color:var(--acc)}
-  .pane{display:none}
-  .pane.active{display:block}
-  /* toolbar log */
-  .toolbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin-bottom:8px}
+
+  /* ---- toolbar & log linear (alur) ---- */
+  .toolbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin:6px 0 8px}
   .chip{
     min-height:38px; padding:6px 12px; border-radius:999px; border:1px solid var(--line);
     background:var(--card); color:var(--mut); font-weight:600; font-size:12.5px; cursor:pointer;
   }
-  .chip.on{background:var(--card); color:var(--tx); border-color:var(--ok)}
+  .chip.on{color:var(--tx); border-color:var(--ok)}
   .chip.tech.on{color:var(--warn); border-color:var(--warn)}
   button.act{
     min-height:38px; padding:6px 12px; border-radius:9px; border:1px solid var(--line);
     background:var(--card); color:var(--tx); font-weight:600; font-size:12.5px; cursor:pointer;
   }
   button.act:active{transform:translateY(1px)}
-  #lognote{font-size:11.5px; color:var(--mut); margin:0 0 6px}
   #logbox{
     background:var(--code); border:1px solid var(--line); border-radius:10px;
-    padding:0; font:11.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    max-height:60vh; overflow-y:auto; word-break:break-all;
+    font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    max-height:52vh; overflow-y:auto; word-break:break-word;
     -webkit-overflow-scrolling:touch;
   }
   .logrow{display:flex; gap:7px; padding:3px 9px; border-bottom:1px solid var(--line); align-items:baseline}
@@ -76,28 +84,66 @@
   .logrow:hover{background:rgba(128,128,128,.08)}
   .logrow.tech{opacity:.62}
   .logrow.err .logtext{color:var(--err)}
-  .logrow.warn .logtext{color:var(--warn)}
   .logrow.ok .logtext{color:var(--ok)}
   .logtime{color:var(--mut); flex:none; font-size:10px}
   .logic{flex:none; width:13px; text-align:center}
-  .logtext{flex:1; min-width:0; word-break:break-word}
-  .logdetail{color:var(--mut); font-size:10px; margin:1px 0 3px 29px; padding-left:2px; word-break:break-all}
+  .logtext{flex:1; min-width:0}
   .logempty{padding:12px 10px; color:var(--mut)}
-  /* kartu kecil tab Data/Teknis */
-  .card{
-    background:var(--card); border:1px solid var(--line); border-radius:12px;
-    padding:12px 14px; box-shadow:var(--shadow); margin-bottom:10px;
+
+  /* ---- grup batch: satu baris judul + statistik; diklik = rincian ---- */
+  #grouphdr{
+    margin:14px 2px 6px; font-size:11px; text-transform:uppercase; letter-spacing:1px;
+    color:var(--mut); display:none;
   }
-  .card h2{margin:0 0 8px; font-size:12.5px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
-  .kv{display:grid; grid-template-columns:auto 1fr; gap:3px 14px; font-size:13.5px}
+  #grouphdr.show{display:block}
+  .grp{
+    background:var(--code); border:1px solid var(--line); border-radius:10px;
+    margin-bottom:7px; overflow:hidden;
+  }
+  .grphdr{
+    display:flex; gap:9px; align-items:baseline; padding:9px 12px; cursor:pointer;
+    font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; user-select:none;
+  }
+  .grphdr:active{background:rgba(128,128,128,.08)}
+  .grparrow{flex:none; width:12px; color:var(--mut)}
+  .grptitle{font-weight:700; flex:none}
+  .grpstat{flex:1; min-width:0; color:var(--mut); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .grpstat .fail{color:var(--err); font-weight:700}
+  .grpdur{flex:none; color:var(--mut); font-size:10.5px}
+  .grpitems{
+    display:none; border-top:1px solid var(--line);
+    max-height:45vh; overflow-y:auto;
+    font:11px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  .grp.open .grpitems{display:block}
+  .grp.open .grparrow::before{content:"▾"}
+  .grparrow::before{content:"▸"}
+  .itrow{display:flex; gap:7px; padding:2px 12px; border-bottom:1px dashed var(--line)}
+  .itrow:last-child{border-bottom:none}
+  .ittime{color:var(--mut); flex:none; font-size:9.5px}
+  .ittext{flex:1; min-width:0; word-break:break-word}
+  .itrow.bad .ittext{color:var(--err)}
+  .grempty{padding:8px 12px; color:var(--mut)}
+
+  /* ---- data teknis (dilipat — bukti tersedia, tidak menutupi) ---- */
+  details.datacard{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    margin-top:12px; padding:0;
+  }
+  details.datacard summary{
+    cursor:pointer; padding:11px 14px; font-weight:600; font-size:13.5px; color:var(--mut);
+  }
+  .databody{padding:0 14px 12px}
+  .card{margin-bottom:10px}
+  .card h2{margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
+  .kv{display:grid; grid-template-columns:auto 1fr; gap:3px 14px; font-size:13px}
   .kv b{color:var(--mut); font-weight:600; white-space:nowrap}
-  .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; background:var(--mut)}
-  .dot.up{background:var(--ok)} .dot.down{background:var(--err)}
+  .dot2{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; background:var(--mut)}
+  .dot2.up{background:var(--ok)} .dot2.down{background:var(--err)}
   table{width:100%; border-collapse:collapse; font-size:12.5px}
   th{text-align:left; color:var(--mut); font-weight:600; padding:5px 6px; border-bottom:1px solid var(--line)}
   td{padding:6px 6px; border-bottom:1px solid var(--line); vertical-align:top; word-break:break-all}
   tr:last-child td{border-bottom:none}
-  details summary{cursor:pointer; color:var(--mut); font-size:13px; padding:4px 0}
   footer{
     margin-top:auto; padding:12px 14px calc(12px + env(safe-area-inset-bottom));
     border-top:1px solid var(--line); color:var(--mut); font-size:12px; text-align:center;
@@ -112,88 +158,88 @@
   <span class="pill" id="pill">menyambung…</span>
 </header>
 <main>
+  <!-- ===== panel status: jawaban "apakah semuanya baik-baik saja" ===== -->
+  <div id="tiles">
+    <div class="tile" id="tile-game">
+      <div class="k">Port game</div>
+      <div class="v"><span class="dot"></span><span class="t">…</span></div>
+    </div>
+    <div class="tile" id="tile-login">
+      <div class="k">Server login</div>
+      <div class="v"><span class="dot"></span><span class="t">…</span></div>
+    </div>
+    <div class="tile" id="tile-sesi">
+      <div class="k">Sesi pemain</div>
+      <div class="v"><span class="t">…</span></div>
+    </div>
+  </div>
   <div id="strip">
-    <span>user <b id="s-user">…</b></span>
-    <span><b id="s-srv">…</b> server</span>
     <span>www/ <b id="s-www">…</b></span>
     <span>akun <b id="s-acc">…</b></span>
     <span>uptime <b id="s-up">…</b></span>
   </div>
 
-  <div class="tabs">
-    <button class="tab active" data-pane="log">Log</button>
-    <button class="tab" data-pane="data">Data</button>
-    <button class="tab" data-pane="tech">Teknis</button>
+  <!-- ===== alur: baris penting linear ===== -->
+  <div class="toolbar">
+    <button class="chip on" id="f-all">Semua</button>
+    <button class="chip" id="f-warn">⚠ saja</button>
+    <button class="chip tech" id="t-tech">RINCI</button>
+    <button class="act" id="copylog">Copy</button>
+    <button class="act" id="copyfull">Copy penuh</button>
+    <button class="act" id="clearlog">Bersihkan</button>
   </div>
+  <div id="logbox">(memuat log…)</div>
 
-  <!-- ============ LOG ============ -->
-  <div class="pane active" id="pane-log">
-    <div class="toolbar">
-      <button class="chip on" id="f-all">Semua</button>
-      <button class="chip" id="f-warn">⚠ saja</button>
-      <button class="chip tech" id="t-tech">RINCI</button>
-      <button class="act" id="copylog">Copy</button>
-      <button class="act" id="copyfull">Copy penuh</button>
-      <button class="act" id="clearlog">Bersihkan</button>
-    </div>
-    <p id="lognote"></p>
-    <div id="logbox">(memuat log…)</div>
-  </div>
+  <!-- ===== grup batch: lipat, judul = statistik hidup ===== -->
+  <div id="grouphdr">Aktivitas batch — klik untuk rincian per-file</div>
+  <div id="groups"></div>
 
-  <!-- ============ DATA ============ -->
-  <div class="pane" id="pane-data">
-    <div class="card">
-      <h2>Data lokal (dragonball.db)</h2>
-      <div class="kv">
-        <b>Akun terdaftar</b><span id="d-acc">…</span>
-        <b>Tamu / perangkat</b><span id="d-dev">…</span>
-        <b>Sesi SDK terakhir</b><span id="d-ses">…</span>
-        <b>Server game</b><span id="d-srv">…</span>
-        <b>Status port</b><span id="d-port">…</span>
+  <!-- ===== bukti teknis (dilipat, tidak menutupi) ===== -->
+  <details class="datacard">
+    <summary>Data &amp; jaringan (rincian teknis)</summary>
+    <div class="databody">
+      <div class="card">
+        <h2>Server asli (jaringan)</h2>
+        <table><tbody id="origbody"><tr><td style="color:var(--mut)">memuat…</td></tr></tbody></table>
       </div>
-    </div>
-    <div class="card">
-      <h2>Server asli (jaringan)</h2>
-      <table>
-        <tbody id="origbody"><tr><td style="color:var(--mut)">memuat…</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ============ TEKNIS ============ -->
-  <div class="pane" id="pane-tech">
-    <div class="card">
-      <h2>Identitas server</h2>
-      <div class="kv">
-        <b>Root</b><span id="t-root">…</span>
-        <b>Paket</b><span id="t-pkg">…</span>
-        <b>Port</b><span id="t-port">…</span>
-        <b>Permintaan</b><span id="t-req">…</span>
-        <b>Mirror dari CDN</b><span id="t-seed">…</span>
-        <b>404 normal</b><span id="t-404">…</span>
-      </div>
-    </div>
-    <div class="card">
-      <h2>6 permintaan game terakhir</h2>
-      <table>
-        <thead><tr><th>Path</th><th>St</th><th>Lama</th></tr></thead>
-        <tbody id="lastbody"><tr><td colspan="3" style="color:var(--mut)">belum ada</td></tr></tbody>
-      </table>
-    </div>
-    <div class="card">
-      <h2>Isi www/</h2>
-      <details>
-        <summary id="wwwsum">tampilkan daftar file…</summary>
-        <div style="max-height:40vh; overflow-y:auto; margin-top:6px">
-          <table><tbody id="wwwbody"><tr><td style="color:var(--mut)">—</td></tr></tbody></table>
+      <div class="card">
+        <h2>Data lokal (dragonball.db)</h2>
+        <div class="kv">
+          <b>Akun</b><span id="d-acc">…</span>
+          <b>Perangkat tamu</b><span id="d-dev">…</span>
+          <b>Server game</b><span id="d-srv">…</span>
         </div>
-      </details>
+      </div>
+      <div class="card">
+        <h2>6 permintaan game terakhir</h2>
+        <table>
+          <thead><tr><th>Path</th><th>St</th><th>Lama</th></tr></thead>
+          <tbody id="lastbody"><tr><td colspan="3" style="color:var(--mut)">belum ada</td></tr></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Identitas</h2>
+        <div class="kv">
+          <b>Root</b><span id="t-root">…</span>
+          <b>Port</b><span id="t-port">…</span>
+          <b>Permintaan</b><span id="t-req">…</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Isi www/</h2>
+        <details>
+          <summary id="wwwsum">tampilkan daftar file…</summary>
+          <div style="max-height:40vh; overflow-y:auto; margin-top:6px">
+            <table><tbody id="wwwbody"><tr><td style="color:var(--mut)">—</td></tr></tbody></table>
+          </div>
+        </details>
+      </div>
     </div>
-  </div>
+  </details>
 </main>
 <footer>
-  Ganti mode: tombol melayang di layar game · log penuh selalu tersimpan di
-  <b>logs/human.log</b> (meski dasbor mode BERSIH)
+  Alur = baris penting · batch = grup lipat di bawahnya · gagal selalu naik sebagai ⚠ ·
+  log penuh tersimpan di <b>logs/human.log</b>
 </footer>
 
 <script>
@@ -201,6 +247,8 @@
   "use strict";
   var $ = function(id){ return document.getElementById(id); };
   var logSince = 0, logLoaded = false, filterWarn = false;
+  var grpOpen = {};      // id grup -> true bila sedang dibuka
+  var grpLast = null;    // snapshot JSON terakhir (hindari render ulang sia-sia)
 
   function fmtBytes(n){
     if(n < 0) return "?";
@@ -226,17 +274,7 @@
     });
   }
 
-  // ---------- tabs ----------
-  document.querySelectorAll(".tab").forEach(function(t){
-    t.addEventListener("click", function(){
-      document.querySelectorAll(".tab").forEach(function(x){ x.classList.remove("active"); });
-      document.querySelectorAll(".pane").forEach(function(x){ x.classList.remove("active"); });
-      t.classList.add("active");
-      $("pane-" + t.dataset.pane).classList.add("active");
-    });
-  });
-
-  // ---------- status ----------
+  // ---------- panel status + strip ----------
   function renderStatus(s){
     var sv = s.server || {};
     $("ver").textContent = "v" + (sv.version || "?");
@@ -247,39 +285,33 @@
     mb.textContent = "MODE " + mode.toUpperCase();
     mb.className = "badge" + (mode === "local" ? " mode-local" : (mode === "online" ? " mode-online" : ""));
 
-    // strip — fakta inti saja (0.4.5)
-    var uid = sv.sdkUid || sv.sdkGuest || sv.loginUser || "belum ada";
-    $("s-user").textContent = uid;
-    $("s-srv").textContent = sv.loginServers || 0;
+    tile("tile-game", sv.gameAlive, "game :" + sv.gamePort + (sv.gameAlive ? " siap" : " MATI"));
+    tile("tile-login", sv.loginAlive, "login :" + sv.loginPort + (sv.loginAlive ? " siap" : " MATI"));
+    var uid = sv.sdkUid || sv.sdkGuest || sv.loginUser || "belum masuk";
+    var ts = $("tile-sesi").querySelector(".v .t");
+    ts.textContent = uid;
+    $("tile-sesi").className = "tile" + ((sv.sdkUid || sv.sdkGuest) ? " up" : "");
+
     $("s-www").textContent = (sv.wwwFiles || 0) + " file · " + fmtBytes(sv.wwwBytes || 0);
     $("s-acc").textContent = sv.loginAccounts || 0;
     $("s-up").textContent = fmtUptime(sv.uptimeMs);
 
-    // tab Data
+    // --- dalam lipatan Data & jaringan ---
     $("d-acc").textContent = (sv.loginAccounts || 0) + " akun";
     $("d-dev").textContent = (sv.sdkDevices || 0) + " perangkat";
-    $("d-ses").textContent = uid;
     $("d-srv").textContent = (sv.loginServers || 0) + " server (snapshot asli)";
-    $("d-port").textContent = (sv.gameAlive ? "✓ game " + sv.gamePort : "✗ game") + " · "
-      + (sv.loginAlive ? "✓ login " + sv.loginPort : "✗ login") + " · "
-      + (sv.alive ? "✓ dasbor " + sv.port : "✗ dasbor");
+    $("t-root").textContent = sv.root || "?";
+    $("t-port").textContent = "game " + sv.gamePort + " · login " + sv.loginPort + " · dasbor " + sv.port;
+    $("t-req").textContent = (sv.requests || 0) + " · gagal " + (sv.errors || 0);
 
     var ob = $("origbody");
     if(s.original && s.original.length){
       ob.innerHTML = s.original.map(function(o){
-        return "<tr><td><span class='dot " + (o.ok ? "up" : "down") + "'></span>" + esc(o.target)
+        return "<tr><td><span class='dot2 " + (o.ok ? "up" : "down") + "'></span>" + esc(o.target)
           + "</td><td style='white-space:nowrap'>" + (o.latencyMs >= 0 ? fmtMs(o.latencyMs) : "gagal")
           + "</td></tr>";
       }).join("");
     }
-
-    // tab Teknis
-    $("t-root").textContent = sv.root || "?";
-    $("t-pkg").textContent = sv["package"] || "?";
-    $("t-port").textContent = "game " + sv.gamePort + " · login " + sv.loginPort + " · dasbor " + sv.port;
-    $("t-req").textContent = (sv.requests || 0) + " · gagal " + (sv.errors || 0);
-    $("t-seed").textContent = (sv.mirrorSeeded || 0) + " file · " + fmtBytes(sv.mirrorSeedBytes || 0);
-    $("t-404").textContent = (sv.notFound || 0) + " (perilaku normal)";
 
     var arr = (s.last || []).slice(0, 6);
     var tb = $("lastbody");
@@ -293,26 +325,22 @@
       }).join("");
     }
 
-    // toggle RINCI mengikuti keadaan server
     $("t-tech").classList.toggle("on", !!sv.logTech);
-    $("lognote").textContent = sv.logTech
-      ? "Mode RINCI — baris teknis ikut tampil. Mode BERSIH tetap mencatat semuanya ke logs/human.log."
-      : "Mode BERSIH — hanya kejadian penting. Nyalakan RINCI bila butuh baris request per-file.";
+  }
+  function tile(id, ok, text){
+    var el = $(id);
+    el.className = "tile " + (ok ? "up" : "down");
+    el.querySelector(".v .t").textContent = text;
   }
 
   function pollStatus(){
-    fetch("/api/status").then(function(r){ return r.json(); }).then(function(s){
-      renderStatus(s);
-    }).catch(function(){
+    fetch("/api/status").then(function(r){ return r.json(); }).then(renderStatus).catch(function(){
       $("pill").textContent = "PUTUS";
       $("pill").className = "pill";
     });
   }
 
-  // ---------- log ----------
-  function iconClass(ic){
-    return ic === "✔" ? "ok" : (ic === "⚠" ? "err" : (ic === "▶" || ic === "◀" ? "in" : "info"));
-  }
+  // ---------- log linear (alur penting) ----------
   function pollLog(){
     fetch("/api/logs?since=" + logSince).then(function(r){ return r.json(); }).then(function(arr){
       var box = $("logbox");
@@ -338,17 +366,9 @@
         var tx = document.createElement("span"); tx.className = "logtext"; tx.textContent = e.text;
         row.appendChild(tm); row.appendChild(ic); row.appendChild(tx);
         frag.appendChild(row);
-        if(e.detail && e.detail !== "-"){
-          var det = document.createElement("div");
-          det.className = "logdetail";
-          det.textContent = e.detail;
-          det.dataset.warn = row.dataset.warn;
-          if(filterWarn && det.dataset.warn === "0"){ det.style.display = "none"; }
-          frag.appendChild(det);
-        }
       });
       box.appendChild(frag);
-      while(box.childNodes.length > 1600) box.removeChild(box.firstChild);
+      while(box.childNodes.length > 1200) box.removeChild(box.firstChild);
       if(atEnd) box.scrollTop = box.scrollHeight;
     }).catch(function(){
       if(!logLoaded){
@@ -369,12 +389,87 @@
   $("f-all").addEventListener("click", function(){ filterWarn = false; applyWarnFilter(); });
   $("f-warn").addEventListener("click", function(){ filterWarn = true; applyWarnFilter(); });
 
-  // toggle RINCI — tersimpan di server.json (tahan reboot)
   $("t-tech").addEventListener("click", function(){
     var next = !$("t-tech").classList.contains("on");
-    fetch("/api/logtech?on=" + (next ? "1" : "0")).then(function(){ return pollStatus(); }).catch(function(){});
+    fetch("/api/logtech?on=" + (next ? "1" : "0")).then(function(){ pollStatus(); }).catch(function(){});
   });
 
+  // ---------- grup batch (judul = statistik hidup; diklik = rincian) ----------
+  function grpStatLine(g){
+    var t = g.count + " " + g.unit;
+    if(g.bytes > 0) t += " · " + fmtBytes(g.bytes);
+    t += g.fail > 0 ? " · <span class='fail'>" + g.fail + " gagal</span>" : " · 0 gagal";
+    return t;
+  }
+  function renderGroups(j){
+    var list = (j && j.groups) ? j.groups : [];
+    var hdr = $("grouphdr"), box = $("groups");
+    if(!list.length){
+      hdr.className = "";
+      box.innerHTML = "";
+      grpLast = null;
+      return;
+    }
+    hdr.className = "show";
+    // grup baru muncul / lama hilang → render ulang kerangka; selain itu
+    // cukup perbarui statistik judul + isi grup yang sedang dibuka.
+    var sig = list.map(function(g){ return g.id + ":" + g.count + ":" + g.fail; }).join("|");
+    var itemsChanged = false;
+    list.forEach(function(g){
+      var sigIt = g.items.length + ":" + (g.items.length ? g.items[g.items.length-1][1] : "");
+      if(!grpLast || grpLast.map[g.id] !== sigIt) itemsChanged = true;
+    });
+    if(!box.childElementCount || !grpLast || grpLast.sig !== sig || itemsChanged){
+      box.innerHTML = list.map(function(g){
+        var open = !!grpOpen[g.id];
+        var items = open ? g.items : [];
+        return "<div class='grp" + (open ? " open" : "") + "' data-g='" + esc(g.id) + "'>"
+          + "<div class='grphdr'>"
+          +   "<span class='grparrow'></span>"
+          +   "<span class='grptitle'>" + esc(g.title) + "</span>"
+          +   "<span class='grpstat'>" + grpStatLine(g) + "</span>"
+          +   "<span class='grpdur'>" + (g.durMs > 0 ? fmtMs(g.durMs) : "") + "</span>"
+          + "</div>"
+          + "<div class='grpitems'>"
+          +   (items.length
+                ? items.map(function(it){
+                    return "<div class='itrow" + (it[2] ? "" : " bad") + "'>"
+                      + "<span class='ittime'>" + esc(it[0]) + "</span>"
+                      + "<span class='ittext'>" + esc(it[1]) + "</span></div>";
+                  }).join("")
+                : "<div class='grempty'>buka untuk melihat " + (g.count + g.fail) + " item…</div>")
+          + "</div>"
+          + "</div>";
+      }).join("");
+    } else {
+      // statistik judul hidup tanpa render ulang (tidak mengganggu yang dibuka)
+      list.forEach(function(g){
+        var el = box.querySelector(".grp[data-g='" + g.id + "'] .grpstat");
+        if(el) el.innerHTML = grpStatLine(g);
+      });
+    }
+    grpLast = { sig: sig, map: (function(){
+      var m = {};
+      list.forEach(function(g){
+        m[g.id] = g.items.length + ":" + (g.items.length ? g.items[g.items.length-1][1] : "");
+      });
+      return m;
+    })() };
+  }
+  function pollGroups(){
+    fetch("/api/groups").then(function(r){ return r.json(); }).then(renderGroups).catch(function(){});
+  }
+  // klik judul grup = buka/tutup (delegasi — daftar bisa terganti kapan saja)
+  $("groups").addEventListener("click", function(ev){
+    var hdr = ev.target.closest(".grphdr");
+    if(!hdr) return;
+    var wrap = hdr.parentElement, id = wrap.dataset.g;
+    grpOpen[id] = !grpOpen[id];
+    wrap.classList.toggle("open", grpOpen[id]);
+    pollGroups(); // ambil rincian segera
+  });
+
+  // ---------- tombol ----------
   function copyText(txt, btn, label){
     (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function(){
       btn.textContent = "Tersalin ✓";
@@ -387,12 +482,19 @@
       setTimeout(function(){ btn.textContent = label; }, 1500);
     });
   }
-  // Copy = tampilan dasbor (penting — atau penting+teknis saat RINCI)
+  // Copy = cerita utk ditempel: baris alur + ringkasan Σ satu baris per grup
   $("copylog").addEventListener("click", function(){
-    var txt = Array.prototype.map.call($("logbox").childNodes, function(n){ return n.textContent; }).join("\n");
-    copyText(txt, $("copylog"), "Copy");
+    var lines = Array.prototype.map.call($("logbox").childNodes, function(n){ return n.textContent; });
+    document.querySelectorAll("#groups .grp").forEach(function(g){
+      var title = g.querySelector(".grptitle").textContent;
+      var stat = g.querySelector(".grpstat").textContent;
+      var dur = g.querySelector(".grpdur").textContent;
+      lines.push(title + ": " + stat.replace(/\s+/g," ").trim() + (dur ? " (" + dur + ")" : "")
+        + " — rincian di dasbor");
+    });
+    copyText(lines.join("\n"), $("copylog"), "Copy");
   });
-  // Copy penuh = ekor human.log dari disk — PENTING + TEKNIS, bukti tidak terpotong
+  // Copy penuh = ekor human.log dari disk (termasuk ringkasan Σ + baris teknis)
   $("copyfull").addEventListener("click", function(){
     fetch("/api/logs/file?tail=400").then(function(r){ return r.text(); }).then(function(t){
       copyText(t, $("copyfull"), "Copy penuh");
@@ -404,19 +506,22 @@
   $("clearlog").addEventListener("click", function(){
     fetch("/api/logs/clear").then(function(){
       $("logbox").textContent = "";
+      $("groups").innerHTML = "";
+      $("grouphdr").className = "";
       logSince = 0;
+      grpOpen = {};
+      grpLast = null;
     }).catch(function(){});
   });
 
-  // ---------- www list (tab Teknis, dimuat saat dibuka pertama kali) ----------
+  // ---------- daftar www/ (dalam lipatan; dimuat saat dibuka pertama kali) ----------
   var wwwLoaded = false;
   $("wwwsum").addEventListener("click", function(){
     if(wwwLoaded) return;
     fetch("/api/www/list").then(function(r){ return r.json(); }).then(function(j){
       wwwLoaded = true;
       $("wwwsum").textContent = j.count + " file · " + fmtBytes(j.bytes);
-      var tb = $("wwwbody");
-      tb.innerHTML = (j.files || []).map(function(f){
+      $("wwwbody").innerHTML = (j.files || []).map(function(f){
         return "<tr><td>" + esc(f.p) + "</td><td style='white-space:nowrap'>" + fmtBytes(f.s) + "</td></tr>";
       }).join("") || "<tr><td style='color:var(--mut)'>www/ kosong</td></tr>";
     }).catch(function(){
@@ -426,8 +531,10 @@
 
   pollStatus();
   pollLog();
+  pollGroups();
   setInterval(pollStatus, 3000);
   setInterval(pollLog, 3000);
+  setInterval(pollGroups, 3000);
 })();
 </script>
 </body>

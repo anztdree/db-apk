@@ -21,7 +21,9 @@ import fi.iki.elonen.NanoHTTPD;
  *   GET  /                → halaman dasbor
  *   GET  /api/status      → status server + mode (baca-saja) + port game + 5 path terakhir
  *   GET  /api/logs?since= → log baru sejak id tertentu (mode BERSIH: penting saja)
- *   GET  /api/logs/clear  → bersihkan log di dasbor (file tetap)
+ *   GET  /api/groups      → snapshot GRUP batch (Mirror CDN/Request game/404/
+ *                           Passthrough) 0.4.6 — judul + statistik + rincian item
+ *   GET  /api/logs/clear  → bersihkan log di dasbor (file tetap; grup ikut kosong)
  *   GET  /api/logs/file   → EKOR human.log penuh (penting+teknis) — sumber "Copy penuh" 0.4.5
  *   GET  /api/logtech     → mode log RINCI on/off (?on=1|0) — tersimpan di server.json 0.4.5
  *   GET  /api/www/list    → isi folder www/ (bukti folder bersih & lengkap)
@@ -108,8 +110,15 @@ public final class LocalServer extends NanoHTTPD {
                 bytes = j.length();
                 return jsonResp(Response.Status.OK, j);
             }
+            // 0.4.6 — grup batch untuk dasbor (judul + statistik hidup + rincian)
+            if ("/api/groups".equals(uri)) {
+                String j = LogGroups.toJson();
+                bytes = j.length();
+                return jsonResp(Response.Status.OK, j);
+            }
             if ("/api/logs/clear".equals(uri)) {
                 HumanLog.clearMem();
+                LogGroups.clear();
                 HumanLog.info("Log di dasbor dibersihkan oleh pengguna (file human.log tetap tersimpan)");
                 String j = "{\"ok\":true}";
                 bytes = j.length();
