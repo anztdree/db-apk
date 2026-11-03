@@ -27,6 +27,15 @@ package com.db.local.server;
  *   /v1/user/registerUser  → buat akun lokal (password MD5 disimpan)
  *   /v1/user/ckRegVistor   → {isReged:1} bila authToken dikenal
  *
+ * 0.4.4 BEDAH DEX (HWLoginActivity → mesoamericanhochmagandies.cointhreat.
+ * timidcompletely/navyshop + feedtonight.singersmooth): tombol MASUK/DAFTAR
+ * layar SDK ASLI memakai EMAIL sebagai nama akun — divalidasi client dgn regex
+ * "\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*" (huruf besar ditolak) dan
+ * kata sandi "^.{6,}$" (minimal 6 karakter). Yang tiba di server: username =
+ * alamat email (bisa berisi @ . + -), password = MD5. Server lokal kini menerima
+ * skema itu: charset [a-z0-9_.+-@], panjang 3-64, disimpan huruf kecil agar
+ * MASUK tidak peka huruf besar/kecil (domain email tidak peka kasus).
+ *
  * Identitas: uid == username (satu nama untuk tahap SDK & tahap game) sehingga
  * loginGame(username=<uid>, password "game_origin") di server login lokal selalu
  * mendarat di akun yang SAMA.
@@ -111,8 +120,10 @@ public final class SdkData {
                 LoginData.ensureAccount(uid, "");
                 Db.i().putGuest(dev, uid, now());
                 try {
-                    HumanLog.ev('▶', "SDK: tamu BARU " + uid + " terdaftar (perangkat " + shortId(dev) + ")"
-                            + (first ? " — memakai guest lokal yang sudah ada" : ""), null);
+                    // 0.4.4: kata-kata jelas — yang BARU adalah ikatan perangkat,
+                    // bukan tamunya (tamunya guest lokal pemilik, migrasi identitas)
+                    HumanLog.ev('▶', "SDK: perangkat " + shortId(dev) + " diikat ke tamu " + uid
+                            + (first ? " — guest lokal pemilik (migrasi identitas)" : " — tamu baru"), null);
                 } catch (Throwable ignored) {
                 }
                 return sessionData(tokenFor(uid, dev), uid, true, true);
@@ -162,49 +173,75 @@ public final class SdkData {
 
     // ---------------- endpoint: loginByName / registerUser ----------------
 
-    /** Login akun+password (password SUDAH MD5 dari client). null = gagal (40101 server asli). */
+    /**
+     * Login akun+password (password SUDAH MD5 dari client). null = gagal (40101 server asli).
+     * 0.4.4: layar SDK mengirim EMAIL — pencarian tidak peka huruf besar/kecil
+     * (coba persis dulu, lalu huruf kecil) agar "Budi@GMail.com" mendarat di
+     * akun "budi@gmail.com" yang sama.
+     */
     public static String loginByName(String username, String passwordMd5) {
         synchronized (LOCK) {
-            if (username == null || username.length() == 0) {
+            if (username == null || username.trim().length() == 0) {
                 return null;
             }
-            String stored = LoginData.accountPassword(username);
+            String typed = username.trim();
+            String name = typed;
+            String stored = LoginData.accountPassword(typed);
+            if (stored == null) {
+                String lower = typed.toLowerCase(java.util.Locale.US);
+                if (!lower.equals(typed)) {
+                    stored = LoginData.accountPassword(lower);
+                    if (stored != null) {
+                        name = lower;
+                    }
+                }
+            }
             if (stored == null) {
                 return null;
             }
             if (stored.length() > 0 && passwordMd5 != null && !stored.equalsIgnoreCase(passwordMd5)) {
                 return null;
             }
-            LoginData.touchAccount(username);
-            saveLast(username);
-            return sessionData(tokenFor(username, null), username, false, false);
+            LoginData.touchAccount(name);
+            saveLast(name);
+            return sessionData(tokenFor(name, null), name, false, false);
         }
     }
 
-    /** Daftar akun baru; null bila nama sudah dipakai (gagal — pesan Indonesia seperti server asli). */
+    /**
+     * Daftar akun baru; null bila nama tidak valid atau sudah dipakai.
+     * 0.4.4: MENERIMA EMAIL (akun layar SDK = email — bedah dex timidcompletely/
+     * navyshop/feedtonight.singersmooth). Aturan: huruf kecil (dinormalisasi),
+     * charset [a-z0-9_.+-@], panjang 3-64. Contoh diterima: "budi@gmail.com".
+     * Nama lama tanpa @ (warisan) tetap diterima agar kompatibel.
+     */
     public static String registerUser(String username, String passwordMd5) {
         synchronized (LOCK) {
-            if (username == null || username.length() < 3 || username.length() > 32) {
+            if (username == null) {
                 return null;
             }
-            for (int i = 0; i < username.length(); i++) {
-                char c = username.charAt(i);
-                boolean ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
-                        || c == '_' || c == '.' || c == '-';
+            String name = username.trim().toLowerCase(java.util.Locale.US);
+            if (name.length() < 3 || name.length() > 64) {
+                return null;
+            }
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                boolean ok = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                        || c == '_' || c == '.' || c == '-' || c == '+' || c == '@';
                 if (!ok) {
                     return null;
                 }
             }
-            if (LoginData.accountPassword(username) != null) {
+            if (LoginData.accountPassword(name) != null) {
                 return null;
             }
-            LoginData.ensureAccount(username, passwordMd5 == null ? "" : passwordMd5);
+            LoginData.ensureAccount(name, passwordMd5 == null ? "" : passwordMd5);
             try {
-                HumanLog.ev('▶', "SDK: akun BARU terdaftar — " + username, null);
+                HumanLog.ev('▶', "SDK: akun BARU terdaftar — " + name, null);
             } catch (Throwable ignored) {
             }
-            saveLast(username);
-            return sessionData(tokenFor(username, null), username, false, true);
+            saveLast(name);
+            return sessionData(tokenFor(name, null), name, false, true);
         }
     }
 

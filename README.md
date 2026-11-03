@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (**v4.3 — build 0.4.3**) — **DATABASE SQLITE `dragonball.db`** (nama FINAL dari owner): semua data akun/tamu/sesi pindah dari txt ke SQLite bawaan Android — tabel `accounts`, `sdk_guests`, `sdk_sessions`, `kv` (§2.12); **migrasi otomatis** txt warisan → DB saat boot pertama (data tidak hilang), DB masuk whitelist pembersih; FIX bug tersembunyi: txt lama TIDAK tahan reboot (terhapus Cleaner tiap boot). Buktikan alur natural selesai: dex SDK dibedah penuh — **tamu/login/daftar → login sampai masuk game rantainya UTUH** (§2.11). Di bawahnya (v4.2): **ALUR SDK: LAYAR LOGIN SDK ASLI DULUAN, SEMUA TAHAP SDK DILAYANI LOKAL** (server asli qsdk.t4game.com & login.popoh5.com:510 DIPROBE — skema salinan asli, §2.11); `assets/QHinfo` → 127.0.0.1:8610; FIX bin `loginServer` dobel-port. Di bawahnya (v4.1): **ANTI "ERROR NETWORK"** (FIX servers.json + loop accept tahan Throwable + watchdog port). Di bawahnya (v4.0): **LOGIN LOKAL** (server login port 8610 — engine.io v3 + socket.io v2 persis client; endpoint login di bin & serversetting.json ditulis-ulang; dasbor log baru). Di bawahnya (v3.2): **WEBSITE TANPA SWITCH MODE**. Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) + tombol melayang bisa digeser
+> **Status dokumen:** Fondasi & Implementasi (**v4.4 — build 0.4.4**) — **FIX MASUK/DAFTAR: AKUN LAYAR SDK = EMAIL** (bedah dex §2.13: fragmen login/daftar memvalidasi akun sebagai **EMAIL** — server lokal dulu menolak `@` sehingga DAFTAR selalu 40102 & MASUK selalu 40101; kini diterima, tidak peka huruf besar/kecil, log verbose di dasbor) + whitelist Cleaner +`servers.json` (suntingsan pemilik tidak dihapus lagi). Di bawahnya (v4.3): **DATABASE SQLITE `dragonball.db`** (nama FINAL dari owner): semua data akun/tamu/sesi pindah dari txt ke SQLite bawaan Android — tabel `accounts`, `sdk_guests`, `sdk_sessions`, `kv` (§2.12); **migrasi otomatis** txt warisan → DB saat boot pertama (data tidak hilang), DB masuk whitelist pembersih; FIX bug tersembunyi: txt lama TIDAK tahan reboot (terhapus Cleaner tiap boot). Buktikan alur natural selesai: dex SDK dibedah penuh — **tamu/login/daftar → login sampai masuk game rantainya UTUH** (§2.11). Di bawahnya (v4.2): **ALUR SDK: LAYAR LOGIN SDK ASLI DULUAN, SEMUA TAHAP SDK DILAYANI LOKAL** (server asli qsdk.t4game.com & login.popoh5.com:510 DIPROBE — skema salinan asli, §2.11); `assets/QHinfo` → 127.0.0.1:8610; FIX bin `loginServer` dobel-port. Di bawahnya (v4.1): **ANTI "ERROR NETWORK"** (FIX servers.json + loop accept tahan Throwable + watchdog port). Di bawahnya (v4.0): **LOGIN LOKAL** (server login port 8610 — engine.io v3 + socket.io v2 persis client; endpoint login di bin & serversetting.json ditulis-ulang; dasbor log baru). Di bawahnya (v3.2): **WEBSITE TANPA SWITCH MODE**. Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) + tombol melayang bisa digeser
 > **Temuan 2026-10-31 (probe ulang, mengoreksi catatan lama):** **SERVER ASLI MASIH HIDUP** — `setting_BS_Android.bin` (711 B, terenkripsi XOR kunci **`DragonBall`**) berhasil didekripsi → membongkar host sesungguhnya: **dragonh5cdn.popoh5.com** (H5 game + folder upgrade). Seluruh file fisik server asli berhasil diunduh & menjadi isi mirror (daftar lengkap §2.9). Catatan lama "server asli sudah mati" TERBANTAHKAN — server hanya memindahkan file ke host CDN.
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-11-02
@@ -373,6 +373,35 @@ CREATE TABLE kv           (key TEXT PRIMARY KEY, value TEXT);   -- local_user, l
 
 ---
 
+### 2.13 AKUN LAYAR SDK = EMAIL — akar masalah "login register gak work" + perbaikan (0.4.4; bedah dex 2026-11-03)
+
+**Laporan owner:** *"login register gak work .. ini jelas PR"* — tamu (TAMU) JALAN sampai masuk game, tapi MASUK dan DAFTAR mati.
+
+**Bedah dex (bukan karangan — kelas dibedah satu per satu, jadx 1.5.0):**
+
+| Lapis | Kelas | Temuan |
+|---|---|---|
+| UI MASUK | `mesoamericanhochmagandies.cointhreat.timidcompletely` | kolom "akun" divalidasi **EMAIL**: `feedtonight.singersmooth.singersmooth` = regex `\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*` (pesan `hw_error_email_empty/invalid`), tolak huruf besar di awal (`(\w*)[A-Z]`, log "邮箱包含大写字母"), sandi `^.{6,}$` (min 6 karakter). **Tidak valid → `return` TANPA mengirim request apa pun** |
+| UI DAFTAR | `mesoamericanhochmagandies.cointhreat.navyshop` | wajib **centang `cb_agree`** dulu (toast `hw_register_agree_error`; status di SharedPreferences "isChecked") + email valid + sandi ≥6 → `registerUser(vcode?, email, md5(sandi))` |
+| Validator | `feedtonight.singersmooth` | sandi `Pattern "^.{6,}$"` · email regex di atas |
+| HTTP | `bindcommunist.cointhreat` (POST, retry 3×) + `bindcommunist.singersmooth.nationalcommunitymissing` | body `{sv,data,sign}`; respons dibaca `getBoolean("result")` → `getString("data")` → parser `psalmicvolleyball.cointhreat.cointhreat`: butuh `authToken` + `userData` (+`bindInfo` opsional) — **skema respons lokal sudah benar** (tamu terbukti jalan memakai parser yang sama) |
+| Pengingat akun | `QuickGameSdkService.seventygenom(13)` | simpan username+token terakhir ke `model.b` — aman untuk email |
+
+**Akar masalah (kenapa TAMU jalan tapi MASUK/DAFTAR mati):** yang tiba di server utk MASUK/DAFTAR adalah `username` = **alamat email** — sedangkan `SdkData.registerUser` lokal menolak `@` dan `+` (charset lama `a-z0-9_.-`, panjang 3-32) → **DAFTAR selalu gagal 40102**; dan karena tak pernah ada akun email tersimpan → **MASUK selalu gagal 40101**. TAMU tidak menyentuh validasi itu (`registerVisitor` pakai deviceId) — makanya satu-satunya tombol yang jalan.
+
+**Perbaikan 0.4.4 (server lokal — client tetap TIDAK disentuh):**
+
+1. `SdkData.registerUser` — menerima akun email: normalisasi **huruf kecil**, charset `[a-z0-9_.+-@]`, panjang 3-64 (email bisa panjang); nama lama tanpa `@` tetap diterima (kompatibel).
+2. `SdkData.loginByName` — pencarian **tidak peka huruf besar/kecil** (coba persis dulu, lalu huruf kecil) — `Budi@GMail.com` mendarat di akun `budi@gmail.com`.
+3. `SdkApi` — **log verbose MASUK/DAFTAR** (akun + panjang kata sandi, sukses & gagal dgn kode 40101/40102 + sebab: "sudah dipakai" vs "tidak valid") — percobaan gagal selalu terlihat di dasbor (dulu gagal diam tanpa jejak).
+4. Identitas utuh: `uid == username == email` → loginchecknative → url H5 `?userid=<email>` → loginGame — akun **yang sama** di tahap game (`loginGameResponse` tidak membatasi charset — SQLite TEXT; `nickName` = email).
+5. `Cleaner` whitelist + `servers.json` (bug lanjutan 0.4.3 yang terlihat di log boot: file dihapus lalu di-restor di boot yang sama — suntingsan pemilik hilang tiap reboot, janji "boleh disunting" patah).
+6. Pesan log tamu dirapikan: yang BARU adalah **ikatan perangkat**, bukan tamunya ("perangkat … diikat ke tamu … — guest lokal pemilik (migrasi identitas)").
+
+**Verifikasi sandbox (harness 0.4.4 — 63/63 LULUS):** +13 tes baru — DAFTAR email (`Budi.New@GMail.com` → tersimpan `budi.new@gmail.com`), dobel ditolak 40102, karakter liar (`!`) ditolak, MASUK email HURUF BESAR → sukses (tidak peka kasus), sandi salah → 40101, email tak terdaftar → 40101, loginchecknative uid email → code 0, kv last_uid = email, loginGame mengikuti sesi SDK (email sampai tahap game), akun email tercatat di `accounts`; +2 tes Cleaner (servers.json & dragonball.db tidak dihapus); 48 regresi lama tetap hijau.
+
+---
+
 ## 3. Konsep Solusi (v2.2): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded
 
 **Satu sumber, satu APK.** `DB-LOCAL.apk` di-decompile → **ditambah local server**
@@ -674,6 +703,7 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
+| **0.4.4** | **(v4.4) + FIX MASUK/DAFTAR — AKUN LAYAR SDK = EMAIL** (laporan owner "login register gak work .. ini jelas PR"): bedah dex fragmen UI MASUK/DAFTAR (`timidcompletely`/`navyshop`) + validator (`feedtonight.singersmooth`) → akun yang dikirim client = **EMAIL** (regex `\w+@\w+.\w+`, sandi ≥6, DAFTAR wajib centang persetujuan) — server lokal dulu menolak `@`/`+` (charset 3-32) → **DAFTAR selalu 40102, MASUK selalu 40101**; kini `SdkData.registerUser` menerima email (huruf kecil, `[a-z0-9_.+-@]`, 3-64), `loginByName` tidak peka huruf besar/kecil, `SdkApi` log verbose MASUK/DAFTAR (sukses+gagal+sebab), uid=email mengalir utuh ke loginchecknative→url H5→loginGame; + whitelist Cleaner **`servers.json`** (bug lanjutan: file dihapus-restor tiap boot — suntingsan pemilik hilang); pesan log tamu dirapikan; harness **63/63 LULUS** (+15 tes baru: email + Cleaner) | **L5a–L5b ✓ (login/daftar natural)** |
 | **0.4.3** | **(v4.3) + DATABASE SQLITE `dragonball.db`** (nama FINAL owner — "masak iyaaa database txt"): semua data akun/tamu/sesi pindah dari txt ke SQLite bawaan Android (`Db.java`+`DbAndroid.java`+`DbMem.java`; `DbJdbc.java` hanya harness, tak masuk APK) — tabel `accounts`, `sdk_guests`, `sdk_sessions`, `kv` (local_user, last_uid) §2.12; **MIGRASI OTOMATIS** txt warisan → DB di boot pertama SEBELUM Cleaner (file lama → `*.imported` — nol data hilang) + **FIX bug tersembunyi**: txt lama tak masuk whitelist Cleaner = TERHAPUS tiap boot (guest/akun tak pernah tahan reboot!) → kini `dragonball.db` (+jurnal) masuk whitelist; korupsi hanya dipulihkan utk korupsi SQLite sungguhan (bukan galat lock/engine); harness 0.4.3 di-commit (`local-server/harness/HarnessSdk.java`) **50/50 LULUS** (migrasi, REBOOT-persistence, SQL nyata via JDBC, regresi SDK 0.4.2 penuh + socket.io berframing)** | **L5a–L5b ✓ (data profesional — dragonball.db)** |
 | **0.4.2** | **(v4.2) + ALUR SDK — layar login SDK ASLI DULUAN, seluruh tahap SDK dilayani LOKAL (koreksi owner "SDK itu lebih dulu … jangan ngawur bikin config SDK"): dex `com.quickgame.android.sdk` dibedah + server asli qsdk.t4game.com & login.popoh5.com:510 DIPROBE langsung → `SdkApi.java`+`SdkData.java` (port 8610) melayani `/v1/system/init, getNotice, getAgreement, onNewToken`, `/v1/user/registerVisitor (tamu per deviceId — tamu pertama = guest lama pemilik), autoLogin, loginByName (password MD5), registerUser, ckRegVistor, findPassByEmail, postGooglePlayVerify`, `/v1/auth/* (bindMail, changePassword, setGameRoleInfo, …)` + `GET /loginchecknative` — SEMUA skema respons = salinan respons asli (body form `{sv,data,sign}` md5 rahasia "0b2a18e45d7df321" dari dex; pesan galat Indonesia seperti asli) + `assets/QHinfo` → `http://127.0.0.1:8610` (endpoint saja, dex/UI SDK tidak disentuh) + FIX bin `loginServer` TANPA port (dulu `127.0.0.1:8610:8610` dobel → URL loginchecknative shell rusak) + userid url H5 = uid SESI SDK terakhir (config/sdk-last.txt; loginGame mengikuti sesi SDK bila url beda) + mode ONLINE: API SDK diteruskan utuh ke qsdk asli + dasbor kartu Tahap SDK (sesi, perangkat)** | **L5a–L5b ✓ (alur SDK lokal penuh — harness 39/39)** |
 | **0.4.1** | **(v4.1) + ANTI "ERROR NETWORK" — FIX Payload.collect (prefix ASSET_DIR dipakai buat path login → servers.json salah tulis ke config/login/; kini base eksplisit + sisa config/login/ dibersihkan) + loop accept NanoHTTPD tahan Throwable (dulu RuntimeException/Error = thread accept mati diam-diam → port "hidup mati" → game "Read Upgrade Config File Fail,Please Check NetWork!" TANPA log; kini dicatat via CrashListener + loop lanjut) + watchdog port 8080+8610 tiap 5 dtk (mati = ⚠, pulih = ✔)** | **L5a–L5b ✓ (stabilisasi LOCAL)** |
@@ -688,7 +718,23 @@ tanpa izin storage tambahan (folder own-app).
 | 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.4.3 (DRAGONBALL.DB — SQLITE, v4.3) — 2026-11-03 — BUILD TERKINI:**
+**Build 0.4.4 (FIX MASUK/DAFTAR — AKUN EMAIL, v4.4) — 2026-11-03 — BUILD TERKINI:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.4.4.apk` + **asset Release GitHub `v0.4.4`** |
+| SHA-256 | *(diisi saat rilis)* |
+| versionCode / versionName | **4 / 0.1.0** (manifest TIDAK disentuh — alur PATCH) |
+| Dasar | **Release 0.3.2** (`b64cba53…` diverifikasi sebelum dipakai) |
+| Toolchain | ECJ 3.33.0 · r8 8.3.37 (D8 → `classes2.dex`; `DbJdbc.class` DISINGKIRKAN) · uber-apk-signer 1.3.0 · JDK 21 · android.jar API 34 (Sable) · sqlite-jdbc 3.42.0.0 (HANYA harness — 3.43+ butuh SLF4J terpisah) |
+| **Permintaan owner** | *"login register gak work .. ini jelas PR"* (log device: tamu jalan sampai daftar server, MASUK/DAFTAR mati) |
+| Akar (bedah dex §2.13) | akun layar SDK = EMAIL — `registerUser` lokal menolak `@` → 40102; tak ada akun email → 40101. Client TIDAK disentuh |
+| Perubahan server lokal | `SdkData` (registerUser/loginByName email-aware + pesan tamu) · `SdkApi` (log verbose MASUK/DAFTAR + pesan 40102 terperinci) · `Cleaner` (+`servers.json`) · `HarnessSdk` (+15 tes) · `build.sh` 0.4.4 · README §2.13 |
+| Verifikasi (sandbox) | ✅ ECJ bersih; ✅ **harness 63/63 LULUS** (48 regresi + 13 tes email + 2 tes Cleaner); ✅ CRC diff dasar 0.3.2: `classes.dex` game, `AndroidManifest.xml`, `resources.arsc`, config properties IDENTIK — hanya `classes2.dex` + `dashboard.html` + `QHinfo` + tanda tangan |
+| Perubahan client | **TIDAK ADA** — dex game/manifest/resources identik (CRC) |
+| Status | ✅ build & verifikasi selesai · ⏳ uji device owner |
+
+**Build 0.4.3 (DRAGONBALL.DB — SQLITE, v4.3) — 2026-11-03:**
 
 | Item | Nilai |
 |---|---|

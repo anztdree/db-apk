@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.4.3 — DATABASE SQLITE dragonball.db (data tahan reboot)
+# Build APK-LSF 0.4.4 — FIX MASUK/DAFTAR (AKUN LAYAR SDK = EMAIL)
 #
 # Dasar: releases/APK-LSF-0.3.2.apk (sudah memuat manifest provider +
 # endpoint 127.0.0.1:8080 + dex game asli + mirror www/ 31 file).
@@ -14,6 +14,19 @@
 #   4) tambah assets/server/login/** — DEFAULT LOGIN LOKAL (servers.json)
 #   5) assets/QHinfo → http://127.0.0.1:8610 (0.4.2: layar SDK asli → server SDK lokal)
 #   6) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#
+# Baru 0.4.4 (laporan owner "login register gak work .. ini jelas PR"):
+#   a) BEDAH DEX: tombol MASUK/DAFTAR layar SDK ASLI memakai EMAIL sebagai
+#      nama akun (fragmen timidcompletely/navyshop + validator
+#      feedtonight.singersmooth: regex email + sandi min 6) — server lokal
+#      dulu menolak '@' → DAFTAR selalu 40102, tanpa akun email → MASUK
+#      selalu 40101. FIX: SdkData.registerUser menerima email (huruf kecil,
+#      [a-z0-9_.+-@], 3-64), loginByName tidak peka huruf besar/kecil.
+#   b) SdkApi log verbose MASUK/DAFTAR (sukses/gagal + sebab) — dulu gagal diam.
+#   c) Cleaner whitelist + servers.json (dulu dihapus-restor tiap boot —
+#      suntingsan pemilik hilang; janji "boleh disunting" patah).
+#   d) harness 63/63 LULUS (+15 tes: email register/login/case-insensitive
+#      + whitelist Cleaner).
 #
 # Baru 0.4.3 (permintaan owner "ini database yg profesional lahh masak iyaaa
 # database txt" — nama FINAL dari owner: dragonball.db):
@@ -54,7 +67,7 @@ SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.4.3.apk"
+OUT="$REPO/releases/APK-LSF-0.4.4.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"

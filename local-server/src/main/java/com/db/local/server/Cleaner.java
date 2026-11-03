@@ -21,8 +21,9 @@ public final class Cleaner {
     /** Entri yang diizinkan di root folder server. */
     private static final String[] ROOT_WHITELIST = {"config", "www", "logs", "tmp"};
 
-    /** File yang diizinkan di dalam config/ (0.4.3: + DATABASE dragonball.db). */
+    /** File yang diizinkan di dalam config/ (0.4.3: + DATABASE dragonball.db; 0.4.4: + servers.json). */
     private static final String[] CONFIG_WHITELIST = {"server.json", "status.json", "www.stamp",
+            "servers.json",
             "dragonball.db", "dragonball.db-journal", "dragonball.db-wal", "dragonball.db-shm",
             "dragonball.db.corrupt"};
 

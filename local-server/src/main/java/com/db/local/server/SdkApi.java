@@ -206,18 +206,35 @@ public final class SdkApi {
                 log('▶', "SDK: masuk otomatis — " + jsonStr(r, "uid"), null);
             }
         } else if (path.equals("/v1/user/loginByName")) {
+            // 0.4.4: log permintaan MASUK — username yang dikirim layar SDK (email)
+            // + panjang kata sandi, agar percobaan gagal selalu terlihat di dasbor.
+            log('▶', "SDK: MASUK — akun \"" + p.get("username") + "\" · kata sandi "
+                    + (p.get("password") == null ? "(tidak ada)" : p.get("password").length() + " karakter"), null);
             String r = SdkData.loginByName(p.get("username"), p.get("password"));
             if (r == null) {
+                log('⚠', "SDK: MASUK gagal — akun tidak dikenal / kata sandi salah → 40101 ("
+                        + p.get("username") + ")", null);
                 return err(40101, "akun atau password tidak ada");
             }
             data = r;
-            log('▶', "SDK: akun masuk — " + p.get("username"), null);
+            log('✔', "SDK: akun masuk — " + p.get("username"), null);
         } else if (path.equals("/v1/user/registerUser")) {
-            String r = SdkData.registerUser(p.get("username"), p.get("password"));
+            // 0.4.4: log permintaan DAFTAR — akun layar SDK = EMAIL (dex: regex
+            // \w+@\w+.\w+, sandi minimal 6). Sebelumnya server menolak '@' sehingga
+            // DAFTAR selalu 40102 — kini diterima (SdkData.registerUser).
+            String regName = p.get("username");
+            log('▶', "SDK: DAFTAR — akun \"" + regName + "\" · kata sandi "
+                    + (p.get("password") == null ? "(tidak ada)" : p.get("password").length() + " karakter"), null);
+            String r = SdkData.registerUser(regName, p.get("password"));
             if (r == null) {
-                return err(40102, "nama akun tidak valid atau sudah dipakai");
+                boolean taken = regName != null
+                        && LoginData.accountPassword(regName.trim().toLowerCase(java.util.Locale.US)) != null;
+                log('⚠', "SDK: DAFTAR gagal → 40102 ("
+                        + (taken ? "nama sudah dipakai" : "format akun tidak valid") + "): " + regName, null);
+                return err(40102, taken ? "nama akun sudah dipakai" : "nama akun tidak valid");
             }
             data = r;
+            log('✔', "SDK: daftar + masuk otomatis — " + regName, null);
         } else if (path.equals("/v1/user/findPassByEmail")) {
             return err(20010, "Server lokal: lupa kata sandi tidak didukung — daftar akun baru saja");
         } else if (path.equals("/v1/auth/createOrder")) {

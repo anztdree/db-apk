@@ -17,7 +17,13 @@ import com.db.local.server.SdkData;
 import com.db.local.server.SettingBin;
 
 /**
- * HARNESS 0.4.3 — DRAGONBALL.DB (SQLite) + regresi penuh 0.4.2.
+ * HARNESS 0.4.4 — DRAGONBALL.DB (SQLite) + regresi penuh 0.4.2/0.4.3 + AKUN EMAIL.
+ *
+ * Baru 0.4.4 (bedah dex: MASUK/DAFTAR layar SDK ASLI memakai EMAIL sebagai
+ * nama akun — regex \w+@\w+.\w+, sandi minimal 6): daftar/masuk email diterima
+ * server lokal (dulu registerUser menolak '@' → selalu 40102; tanpa akun email
+ * → MASUK selalu 40101), tidak peka huruf besar/kecil, uid email mengalir ke
+ * loginchecknative dan loginGame.
  *
  * Uji ujung-ke-ujung: migrasi txt lama → dragonball.db, keutuhan data setelah
  * "reboot" (buka ulang DB), SQL sungguhan di harness (JDBC), lalu seluruh
@@ -226,6 +232,55 @@ public class HarnessSdk {
                 outJson.contains("userid=penjagabaru"));
         check("bin TIDAK ada host asli lagi", !outJson.contains("login.popoh5.com")
                 && !outJson.contains("dragonh5cdn.popoh5.com"));
+
+        // ---------------- TAHAP 4b: AKUN EMAIL (0.4.4 — bedah dex MASUK/DAFTAR) ----------------
+        String md5mail = md5s("rahasia999");
+        // daftar dengan email campur huruf besar/titik → disimpan huruf kecil
+        String re = "{\\\"username\\\":\\\"Budi.New@GMail.com\\\",\\\"password\\\":\\\"" + md5mail + "\\\","
+                + "\\\"authToken\\\":\\\"\\\",\\\"deviceId\\\":\\\"" + dev + "\\\",\\\"sdkVersion\\\":223,"
+                + "\\\"gameVersion\\\":4,\\\"platform\\\":1,\\\"channelCode\\\":\\\"unknown\\\"}";
+        r = post(base + "/v1/user/registerUser", envelope(re));
+        check("DAFTAR email (Budi.New@GMail.com) result:true", r.contains("\"result\":true") && r.contains("budi.new@gmail.com"));
+        check("DB: akun email tersimpan HURUF KECIL",
+                LoginData.accountPassword("budi.new@gmail.com") != null);
+        r = post(base + "/v1/user/registerUser", envelope(re));
+        check("DAFTAR email dobel → ditolak (40102)", r.contains("\"result\":false") && r.contains("40102"));
+        r = post(base + "/v1/user/registerUser", envelope(re.replace("Budi.New@GMail.com", "budi+tes@gmail.com!x")));
+        check("DAFTAR email karakter liar ('!') → ditolak", r.contains("\"result\":false"));
+        // masuk dengan email HURUF BESAR → mendarat di akun huruf kecil (tidak peka kasus)
+        String lbm = "{\\\"username\\\":\\\"BUDI.NEW@GMAIL.COM\\\",\\\"password\\\":\\\"" + md5mail + "\\\","
+                + "\\\"authToken\\\":\\\"\\\",\\\"deviceId\\\":\\\"" + dev + "\\\",\\\"sdkVersion\\\":223,"
+                + "\\\"gameVersion\\\":4,\\\"platform\\\":1,\\\"channelCode\\\":\\\"unknown\\\"}";
+        r = post(base + "/v1/user/loginByName", envelope(lbm));
+        check("MASUK email HURUF BESAR → result:true (tidak peka kasus)",
+                r.contains("\"result\":true") && r.contains("budi.new@gmail.com"));
+        r = post(base + "/v1/user/loginByName", envelope(lbm.replace(md5mail, md5s("salahlagi"))));
+        check("MASUK email kata sandi salah → 40101", r.contains("40101"));
+        r = post(base + "/v1/user/loginByName", envelope(lbm.replace("BUDI.NEW@GMAIL.COM", "takada@sekali.com")));
+        check("MASUK email tidak terdaftar → 40101", r.contains("40101"));
+        // loginchecknative dengan uid email (mode akun) → code 0
+        qs = "?uid=budi.new@gmail.com&username=budi.new%40gmail.com&token="
+                + URLEncoder.encode(authToken, "UTF-8")
+                + "&usermode=0&os=Android&sdk=BS";
+        r = get(base + "/loginchecknative" + qs);
+        check("loginchecknative uid EMAIL → code 0",
+                r.contains("\"code\":0") && r.contains("budi.new@gmail.com"));
+        check("DB: kv last_uid = email pilihan layar SDK",
+                "budi.new@gmail.com".equals(SdkData.lastKnownUid()));
+        // loginGame mengikuti sesi SDK → identitas email mengalir ke tahap game
+        frame = "420[\"handler.process\",{\"action\":\"loginGame\",\"userId\":\"" + LEGACY_GUEST + "\","
+                + "\"password\":\"game_origin\",\"sign\":\"\",\"sdk\":\"\"}]";
+        r = socketIoPost(frame);
+        check("loginGame mengikuti sesi SDK (email)", r.contains("budi.new@gmail.com"));
+        check("DB: akun email tercatat di tabel accounts (loginGame)",
+                Db.i().account("budi.new@gmail.com") != null);
+        // 12) whitelist Cleaner — servers.json tidak boleh dihapus lagi (0.4.4)
+        java.lang.reflect.Method mClean = Class.forName("com.db.local.server.Cleaner")
+                .getDeclaredMethod("clean", File.class);
+        Object cr = mClean.invoke(null, root);
+        String cleaned = cr.getClass().getField("names").get(cr).toString();
+        check("Cleaner: servers.json TIDAK dihapus (boleh disunting pemilik)", !cleaned.contains("servers.json"));
+        check("Cleaner: dragonball.db tetap dilindungi", !cleaned.contains("dragonball.db"));
 
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");
