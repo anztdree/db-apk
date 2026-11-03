@@ -722,8 +722,8 @@ tanpa izin storage tambahan (folder own-app).
 
 | Item | Nilai |
 |---|---|
-| Artefak | `releases/APK-LSF-0.4.4.apk` + **asset Release GitHub `v0.4.4`** |
-| SHA-256 | *(diisi saat rilis)* |
+| Artefak | `releases/APK-LSF-0.4.4.apk` (163.938.299 byte; repo = pointer LFS) + **asset Release GitHub `v0.4.4`** (163.938.299 B, diunduh balik & sha256 diverifikasi identik) |
+| SHA-256 | `a1605e8de5b3c26c9ebb02c534a62c09b74ad8f62562f97e3c7506531007f5b8` |
 | versionCode / versionName | **4 / 0.1.0** (manifest TIDAK disentuh — alur PATCH) |
 | Dasar | **Release 0.3.2** (`b64cba53…` diverifikasi sebelum dipakai) |
 | Toolchain | ECJ 3.33.0 · r8 8.3.37 (D8 → `classes2.dex`; `DbJdbc.class` DISINGKIRKAN) · uber-apk-signer 1.3.0 · JDK 21 · android.jar API 34 (Sable) · sqlite-jdbc 3.42.0.0 (HANYA harness — 3.43+ butuh SLF4J terpisah) |
