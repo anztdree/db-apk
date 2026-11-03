@@ -2,27 +2,25 @@ package com.db.local.server;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.Reader;
-import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
  * Data LOGIN LOKAL — sisi penyimpanan untuk server login lokal (LoginServer).
- * Semua file hidup di &lt;root&gt;/config/ — dalam whitelist folder bersih (README §2):
  *
- *   config/local-user.txt  — id guest lokal (dibuat sekali, tetap dipakai lagi)
- *   config/accounts.txt    — daftar akun lokal, 1 baris = 1 akun (dipisah TAB):
- *                            userId · password · dibuat · login terakhir · jumlah login
- *   config/servers.json    — daftar server untuk action GetServerList; dibawa APK
- *                            (assets/server/login/servers.json — snapshot ASLI server
- *                            login popoh5, 2109 server) & diekstrak sekali oleh Payload;
- *                            file ini BOLEH diubah pemilik tanpa rebuild.
+ * 0.4.3: penyimpanan pindah ke DRAGONBALL.DB (SQLite — lihat Db.java):
  *
- * Tanpa dependensi — parser/penulis manual, tahan salah format (fallback aman).
+ *   kv "local_user"        — id guest lokal (dibuat sekali, tetap dipakai lagi)
+ *   tabel accounts         — akun lokal (username PK · pass_md5 · dibuat ·
+ *                            login terakhir · jumlah login) — dipakai BERSAMA
+ *                            tahap SDK (daftar/masuk) & tahap game (loginGame)
+ *   config/servers.json    — TETAP berupa file: daftar server GetServerList,
+ *                            snapshot asli 2109 server, BOLEH diubah pemilik
+ *                            tanpa rebuild (bukan data transaksional).
+ *
+ * Tanpa dependensi — skema respons = salinan server asli (README §2.10).
  */
 public final class LoginData {
     private static final Object LOCK = new Object();
@@ -42,24 +40,26 @@ public final class LoginData {
         }
     }
 
+    private static String now() {
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+    }
+
     // ---------------- user guest lokal ----------------
 
     /**
-     * Id guest lokal yang TAHAN LAMA: dibuat sekali, tersimpan config/local-user.txt,
-     * dipakai lagi setiap boot — progres akun lokal pemilik tidak lepas.
+     * Id guest lokal yang TAHAN LAMA: dibuat sekali, tersimpan di dragonball.db
+     * (kv local_user), dipakai lagi setiap boot — progres akun lokal pemilik
+     * tidak lepas (dulu file txt — ikut terhapus Cleaner tiap boot; kini aman).
      */
     public static String localUserId() {
         synchronized (LOCK) {
             try {
-                File f = new File(confDir, "local-user.txt");
-                if (f.exists()) {
-                    String s = readText(f).trim();
-                    if (s.length() >= 4 && s.length() <= 64) {
-                        return s;
-                    }
+                String s = Db.i().kv(Db.KV_LOCAL_USER);
+                if (s != null && s.length() >= 4 && s.length() <= 64) {
+                    return s;
                 }
                 String uid = "guest" + (10000000L + (long) (Math.random() * 89999999L));
-                writeText(f, uid + "\n");
+                Db.i().kvPut(Db.KV_LOCAL_USER, uid);
                 return uid;
             } catch (Throwable t) {
                 return "guest" + (10000000L + (long) (Math.random() * 89999999L));
@@ -67,79 +67,14 @@ public final class LoginData {
         }
     }
 
-    // ---------------- akun lokal ----------------
-
-    /** Baris akun: [0]=userId [1]=password [2]=dibuat [3]=login terakhir [4]=jumlah login */
-    private static String[] findAccount(String userId) throws Exception {
-        File f = new File(confDir, "accounts.txt");
-        if (!f.exists()) {
-            return null;
-        }
-        String[] lines = readText(f).split("\n");
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i].trim();
-            if (line.length() == 0 || line.startsWith("#")) {
-                continue;
-            }
-            String[] p = line.split("\t");
-            if (p.length >= 1 && p[0].equals(userId)) {
-                String[] out = new String[5];
-                for (int j = 0; j < 5; j++) {
-                    out[j] = (j < p.length && p[j].length() > 0) ? p[j] : "";
-                }
-                return out;
-            }
-        }
-        return null;
-    }
-
-    private static void upsertAccount(String userId, String password, boolean created) throws Exception {
-        File f = new File(confDir, "accounts.txt");
-        StringBuilder sb = new StringBuilder();
-        String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-        String[] old = findAccount(userId);
-        if (old != null) {
-            String[] lines = readText(f).split("\n");
-            for (int i = 0; i < lines.length; i++) {
-                String line = lines[i];
-                if (line.startsWith(userId + "\t")) {
-                    String pass = (password != null && password.length() > 0) ? password : old[1];
-                    long n = 1;
-                    try {
-                        n = Long.parseLong(old[4]) + 1;
-                    } catch (Throwable ignored) {
-                    }
-                    sb.append(userId).append('\t').append(pass).append('\t')
-                            .append(old[2]).append('\t').append(now).append('\t').append(n).append('\n');
-                } else {
-                    sb.append(line).append('\n');
-                }
-            }
-        } else {
-            String existing = "";
-            try {
-                existing = readText(f);
-            } catch (Throwable ignored) {
-            }
-            sb.append(existing);
-            if (existing.length() > 0 && !existing.endsWith("\n")) {
-                sb.append('\n');
-            }
-            sb.append(userId).append('\t')
-                    .append(password == null ? "" : password).append('\t')
-                    .append(now).append('\t').append(now).append("\t1\n");
-        }
-        writeText(f, sb.toString());
-    }
-
-    // ---------------- akun untuk tahap SDK (0.4.2 — dipakai SdkData) ----------------
+    // ---------------- akun lokal (tabel accounts) ----------------
 
     /** Password (sudah MD5) akun lokal; null = akun tidak ada. */
     public static String accountPassword(String userId) {
         synchronized (LOCK) {
             try {
-                String[] p = findAccount(userId);
-                return p == null ? null : p[1];
+                String[] r = Db.i().account(userId);
+                return r == null ? null : r[0];
             } catch (Throwable t) {
                 return null;
             }
@@ -150,49 +85,41 @@ public final class LoginData {
     public static void ensureAccount(String userId, String passwordMd5) {
         synchronized (LOCK) {
             try {
-                if (findAccount(userId) == null) {
-                    upsertAccount(userId, passwordMd5 == null ? "" : passwordMd5, true);
+                if (Db.i().account(userId) == null) {
+                    String n = now();
+                    Db.i().upsertAccount(userId, passwordMd5 == null ? "" : passwordMd5, n, n, 1);
                 }
             } catch (Throwable ignored) {
             }
         }
     }
 
-    /** Catat login ulang (kolom waktu/jumlah). */
+    /** Catat login ulang (waktu terakhir + jumlah). */
     public static void touchAccount(String userId) {
         synchronized (LOCK) {
             try {
-                upsertAccount(userId, null, false);
+                String[] old = Db.i().account(userId);
+                long n = 1;
+                if (old != null) {
+                    try {
+                        n = Long.parseLong(old[3]) + 1;
+                    } catch (Throwable ignored) {
+                    }
+                    Db.i().upsertAccount(userId, old[0], old[1], now(), n);
+                } else {
+                    String n2 = now();
+                    Db.i().upsertAccount(userId, "", n2, n2, 1);
+                }
             } catch (Throwable ignored) {
             }
         }
     }
 
-    /** Semua baris akun (userId\tpassword\t…) — untuk pencarian token autoLogin. */
-    public static String[] allAccounts() {
+    /** Semua nama akun — untuk pencarian token autoLogin. */
+    public static String[] accountNames() {
         synchronized (LOCK) {
             try {
-                File f = new File(confDir, "accounts.txt");
-                if (!f.exists()) {
-                    return new String[0];
-                }
-                String[] lines = readText(f).split("\n");
-                int n = 0;
-                for (String line : lines) {
-                    String q = line.trim();
-                    if (q.length() > 0 && !q.startsWith("#")) {
-                        n++;
-                    }
-                }
-                String[] out = new String[n];
-                int i = 0;
-                for (String line : lines) {
-                    String q = line.trim();
-                    if (q.length() > 0 && !q.startsWith("#")) {
-                        out[i++] = q;
-                    }
-                }
-                return out;
+                return Db.i().accountNames();
             } catch (Throwable t) {
                 return new String[0];
             }
@@ -203,19 +130,7 @@ public final class LoginData {
     public static int accountCount() {
         synchronized (LOCK) {
             try {
-                File f = new File(confDir, "accounts.txt");
-                if (!f.exists()) {
-                    return 0;
-                }
-                String[] lines = readText(f).split("\n");
-                int n = 0;
-                for (int i = 0; i < lines.length; i++) {
-                    String line = lines[i].trim();
-                    if (line.length() > 0 && !line.startsWith("#")) {
-                        n++;
-                    }
-                }
-                return n;
+                return Db.i().accountCount();
             } catch (Throwable t) {
                 return 0;
             }
@@ -249,8 +164,20 @@ public final class LoginData {
             }
             boolean isNew = false;
             try {
-                isNew = (findAccount(userId) == null);
-                upsertAccount(userId, password, isNew);
+                String[] old = Db.i().account(userId);
+                isNew = (old == null);
+                String n = now();
+                if (isNew) {
+                    Db.i().upsertAccount(userId, password == null ? "" : password, n, n, 1);
+                } else {
+                    String pass = (password != null && password.length() > 0) ? password : old[0];
+                    long cnt = 1;
+                    try {
+                        cnt = Long.parseLong(old[3]) + 1;
+                    } catch (Throwable ignored) {
+                    }
+                    Db.i().upsertAccount(userId, pass, old[1], n, cnt);
+                }
             } catch (Throwable t) {
                 try {
                     HumanLog.ev('⚠', "Penyimpanan akun login lokal gagal — login tetap dilayani tanpa catatan akun",
@@ -352,16 +279,6 @@ public final class LoginData {
         } catch (Throwable t) {
             return "00000000000000000000000000000000";
         }
-    }
-
-    private static void writeText(File f, String content) throws Exception {
-        File parent = f.getParentFile();
-        if (parent != null && !parent.exists()) {
-            parent.mkdirs();
-        }
-        Writer w = new OutputStreamWriter(new FileOutputStream(f, false), "UTF-8");
-        w.write(content);
-        w.close();
     }
 
     private static String readText(File f) throws Exception {

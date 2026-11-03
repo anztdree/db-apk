@@ -10,15 +10,16 @@ import java.io.File;
  * (provider diinisialisasi Android SEBELUM Application.onCreate → jalan duluan).
  *
  * Yang dinyalakan (urutan):
- * 1) PEMBERSIH folder — Android/data/<paket>/server hanya berisi config/www/logs/tmp
- * 2) Folder root Android/data/<paket>/server + mirror www/ diekstrak OTOMATIS dari APK
+ * 1) DATABASE dragonball.db (SQLite) + migrasi data txt warisan — SEBELUM pembersih
+ * 2) PEMBERSIH folder — Android/data/<paket>/server hanya berisi config/www/logs/tmp
+ * 3) Folder root Android/data/<paket>/server + mirror www/ diekstrak OTOMATIS dari APK
  *    + default login (config/servers.json — daftar server snapshot asli) bila belum ada
- * 3) Dasbor debug di port 4000 (hanya developer — game tidak tahu port ini)
- * 4) Port GAME di port 8080 — endpoint client menunjuk ke sini (LOCAL/ONLINE)
- * 5) Server LOGIN lokal di port 8610 — engine.io v3 + socket.io v2 (PR3 0.4.0;
- *    loginGame/GetServerList dilayani dari data lokal — README §2.10)
- * 6) Monitor kesehatan server asli (log hanya saat berubah + denyut 10 menit)
- * 7) Tombol melayang switch mode yang BISA DIGESER (drag) — posisi tersimpan
+ * 4) Dasbor debug di port 4000 (hanya developer — game tidak tahu port ini)
+ * 5) Port GAME di port 8080 — endpoint client menunjuk ke sini (LOCAL/ONLINE)
+ * 6) Server LOGIN lokal di port 8610 — engine.io v3 + socket.io v2 (PR3 0.4.0;
+ *    loginGame/GetServerList dilayani dari data lokal — README §2.10) + TAHAP SDK
+ * 7) Monitor kesehatan server asli (log hanya saat berubah + denyut 10 menit)
+ * 8) Tombol melayang switch mode yang BISA DIGESER (drag) — posisi tersimpan
  *
  * Semua langkah dibungkus try/catch: server lokal TIDAK PERNAH boleh
  * membuat game gagal jalan.
@@ -147,6 +148,19 @@ public final class Starter {
                 }
             };
         } catch (Throwable ignored) {
+        }
+
+        // ---------- 1a2) DATABASE dragonball.db (SQLite) + migrasi txt warisan ----------
+        // Dibuka SEBELUM Cleaner: di boot pertama 0.4.3, file txt 0.4.2
+        // (local-user.txt, accounts.txt, sdk-*.txt) masih ada di config/ — dibaca,
+        // diimpor ke dragonball.db, lalu di-rename *.imported (data tidak hilang).
+        // Dulu txt ini tidak masuk whitelist Cleaner — TERHAPUS tiap boot (bug
+        // tersembunyi: guest/akun tidak tahan reboot); kini DB masuk whitelist.
+        try {
+            Db.boot(conf);
+        } catch (Throwable t) {
+            HumanLog.ev('⚠', "dragonball.db gagal dibuka — data dijaga jaring memori (boot tetap jalan)",
+                    String.valueOf(t));
         }
 
         // ---------- 1b) PEMBERSIH: folder server hanya boleh config/www/logs/tmp ----------

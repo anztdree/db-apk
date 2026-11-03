@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.4.2 — ALUR SDK: layar login SDK ASLI duluan, semua tahap SDK LOKAL
+# Build APK-LSF 0.4.3 — DATABASE SQLITE dragonball.db (data tahan reboot)
 #
 # Dasar: releases/APK-LSF-0.3.2.apk (sudah memuat manifest provider +
 # endpoint 127.0.0.1:8080 + dex game asli + mirror www/ 31 file).
@@ -12,38 +12,32 @@
 #   2) ganti assets/server/dashboard.html
 #   3) tambah assets/server/www/** — MIRROR PENUH server asli (31 file, ±56 MB)
 #   4) tambah assets/server/login/** — DEFAULT LOGIN LOKAL (servers.json)
-#   5) GANTI assets/QHinfo — host SDK quickgame → http://127.0.0.1:8610 (BARU 0.4.2:
-#      layar login SDK asli (HWLoginActivity) kini bertanya ke server SDK lokal —
-#      tamu/login/daftar dilayani lokal; mode ONLINE = diteruskan ke qsdk asli)
+#   5) assets/QHinfo → http://127.0.0.1:8610 (0.4.2: layar SDK asli → server SDK lokal)
 #   6) buang tanda tangan lama -> zipalign + sign (keystore tetap)
 #
-# Koreksi 0.4.2 (umpan balik owner "SDK itu lebih dulu, tapi malah config
-# loginserver anda sudah munculkan .. apk ini alurnya adalah SDK — jangan
-# ngawur bikin config SDK"):
-#   a) ALUR SDK DIPULIHKAN — testMode 1 di bin memang menjalankan SDK asli
-#      (QuickGameManager.init + HWLoginActivity); kini server SDK-nya LOKAL:
-#      /v1/system/init, /v1/user/registerVisitor (tamu), /v1/user/autoLogin,
-#      /v1/user/loginByName, /v1/user/registerUser, /v1/auth/*, /loginchecknative
-#      — SEMUA skema respons = salinan respons ASLI hasil probe qsdk.t4game.com
-#      (body {sv,data,sign} md5 rahasia "0b2a18e45d7df321" dari dex — §2.11)
-#   b) FIX bin: loginServer TANPA port (dulu ":8610" dobel → URL loginchecknative
-#      shell "127.0.0.1:8610:8610" rusak — rantai SDK tak pernah selesai)
-#   c) userid url H5 = uid SESI SDK terakhir (bukan guest karangan) — identitas
-#      layar SDK = identitas game; tamu dipetakan per deviceId seperti server asli;
-#      tamu pertama = guest lama pemilik (progres tidak lekat)
-#   d) QHinfo → 127.0.0.1:8610 (endpoint saja — client tidak diubah); mode ONLINE
-#      API SDK diteruskan utuh ke qsdk.t4game.com
+# Baru 0.4.3 (permintaan owner "ini database yg profesional lahh masak iyaaa
+# database txt" — nama FINAL dari owner: dragonball.db):
+#   a) DATABASE SQLITE — config/dragonball.db (engine bawaan Android, nol
+#      tambahan APK): tabel accounts, sdk_guests, sdk_sessions, kv (Db.java +
+#      DbAndroid.java). Menggantikan accounts.txt/local-user.txt/sdk-*.txt
+#      yang rapuh (tulis-ulang penuh, tanpa lock, parsing tab, TIDAK tahan
+#      reboot — dulu ikut terhapus Cleaner karena tidak masuk whitelist!)
+#   b) MIGRASI OTOMATIS — boot pertama membaca txt warisan → diimpor ke
+#      dragonball.db → file di-rename *.imported (data tidak hilang); dibuka
+#      SEBELUM Cleaner (Starter 1a2)
+#   c) WHITELIST — Cleaner kini melindungi dragonball.db (+jurnal) di config/
+#   d) DbJdbc.java (engine JDBC untuk harness desktop) TIDAK dimasukkan ke
+#      classes2.dex (disaring di bawah); DbMem = jaring pengaman terakhir
+#   e) harness 50/50 LULUS (local-server/harness/HarnessSdk.java — di-commit):
+#      migrasi, reboot-persistence, SQL nyata (JDBC), regresi SDK 0.4.2 penuh
 #
-# Koreksi 0.4.1 (laporan owner "ada error network saat mode local" 2026-11-02):
-#   a) FIX Payload.collect — prefix path ASSET_DIR ("server/www") dipakai buat
-#      SEMUA panggilan sehingga default login salah tulis ke config/login/
-#      servers.json (bukan config/servers.json) → "daftar darurat 1 server";
-#      kini prefix dikirim eksplisit (base) + sisa config/login/ dibersihkan
-#   b) ANTI "HIDUP MATI": loop accept NanoHTTPD kini menangkap Throwable
-#   c) WATCHDOG port: probe 8080 + 8610 tiap 5 dtk
+# Koreksi 0.4.2 (umpan balik owner "SDK itu lebih dulu ..."): layar SDK asli
+#   duluan — semua tahap SDK lokal skema salinan asli (README §2.11).
+# Koreksi 0.4.1: FIX servers.json + loop accept tahan Throwable + watchdog port.
 #
 # Prasyarat: mirror www/ tersedia (assets/server/www — dari APK 0.4.1 atau
-# tools/snapshot.sh).
+# tools/snapshot.sh). TOOLS memuat android.jar + r8.jar (+ sqlite-jdbc.jar
+# opsional untuk harness; TIDAK dipakai d8).
 # =============================================================
 set -euo pipefail
 
@@ -60,7 +54,7 @@ SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.4.2.apk"
+OUT="$REPO/releases/APK-LSF-0.4.3.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"
@@ -69,14 +63,23 @@ if [ ! -f "$WWW/bs/upgrade/all.zip" ] || [ ! -f "$WWW/bs/upgrade/base.zip" ]; th
 fi
 
 echo "[1/8] ECJ compile (sandbox tanpa javac) ..."
-rm -rf "$BUILD/classes" "$BUILD/dex" "$BUILD/stage"
+rm -rf "$BUILD/classes" "$BUILD/dex" "$BUILD/stage" "$BUILD/harness"
 mkdir -p "$BUILD/classes" "$BUILD/dex" "$BUILD/stage"
 find "$SRC" -name '*.java' | sort > "$BUILD/sources.txt"
+ECJ_CP="$TOOLS/android.jar"
+if [ -f "$TOOLS/sqlite-jdbc.jar" ]; then
+  ECJ_CP="$TOOLS/android.jar:$TOOLS/sqlite-jdbc.jar"   # DbJdbc (harness) butuh org.sqlite
+fi
 java -jar "$ECJ" -source 8 -target 8 -encoding UTF-8 -nowarn \
-  -classpath "$TOOLS/android.jar" -d "$BUILD/classes" @"$BUILD/sources.txt"
+  -classpath "$ECJ_CP" -d "$BUILD/classes" @"$BUILD/sources.txt"
 
-echo "[2/8] d8 -> classes2.dex ..."
-mapfile -t CLASS_FILES < <(find "$BUILD/classes" -name '*.class')
+# harness JVM (uji SQLite nyata via JDBC) — di-compile tapi TIDAK masuk APK
+java -jar "$ECJ" -source 8 -target 8 -encoding UTF-8 -nowarn \
+  -classpath "$BUILD/classes:$TOOLS/sqlite-jdbc.jar" -d "$BUILD/harness" \
+  "$REPO/local-server/harness/HarnessSdk.java" || echo "   (harness dilewati — sqlite-jdbc tidak ada)"
+
+echo "[2/8] d8 -> classes2.dex (DbJdbc DISINGKIRKAN — hanya harness desktop) ..."
+mapfile -t CLASS_FILES < <(find "$BUILD/classes" -name '*.class' ! -name 'DbJdbc.class' ! -path '*DbJdbc*')
 java -cp "$TOOLS/r8.jar" com.android.tools.r8.D8 --release \
   --min-api "$MIN_API" --lib "$TOOLS/android.jar" \
   --output "$BUILD/dex" "${CLASS_FILES[@]}"

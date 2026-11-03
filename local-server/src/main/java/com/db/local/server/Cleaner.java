@@ -10,7 +10,9 @@ import java.io.File;
  * Apa pun di luar itu (peninggalan build lama, salinan APK, file hasil
  * analisis, dsb.) DIHAPUS otomatis setiap boot — SEBELUM server menyala.
  *
- * Di dalam config/ juga dijaga: hanya server.json, status.json, www.stamp.
+ * Di dalam config/ juga dijaga: server.json, status.json, www.stamp dan
+ * DATABASE dragonball.db (+ file jurnal SQLite) — data akun/tamu/sesi kini
+ * TAHAN REBOOT (dulu txt-warisan ikut terhapus karena tidak masuk whitelist).
  * Dengan begitu Android/data tidak pernah berisi sampah lagi, di perangkat
  * mana pun, tanpa langkah manual.
  */
@@ -19,8 +21,10 @@ public final class Cleaner {
     /** Entri yang diizinkan di root folder server. */
     private static final String[] ROOT_WHITELIST = {"config", "www", "logs", "tmp"};
 
-    /** File yang diizinkan di dalam config/. */
-    private static final String[] CONFIG_WHITELIST = {"server.json", "status.json", "www.stamp"};
+    /** File yang diizinkan di dalam config/ (0.4.3: + DATABASE dragonball.db). */
+    private static final String[] CONFIG_WHITELIST = {"server.json", "status.json", "www.stamp",
+            "dragonball.db", "dragonball.db-journal", "dragonball.db-wal", "dragonball.db-shm",
+            "dragonball.db.corrupt"};
 
     private Cleaner() {
     }

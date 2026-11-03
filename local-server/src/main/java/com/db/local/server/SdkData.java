@@ -1,17 +1,18 @@
 package com.db.local.server;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.Reader;
-import java.io.Writer;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-
 /**
- * DATA TAHAP SDK — simpanan untuk API quickgame/zhuhuan (server SDK lokal, 0.4.2).
+ * DATA TAHAP SDK — simpanan untuk API quickgame/zhuhuan (server SDK lokal).
+ *
+ * 0.4.3: penyimpanan pindah ke DRAGONBALL.DB (SQLite — lihat Db.java):
+ *
+ *   tabel sdk_guests   — pemetaan deviceId → tamu (deviceId sama = tamu sama,
+ *                        isNewUser 0; baris pertama = tamu pemilik — migrasi
+ *                        guest lama, progres tidak lekat)
+ *   tabel sdk_sessions — sesi SDK (authToken PK → uid, isGuest)
+ *   tabel accounts     — akun (dipakai bersama LoginData — identitas SDK =
+ *                        identitas game)
+ *   kv "local_user"    — guest lama pemilik
+ *   kv "last_uid"      — uid sesi terakhir (userid url H5)
  *
  * SEMUA SKEMA RESPONS = HASIL PROBE SERVER ASLI qsdk.t4game.com (2026-11-02,
  * body {"sv":"v2","data":<base64 JSON param>,"sign":<md5>}, rahasia tanda
@@ -21,42 +22,35 @@ import java.util.Date;
  *                            loginTypes ["1","13"], nodes, dst — salinan respons asli)
  *   /v1/user/registerVisitor → tamu: {authToken, userData:{uid, username, token,
  *                            isGuest, isNewUser, mobile, bindInfo{12 entri}}, checkRealName}
- *                            — server asli: deviceId sama = tamu SAMA (isNewUser 0)
  *   /v1/user/autoLogin     → validasi authToken sesi tersimpan
- *   /v1/user/loginByName   → username + password (MD5) vs config/accounts.txt
+ *   /v1/user/loginByName   → username + password (MD5) vs tabel accounts
  *   /v1/user/registerUser  → buat akun lokal (password MD5 disimpan)
  *   /v1/user/ckRegVistor   → {isReged:1} bila authToken dikenal
  *
- * File (di <root>/config/ — whitelist folder bersih):
- *   sdk-guests.txt  — pemetaan deviceId → guest (deviceId · uid · dibuat)
- *   sdk-session.txt — sesi SDK terakhir (authToken · uid · username · isGuest · waktu)
- *   sdk-last.txt    — hasil loginchecknative terakhir (uid · username · waktu)
- *                     — dipakai SettingBin untuk userid url H5 (identitas SDK).
- *
  * Identitas: uid == username (satu nama untuk tahap SDK & tahap game) sehingga
  * loginGame(username=<uid>, password "game_origin") di server login lokal selalu
- * mendarat di akun yang SAMA. Tamu pertama MENG migratedkan config/local-user.txt
- * (guest lama pemilik tidak hilang — progres lekat).
+ * mendarat di akun yang SAMA.
  */
 public final class SdkData {
     private static final Object LOCK = new Object();
-    private static volatile File confDir = null;
 
     private SdkData() {
     }
 
-    /** Dipanggil Starter setelah folder config siap. */
-    public static void init(File configDir) {
-        synchronized (LOCK) {
-            confDir = configDir;
-        }
+    /** Dipanggil Starter — kompatibilitas API (data kini di dragonball.db). */
+    public static void init(java.io.File configDir) {
+        // data pindah ke dragonball.db (Db.boot) — tidak ada lagi file txt
+    }
+
+    private static String now() {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
     }
 
     // ---------------- sesi & token ----------------
 
     /** Token sesi stabil per (akun, perangkat) — tahan proses mati/hidup (model.b client menyimpan last_token). */
     private static String tokenFor(String uid, String deviceId) {
-        return md5("sdk-local|" + uid + "|" + (deviceId == null ? "" : deviceId));
+        return SdkData.md5("sdk-local|" + uid + "|" + (deviceId == null ? "" : deviceId));
     }
 
     /** JSON "userData" + authToken — SKEMA PERSIS respons asli (probe §2.11). */
@@ -77,24 +71,19 @@ public final class SdkData {
                 .append('}').append(',')
                 .append("\"checkRealName\":0")
                 .append('}');
-        saveSession(authToken, uid, guest);
+        try {
+            Db.i().putSession(authToken, uid, guest, now());
+        } catch (Throwable ignored) {
+        }
         return d.toString();
     }
 
-    private static void saveSession(String authToken, String uid, boolean guest) {
+    /** Catat uid sesi terakhir (kv last_uid — dipakai userid url H5). */
+    private static void saveLast(String uid) {
         try {
-            String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-            write(new File(confDir, "sdk-session.txt"),
-                    authToken + "\t" + uid + "\t" + (guest ? "1" : "0") + "\t" + now + "\n");
-        } catch (Throwable ignored) {
-        }
-    }
-
-    /** Simpan hasil loginchecknative (uid terakhir untuk userid url H5). */
-    private static void saveLast(String uid, String username) {
-        try {
-            String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-            write(new File(confDir, "sdk-last.txt"), uid + "\t" + username + "\t" + now + "\n");
+            if (uid != null && uid.length() >= 4) {
+                Db.i().kvPut(Db.KV_LAST_UID, uid);
+            }
         } catch (Throwable ignored) {
         }
     }
@@ -103,46 +92,24 @@ public final class SdkData {
 
     /**
      * Tamu baru/lama untuk deviceId — meniru server asli: deviceId sama = tamu sama.
-     * Tamu pertama memakai guest tahan-lama config/local-user.txt (migrasi identitas
+     * Tamu pertama memakai guest tahan-lama (kv local_user — migrasi identitas
      * pemilik; progres game yang sudah ada tetap lekat).
      */
     public static String registerVisitor(String deviceId, String clientLang) {
         synchronized (LOCK) {
             try {
                 String dev = (deviceId == null || deviceId.length() == 0) ? "unknown" : deviceId;
-                File f = new File(confDir, "sdk-guests.txt");
-                String[] lines = read(f).split("\n");
-                for (String line : lines) {
-                    String p = line.trim();
-                    if (p.length() == 0 || p.startsWith("#")) {
-                        continue;
-                    }
-                    String[] c = p.split("\t");
-                    if (c.length >= 2 && c[0].equals(dev)) {
-                        String uid = c[1];
-                        LoginData.ensureAccount(uid, "");
-                        return sessionData(tokenFor(uid, dev), uid, true, false);
-                    }
+                String existing = Db.i().guestUid(dev);
+                if (existing != null) {
+                    LoginData.ensureAccount(existing, "");
+                    return sessionData(tokenFor(existing, dev), existing, true, false);
                 }
                 // tamu baru — migrasikan guest lokal pemilik untuk perangkat pertama
-                boolean first = true;
-                for (String line : lines) {
-                    String q = line.trim();
-                    if (q.length() > 0 && !q.startsWith("#")) {
-                        first = false;
-                        break;
-                    }
-                }
+                boolean first = Db.i().guestCount() == 0;
                 String uid = first ? LoginData.localUserId()
                         : "guest" + (10000000L + (long) (Math.random() * 89999999L));
                 LoginData.ensureAccount(uid, "");
-                StringBuilder sb = new StringBuilder(read(f));
-                if (sb.length() > 0 && sb.charAt(sb.length() - 1) != '\n') {
-                    sb.append('\n');
-                }
-                String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-                sb.append(dev).append('\t').append(uid).append('\t').append(now).append('\n');
-                write(f, sb.toString());
+                Db.i().putGuest(dev, uid, now());
                 try {
                     HumanLog.ev('▶', "SDK: tamu BARU " + uid + " terdaftar (perangkat " + shortId(dev) + ")"
                             + (first ? " — memakai guest lokal yang sudah ada" : ""), null);
@@ -164,28 +131,25 @@ public final class SdkData {
                 return null;
             }
             try {
-                String[] p = read(new File(confDir, "sdk-session.txt")).trim().split("\t");
-                if (p.length >= 3 && p[0].equals(authToken)) {
-                    return sessionData(authToken, p[1], "1".equals(p[2]), false);
+                String ses = Db.i().session(authToken);
+                if (ses != null) {
+                    int tab = ses.indexOf('\t');
+                    String uid = tab > 0 ? ses.substring(0, tab) : ses;
+                    boolean guest = tab > 0 && "1".equals(ses.substring(tab + 1));
+                    return sessionData(authToken, uid, guest, false);
                 }
                 // token lama berbasis (uid, device) — terima bila polanya cocok
-                String[] lines = read(new File(confDir, "sdk-guests.txt")).split("\n");
-                for (String line : lines) {
-                    String q = line.trim();
-                    if (q.length() == 0 || q.startsWith("#")) {
-                        continue;
-                    }
-                    String[] c = q.split("\t");
+                String[] rows = Db.i().guestRows();
+                for (String line : rows) {
+                    String[] c = line.split("\t");
                     if (c.length >= 2 && tokenFor(c[1], c[0]).equals(authToken)) {
                         LoginData.ensureAccount(c[1], "");
                         return sessionData(authToken, c[1], true, false);
                     }
                 }
-                String[] acc = LoginData.allAccounts();
-                for (String line : acc) {
-                    int tab = line.indexOf('\t');
-                    String uid = tab > 0 ? line.substring(0, tab) : line;
-                    if (uid.length() > 0 && tokenFor(uid, deviceId).equals(authToken)) {
+                String[] names = LoginData.accountNames();
+                for (String uid : names) {
+                    if (uid != null && uid.length() > 0 && tokenFor(uid, deviceId).equals(authToken)) {
                         LoginData.ensureAccount(uid, "");
                         return sessionData(authToken, uid, uid.startsWith("guest"), false);
                     }
@@ -212,7 +176,7 @@ public final class SdkData {
                 return null;
             }
             LoginData.touchAccount(username);
-            saveLast(username, username);
+            saveLast(username);
             return sessionData(tokenFor(username, null), username, false, false);
         }
     }
@@ -239,7 +203,7 @@ public final class SdkData {
                 HumanLog.ev('▶', "SDK: akun BARU terdaftar — " + username, null);
             } catch (Throwable ignored) {
             }
-            saveLast(username, username);
+            saveLast(username);
             return sessionData(tokenFor(username, null), username, false, true);
         }
     }
@@ -251,14 +215,11 @@ public final class SdkData {
         synchronized (LOCK) {
             boolean known = false;
             try {
-                String[] p = read(new File(confDir, "sdk-session.txt")).trim().split("\t");
-                if (p.length >= 3 && p[0].equals(authToken)) {
-                    known = true;
-                }
+                known = Db.i().session(authToken) != null;
             } catch (Throwable ignored) {
             }
             if (!known && authToken != null && authToken.length() == 32) {
-                known = true; // token lokal stabil berformat md5 — periksa pola saja (tahan pembersihan config)
+                known = true; // token lokal stabil berformat md5 — periksa pola saja (tahan pembersihan)
             }
             return known ? "{\"isReged\":1}" : null;
         }
@@ -282,22 +243,16 @@ public final class SdkData {
             boolean guest = "1".equals(usermode) || uid.startsWith("guest");
             boolean tokenOk = false;
             try {
-                String[] p = read(new File(confDir, "sdk-session.txt")).trim().split("\t");
-                if (p.length >= 3 && p[0].equals(token) && p[1].equals(uid)) {
-                    tokenOk = true;
-                }
+                String ses = Db.i().session(token == null ? "" : token);
+                tokenOk = ses != null && ses.startsWith(uid + "\t");
             } catch (Throwable ignored) {
             }
             if (!tokenOk && token != null && token.length() >= 8) {
                 // token stabil per (uid, device) — hitung ulang dari pemetaan tamu
                 try {
-                    String[] lines = read(new File(confDir, "sdk-guests.txt")).split("\n");
-                    for (String line : lines) {
-                        String q = line.trim();
-                        if (q.length() == 0 || q.startsWith("#")) {
-                            continue;
-                        }
-                        String[] c = q.split("\t");
+                    String[] rows = Db.i().guestRows();
+                    for (String line : rows) {
+                        String[] c = line.split("\t");
                         if (c.length >= 2 && c[1].equals(uid) && tokenFor(c[1], c[0]).equals(token)) {
                             tokenOk = true;
                             break;
@@ -306,7 +261,8 @@ public final class SdkData {
                 } catch (Throwable ignored) {
                 }
             }
-            boolean accountKnown = LoginData.accountPassword(uid) != null || uid.equals(LoginData.localUserId());
+            boolean accountKnown = LoginData.accountPassword(uid) != null
+                    || uid.equals(LoginData.localUserId());
             if (!tokenOk && !accountKnown) {
                 return null;
             }
@@ -320,8 +276,9 @@ public final class SdkData {
             LoginData.ensureAccount(uid, "");
             String loginToken = md5("lt|" + uid + "|" + System.currentTimeMillis());
             String sign = md5(uid + "|lsf-local-sign");
-            saveSession(token == null || token.length() == 0 ? tokenFor(uid, null) : token, uid, guest);
-            saveLast(uid, username == null || username.length() == 0 ? uid : username);
+            Db.i().putSession(token == null || token.length() == 0 ? tokenFor(uid, null) : token,
+                    uid, guest, now());
+            saveLast(uid);
             try {
                 HumanLog.ev('✔', "SDK: loginchecknative OK — " + (guest ? "tamu " : "akun ") + uid
                         + " (mode " + (guest ? "tamu" : "akun") + ")", null);
@@ -347,16 +304,13 @@ public final class SdkData {
     public static String lastKnownUid() {
         synchronized (LOCK) {
             try {
-                String[] p = read(new File(confDir, "sdk-last.txt")).trim().split("\t");
-                if (p.length >= 1 && p[0].length() >= 4) {
-                    return p[0];
+                String v = Db.i().kv(Db.KV_LAST_UID);
+                if (v != null && v.length() >= 4) {
+                    return v;
                 }
-            } catch (Throwable ignored) {
-            }
-            try {
-                String[] p = read(new File(confDir, "sdk-session.txt")).trim().split("\t");
-                if (p.length >= 2 && p[1].length() >= 4) {
-                    return p[1];
+                String uid = Db.i().lastSessionUid();
+                if (uid != null && uid.length() >= 4) {
+                    return uid;
                 }
             } catch (Throwable ignored) {
             }
@@ -368,15 +322,7 @@ public final class SdkData {
     public static int guestDeviceCount() {
         synchronized (LOCK) {
             try {
-                String[] lines = read(new File(confDir, "sdk-guests.txt")).split("\n");
-                int n = 0;
-                for (String line : lines) {
-                    String q = line.trim();
-                    if (q.length() > 0 && !q.startsWith("#")) {
-                        n++;
-                    }
-                }
-                return n;
+                return Db.i().guestCount();
             } catch (Throwable t) {
                 return 0;
             }
@@ -387,14 +333,11 @@ public final class SdkData {
     public static String primaryGuest() {
         synchronized (LOCK) {
             try {
-                String[] lines = read(new File(confDir, "sdk-guests.txt")).split("\n");
-                for (String line : lines) {
-                    String q = line.trim();
-                    if (q.length() > 0 && !q.startsWith("#")) {
-                        String[] c = q.split("\t");
-                        if (c.length >= 2) {
-                            return c[1];
-                        }
+                String[] rows = Db.i().guestRows();
+                if (rows.length > 0) {
+                    String[] c = rows[0].split("\t");
+                    if (c.length >= 2) {
+                        return c[1];
                     }
                 }
             } catch (Throwable ignored) {
@@ -425,29 +368,5 @@ public final class SdkData {
         } catch (Throwable t) {
             return "00000000000000000000000000000000";
         }
-    }
-
-    private static void write(File f, String content) throws Exception {
-        if (confDir != null) {
-            confDir.mkdirs();
-        }
-        Writer w = new OutputStreamWriter(new FileOutputStream(f, false), "UTF-8");
-        w.write(content);
-        w.close();
-    }
-
-    private static String read(File f) throws Exception {
-        if (!f.exists()) {
-            return "";
-        }
-        Reader r = new InputStreamReader(new FileInputStream(f), "UTF-8");
-        StringBuilder sb = new StringBuilder(512);
-        char[] buf = new char[2048];
-        int n;
-        while ((n = r.read(buf)) > 0) {
-            sb.append(buf, 0, n);
-        }
-        r.close();
-        return sb.toString();
     }
 }

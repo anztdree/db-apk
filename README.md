@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (**v4.2 — build 0.4.2**) — **ALUR SDK: LAYAR LOGIN SDK ASLI DULUAN, SEMUA TAHAP SDK DILAYANI LOKAL** (koreksi owner "SDK itu lebih dulu, tapi malah config loginserver anda sudah munculkan — jangan ngawur bikin config SDK"): dex quickgame dibedah + **server asli qsdk.t4game.com & login.popoh5.com:510 DIPROBE LANGSUNG** (rahasia tanda, skema respons semuanya salinan asli — §2.11); `assets/QHinfo` → 127.0.0.1:8610 (endpoint saja); layar SDK asli (HWLoginActivity: tamu/akun/daftar) tampil duluan; `loginchecknative` dilayani lokal; FIX bin `loginServer` dobel-port; userid url H5 = uid sesi SDK (tamu dipetakan per deviceId — tamu pertama = guest lama pemilik). Di bawahnya (v4.1): **ANTI "ERROR NETWORK"** (FIX servers.json + loop accept tahan Throwable + watchdog port). Di bawahnya (v4.0): **LOGIN LOKAL** (server login port 8610 — engine.io v3 + socket.io v2 persis client; endpoint login di bin & serversetting.json ditulis-ulang; dasbor log baru). Di bawahnya (v3.2): **WEBSITE TANPA SWITCH MODE**. Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) + tombol melayang bisa digeser
+> **Status dokumen:** Fondasi & Implementasi (**v4.3 — build 0.4.3**) — **DATABASE SQLITE `dragonball.db`** (nama FINAL dari owner): semua data akun/tamu/sesi pindah dari txt ke SQLite bawaan Android — tabel `accounts`, `sdk_guests`, `sdk_sessions`, `kv` (§2.12); **migrasi otomatis** txt warisan → DB saat boot pertama (data tidak hilang), DB masuk whitelist pembersih; FIX bug tersembunyi: txt lama TIDAK tahan reboot (terhapus Cleaner tiap boot). Buktikan alur natural selesai: dex SDK dibedah penuh — **tamu/login/daftar → login sampai masuk game rantainya UTUH** (§2.11). Di bawahnya (v4.2): **ALUR SDK: LAYAR LOGIN SDK ASLI DULUAN, SEMUA TAHAP SDK DILAYANI LOKAL** (server asli qsdk.t4game.com & login.popoh5.com:510 DIPROBE — skema salinan asli, §2.11); `assets/QHinfo` → 127.0.0.1:8610; FIX bin `loginServer` dobel-port. Di bawahnya (v4.1): **ANTI "ERROR NETWORK"** (FIX servers.json + loop accept tahan Throwable + watchdog port). Di bawahnya (v4.0): **LOGIN LOKAL** (server login port 8610 — engine.io v3 + socket.io v2 persis client; endpoint login di bin & serversetting.json ditulis-ulang; dasbor log baru). Di bawahnya (v3.2): **WEBSITE TANPA SWITCH MODE**. Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) + tombol melayang bisa digeser
 > **Temuan 2026-10-31 (probe ulang, mengoreksi catatan lama):** **SERVER ASLI MASIH HIDUP** — `setting_BS_Android.bin` (711 B, terenkripsi XOR kunci **`DragonBall`**) berhasil didekripsi → membongkar host sesungguhnya: **dragonh5cdn.popoh5.com** (H5 game + folder upgrade). Seluruh file fisik server asli berhasil diunduh & menjadi isi mirror (daftar lengkap §2.9). Catatan lama "server asli sudah mati" TERBANTAHKAN — server hanya memindahkan file ke host CDN.
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-11-02
@@ -332,6 +332,45 @@ LaunchActivity (channel "BS", LaunchActivity.onCreate:388)
 
 **Verifikasi sandbox (harness 0.4.2 — 39/39 LULUS):** envelope+sign, init (loginTypes `["1","13"]`, versi "empty"), registerVisitor (migrasi guest, isGuest/isNewUser/bindInfo), tamu ulang (isNewUser 0), autoLogin (token benar/asal→40005), registerUser (+dobel ditolak), loginByName (benar/salah→40101), ckRegVistor, loginchecknative (code 0 skema BSNative + code 500), loginGame mengikuti sesi SDK, handshake+GetServerList (regresi 0.4.0), rewrite bin (loginServer tanpa port, userid sesi SDK, tanpa host asli).
 
+### 2.12 DATABASE SQLITE `dragonball.db` — data profesional, tahan reboot (0.4.3; nama FINAL dari owner; bukti alur natural = bedah dex lanjutan 2026-11-03)
+
+**Permintaan owner:** *"kalau bisa ini bukan karangan. dan output txt? ini database yg profesional lahh masak iyaaa database txt"* → lalu *"database dragonball.db sqlite . final ."* dan *"belum buat karena rencana sdk masih belum jelas agar work, guest login register sampai ke login secara natural"*.
+
+**Bukti alur natural (bedah dex lanjutan — bukan karangan):** ketiga tombol layar SDK diikuti sampai selesai di `HWLoginActivity`/`QuickGameSdkService` (jadx 1.5.0 atas dex asli):
+
+| Tombol | Endpoint | Event internal | Bukti string di dex | Akhir |
+|---|---|---|---|---|
+| Tamu | `/v1/user/registerVisitor` | `LOGIN_RAND` | `seventygenom(14)` → type 14 = string **"hw_guest"** | langsung selesai |
+| Masuk | `/v1/user/loginByName` | `LOGIN` | log **"login auth success"** → type 12 | dialog sukses → selesai |
+| Daftar | `/v1/user/registerUser` | `ACCOUNT_REGIST` | log **"register success"** → type 13 | dialog sukses → selesai = **AUTO-LOGIN** |
+
+`hardlinerspare()` = simpan akun-terakhir ke `model.b` → `singersmooth()` → tutup layar SDK → serahkan `QGUserData{uid, username, token, isGuest}` ke shell. Ketiga tombol bermuara di SATU pintu — cukup server lokal menjawab `result:true + data sesi` skema asli. Lanjutannya (juga dari dex): shell `GET /loginchecknative` (kelas `nationalcommunitymissing`: format URL, retry 3×, baca `code`) → `code:0` = `MainActivity.customreading()` → boot Egret; H5 `checkLastLogin()` (main.min asli) baca `?userid=` → `doOriginLoginRequest` (password kosong otomatis `"game_origin"`) → socket.io `loginGame` → `GetServerList` → pilih server → masuk. **Rantai guest/login/register → login game UTUH tanpa satu langkah pun karangan.**
+
+**Database (menggantikan txt — alasan: txt = tulis-ulang file penuh (korup bila mati di tengah), tanpa lock, parsing tab rapuh, tanpa indeks, tidak bisa di-SELECT, dan — bug tersembunyi 0.4.2 — `config/*.txt` TIDAK masuk whitelist Cleaner sehingga TERHAPUS tiap boot = guest/akun tidak pernah tahan reboot!):**
+
+Satu file **`config/dragonball.db`** — engine SQLite **bawaan Android** (`android.database.sqlite`, tanpa Context: `openOrCreateDatabase(path)`) — nol tambahan APK, engine yang sama dipakai aplikasi sistem:
+
+```sql
+CREATE TABLE accounts     (username TEXT PRIMARY KEY, pass_md5 TEXT, created_at TEXT,
+                           last_login TEXT, login_count INTEGER);
+CREATE TABLE sdk_guests   (device_id TEXT PRIMARY KEY, uid TEXT, created_at TEXT);
+CREATE TABLE sdk_sessions (auth_token TEXT PRIMARY KEY, uid TEXT, is_guest INTEGER,
+                           created_at TEXT, last_seen TEXT);
+CREATE TABLE kv           (key TEXT PRIMARY KEY, value TEXT);   -- local_user, last_uid
+```
+
+- **Tamu** → `sdk_guests` (+baris `accounts`); tamu pertama = migrasi guest lama (`kv local_user`) — progres pemilik tidak hilang; perangkat sama = tamu sama (`isNewUser 0` seperti server asli)
+- **Masuk/daftar** → `accounts` (password MD5 dari client, tak diubah); **loginGame** → `accounts` yang sama — identitas SDK = identitas game
+- **Sesi** → `sdk_sessions` (token stabil md5(uid|device) — tahan mati/hidup proses, `model.b` client selalu cocok)
+- **Keunggulan**: transaksi ACID + journal crash-safe + lock + indeks PK + bisa diperiksa `sqlite3 dragonball.db "SELECT * FROM accounts"`
+- **Engine (rantai)**: `DbAndroid` (device) → `DbJdbc` (HANYA harness desktop — SQL sama persis, class TIDAK masuk APK) → `DbMem` (jaring memori — boot tetap jalan apa pun yang terjadi)
+- **MIGRASI OTOMATIS** (boot pertama, SEBELUM Cleaner): `local-user.txt` → `kv local_user` · `accounts.txt` → `accounts` · `sdk-guests.txt` → `sdk_guests` · `sdk-session.txt` → `sdk_sessions` · `sdk-last.txt` → `kv last_uid` → file lama di-rename `*.imported` (nol data hilang; diimpor sekali — tahan dobel)
+- **Cleaner**: whitelist `config/` kini melindungi `dragonball.db` (+`-journal/-wal/-shm/-corrupt`)
+- **Korupsi?** `DbAndroid` memulihkan hanya untuk korupsi SQLite SUNGUHAN (`SQLiteDatabaseCorruptException`/malformed) — galat lain (lock sesaat, engine tak tersedia) TIDAK menyentuh file (bug awal harness: rename otomatis membuat data "hilang" — sudah difix & diuji)
+- File yang TETAP file (sengaja): `server.json` (config aplikasi) · `servers.json` (snapshot daftar server — boleh disunting pemilik) · `status.json` · log
+
+**Verifikasi sandbox (harness 0.4.3 — 50/50 LULUS, `local-server/harness/HarnessSdk.java` di-commit):** engine = SQLite nyata via JDBC; migrasi kelima file warisan (guest pemilik, akun + login_count 7, sesi, last_uid); file lama di-rename `.imported`; **REBOOT** (buka ulang DB) = guest/akun/sesi utuh tanpa impor dobel; autoLogin token warisan; regresi SDK 0.4.2 PENUH (init, registerVisitor migrasi/ulang, registerUser +dobel ditolak, loginByName benar/salah→40101, autoLogin 40005, ckRegVistor, loginchecknative code 0/500, loginGame ikut sesi SDK via socket.io BERFRAMING, handshake+GetServerList); rewrite bin (userid = pilihan layar SDK dari DB).
+
 ---
 
 ## 3. Konsep Solusi (v2.2): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded
@@ -635,6 +674,7 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
+| **0.4.3** | **(v4.3) + DATABASE SQLITE `dragonball.db`** (nama FINAL owner — "masak iyaaa database txt"): semua data akun/tamu/sesi pindah dari txt ke SQLite bawaan Android (`Db.java`+`DbAndroid.java`+`DbMem.java`; `DbJdbc.java` hanya harness, tak masuk APK) — tabel `accounts`, `sdk_guests`, `sdk_sessions`, `kv` (local_user, last_uid) §2.12; **MIGRASI OTOMATIS** txt warisan → DB di boot pertama SEBELUM Cleaner (file lama → `*.imported` — nol data hilang) + **FIX bug tersembunyi**: txt lama tak masuk whitelist Cleaner = TERHAPUS tiap boot (guest/akun tak pernah tahan reboot!) → kini `dragonball.db` (+jurnal) masuk whitelist; korupsi hanya dipulihkan utk korupsi SQLite sungguhan (bukan galat lock/engine); harness 0.4.3 di-commit (`local-server/harness/HarnessSdk.java`) **50/50 LULUS** (migrasi, REBOOT-persistence, SQL nyata via JDBC, regresi SDK 0.4.2 penuh + socket.io berframing)** | **L5a–L5b ✓ (data profesional — dragonball.db)** |
 | **0.4.2** | **(v4.2) + ALUR SDK — layar login SDK ASLI DULUAN, seluruh tahap SDK dilayani LOKAL (koreksi owner "SDK itu lebih dulu … jangan ngawur bikin config SDK"): dex `com.quickgame.android.sdk` dibedah + server asli qsdk.t4game.com & login.popoh5.com:510 DIPROBE langsung → `SdkApi.java`+`SdkData.java` (port 8610) melayani `/v1/system/init, getNotice, getAgreement, onNewToken`, `/v1/user/registerVisitor (tamu per deviceId — tamu pertama = guest lama pemilik), autoLogin, loginByName (password MD5), registerUser, ckRegVistor, findPassByEmail, postGooglePlayVerify`, `/v1/auth/* (bindMail, changePassword, setGameRoleInfo, …)` + `GET /loginchecknative` — SEMUA skema respons = salinan respons asli (body form `{sv,data,sign}` md5 rahasia "0b2a18e45d7df321" dari dex; pesan galat Indonesia seperti asli) + `assets/QHinfo` → `http://127.0.0.1:8610` (endpoint saja, dex/UI SDK tidak disentuh) + FIX bin `loginServer` TANPA port (dulu `127.0.0.1:8610:8610` dobel → URL loginchecknative shell rusak) + userid url H5 = uid SESI SDK terakhir (config/sdk-last.txt; loginGame mengikuti sesi SDK bila url beda) + mode ONLINE: API SDK diteruskan utuh ke qsdk asli + dasbor kartu Tahap SDK (sesi, perangkat)** | **L5a–L5b ✓ (alur SDK lokal penuh — harness 39/39)** |
 | **0.4.1** | **(v4.1) + ANTI "ERROR NETWORK" — FIX Payload.collect (prefix ASSET_DIR dipakai buat path login → servers.json salah tulis ke config/login/; kini base eksplisit + sisa config/login/ dibersihkan) + loop accept NanoHTTPD tahan Throwable (dulu RuntimeException/Error = thread accept mati diam-diam → port "hidup mati" → game "Read Upgrade Config File Fail,Please Check NetWork!" TANPA log; kini dicatat via CrashListener + loop lanjut) + watchdog port 8080+8610 tiap 5 dtk (mati = ⚠, pulih = ✔)** | **L5a–L5b ✓ (stabilisasi LOCAL)** |
 | **0.4.0** | **(v4.0) + LOGIN LOKAL — server login lokal port 8610 memakai protokol PERSIS client game (engine.io v3 + socket.io v2, event `handler.process`: loginGame/GetServerList/LoginAnnounce/Save*) + endpoint login di setting bin (loginServer, tsLoginServer, loginPort 610→8610, loginWebPort 510→8610) & serversetting.json (loginserver) ditulis-ulang ke 127.0.0.1 di mode LOCAL (koreksi owner "endpoint masih menunjuk server pusat") + guest lokal tahan lama via url H5 `?userid=<guest>` (config `useSdk`, bawaan mati) + akun lokal config/accounts.txt + daftar server snapshot ASLI 2109 server (config/servers.json, boleh disunting) + dasbor log baru: font 11px + baris terpisah garis + rincian redup (koreksi owner "font kegedean & nyampur")** | **L5a–L5b ✓ (tahap SDK dilokalkan)** |
@@ -648,7 +688,22 @@ tanpa izin storage tambahan (folder own-app).
 | 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.4.1 (ANTI "ERROR NETWORK", v4.1) — 2026-11-02 — BUILD TERKINI:**
+**Build 0.4.3 (DRAGONBALL.DB — SQLITE, v4.3) — 2026-11-03 — BUILD TERKINI:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.4.3.apk` (163.938.299 byte) + **asset Release GitHub `v0.4.3`** |
+| SHA-256 | `9f86aca7620d6593b8f46255fe200067cefe0f62182efff260fb6f74a9c29d87` |
+| versionCode / versionName | **4 / 0.1.0** (manifest TIDAK disentuh — alur PATCH) |
+| Dasar | **Release 0.3.2** (`b64cba53…` diverifikasi sebelum dipakai) |
+| Toolchain | ECJ 3.33.0 · r8 8.3.37 (D8 → `classes2.dex`; `DbJdbc.class` DISINGKIRKAN) · uber-apk-signer 1.3.0 · JDK 21 · android.jar API 34 (`platform-34-ext7_r03.zip`) · sqlite-jdbc 3.45.1.0 + slf4j (HANYA harness desktop) |
+| **Permintaan owner** | *"ini database yg profesional lahh masak iyaaa database txt"* → *"database dragonball.db sqlite . final ."* → *"belum buat karena rencana sdk masih belum jelas agar work, guest login register sampai ke login secara natural"* (rencana dibuktikan dari dex — §2.12 — lalu dibangun) |
+| Perubahan server lokal | `Db.java` + `DbAndroid.java` + `DbJdbc.java` + `DbMem.java` BARU; `LoginData`/`SdkData` pindah ke DB (API publik tetap); `Cleaner` whitelist + `dragonball.db*`; `Starter` boot DB SEBELUM Cleaner; `build.sh` 0.4.3; `HarnessSdk.java` di-commit |
+| Verifikasi (sandbox) | ✅ ECJ bersih (23 sumber); ✅ **harness 50/50 LULUS** (migrasi 5 file warisan, REBOOT utuh, SQL nyata, regresi 0.4.2 penuh); ✅ CRC diff dasar 0.3.2: 3.695 entri IDENTIK — `classes.dex` game, `AndroidManifest.xml`, `resources.arsc`, setting bin, `clientversion.json`, `serversetting.json` SEMUA sama; hanya `classes2.dex` + `dashboard.html` + `QHinfo` (21 B) + `login/servers.json` (BARU) + tanda tangan |
+| Perubahan client | **TIDAK ADA** — dex game/manifest/resources identik (CRC) |
+| Status | ✅ build & verifikasi selesai · ⏳ uji device owner |
+
+**Build 0.4.1 (ANTI "ERROR NETWORK", v4.1) — 2026-11-02:**
 
 | Item | Nilai |
 |---|---|
