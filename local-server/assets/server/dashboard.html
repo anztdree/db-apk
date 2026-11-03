@@ -3,33 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DB LOCAL · Dasbor Server Lokal</title>
+<title>DB LOCAL · Dasbor</title>
 <style>
+  /* 0.4.5 — REDESIGN (koreksi owner "UI website banyak informasi yg tidak
+     bermanfaat"): LOG jadi pusat; sisanya ringkas di tab Data & Teknis. */
   :root{
-    --bg:#f5f5f4; --card:#ffffff; --line:#e7e5e4; --tx:#1c1917; --mut:#78716c;
-    --ok:#059669; --okbg:#ecfdf5; --warn:#d97706; --warnbg:#fffbeb; --err:#dc2626; --errbg:#fef2f2;
-    --acc:#059669; --acctx:#ffffff; --code:#f5f5f4; --shadow:0 1px 2px rgba(0,0,0,.06);
-  }
-  @media (prefers-color-scheme: dark){
-    :root{
-      --bg:#0c0a09; --card:#1c1917; --line:#292524; --tx:#fafaf9; --mut:#a8a29e;
-      --ok:#34d399; --okbg:#064e3b33; --warn:#fbbf24; --warnbg:#78350f33; --err:#f87171; --errbg:#7f1d1d33;
-      --acc:#10b981; --acctx:#052e1a; --code:#111111; --shadow:0 1px 2px rgba(0,0,0,.4);
-    }
+    --bg:#0c0a09; --card:#1c1917; --line:#292524; --tx:#fafaf9; --mut:#a8a29e;
+    --ok:#34d399; --warn:#fbbf24; --err:#f87171; --acc:#10b981; --acctx:#052e1a;
+    --code:#111111; --shadow:0 1px 2px rgba(0,0,0,.4);
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
     background:var(--bg); color:var(--tx);
-    font:15px/1.55 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font:15px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     min-height:100vh; display:flex; flex-direction:column;
   }
   header{
-    padding:16px 16px 12px; border-bottom:1px solid var(--line);
-    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+    padding:12px 14px 10px; border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
     position:sticky; top:0; background:var(--bg); z-index:20;
   }
-  header h1{font-size:17px; margin:0; font-weight:700; letter-spacing:.2px}
+  header h1{font-size:16px; margin:0; font-weight:700}
   .badge{
     font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px;
     border:1px solid var(--line); background:var(--card); color:var(--mut); letter-spacing:.4px;
@@ -37,149 +32,175 @@
   .badge.mode-local{color:var(--ok); border-color:var(--ok)}
   .badge.mode-online{color:var(--warn); border-color:var(--warn)}
   .pill{
-    margin-left:auto; font-size:12px; font-weight:800; padding:5px 12px; border-radius:999px;
-    background:var(--errbg); color:var(--err); border:1px solid var(--line);
+    margin-left:auto; font-size:12px; font-weight:800; padding:4px 12px; border-radius:999px;
+    background:#7f1d1d33; color:var(--err); border:1px solid var(--line);
   }
-  .pill.up{background:var(--okbg); color:var(--ok)}
-  main{flex:1; padding:14px 16px 24px; max-width:980px; width:100%; margin:0 auto}
-  .summary{
-    font-size:13.5px; color:var(--mut); background:var(--card); border:1px solid var(--line);
-    border-radius:10px; padding:10px 14px; margin-bottom:14px; box-shadow:var(--shadow);
-    word-break:break-all;
+  .pill.up{background:#064e3b33; color:var(--ok)}
+  main{flex:1; padding:10px 14px 18px; max-width:900px; width:100%; margin:0 auto}
+  /* strip status: SATU baris ringkas, fakta yang penting saja */
+  #strip{
+    display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; color:var(--mut);
+    padding:8px 2px 10px;
   }
-  .card{
-    background:var(--card); border:1px solid var(--line); border-radius:12px;
-    padding:14px 16px; box-shadow:var(--shadow); margin-bottom:12px;
-  }
-  .card h2{margin:0 0 10px; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
-  .kv{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:14px}
-  .kv b{color:var(--mut); font-weight:600; white-space:nowrap}
-  .dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:var(--mut)}
-  .dot.up{background:var(--ok)} .dot.down{background:var(--err)}
-  table{width:100%; border-collapse:collapse; font-size:13.5px}
-  th{ text-align:left; color:var(--mut); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--line)}
-  td{padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; word-break:break-all}
-  tr:last-child td{border-bottom:none}
-  .toolbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px}
-  button.act{
-    min-height:40px; padding:8px 14px; border-radius:9px; border:1px solid var(--line);
-    background:var(--card); color:var(--tx); font-weight:600; font-size:13px; cursor:pointer;
-  }
-  button.act.primary{background:var(--acc); color:var(--acctx); border-color:var(--acc)}
-  button.act.danger{background:var(--err); color:#fff; border-color:var(--err)}
-  button.act:active{transform:translateY(1px)}
-  button.act:disabled{opacity:.55; cursor:default}
-  .tabs{display:flex; gap:6px; margin:16px 0 12px; flex-wrap:wrap}
+  #strip b{color:var(--tx); font-weight:600}
+  .tabs{display:flex; gap:6px; margin:2px 0 10px}
   .tab{
-    min-height:44px; padding:8px 16px; border-radius:10px; border:1px solid var(--line);
+    min-height:42px; padding:7px 16px; border-radius:10px; border:1px solid var(--line);
     background:var(--card); color:var(--tx); font-weight:600; font-size:14px; cursor:pointer;
   }
   .tab.active{background:var(--acc); color:var(--acctx); border-color:var(--acc)}
   .pane{display:none}
   .pane.active{display:block}
+  /* toolbar log */
+  .toolbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin-bottom:8px}
+  .chip{
+    min-height:38px; padding:6px 12px; border-radius:999px; border:1px solid var(--line);
+    background:var(--card); color:var(--mut); font-weight:600; font-size:12.5px; cursor:pointer;
+  }
+  .chip.on{background:var(--card); color:var(--tx); border-color:var(--ok)}
+  .chip.tech.on{color:var(--warn); border-color:var(--warn)}
+  button.act{
+    min-height:38px; padding:6px 12px; border-radius:9px; border:1px solid var(--line);
+    background:var(--card); color:var(--tx); font-weight:600; font-size:12.5px; cursor:pointer;
+  }
+  button.act:active{transform:translateY(1px)}
+  #lognote{font-size:11.5px; color:var(--mut); margin:0 0 6px}
   #logbox{
     background:var(--code); border:1px solid var(--line); border-radius:10px;
-    padding:0; font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    max-height:52vh; overflow-y:auto; word-break:break-all;
+    padding:0; font:11.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    max-height:60vh; overflow-y:auto; word-break:break-all;
+    -webkit-overflow-scrolling:touch;
   }
-  /* PR2 0.4.0 — koreksi owner "font terlalu besar, baris susah dibedakan":
-     font 11px + tiap baris = satu baris tabel dengan garis pemisah + waktu redup */
   .logrow{display:flex; gap:7px; padding:3px 9px; border-bottom:1px solid var(--line); align-items:baseline}
   .logrow:last-child{border-bottom:none}
   .logrow:hover{background:rgba(128,128,128,.08)}
+  .logrow.tech{opacity:.62}
+  .logrow.err .logtext{color:var(--err)}
+  .logrow.warn .logtext{color:var(--warn)}
+  .logrow.ok .logtext{color:var(--ok)}
   .logtime{color:var(--mut); flex:none; font-size:10px}
   .logic{flex:none; width:13px; text-align:center}
   .logtext{flex:1; min-width:0; word-break:break-word}
   .logdetail{color:var(--mut); font-size:10px; margin:1px 0 3px 29px; padding-left:2px; word-break:break-all}
   .logempty{padding:12px 10px; color:var(--mut)}
-  .ic-ok{color:var(--ok)} .ic-warn{color:var(--err)} .ic-info{color:var(--mut)} .ic-in{color:var(--warn)}
-  footer{
-    margin-top:auto; padding:14px 16px calc(14px + env(safe-area-inset-bottom));
-    border-top:1px solid var(--line); color:var(--mut); font-size:12.5px; text-align:center;
+  /* kartu kecil tab Data/Teknis */
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; box-shadow:var(--shadow); margin-bottom:10px;
   }
-  .note{font-size:12.5px; color:var(--mut); margin-top:8px}
+  .card h2{margin:0 0 8px; font-size:12.5px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
+  .kv{display:grid; grid-template-columns:auto 1fr; gap:3px 14px; font-size:13.5px}
+  .kv b{color:var(--mut); font-weight:600; white-space:nowrap}
+  .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; background:var(--mut)}
+  .dot.up{background:var(--ok)} .dot.down{background:var(--err)}
+  table{width:100%; border-collapse:collapse; font-size:12.5px}
+  th{text-align:left; color:var(--mut); font-weight:600; padding:5px 6px; border-bottom:1px solid var(--line)}
+  td{padding:6px 6px; border-bottom:1px solid var(--line); vertical-align:top; word-break:break-all}
+  tr:last-child td{border-bottom:none}
+  details summary{cursor:pointer; color:var(--mut); font-size:13px; padding:4px 0}
+  footer{
+    margin-top:auto; padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line); color:var(--mut); font-size:12px; text-align:center;
+  }
 </style>
 </head>
 <body>
 <header>
-  <h1>DB LOCAL · Dasbor Server Lokal</h1>
+  <h1>DB LOCAL</h1>
   <span class="badge" id="ver">v…</span>
-  <span class="badge" id="modebadge">MODE …</span>
+  <span class="badge" id="modebadge">…</span>
   <span class="pill" id="pill">menyambung…</span>
 </header>
 <main>
-  <div class="summary" id="summary">memuat status…</div>
-
-  <div class="card">
-    <h2>Port game (dipakai client)</h2>
-    <div class="kv">
-      <b>Status</b><span><span class="dot" id="gamedot"></span><span id="gamealive">…</span></span>
-      <b>Alamat</b><span id="gameaddr">…</span>
-      <b>Login lokal</b><span><span class="dot" id="logindot"></span><span id="loginalive">…</span></span>
-      <b>Login alamat</b><span id="loginaddr">…</span>
-      <b>Tahap SDK</b><span id="sdkline">…</span>
-      <b>Akun lokal</b><span id="loginacc">…</span>
-      <b>Permintaan</b><span id="reqs">…</span>
-      <b>Gagal</b><span id="errs">…</span>
-      <b>Uptime</b><span id="uptime">…</span>
-      <b>Mirror www/</b><span id="www">…</span>
-    </div>
-    <div class="note">Ganti mode = lewat tombol melayang di layar game (GESER = pindah posisi · TEKAN = ganti mode). Website sengaja tanpa tombol mode.</div>
-  </div>
-
-  <div class="card">
-    <h2>5 permintaan game terakhir — bukti local running</h2>
-    <table>
-      <thead><tr><th>Permintaan (URL asli yang diminta client)</th><th>Status</th><th>Lama</th></tr></thead>
-      <tbody id="lastbody"><tr><td colspan="3" style="color:var(--mut)">belum ada permintaan game</td></tr></tbody>
-    </table>
+  <div id="strip">
+    <span>user <b id="s-user">…</b></span>
+    <span><b id="s-srv">…</b> server</span>
+    <span>www/ <b id="s-www">…</b></span>
+    <span>akun <b id="s-acc">…</b></span>
+    <span>uptime <b id="s-up">…</b></span>
   </div>
 
   <div class="tabs">
     <button class="tab active" data-pane="log">Log</button>
-    <button class="tab" data-pane="www">Isi www/</button>
-    <button class="tab" data-pane="orig">Server asli</button>
+    <button class="tab" data-pane="data">Data</button>
+    <button class="tab" data-pane="tech">Teknis</button>
   </div>
 
+  <!-- ============ LOG ============ -->
   <div class="pane active" id="pane-log">
     <div class="toolbar">
-      <button class="act" id="copylog">Copy log</button>
-      <button class="act" id="clearlog">Bersihkan log dasbor</button>
-      <span class="note" style="margin:0">polling dasbor tidak dicatat — log tetap tenang</span>
+      <button class="chip on" id="f-all">Semua</button>
+      <button class="chip" id="f-warn">⚠ saja</button>
+      <button class="chip tech" id="t-tech">RINCI</button>
+      <button class="act" id="copylog">Copy</button>
+      <button class="act" id="copyfull">Copy penuh</button>
+      <button class="act" id="clearlog">Bersihkan</button>
     </div>
+    <p id="lognote"></p>
     <div id="logbox">(memuat log…)</div>
   </div>
 
-  <div class="pane" id="pane-www">
-    <div class="toolbar">
-      <button class="act" id="refreshwww">Muat ulang</button>
-      <span class="note" style="margin:0" id="wwwtotal"></span>
+  <!-- ============ DATA ============ -->
+  <div class="pane" id="pane-data">
+    <div class="card">
+      <h2>Data lokal (dragonball.db)</h2>
+      <div class="kv">
+        <b>Akun terdaftar</b><span id="d-acc">…</span>
+        <b>Tamu / perangkat</b><span id="d-dev">…</span>
+        <b>Sesi SDK terakhir</b><span id="d-ses">…</span>
+        <b>Server game</b><span id="d-srv">…</span>
+        <b>Status port</b><span id="d-port">…</span>
+      </div>
     </div>
-    <div style="max-height:52vh; overflow-y:auto">
+    <div class="card">
+      <h2>Server asli (jaringan)</h2>
       <table>
-        <thead><tr><th>File di www/</th><th>Ukuran</th></tr></thead>
-        <tbody id="wwwbody"><tr><td colspan="2" style="color:var(--mut)">memuat…</td></tr></tbody>
+        <tbody id="origbody"><tr><td style="color:var(--mut)">memuat…</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <div class="pane" id="pane-orig">
-    <table>
-      <thead><tr><th>Server asli</th><th>Status</th><th>Catat</th><th>Laten</th><th>Cek</th></tr></thead>
-      <tbody id="origbody"><tr><td colspan="5" style="color:var(--mut)">memuat…</td></tr></tbody>
-    </table>
+  <!-- ============ TEKNIS ============ -->
+  <div class="pane" id="pane-tech">
+    <div class="card">
+      <h2>Identitas server</h2>
+      <div class="kv">
+        <b>Root</b><span id="t-root">…</span>
+        <b>Paket</b><span id="t-pkg">…</span>
+        <b>Port</b><span id="t-port">…</span>
+        <b>Permintaan</b><span id="t-req">…</span>
+        <b>Mirror dari CDN</b><span id="t-seed">…</span>
+        <b>404 normal</b><span id="t-404">…</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>6 permintaan game terakhir</h2>
+      <table>
+        <thead><tr><th>Path</th><th>St</th><th>Lama</th></tr></thead>
+        <tbody id="lastbody"><tr><td colspan="3" style="color:var(--mut)">belum ada</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Isi www/</h2>
+      <details>
+        <summary id="wwwsum">tampilkan daftar file…</summary>
+        <div style="max-height:40vh; overflow-y:auto; margin-top:6px">
+          <table><tbody id="wwwbody"><tr><td style="color:var(--mut)">—</td></tr></tbody></table>
+        </div>
+      </details>
+    </div>
   </div>
 </main>
 <footer>
-  Port 4000 = dasbor developer saja · client game menunjuk port game (127.0.0.1:8080) ·
-  ganti mode lewat tombol melayang di layar game.
+  Ganti mode: tombol melayang di layar game · log penuh selalu tersimpan di
+  <b>logs/human.log</b> (meski dasbor mode BERSIH)
 </footer>
 
 <script>
 (function(){
   "use strict";
   var $ = function(id){ return document.getElementById(id); };
-  var logSince = 0, logLoaded = false, lastStatus = null;
+  var logSince = 0, logLoaded = false, filterWarn = false;
 
   function fmtBytes(n){
     if(n < 0) return "?";
@@ -212,88 +233,89 @@
       document.querySelectorAll(".pane").forEach(function(x){ x.classList.remove("active"); });
       t.classList.add("active");
       $("pane-" + t.dataset.pane).classList.add("active");
-      if(t.dataset.pane === "www") loadWww();
     });
   });
 
   // ---------- status ----------
   function renderStatus(s){
-    lastStatus = s;
-    $("ver").textContent = "v" + (s.server.version || "?");
-    $("pill").textContent = s.server.alive ? "DASBOR HIDUP" : "DASBOR MATI";
-    $("pill").className = "pill" + (s.server.alive ? " up" : "");
-
-    // mode hanya INFORMASI (read-only) — ganti mode lewat tombol melayang
-    var mode = String(s.server.mode || "?");
+    var sv = s.server || {};
+    $("ver").textContent = "v" + (sv.version || "?");
+    $("pill").textContent = sv.alive ? "HIDUP" : "MATI";
+    $("pill").className = "pill" + (sv.alive ? " up" : "");
+    var mode = String(sv.mode || "?");
     var mb = $("modebadge");
     mb.textContent = "MODE " + mode.toUpperCase();
     mb.className = "badge" + (mode === "local" ? " mode-local" : (mode === "online" ? " mode-online" : ""));
 
-    $("summary").textContent = "root: " + (s.server.root || "?") + " · paket: " + (s.server["package"] || "?")
-      + " · dasbor port " + s.server.port + " · port game " + s.server.gamePort;
+    // strip — fakta inti saja (0.4.5)
+    var uid = sv.sdkUid || sv.sdkGuest || sv.loginUser || "belum ada";
+    $("s-user").textContent = uid;
+    $("s-srv").textContent = sv.loginServers || 0;
+    $("s-www").textContent = (sv.wwwFiles || 0) + " file · " + fmtBytes(sv.wwwBytes || 0);
+    $("s-acc").textContent = sv.loginAccounts || 0;
+    $("s-up").textContent = fmtUptime(sv.uptimeMs);
 
-    $("gamedot").className = "dot " + (s.server.gameAlive ? "up" : "down");
-    $("gamealive").textContent = s.server.gameAlive ? "HIDUP — local running" : "MATI";
-    $("gameaddr").textContent = "http://127.0.0.1:" + s.server.gamePort;
-    $("logindot").className = "dot " + (s.server.loginAlive ? "up" : "down");
-    $("loginalive").textContent = s.server.loginAlive ? "HIDUP — tahap SDK + guest/login/daftar server dilayani lokal" : "MATI";
-    $("loginaddr").textContent = "http://127.0.0.1:" + s.server.loginPort + " (engine.io v3 + socket.io v2)";
-    var sdkUid = s.server.sdkUid || s.server.sdkGuest || "";
-    $("sdkline").textContent = "layar login SDK ASLI dilayani lokal (/v1/* + loginchecknative) · sesi: "
-      + (sdkUid || "belum ada") + " · " + (s.server.sdkDevices || 0) + " perangkat";
-    $("loginacc").textContent = (s.server.loginAccounts || 0) + " akun · guest: " + (s.server.loginUser || "—")
-      + " · " + (s.server.loginServers || 0) + " server";
-    $("reqs").textContent = s.server.requests + " sejak server nyala";
-    $("errs").textContent = s.server.errors;
-    $("uptime").textContent = fmtUptime(s.server.uptimeMs);
-    $("www").textContent = (s.server.wwwFiles || 0) + " file · " + fmtBytes(s.server.wwwBytes || 0);
-
-    // 5 path terakhir (terbaru di atas)
-    var arr = (s.last || []).slice(0, 5);
-    var tb = $("lastbody");
-    if(!arr.length){
-      tb.innerHTML = "<tr><td colspan='3' style='color:var(--mut)'>belum ada permintaan game — buka game-nya</td></tr>";
-    } else {
-      var gp = "http://127.0.0.1:" + (s.server.gamePort || 8080);
-      tb.innerHTML = arr.map(function(p){
-        var col = (p.s >= 200 && p.s < 400) ? "var(--ok)" : (p.s === 404 ? "var(--warn)" : "var(--err)");
-        return "<tr><td>" + esc(gp + p.p) + "</td><td style='color:" + col + ";font-weight:700'>" + p.s
-          + "</td><td>" + fmtMs(p.ms) + "</td></tr>";
-      }).join("");
-    }
+    // tab Data
+    $("d-acc").textContent = (sv.loginAccounts || 0) + " akun";
+    $("d-dev").textContent = (sv.sdkDevices || 0) + " perangkat";
+    $("d-ses").textContent = uid;
+    $("d-srv").textContent = (sv.loginServers || 0) + " server (snapshot asli)";
+    $("d-port").textContent = (sv.gameAlive ? "✓ game " + sv.gamePort : "✗ game") + " · "
+      + (sv.loginAlive ? "✓ login " + sv.loginPort : "✗ login") + " · "
+      + (sv.alive ? "✓ dasbor " + sv.port : "✗ dasbor");
 
     var ob = $("origbody");
     if(s.original && s.original.length){
       ob.innerHTML = s.original.map(function(o){
-        return "<tr><td>" + esc(o.target) + "</td><td><span class='dot " + (o.ok ? "up" : "down")
-          + "'></span>" + (o.ok ? "bisa" : "gagal") + "</td><td>" + esc(o.note)
-          + "</td><td>" + (o.latencyMs >= 0 ? fmtMs(o.latencyMs) : "—") + "</td><td>" + esc(o.last || "") + "</td></tr>";
+        return "<tr><td><span class='dot " + (o.ok ? "up" : "down") + "'></span>" + esc(o.target)
+          + "</td><td style='white-space:nowrap'>" + (o.latencyMs >= 0 ? fmtMs(o.latencyMs) : "gagal")
+          + "</td></tr>";
       }).join("");
-    } else {
-      ob.innerHTML = "<tr><td colspan='5' style='color:var(--mut)'>belum ada data pantauan</td></tr>";
     }
+
+    // tab Teknis
+    $("t-root").textContent = sv.root || "?";
+    $("t-pkg").textContent = sv["package"] || "?";
+    $("t-port").textContent = "game " + sv.gamePort + " · login " + sv.loginPort + " · dasbor " + sv.port;
+    $("t-req").textContent = (sv.requests || 0) + " · gagal " + (sv.errors || 0);
+    $("t-seed").textContent = (sv.mirrorSeeded || 0) + " file · " + fmtBytes(sv.mirrorSeedBytes || 0);
+    $("t-404").textContent = (sv.notFound || 0) + " (perilaku normal)";
+
+    var arr = (s.last || []).slice(0, 6);
+    var tb = $("lastbody");
+    if(!arr.length){
+      tb.innerHTML = "<tr><td colspan='3' style='color:var(--mut)'>belum ada permintaan game</td></tr>";
+    } else {
+      tb.innerHTML = arr.map(function(p){
+        var col = (p.s >= 200 && p.s < 400) ? "var(--ok)" : (p.s === 404 ? "var(--warn)" : "var(--err)");
+        return "<tr><td>" + esc(p.p) + "</td><td style='color:" + col + ";font-weight:700'>" + p.s
+          + "</td><td>" + fmtMs(p.ms) + "</td></tr>";
+      }).join("");
+    }
+
+    // toggle RINCI mengikuti keadaan server
+    $("t-tech").classList.toggle("on", !!sv.logTech);
+    $("lognote").textContent = sv.logTech
+      ? "Mode RINCI — baris teknis ikut tampil. Mode BERSIH tetap mencatat semuanya ke logs/human.log."
+      : "Mode BERSIH — hanya kejadian penting. Nyalakan RINCI bila butuh baris request per-file.";
   }
 
   function pollStatus(){
     fetch("/api/status").then(function(r){ return r.json(); }).then(function(s){
       renderStatus(s);
     }).catch(function(){
-      $("pill").textContent = "DASBOR PUTUS";
+      $("pill").textContent = "PUTUS";
       $("pill").className = "pill";
-      $("summary").textContent = "gagal memuat status — dasbor tidak bisa dihubungi (coba muat ulang halaman)";
-      $("origbody").innerHTML = "<tr><td colspan='5' style='color:var(--err)'>gagal memuat data pantauan</td></tr>";
     });
   }
 
   // ---------- log ----------
   function iconClass(ic){
-    return ic === "✔" ? "ic-ok" : (ic === "⚠" ? "ic-warn" : (ic === "▶" || ic === "◀" ? "ic-in" : "ic-info"));
+    return ic === "✔" ? "ok" : (ic === "⚠" ? "err" : (ic === "▶" || ic === "◀" ? "in" : "info"));
   }
   function pollLog(){
     fetch("/api/logs?since=" + logSince).then(function(r){ return r.json(); }).then(function(arr){
       var box = $("logbox");
-      // koreksi 0.3.2: baris "memuat…" TIDAK boleh tersisa di atas log —
-      // placeholder dibuang saat jawaban pertama masuk
       if(!logLoaded){
         logLoaded = true;
         box.textContent = "";
@@ -303,11 +325,16 @@
       var frag = document.createDocumentFragment();
       arr.forEach(function(e){
         logSince = Math.max(logSince, e.id);
-        // PR2 0.4.0 — baris terstruktur: waktu + ikon + teks, rincian di baris kedua redup
+        var tech = e.v === 1;
         var row = document.createElement("div");
-        row.className = "logrow";
+        row.className = "logrow" + (tech ? " tech" : "") + (e.icon === "⚠" ? " err" : "")
+          + (e.icon === "✔" ? " ok" : "");
+        row.dataset.warn = (e.icon === "⚠") ? "1" : "0";
+        if(filterWarn && row.dataset.warn === "0"){
+          row.style.display = "none";
+        }
         var tm = document.createElement("span"); tm.className = "logtime"; tm.textContent = e.t;
-        var ic = document.createElement("span"); ic.className = "logic " + iconClass(e.icon); ic.textContent = e.icon;
+        var ic = document.createElement("span"); ic.className = "logic"; ic.textContent = tech ? "·" : e.icon;
         var tx = document.createElement("span"); tx.className = "logtext"; tx.textContent = e.text;
         row.appendChild(tm); row.appendChild(ic); row.appendChild(tx);
         frag.appendChild(row);
@@ -315,6 +342,8 @@
           var det = document.createElement("div");
           det.className = "logdetail";
           det.textContent = e.detail;
+          det.dataset.warn = row.dataset.warn;
+          if(filterWarn && det.dataset.warn === "0"){ det.style.display = "none"; }
           frag.appendChild(det);
         }
       });
@@ -325,47 +354,75 @@
       if(!logLoaded){
         var b = $("logbox"); b.textContent = "";
         var d = document.createElement("div"); d.className = "logempty";
-        d.textContent = "gagal memuat log — dasbor tidak bisa dihubungi (coba muat ulang halaman)";
+        d.textContent = "gagal memuat log — coba muat ulang halaman";
         b.appendChild(d);
       }
     });
   }
-  $("copylog").addEventListener("click", function(){
-    var txt = Array.prototype.map.call($("logbox").childNodes, function(n){ return n.textContent; }).join("\n");
+  function applyWarnFilter(){
+    document.querySelectorAll("#logbox [data-warn]").forEach(function(n){
+      n.style.display = (filterWarn && n.dataset.warn === "0") ? "none" : "";
+    });
+    $("f-all").classList.toggle("on", !filterWarn);
+    $("f-warn").classList.toggle("on", filterWarn);
+  }
+  $("f-all").addEventListener("click", function(){ filterWarn = false; applyWarnFilter(); });
+  $("f-warn").addEventListener("click", function(){ filterWarn = true; applyWarnFilter(); });
+
+  // toggle RINCI — tersimpan di server.json (tahan reboot)
+  $("t-tech").addEventListener("click", function(){
+    var next = !$("t-tech").classList.contains("on");
+    fetch("/api/logtech?on=" + (next ? "1" : "0")).then(function(){ return pollStatus(); }).catch(function(){});
+  });
+
+  function copyText(txt, btn, label){
     (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function(){
-      $("copylog").textContent = "Tersalin ✓";
-      setTimeout(function(){ $("copylog").textContent = "Copy log"; }, 1500);
+      btn.textContent = "Tersalin ✓";
+      setTimeout(function(){ btn.textContent = label; }, 1500);
     }).catch(function(){
       var ta = document.createElement("textarea");
       ta.value = txt; document.body.appendChild(ta); ta.select();
       document.execCommand("copy"); ta.remove();
-      $("copylog").textContent = "Tersalin ✓";
-      setTimeout(function(){ $("copylog").textContent = "Copy log"; }, 1500);
+      btn.textContent = "Tersalin ✓";
+      setTimeout(function(){ btn.textContent = label; }, 1500);
+    });
+  }
+  // Copy = tampilan dasbor (penting — atau penting+teknis saat RINCI)
+  $("copylog").addEventListener("click", function(){
+    var txt = Array.prototype.map.call($("logbox").childNodes, function(n){ return n.textContent; }).join("\n");
+    copyText(txt, $("copylog"), "Copy");
+  });
+  // Copy penuh = ekor human.log dari disk — PENTING + TEKNIS, bukti tidak terpotong
+  $("copyfull").addEventListener("click", function(){
+    fetch("/api/logs/file?tail=400").then(function(r){ return r.text(); }).then(function(t){
+      copyText(t, $("copyfull"), "Copy penuh");
+    }).catch(function(){
+      $("copyfull").textContent = "gagal";
+      setTimeout(function(){ $("copyfull").textContent = "Copy penuh"; }, 1500);
     });
   });
   $("clearlog").addEventListener("click", function(){
     fetch("/api/logs/clear").then(function(){
       $("logbox").textContent = "";
+      logSince = 0;
     }).catch(function(){});
   });
 
-  // ---------- www list ----------
-  function loadWww(){
+  // ---------- www list (tab Teknis, dimuat saat dibuka pertama kali) ----------
+  var wwwLoaded = false;
+  $("wwwsum").addEventListener("click", function(){
+    if(wwwLoaded) return;
     fetch("/api/www/list").then(function(r){ return r.json(); }).then(function(j){
-      $("wwwtotal").textContent = j.count + " file · " + fmtBytes(j.bytes);
+      wwwLoaded = true;
+      $("wwwsum").textContent = j.count + " file · " + fmtBytes(j.bytes);
       var tb = $("wwwbody");
-      if(!j.files || !j.files.length){
-        tb.innerHTML = "<tr><td colspan='2' style='color:var(--mut)'>www/ kosong</td></tr>";
-        return;
-      }
-      tb.innerHTML = j.files.map(function(f){
-        return "<tr><td>" + esc(f.p) + "</td><td>" + fmtBytes(f.s) + "</td></tr>";
-      }).join("");
+      tb.innerHTML = (j.files || []).map(function(f){
+        return "<tr><td>" + esc(f.p) + "</td><td style='white-space:nowrap'>" + fmtBytes(f.s) + "</td></tr>";
+      }).join("") || "<tr><td style='color:var(--mut)'>www/ kosong</td></tr>";
     }).catch(function(){
-      $("wwwbody").innerHTML = "<tr><td colspan='2' style='color:var(--err)'>gagal memuat</td></tr>";
+      $("wwwbody").innerHTML = "<tr><td style='color:var(--err)'>gagal memuat</td></tr>";
     });
-  }
-  $("refreshwww").addEventListener("click", loadWww);
+  });
 
   pollStatus();
   pollLog();

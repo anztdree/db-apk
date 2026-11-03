@@ -179,9 +179,11 @@ public final class Db {
                         String.valueOf(t));
             }
             if (i().sqlite()) {
-                log('✔', "dragonball.db siap (" + engine + ", " + f.length()
-                        + " byte) — database SQLite lokal" + (imported > 0
-                        ? " · migrasi txt lama: " + imported + " baris diimpor" : ""), null);
+                // 0.4.5: kalimat pendek di dasbor; detail engine+ukuran ke kolom detail
+                log('✔', "dragonball.db siap (SQLite, " + HumanLog.fmtBytes(f.length())
+                        + ") — akun/tamu/sesi tahan reboot" + (imported > 0
+                        ? " · migrasi txt lama: " + imported + " baris" : ""),
+                        engine + " · " + f.getAbsolutePath());
             }
         }
     }

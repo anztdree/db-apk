@@ -20,8 +20,10 @@ import fi.iki.elonen.NanoHTTPD;
  * Endpoint (README §6):
  *   GET  /                → halaman dasbor
  *   GET  /api/status      → status server + mode (baca-saja) + port game + 5 path terakhir
- *   GET  /api/logs?since= → log baru sejak id tertentu
+ *   GET  /api/logs?since= → log baru sejak id tertentu (mode BERSIH: penting saja)
  *   GET  /api/logs/clear  → bersihkan log di dasbor (file tetap)
+ *   GET  /api/logs/file   → EKOR human.log penuh (penting+teknis) — sumber "Copy penuh" 0.4.5
+ *   GET  /api/logtech     → mode log RINCI on/off (?on=1|0) — tersimpan di server.json 0.4.5
  *   GET  /api/www/list    → isi folder www/ (bukti folder bersih & lengkap)
  *   POST /api/mode DIHAPUS (koreksi owner 0.3.2 — "website pindah mode itu salah
  *   cuma menuhin tempat"): website TANPA switch mode; ganti mode cukup lewat
@@ -64,7 +66,8 @@ public final class LocalServer extends NanoHTTPD {
             }
             in.close();
             dashboard = bos.toByteArray();
-            HumanLog.ev('✔', "Dasbor dimuat dari APK (assets/server/dashboard.html · "
+            // 0.4.5: ukuran dasbor = TEKNIS (bukan berita penting)
+            HumanLog.evTech('✔', "Dasbor dimuat dari APK (assets/server/dashboard.html · "
                     + HumanLog.fmtBytes(dashboard.length) + ")", null);
         } catch (Throwable t) {
             dashboard = FALLBACK_HTML.getBytes();
@@ -111,6 +114,29 @@ public final class LocalServer extends NanoHTTPD {
                 String j = "{\"ok\":true}";
                 bytes = j.length();
                 return jsonResp(Response.Status.OK, j);
+            }
+            // 0.4.5 — mode log RINCI on/off (toggle dasbor; tersimpan di server.json)
+            if ("/api/logtech".equals(uri)) {
+                boolean on = parseBool(session.getParameters().get("on"), Config.logTech());
+                Config.setLogTech(on);
+                HumanLog.setTechEnabled(on);
+                HumanLog.ev('ℹ', "Mode log dasbor: " + (on ? "RINCI — baris teknis (request per-file, probe) ikut tampil"
+                        : "BERSIH — hanya kejadian penting") + " (tersimpan di server.json)", null);
+                String j = "{\"ok\":true,\"tech\":" + on + "}";
+                bytes = j.length();
+                return jsonResp(Response.Status.OK, j);
+            }
+            // 0.4.5 — ekor human.log PENUH (penting + teknis) untuk "Copy penuh"
+            if ("/api/logs/file".equals(uri)) {
+                int tail = (int) parseLong(session.getParameters().get("tail"));
+                if (tail <= 0 || tail > 500) {
+                    tail = 300;
+                }
+                String t = HumanLog.tailText(tail);
+                bytes = t.length();
+                Response r = newFixedLengthResponse(Response.Status.OK, "text/plain; charset=utf-8", t);
+                r.addHeader("Cache-Control", "no-store");
+                return r;
             }
             if ("/api/www/list".equals(uri)) {
                 String j = wwwListJson();
@@ -232,6 +258,14 @@ public final class LocalServer extends NanoHTTPD {
         } catch (Exception e) {
             return 0;
         }
+    }
+
+    private static boolean parseBool(List<String> vals, boolean def) {
+        String v = first(vals);
+        if (v == null || v.trim().length() == 0) {
+            return def;
+        }
+        return "1".equals(v.trim()) || "true".equalsIgnoreCase(v.trim());
     }
 
     private static String first(List<String> vals) {

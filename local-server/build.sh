@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.4.4 — FIX MASUK/DAFTAR (AKUN LAYAR SDK = EMAIL)
+# Build APK-LSF 0.4.5 — LOG BERSIH + DASBOR FOKUS
 #
 # Dasar: releases/APK-LSF-0.3.2.apk (sudah memuat manifest provider +
 # endpoint 127.0.0.1:8080 + dex game asli + mirror www/ 31 file).
@@ -14,6 +14,24 @@
 #   4) tambah assets/server/login/** — DEFAULT LOGIN LOKAL (servers.json)
 #   5) assets/QHinfo → http://127.0.0.1:8610 (0.4.2: layar SDK asli → server SDK lokal)
 #   6) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#
+# Baru 0.4.5 (laporan owner "jujur terus terang log anda bagi saya cuma sampah
+# apalagi UI website banyak informasi yg tidak bermanfaat.. perlu susun rencana"):
+#   a) LOG DUA TINGKAT (HumanLog): PENTING selalu tampil (boot dipadatkan ±5 baris,
+#      mode, tamu/daftar/masuk/loginchecknative, daftar server, ⚠/500);
+#      TEKNIS (request per-file 200/404/seed, probe DNS, denyut pantauan, geser
+#      tombol) hanya saat mode RINCI — toggle dasbor, tersimpan server.json
+#      "logTech". FILE logs/human.log TETAP LENGKAP (bukti tidak pernah hilang).
+#   b) PENGHITUNG DASBOR (StatusStore): mirrorSeeded/mirrorSeedBytes/notFound —
+#      aktivitas mirror terlihat TANPA membanjiri log (dulu 100+ baris GET JSON).
+#   c) API DASBOR BARU: /api/logtech (on=0|1) + /api/logs/file?tail= (ekor
+#      human.log penuh untuk "Copy penuh" — penting+teknis dari disk).
+#   d) DASBOR DIROMBAK (dashboard.html): Log jadi pusat (filter Semua/⚠ saja +
+#      toggle RINCI + Copy + Copy penuh + Bersihkan), strip status satu baris,
+#      tab Data (dragonball.db + server asli) & Teknis (root/port/penghitung,
+#      6 request terakhir, daftar www/ dilipat). Kartu besar berulang DIHAPUS.
+#   e) harness LULUS penuh (+9 tes: dua tingkat log, file tetap lengkap,
+#      tailText, logTech persisten).
 #
 # Baru 0.4.4 (laporan owner "login register gak work .. ini jelas PR"):
 #   a) BEDAH DEX: tombol MASUK/DAFTAR layar SDK ASLI memakai EMAIL sebagai
@@ -67,7 +85,7 @@ SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.4.4.apk"
+OUT="$REPO/releases/APK-LSF-0.4.5.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"

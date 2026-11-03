@@ -11,13 +11,22 @@ import java.util.TreeMap;
 
 import com.db.local.server.Config;
 import com.db.local.server.Db;
+import com.db.local.server.HumanLog;
 import com.db.local.server.LoginData;
 import com.db.local.server.LoginServer;
 import com.db.local.server.SdkData;
 import com.db.local.server.SettingBin;
 
 /**
- * HARNESS 0.4.4 — DRAGONBALL.DB (SQLite) + regresi penuh 0.4.2/0.4.3 + AKUN EMAIL.
+ * HARNESS 0.4.5 — LOG BERSIH (dua tingkat) + regresi penuh 0.4.2/0.4.3/0.4.4.
+ *
+ * Baru 0.4.5 (koreksi owner "jujur terus terang log anda bagi saya cuma sampah
+ * apalagi UI website banyak informasi yg tidak bermanfaat"): log DUA TINGKAT —
+ * PENTING selalu tampil (boot dipadatkan 5 baris, mode, tamu/daftar/masuk,
+ * server list, ⚠), TEKNIS (request per-file 200/404/seed, probe DNS, dsb.) hanya
+ * saat mode RINCI (toggle dasbor → server.json "logTech"); file human.log TETAP
+ * lengkap (bukti tidak hilang) + API /api/logs/file (Copy penuh); dasbor dirombak
+ * — Log pusat + tab Data/Teknis.
  *
  * Baru 0.4.4 (bedah dex: MASUK/DAFTAR layar SDK ASLI memakai EMAIL sebagai
  * nama akun — regex \w+@\w+.\w+, sandi minimal 6): daftar/masuk email diterima
@@ -281,6 +290,39 @@ public class HarnessSdk {
         String cleaned = cr.getClass().getField("names").get(cr).toString();
         check("Cleaner: servers.json TIDAK dihapus (boleh disunting pemilik)", !cleaned.contains("servers.json"));
         check("Cleaner: dragonball.db tetap dilindungi", !cleaned.contains("dragonball.db"));
+
+        // 13) LOG BERSIH 0.4.5 — dua tingkat (penting selalu / teknis hanya RINCI);
+        //     file human.log TETAP lengkap — mode bersih tidak menghilangkan bukti
+        HumanLog.init(new File(root, "logs"));
+        HumanLog.clearMem();
+        HumanLog.setTechEnabled(false);
+        HumanLog.ev('✔', "HRNESS penting selalu tampil", null);
+        HumanLog.evTech('◀', "HRNESS teknis tersembunyi di mode bersih", null);
+        String snap = HumanLog.snapshotJson(0);
+        check("log BERSIH: event PENTING tampil di dasbor", snap.contains("penting selalu tampil"));
+        check("log BERSIH: event TEKNIS tidak memenuhi dasbor", !snap.contains("teknis tersembunyi"));
+        HumanLog.setTechEnabled(true);
+        HumanLog.evTech('◀', "HRNESS teknis tampil saat rinci", null);
+        String snap2 = HumanLog.snapshotJson(0);
+        check("log RINCI: event TEKNIS ikut tampil", snap2.contains("teknis tampil saat rinci"));
+        check("log RINCI: baris teknis diberi penanda v:1", snap2.contains("\"v\":1"));
+        // file tetap lengkap (penting + teknis tertulis semuanya)
+        File hf = new File(new File(root, "logs"), "human.log");
+        String fileTxt = readAll(new java.io.FileInputStream(hf));
+        check("FILE human.log tetap berisi baris teknis (bukti tidak hilang)",
+                fileTxt.contains("teknis tersembunyi"));
+        String tail = HumanLog.tailText(100);
+        check("Copy penuh (tailText) memuat penting+teknis",
+                tail.contains("penting selalu tampil") && tail.contains("teknis tersembunyi"));
+        HumanLog.setTechEnabled(false);
+
+        // 14) config logTech — pilihan toggle dasbor tahan reboot (server.json)
+        Config.setLogTech(true);
+        Config.load(new File(root, "config"));
+        check("config: logTech=true tersimpan di server.json", Config.logTech());
+        Config.setLogTech(false);
+        Config.load(new File(root, "config"));
+        check("config: logTech=false batal tersimpan", !Config.logTech());
 
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");

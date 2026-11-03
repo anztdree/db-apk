@@ -131,7 +131,6 @@ public final class Starter {
         } catch (Throwable ignored) {
         }
         HumanLog.init(logs);
-
         // ---------- 1a) hook kejadian loop accept (0.4.1) ----------
         // Error tak terduga di loop penerima koneksi NanoHTTPD kini TERCATAT —
         // dulu thread accept bisa mati diam-diam sehingga port “hidup mati”:
@@ -183,14 +182,20 @@ public final class Starter {
         // incremental) dibawa di assets/server/www/ dan terekstrak sendiri ke
         // www/ sebelum server menyala — TIDAK ADA langkah manual. Penanda versi
         // disimpan di config/www.stamp — www/ tetap murni cermin server.
+        // 0.4.5: "sudah terpasang" = TEKNIS (tiap boot, bukan berita); ringkasannya
+        // masuk baris "Server siap". Ekstraksi pertama tetap ✔ PENTING (sekali saja).
+        int wwwFilesN = 0;
+        long wwwBytesN = 0;
         try {
             Payload.Result pr = Payload.extract(appCtx, www);
+            wwwFilesN = pr.files;
+            wwwBytesN = pr.bytes;
             if (pr.extracted) {
                 HumanLog.ev('✔', "Mirror server asli diekstrak OTOMATIS dari APK → www/ ("
                                 + pr.files + " file · " + HumanLog.fmtBytes(pr.bytes)
                                 + ") — tanpa langkah manual", pr.note);
             } else {
-                HumanLog.ev('ℹ', "Mirror www/ sudah terpasang (" + pr.files
+                HumanLog.evTech('ℹ', "Mirror www/ sudah terpasang (" + pr.files
                         + " file) — tidak ada yang perlu diulang", pr.note);
             }
             StatusStore.markWww(pr.files, pr.bytes);
@@ -198,31 +203,40 @@ public final class Starter {
             HumanLog.ev('⚠', "Ekstraksi mirror www/ gagal — mode LOCAL melayani apa yang ada; game tetap boot (fallback 404)",
                     String.valueOf(t));
         }
-        HumanLog.ev('✔', "Folder server siap: " + root.getAbsolutePath()
-                        + " (" + (ext ? "penyimpanan eksternal" : "penyimpanan internal — folder eksternal tidak tersedia") + ")",
-                null);
 
         // ---------- 2b) default LOGIN LOKAL: config/servers.json (PR3 0.4.0) ----------
         // Dibawa APK (assets/server/login/servers.json = snapshot ASLI daftar server
         // login.popoh5.com, hasil probe §2.10) — diekstrak SEKALI; file yang sudah
         // ada TIDAK ditimpa (boleh diubah pemilik tanpa rebuild).
+        // 0.4.5: rinciannya TEKNIS — ringkasan guest+server masuk baris "Server siap".
+        String guestNote = "?";
+        int serverCountN = 0;
         try {
             File confDir = new File(root, "config");
             String note = Payload.extractLoginDefaults(appCtx, confDir);
             if (note != null) {
-                HumanLog.ev('✔', "Default login lokal siap — " + note, null);
+                HumanLog.evTech('✔', "Default login lokal siap — " + note, null);
             }
             LoginData.init(confDir);
             SdkData.init(confDir);
-            HumanLog.ev('ℹ', "Login lokal: guest " + LoginData.localUserId()
-                    + " · daftar server " + LoginData.serverCount() + " server", null);
+            guestNote = LoginData.localUserId();
+            serverCountN = LoginData.serverCount();
         } catch (Throwable t) {
             HumanLog.ev('⚠', "Persiapan data login lokal gagal — server login tetap dicoba hidup",
                     String.valueOf(t));
         }
+        // SATU baris boot inti (0.4.5 — dulu 3 baris terpisah: Folder siap + Mirror
+        // terpasang + Login lokal; owner: log jangan membanjiri):
+        HumanLog.ev('✔', "Server siap — mirror www/ " + wwwFilesN + " file ("
+                        + HumanLog.fmtBytes(wwwBytesN) + ") · guest " + guestNote
+                        + " · " + serverCountN + " server",
+                root.getAbsolutePath() + " ("
+                        + (ext ? "penyimpanan eksternal" : "penyimpanan internal") + ")");
 
         // ---------- 3) config server.json ----------
         Config.load(root);
+        // 0.4.5: mode log RINCI dari boot sebelumnya (tersimpan di server.json)
+        HumanLog.setTechEnabled(Config.logTech());
         StatusStore.configure(Config.debugPort(), Config.gamePort(), Config.mode(),
                 root.getAbsolutePath(), c.getPackageName());
         StatusStore.setLoginPort(Config.loginPort());
@@ -238,6 +252,8 @@ public final class Starter {
                         : " — permintaan game diteruskan ke server asli"), null);
 
         // ---------- 4) dasbor debug (port 4000) ----------
+        // 0.4.5: baris "hidup" per-port DIHAPUS dari log penting — digabung SATU
+        // baris "Server lokal hidup" setelah semua port nyala (kegagalan tetap ⚠).
         boolean dashOk = false;
         try {
             LocalServer ls = new LocalServer(c, "127.0.0.1", Config.debugPort());
@@ -246,8 +262,6 @@ public final class Starter {
             dashboard = ls;
             dashOk = true;
             StatusStore.markStarted(System.currentTimeMillis(), true);
-            HumanLog.ev('✔', "Dasbor debug hidup di port " + Config.debugPort()
-                    + " (hanya developer) — buka http://127.0.0.1:" + Config.debugPort() + " di browser HP", null);
         } catch (Throwable t) {
             StatusStore.markStarted(System.currentTimeMillis(), false);
             HumanLog.ev('⚠', "Dasbor debug GAGAL hidup di port " + Config.debugPort()
@@ -255,13 +269,13 @@ public final class Starter {
         }
 
         // ---------- 5) port GAME (dipakai client) ----------
+        boolean gameOk = false;
         try {
             GameServer gs = new GameServer(c, "127.0.0.1", Config.gamePort(), www);
             gs.start(2000, true);
             gameServer = gs;
             StatusStore.markGame(true);
-            HumanLog.ev('✔', "Port game hidup di " + Config.gamePort() + " (mode " + Config.mode().toUpperCase()
-                    + ") — endpoint client menunjuk ke sini", null);
+            gameOk = true;
         } catch (Throwable t) {
             StatusStore.markGame(false);
             HumanLog.ev('⚠', "Port game GAGAL hidup di " + Config.gamePort()
@@ -273,15 +287,13 @@ public final class Starter {
         // Protokol SAMA dengan login.popoh5.com:610 (engine.io v3 + socket.io v2);
         // dipakai game bila mode LOCAL menulis-ulang endpoint login. Hidup selalu
         // (bersebelahan) — mode ONLINE tidak menunjuk ke sini.
+        boolean loginOk = false;
         try {
             LoginServer ls = new LoginServer("127.0.0.1", Config.loginPort());
             ls.start(2000, true);
             loginServer = ls;
             StatusStore.markLogin(true);
-            HumanLog.ev('✔', "Server login lokal hidup di port " + Config.loginPort()
-                    + " — protokol engine.io v3 + socket.io v2 (action: loginGame, GetServerList, "
-                    + "LoginAnnounce, Save*) + TAHAP SDK (API quickgame /v1/* + loginchecknative — "
-                    + "layar login SDK asli dilayani lokal, 0.4.2)", null);
+            loginOk = true;
         } catch (Throwable t) {
             StatusStore.markLogin(false);
             HumanLog.ev('⚠', "Server login lokal GAGAL hidup di port " + Config.loginPort()
@@ -289,6 +301,13 @@ public final class Starter {
                     String.valueOf(t));
         }
         StatusStore.persist();
+        // SATU baris untuk ketiga port (0.4.5) — dulu 3 baris ✔ terpisah:
+        if (dashOk && gameOk && loginOk) {
+            HumanLog.ev('✔', "Server lokal hidup — game " + Config.gamePort() + " (" + Config.mode().toUpperCase()
+                            + ") · login " + Config.loginPort() + " · dasbor " + Config.debugPort()
+                            + " — buka http://127.0.0.1:" + Config.debugPort() + " di browser HP",
+                    null);
+        }
         if (!dashOk && gameServer == null) {
             return; // tidak ada yang bisa dilanjutkan
         }

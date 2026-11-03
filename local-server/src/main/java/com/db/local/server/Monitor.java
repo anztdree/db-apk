@@ -7,9 +7,9 @@ import java.net.UnknownHostException;
 
 /**
  * Pantauan kesehatan SERVER ASLI (remote) dari sisi perangkat.
- * Log tenang: hanya mencatat saat KONDISI BERUBAH (hidup↔mati) dan satu baris
- * ringkasan setiap 10 menit — pantauan rutin tidak membanjiri log.
- * Status terbaru selalu tersedia di dasbor (StatusStore) tanpa perlu log.
+ * 0.4.5 (log bersih): hasil probe ✔ dan denyut rutin = event TEKNIS (evTech)
+ * — status terbaru SELALU terlihat di dasbor tab "Data" tanpa membanjiri log;
+ * kegagalan (⚠) tetap PENTING karena butuh tindakan.
  */
 public final class Monitor {
     private final String[] targets;
@@ -90,10 +90,10 @@ public final class Monitor {
                 if (!nowOk) {
                     allOk = false;
                 }
-                // log hanya saat KONDISI BERUBAH (atau run pertama)
+                // log hanya saat KONDISI BERUBAH (atau run pertama); 0.4.5: ✔ = TEKNIS
                 if (lastOk[i] == null || lastOk[i].booleanValue() != nowOk) {
                     if (nowOk) {
-                        HumanLog.ev('✔', "Server asli " + tgt + " bisa dihubungi · " + HumanLog.fmtMs(ms),
+                        HumanLog.evTech('✔', "Server asli " + tgt + " bisa dihubungi · " + HumanLog.fmtMs(ms),
                                 dnsNote);
                     } else {
                         HumanLog.ev('⚠', "Server asli " + tgt + " TIDAK bisa dihubungi — " + note
@@ -107,7 +107,7 @@ public final class Monitor {
             long now = System.currentTimeMillis();
             if (now - lastBeatAt >= 10L * 60L * 1000L) {
                 lastBeatAt = now;
-                HumanLog.info("Pantauan rutin berjalan — " + summary() + " (rincian selalu ada di dasbor)");
+                HumanLog.evTech('ℹ', "Pantauan rutin berjalan — " + summary() + " (rincian selalu ada di dasbor)", null);
             }
             StatusStore.persist();
         }

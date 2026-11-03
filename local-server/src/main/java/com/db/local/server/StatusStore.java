@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class StatusStore {
     private static final Object LOCK = new Object();
-    private static final String VERSION = "0.4.2";
+    private static final String VERSION = "0.4.5";
 
     private static String bind = "127.0.0.1";
     private static int port = 4000;
@@ -40,6 +40,11 @@ public final class StatusStore {
     private static long tick = 0;
     private static File statusFile = null;
     private static volatile long wwwBytes = 0;
+
+    /** Penghitung aktivitas mirror (0.4.5 — pengganti banjir baris log request). */
+    private static final AtomicLong mirrorSeeded = new AtomicLong();
+    private static final AtomicLong mirrorSeedBytes = new AtomicLong();
+    private static final AtomicLong notFoundCount = new AtomicLong();
 
     /** Lima permintaan game terakhir — bukti "local running" di dasbor (tertua di depan). */
     private static final ArrayDeque<String[]> lastPaths = new ArrayDeque<String[]>();
@@ -118,6 +123,17 @@ public final class StatusStore {
         errCount.incrementAndGet();
     }
 
+    /** File baru berhasil diambil dari server asli & disimpan ke www/ (mirror melengkapi diri). */
+    static void addSeed(long bytes) {
+        mirrorSeeded.incrementAndGet();
+        mirrorSeedBytes.addAndGet(Math.max(0, bytes));
+    }
+
+    /** Permintaan dijawab 404 — normal bagi resource opsional, dihitung bukan dilog. */
+    static void count404() {
+        notFoundCount.incrementAndGet();
+    }
+
     /** true setiap 25 permintaan — sinyal untuk menulis status.json ke disk. */
     static boolean requestTick() {
         synchronized (LOCK) {
@@ -168,6 +184,10 @@ public final class StatusStore {
                     .append(Json.num("sdkDevices", SdkData.guestDeviceCount())).append(',')
                     .append(Json.num("wwwFiles", wwwFiles)).append(',')
                     .append(Json.num("wwwBytes", wwwBytes)).append(',')
+                    .append(Json.num("mirrorSeeded", mirrorSeeded.get())).append(',')
+                    .append(Json.num("mirrorSeedBytes", mirrorSeedBytes.get())).append(',')
+                    .append(Json.num("notFound", notFoundCount.get())).append(',')
+                    .append(Json.bool("logTech", Config.logTech())).append(',')
                     .append(Json.str("package", packageName)).append(',')
                     .append(Json.str("version", VERSION)).append(',')
                     .append(Json.num("uptimeMs", up)).append(',')

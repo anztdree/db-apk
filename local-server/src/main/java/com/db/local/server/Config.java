@@ -23,7 +23,9 @@ import java.io.Writer;
  *   "bind": "127.0.0.1",
  *   "monitorSec": 60,
  *   "toggleX": -1,        // posisi terakhir tombol melayang (drag); -1 = posisi bawaan
- *   "toggleY": -1
+ *   "toggleY": -1,
+ *   "logTech": false      // 0.4.5: false = log BERSIH (penting saja);
+ *                         // true = RINCI (baris request per-file ikut tampil)
  * }
  *
  * Sumber kebenaran mode: file ini. Tombol melayang mengubah mode → file ditulis
@@ -40,6 +42,7 @@ public final class Config {
     private static volatile int monitorSec = 60;
     private static volatile int toggleX = -1;
     private static volatile int toggleY = -1;
+    private static volatile boolean logTech = false;
 
     public static final String DEFAULT_JSON =
             "{\n"
@@ -51,7 +54,8 @@ public final class Config {
                     + "  \"bind\": \"127.0.0.1\",\n"
                     + "  \"monitorSec\": 60,\n"
                     + "  \"toggleX\": -1,\n"
-                    + "  \"toggleY\": -1\n"
+                    + "  \"toggleY\": -1,\n"
+                    + "  \"logTech\": false\n"
                     + "}\n";
 
     private Config() {
@@ -101,6 +105,10 @@ public final class Config {
                         toggleX = tx;
                         toggleY = ty;
                     }
+                    String lt = grepStr(raw, "\"logTech\"");
+                    if (lt != null) {
+                        logTech = "true".equalsIgnoreCase(lt.trim());
+                    }
                 }
             } catch (Throwable t) {
                 HumanLog.ev('⚠', "server.json gagal dibaca — memakai nilai bawaan (mode ONLINE, port game 8080, dasbor 4000)",
@@ -142,6 +150,29 @@ public final class Config {
 
     public static int toggleY() {
         return toggleY;
+    }
+
+    /** true = mode log RINCI (baris teknis ikut tampil di dasbor); bawaan false = BERSIH. */
+    public static boolean logTech() {
+        return logTech;
+    }
+
+    /** Ubah mode log RINCI dan tulis ke server.json (dipanggil dasbor /api/logtech). */
+    public static void setLogTech(boolean on) {
+        synchronized (LOCK) {
+            logTech = on;
+            try {
+                if (file != null) {
+                    writeText(file, json());
+                }
+            } catch (Throwable t) {
+                try {
+                    HumanLog.ev('⚠', "Gagal menulis logTech ke server.json — pilihan tetap dipakai sampai proses mati",
+                            String.valueOf(t));
+                } catch (Throwable ignored) {
+                }
+            }
+        }
     }
 
     /** Simpan posisi terakhir tombol melayang hasil digeser — tahan lama konfigurasi. */
@@ -195,7 +226,8 @@ public final class Config {
                 + "  \"bind\": \"127.0.0.1\",\n"
                 + "  \"monitorSec\": " + monitorSec + ",\n"
                 + "  \"toggleX\": " + toggleX + ",\n"
-                + "  \"toggleY\": " + toggleY + "\n"
+                + "  \"toggleY\": " + toggleY + ",\n"
+                + "  \"logTech\": " + logTech + "\n"
                 + "}\n";
     }
 

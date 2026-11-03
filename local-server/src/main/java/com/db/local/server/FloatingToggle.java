@@ -170,7 +170,7 @@ public final class FloatingToggle {
             // me-pause/resume activity beberapa kali saat boot, dulu lognya berulang).
             if (!shownOnceLogged) {
                 shownOnceLogged = true;
-                HumanLog.ev('✔', "Tombol melayang tampil — GESER = pindah posisi · TEKAN = ganti mode", null);
+                HumanLog.ev('✔', "Tombol melayang tampil — GESER pindah · TEKAN ganti mode", null);
             }
         } catch (Throwable t) {
             logSilent("Tombol melayang gagal tampil", t);
@@ -252,7 +252,8 @@ public final class FloatingToggle {
                         case MotionEvent.ACTION_UP:
                             if (moved) {
                                 Config.setTogglePos(lp.x, lp.y); // posisi tersimpan permanen
-                                HumanLog.ev('ℹ', "Tombol melayang digeser ke (" + lp.x + ", " + lp.y
+                                // 0.4.5: geser tombol = TEKNIS (bukan berita penting)
+                                HumanLog.evTech('ℹ', "Tombol melayang digeser ke (" + lp.x + ", " + lp.y
                                         + ") — posisi tersimpan di server.json", null);
                             } else {
                                 togglePanel(v.getContext()); // gerakan kecil = tekan

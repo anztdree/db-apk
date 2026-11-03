@@ -39,12 +39,14 @@ import fi.iki.elonen.NanoHTTPD;
  * Query anti-cache (?rnd= / ?v=) diteruskan ke server asli apa adanya,
  * dan diabaikan saat mencari file lokal.
  *
- * FORMAT LOG REQUEST (koreksi owner 0.3.1 — "jangan tulis LOCAL, tulis URL
- * aslinya"): setiap baris memuat URL utuh yang diminta client, contoh:
- *   GET http://127.0.0.1:8080/bs/upgrade/all.zip → 200 dari www/ · 18,5 MB · 1 ms
- * Tidak ada lagi label "LOCAL"/"ONLINE" di baris request — mode cukup
- * diceritakan di baris status saat boot. Baris yang sama berulang dalam
- * 10 detik TIDAK dicatat ulang (dedupe) — hanya jumlahnya dilaporkan.
+ * FORMAT LOG REQUEST (0.4.5 — koreksi owner "jujur terus terang log anda bagi
+ * saya cuma sampah"): SEMUA baris request per-file (200/404/seed/passthrough)
+ * adalah event TEKNIS (HumanLog.evTech) — tidak tampil di log BERSIH bawaan;
+ * aktivitasnya tetap terukur di penghitung dasbor (mirrorSeeded/notFound) dan
+ * TETAP tertulis penuh di logs/human.log. Hanya kejadian nyata yang tetap
+ * PENTING: mirror tidak berisi setting bin, 404 path tak terpetakan, 502
+ * server asli tak terjangkau, file gagal dibaca, 500. Baris yang sama
+ * berulang dalam 10 detik tetap di-dedupe (mode RINCI).
  *
  * Halaman root port ini (http://127.0.0.1:&lt;gamePort&gt;/ di browser) = STATUS
  * MINI tanpa tombol apa pun (koreksi owner 0.3.2 — "website pindah mode itu
@@ -174,7 +176,9 @@ public final class GameServer extends NanoHTTPD {
                 return seeded;
             }
             // 404 = perilaku NORMAL (server asli pun tidak memilikinya — client lanjut boot)
-            ReqLog.ev('ℹ', "404 " + uri,
+            // 0.4.5: TEKNIS + dihitung (bukan dilog satu per satu — dulu membanjiri log)
+            StatusStore.count404();
+            ReqLog.evTech('ℹ', "404 " + uri,
                     "GET " + gameUrl(uri) + " → 404 · tidak ada di www/ dan server asli juga tidak memberikannya · "
                             + HumanLog.fmtMs(ms) + " — game melanjutkan boot (perilaku normal)",
                     nullSafe(query));
@@ -197,7 +201,8 @@ public final class GameServer extends NanoHTTPD {
                         "GET " + gameUrl(uri) + " → 404 · mirror www/ TIDAK berisi setting bin — cek ekstraksi mirror",
                         nullSafe(query));
             } else {
-                ReqLog.ev('ℹ', "404 " + uri,
+                StatusStore.count404();
+                ReqLog.evTech('ℹ', "404 " + uri,
                         "GET " + gameUrl(uri) + " → 404 · tidak ada di www/ (di server asli juga tidak ada) · "
                                 + HumanLog.fmtMs(System.currentTimeMillis() - t0)
                                 + " — game melanjutkan boot (perilaku normal)",
@@ -213,7 +218,7 @@ public final class GameServer extends NanoHTTPD {
             Response r = newFixedLengthResponse(Response.Status.OK, "application/octet-stream",
                     new ByteArrayInputStream(b), b.length);
             r.addHeader("Cache-Control", "no-store");
-            ReqLog.ev('◀', "200 " + uri,
+            ReqLog.evTech('◀', "200 " + uri,
                     "GET " + gameUrl(uri) + " → 200 dari www/ · " + HumanLog.fmtBytes(b.length)
                             + " · " + HumanLog.fmtMs(ms) + " — endpoint di dalam bin ditulis-ulang ke lokal: game "
                             + "http://127.0.0.1:" + Config.gamePort() + " · login http://127.0.0.1:"
@@ -239,7 +244,8 @@ public final class GameServer extends NanoHTTPD {
             f = resolveLocal(uri);
         }
         if (f == null) {
-            ReqLog.ev('ℹ', "404 " + uri,
+            StatusStore.count404();
+            ReqLog.evTech('ℹ', "404 " + uri,
                     "GET " + gameUrl(uri) + " → 404 · tidak ada di www/ dan server asli juga tidak memberikannya · "
                             + HumanLog.fmtMs(System.currentTimeMillis() - t0) + " — game melanjutkan boot (perilaku normal)",
                     nullSafe(query));
@@ -254,7 +260,7 @@ public final class GameServer extends NanoHTTPD {
             Response r = newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8",
                     new ByteArrayInputStream(out), out.length);
             r.addHeader("Cache-Control", "no-store");
-            ReqLog.ev('◀', "200 " + uri,
+            ReqLog.evTech('◀', "200 " + uri,
                     "GET " + gameUrl(uri) + " → 200 dari www/ · " + HumanLog.fmtBytes(out.length)
                             + " · " + HumanLog.fmtMs(ms) + " — loginserver ditulis-ulang ke http://127.0.0.1:"
                             + Config.loginPort(),
@@ -311,7 +317,8 @@ public final class GameServer extends NanoHTTPD {
             os.close();
             closeQuietly(up.in);
             long ms = System.currentTimeMillis() - t0;
-            ReqLog.ev('◀', "200 " + uri,
+            StatusStore.addSeed(total);
+            ReqLog.evTech('◀', "200 " + uri,
                     "GET " + gameUrl(uri) + " → 200 dari www/ · " + HumanLog.fmtBytes(total)
                             + " · " + HumanLog.fmtMs(ms) + " — file belum ada di mirror: diambil dari "
                             + hostOf(base[0]) + " & disimpan ke www/",
@@ -334,7 +341,7 @@ public final class GameServer extends NanoHTTPD {
             Response r = newFixedLengthResponse(Response.Status.OK, contentType(uri), in, len);
             r.addHeader("Cache-Control", "no-store");
             long ms = System.currentTimeMillis() - t0;
-            ReqLog.ev('◀', "200 " + uri,
+            ReqLog.evTech('◀', "200 " + uri,
                     "GET " + gameUrl(uri) + " → 200 dari www/"
                             + (seeded ? " (baru diambil dari server asli)" : "")
                             + " · " + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms),
@@ -416,7 +423,7 @@ public final class GameServer extends NanoHTTPD {
             return textResp(Response.Status.lookup(502),
                     "Server asli tidak terjangkau untuk " + uri + " — coba mode LOCAL bila www/ sudah terisi.");
         }
-        ReqLog.ev('◀', up.status + " " + uri,
+        ReqLog.evTech('◀', up.status + " " + uri,
                 "GET " + gameUrl(uri) + " → HTTP " + up.status + " dari server asli · diteruskan ke "
                         + usedHost + uri + (up.length >= 0 ? " · " + HumanLog.fmtBytes(up.length) : "")
                         + " · " + HumanLog.fmtMs(ms),
@@ -516,12 +523,23 @@ public final class GameServer extends NanoHTTPD {
      * Dedupe log request kembar (koreksi owner 0.3.1 — log tidak boleh membanjiri):
      * baris dengan kunci sama (status + path) dalam jendela 10 detik TIDAK dicatat
      * ulang; saat jendela lewat, jumlah baris yang ditenyapkan dilaporkan sekali.
+     * 0.4.5: semua request = event TEKNIS (evTech) — tidak tampil di mode BERSIH.
      */
     private static final class ReqLog {
         private static final HashMap<String, long[]> SEEN = new HashMap<String, long[]>();
         private static final long WINDOW_MS = 10000L;
 
+        /** Baris request PENTING (404 tak terpetakan, 502) — selalu tampil. */
         static void ev(char icon, String key, String sentence, String detail) {
+            dedupe(icon, key, sentence, detail, false);
+        }
+
+        /** Baris request TEKNIS (200 per-file, 404 normal, seed) — mode RINCI saja. */
+        static void evTech(char icon, String key, String sentence, String detail) {
+            dedupe(icon, key, sentence, detail, true);
+        }
+
+        private static void dedupe(char icon, String key, String sentence, String detail, boolean tech) {
             long now = System.currentTimeMillis();
             long[] e;
             boolean suppress;
@@ -546,7 +564,11 @@ public final class GameServer extends NanoHTTPD {
             if (n > 0) {
                 sentence = sentence + " · (+" + n + " request kembar dalam 10 dtk tidak dicatat)";
             }
-            HumanLog.ev(icon, sentence, detail);
+            if (tech) {
+                HumanLog.evTech(icon, sentence, detail);
+            } else {
+                HumanLog.ev(icon, sentence, detail);
+            }
         }
     }
 
