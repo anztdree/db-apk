@@ -124,7 +124,7 @@ public final class LogGroups {
         }
         if (mayFloat) {
             try {
-                HumanLog.ev('⚠', g.title + " gagal — " + text
+                HumanLog.ev("⚠️", g.title + " gagal — " + text
                         + " (lanjutannya dihitung di judul grup)", null);
             } catch (Throwable ignored) {
             }

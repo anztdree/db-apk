@@ -90,7 +90,7 @@ public final class FloatingToggle {
             }
         } catch (Throwable t) {
             try {
-                HumanLog.ev('⚠', "Gagal menyiapkan tombol melayang switch mode — game tetap jalan normal",
+                HumanLog.ev("⚠️", "Gagal menyiapkan tombol melayang switch mode — game tetap jalan normal",
                         String.valueOf(t));
             } catch (Throwable ignored) {
             }
@@ -104,7 +104,7 @@ public final class FloatingToggle {
             if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(ctx)) {
                 // dicatat sekali per proses (saat tombol belum pernah tampil)
                 if (!added) {
-                    HumanLog.ev('⚠', "Tombol melayang switch mode TIDAK tampil — izin 'Tampil di atas aplikasi "
+                    HumanLog.ev("⚠️", "Tombol melayang switch mode TIDAK tampil — izin 'Tampil di atas aplikasi "
                             + "lain' belum aktif. Aktifkan sekali di: Setelan → Aplikasi → DB Local → "
                             + "'Tampil di atas aplikasi lain'", null);
                 }
@@ -172,7 +172,7 @@ public final class FloatingToggle {
                 shownOnceLogged = true;
                 // 0.4.7: tombol tampil = TEKNIS (bukan hasil/berita; tiap boot sama).
                 // Yang tetap PENTING: gagal tampil (⚠) & pergantian mode (ℹ).
-                HumanLog.evTech('✔', "Tombol melayang tampil — GESER pindah · TEKAN ganti mode", null);
+                HumanLog.evTech("ℹ️", "Tombol melayang tampil — GESER pindah · TEKAN ganti mode", null);
             }
         } catch (Throwable t) {
             logSilent("Tombol melayang gagal tampil", t);
@@ -255,7 +255,7 @@ public final class FloatingToggle {
                             if (moved) {
                                 Config.setTogglePos(lp.x, lp.y); // posisi tersimpan permanen
                                 // 0.4.5: geser tombol = TEKNIS (bukan berita penting)
-                                HumanLog.evTech('ℹ', "Tombol melayang digeser ke (" + lp.x + ", " + lp.y
+                                HumanLog.evTech("ℹ️", "Tombol melayang digeser ke (" + lp.x + ", " + lp.y
                                         + ") — posisi tersimpan di server.json", null);
                             } else {
                                 togglePanel(v.getContext()); // gerakan kecil = tekan
@@ -380,8 +380,11 @@ public final class FloatingToggle {
                 } catch (Throwable ignored) {
                 }
                 added = false;
-                HumanLog.ev('ℹ', "SWITCH MODE dari tombol melayang: " + now.toUpperCase() + " → "
-                        + target.toUpperCase() + " (tersimpan di server.json) — aplikasi direstart", null);
+                HumanLog.ev("ℹ️", "SWITCH MODE dari tombol melayang: " + now.toUpperCase() + " → "
+                        + target.toUpperCase() + " — aplikasi direstart",
+                        "Mode     : " + now.toUpperCase() + " → " + target.toUpperCase()
+                                + " (tersimpan di server.json)\n"
+                                + "Efek     : config endpoint ditulis-ulang sesuai mode + restart otomatis aplikasi");
                 RestartHelper.restart(panel.getContext());
             }
         });
@@ -447,7 +450,7 @@ public final class FloatingToggle {
 
     private static void logSilent(String msg, Throwable t) {
         try {
-            HumanLog.ev('⚠', msg + " — mode tetap bisa dipahami dari log/dasbor", String.valueOf(t));
+            HumanLog.ev("⚠️", msg + " — mode tetap bisa dipahami dari log/dasbor", String.valueOf(t));
         } catch (Throwable ignored) {
         }
     }

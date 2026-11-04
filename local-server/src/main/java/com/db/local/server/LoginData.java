@@ -156,7 +156,7 @@ public final class LoginData {
             String sdkUid = SdkData.lastKnownUid();
             if (sdkUid != null && sdkUid.length() > 0 && !sdkUid.equals(userId)) {
                 try {
-                    HumanLog.ev('ℹ', "loginGame minta \"" + userId + "\" — dijawab dengan identitas"
+                    HumanLog.ev("ℹ️", "loginGame minta \"" + userId + "\" — dijawab dengan identitas"
                             + " pilihan layar SDK: " + sdkUid, null);
                 } catch (Throwable ignored) {
                 }
@@ -180,7 +180,7 @@ public final class LoginData {
                 }
             } catch (Throwable t) {
                 try {
-                    HumanLog.ev('⚠', "Penyimpanan akun login lokal gagal — login tetap dilayani tanpa catatan akun",
+                    HumanLog.ev("⚠️", "Penyimpanan akun login lokal gagal — login tetap dilayani tanpa catatan akun",
                             String.valueOf(t));
                 } catch (Throwable ignored) {
                 }
@@ -233,7 +233,7 @@ public final class LoginData {
                         + "\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\","
                         + "\"urlInner\":\"http://127.0.0.1:8071\",\"chatInner\":\"\"}],\"history\":[]}";
                 try {
-                    HumanLog.ev('⚠', "config/servers.json tidak ada atau salah format — memakai daftar darurat 1 server",
+                    HumanLog.ev("⚠️", "config/servers.json tidak ada atau salah format — memakai daftar darurat 1 server",
                             null);
                 } catch (Throwable ignored) {
                 }

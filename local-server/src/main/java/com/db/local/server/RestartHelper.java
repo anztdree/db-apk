@@ -31,12 +31,12 @@ public final class RestartHelper {
                     am.set(AlarmManager.RTC, System.currentTimeMillis() + 900L, pi);
                 }
             } else {
-                HumanLog.ev('⚠', "Intent peluncur tidak ditemukan — restart otomatis mungkin tidak jalan; "
+                HumanLog.ev("⚠️", "Intent peluncur tidak ditemukan — restart otomatis mungkin tidak jalan; "
                         + "buka aplikasi manual untuk menerapkan mode baru", null);
             }
         } catch (Throwable t) {
             try {
-                HumanLog.ev('⚠', "Penjadwalan restart gagal — buka aplikasi manual untuk menerapkan mode baru",
+                HumanLog.ev("⚠️", "Penjadwalan restart gagal — buka aplikasi manual untuk menerapkan mode baru",
                         String.valueOf(t));
             } catch (Throwable ignored) {
             }

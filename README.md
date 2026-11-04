@@ -495,6 +495,71 @@ Perubahan kecil 0.4.7: dedupe `loginchecknative OK` 10 dtk → **10 menit** per 
 
 Ringkasan grup di Copy kini berbentuk `09:41:20 Σ Mirror CDN — 105 file · 2,4 MB · 0 gagal (3,9 dtk) — rincian di dasbor` (berjam + penanda Σ — tidak lagi menggantung tanpa identitas).
 
+### 2.17 LOG EMOJI + BLOK RINCIAN (0.4.9; umpan balik owner: *"emoji sudah bagus, hanya saja masih kurang rinci"* + *"ingat gak boleh disingkat"* — setelah menyetujui contoh output baris-per-baris)
+
+**Aturan ikon 0.4.9** — emoji per kategori (menggantikan simbol tipis ✔/⚠/ℹ yang samar; `HumanLog` ikon `char` → `String` karena emoji = 2 char UTF-16):
+
+| Emoji | Arti | Emoji | Arti |
+|---|---|---|---|
+| 🚀 | server boot / siap | ✅ | aksi sukses |
+| 👤 | pemain (tamu / akun) | ⚠️ | masalah (tetap jalan) |
+| 🔑 | pengesahan sesi (loginchecknative) | ❌ | gagal (terhenti) |
+| 📡 | koneksi (socket / handshake) | 📋 | daftar server |
+| 💾 | data / dragonball.db | 🧹 | pembersihan / mirror |
+| ℹ️ | info lain | | |
+
+**Blok rincian `├─/└─`** — setiap baris penting membawa rincian PENUH (aturan owner: **TIDAK boleh disingkat**): fakta nyata yang dimiliki server (ms, byte, uid, sid, sumber data, sebab, akibat/lanjutan). Rincian tampil sama di tiga tempat: dasbor (baris kecil di bawah teks, pohon penuh), `human.log` (`HumanLog.tree`), dan hasil **Copy**. Contoh alur sesi 09:39–09:41 versi 0.4.9:
+
+```
+09:39:54 🚀 Server lokal siap — mode LOCAL
+         ├─ Port    : game :8080 · login :8610 · dasbor :4000
+         ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610
+         │            (config ditulis-ulang otomatis) · daftar server: snapshot asli
+         │            bawaan APK · gameplay: SERVER GAME ASLI (progres tersimpan di sana)
+         ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
+         └─ Pemain  : guest99599159 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
+
+09:40:12 👤 Layar SDK — masuk sebagai tamu guest99599159
+         ├─ Perangkat  : 8655A9EB39…
+         ├─ Cara masuk : registerVisitor — perangkat ini sudah terikat ke tamu itu
+         │               (identitas lama dipakai lagi)
+         └─ Identitas  : tamu guest99599159 — tersimpan dragonball.db (tahan reboot)
+
+09:40:29 🔑 Sesi tamu guest99599159 disahkan — game lanjut boot
+         ├─ Uid      : guest99599159 · mode tamu
+         ├─ Hasil    : code 0 (skema respons asli login.popoh5.com:510) — shell
+         │             melanjutkan boot ke H5
+         └─ Sesi     : disimpan ke dragonball.db (sdk_sessions) — url game memakai
+                       userid ini
+
+09:40:33 📡 Klien game tersambung ke server login lokal
+         ├─ Sesi     : UHeZbC… (engine.io v3 · polling, tanpa websocket)
+         ├─ Tujuan   : 127.0.0.1:8610 (loginServer hasil rewrite setting bin)
+         └─ Lanjutan : menunggu loginGame + GetServerList dari klien H5
+
+09:40:34 ✅ Login game sukses — akun lama
+         ├─ Akun     : guest99599159
+         ├─ Proses   : 2 ms · jawaban 340 B (ret 0, skema asli login.popoh5.com:610)
+         └─ Sumber   : dragonball.db (accounts) — identitas mengikuti pilihan layar SDK
+
+09:40:36 📋 Daftar server terkirim — 2109 server
+         ├─ Sumber   : snapshot bawaan APK (config/servers.json) — disajikan server
+         │             lokal, bukan diambil dari server asli
+         ├─ Ukuran   : 180,4 KB · 0 ms · pemain sekarang di layar pilih server
+         └─ Lanjutan : pemain pilih server → gameplay LANGSUNG ke server game asli
+                       pilihan pemain (koneksi gameplay tidak lewat server lokal —
+                       wajar log tidak menambah baris di tahap ini)
+```
+
+**Perubahan mekanis 0.4.9:**
+
+1. 📡 handshake socket **naik dari TEKNIS ke penting** (alur harus terlihat "sampai serverlist") — dedupe 10 menit supaya reconnect tidak membanjiri.
+2. 👤 layar SDK = **SATU baris** meskipun `registerVisitor` dan `autoLogin` sama-sama terpanggil saat boot — `SdkData.noteSdkLogin` (dedupe 10 mnt per uid, ganti uid selalu dilog). Duplikat log daftar akun (`SdkData` + `SdkApi` berdempet 0 dtk) dihapus — cukup baris `SdkApi`.
+3. Baris ℹ "TUNTAS" 0.4.8 **dilebur ke rincian `Lanjutan`** milik 📋 — satu kejadian satu baris tetap terjaga, isi penjelasan tidak dipangkas.
+4. Gagal tetap satu baris + rincian: `⚠️ Login akun "tes@mail.con" DITOLAK…` + `Sebab/Bukti/Lanjutan`.
+5. Dasbor: teks log 12→13px, waktu 10→11px, rincian 10→11.5px dengan kontras lebih tinggi (dulu abu-abu tipis), kolom ikon dilebari untuk emoji, tanpa pemenggalan (`overflow-wrap:anywhere`), legenda footer emoji. Copy memuat blok `├─/└─` penuh.
+6. Boot: tiga baris 0.4.7–0.4.8 (siap/Mode/Pemain) dilebur jadi SATU baris 🚀 ber-rincian — isi peta arah koneksi tetap lengkap di rincian `Mode`.
+
 ---
 
 ## 3. Konsep Solusi (v2.2): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded
@@ -798,6 +863,7 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
+| **0.4.9** | **(v4.9) + LOG EMOJI + BLOK RINCIAN PENUH** (umpan balik owner *"emoji sudah bagus, hanya saja masih kurang rinci"* + *"ingat gak boleh disingkat"* — setelah menyetujui contoh output, §2.17): **ikon emoji per kategori** menggantikan simbol tipis ✔/⚠/ℹ (🚀 siap · 👤 pemain · 🔑 sesi · 📡 koneksi · ✅ sukses · ⚠️ masalah · ❌ terhenti · 📋 daftar server · 💾 data · 🧹 mirror · ℹ️ info; `HumanLog` ikon `char` → `String`); **blok rincian ├─/└─ di SEMUA baris penting** (fakta nyata: ms, byte, uid, sid, sumber data, sebab, akibat/lanjutan) — tampil penuh & identik di dasbor, human.log, dan Copy (**TIDAK dipangkas**); alur sesi 09:39–09:41 kini: 🚀 Server lokal siap (rincian Port/Mode/Folder/Pemain) → 👤 Layar SDK (rincian Perangkat/Cara/Identitas) → 🔑 Sesi disahkan (rincian Uid/Hasil/Sesi) → 📡 Klien tersambung (dari TEKNIS naik ke penting, dedupe 10 mnt) → ✅ Login game sukses (rincian Akun/Proses/Sumber) → 📋 Daftar server terkirim (rincian Sumber/Ukuran/Lanjutan — baris ℹ TUNTAS 0.4.8 dilebur ke rincian, isi tidak hilang); 👤 layar SDK = SATU baris walau registerVisitor+autoLogin sama-sama terpanggil (`SdkData.noteSdkLogin` dedupe 10 mnt per uid); duplikat log daftar akun berdempet dihapus; boot 3 baris → SATU baris 🚀 ber-rincian; dasbor: teks diperbesar & kontras dinaikkan, kolom ikon emoji, rincian pohon tanpa pemenggalan; harness **80/80 LULUS** (1 redaksi detail ⚠️ disesuaikan) | **L5a–L5b ✓ (log emoji + rinci)** |
 | **0.4.8** | **(v4.8) + LOG CERITA ALUR — SATU KEJADIAN SATU BARIS + PENJELAS TUNTAS + COPY RAPI** (laporan owner sesi 09:39–09:41 "tidak ada revisi!!!! log masih tidak jelas, padahal sampai loginserver munculkan serverlist.. tapi log cuma Sampah gak jelas", §2.16 — paste-nya = keluaran Copy): **satu kejadian satu baris** — percobaan login yang langsung selesai tidak diumumkan dua kali ("SDK: MASUK — …" + "SDK: MASUK gagal — …" berdempet 0 dtk dihapus), setiap baris membawa hasil+sebab(+akibat); **ikon ▶/◀ dihapus + awalan "SDK:" dibuang** (alur kini cerita: Login ditolak → Lanjut masuk sebagai tamu → Sesi disahkan → Daftar server terkirim → TUNTAS); **baris TUNTAS setelah GetServerList** (dedupe 10 mnt) — daftar = bawaan APK DISAJIKAN server lokal + penjelas kenapa log diam setelahnya (gameplay langsung ke server game asli); **format Copy dirapikan** (jam-ikon-teks berjarak, ringkasan grup berawalan Σ + jam, detail sebab TAMPIL kecil di dasbor & ikut disalin); baris toggle RINCI/BERSIH tidak dilog lagi; boot baris Mode dipangkas satu kalimat; harness **80/80 LULUS** | **L5a–L5b ✓ (log = cerita alur)** |
 | **0.4.7** | **(v4.7) + LOG BAHASA MANUSIA: BOOT 3 BARIS + PEMETAAN ARAH KONEKSI** (laporan owner "login server muncul .. saya rasa isi config loginserver anda masih mengarah ke server aslinya.. log ini pun tidak membantu kurang efektif kurang jelas", §2.15): **BOOT 3 BARIS** — `✔ Server lokal siap — game :8080 · login :8610 · dasbor :4000` → `ℹ Mode LOCAL — <peta arah koneksi>` → `ℹ Pemain: … — identitas & sesi tersimpan lokal` (dulu 5-6 baris siap bertumpuk); **peta arah koneksi eksplisit** di baris Mode, di GetServerList ("snapshot asli bawaan APK"), dan di dasbor (modemap + kartu "Ke mana koneksi mengarah") — bukti rewrite login LOKAL tercatat §2.15-a; dedupe **loginchecknative OK 10 dtk → 10 menit** per uid; `dragonball.db siap`/`Tombol melayang tampil`/handshake socket → TEKNIS (tetap terekam human.log); bahasa log diperbaiki ("Pemain", "identitas & sesi tersimpan lokal", "perangkat → tamu"); harness **80/80 LULUS** | **L5a–L5b ✓ (log & peta koneksi)** |
 | **0.4.6** | **(v4.6) + MODEL FINAL LOG — ALUR LINEAR + GRUP BATCH** (kesepakatan owner "group itu kalau terdeteksi emang config/resource yg banyak. kalau alur ya gk usah di group", §2.14): **LogGroups.java** — mirror CDN/request game/404 fallback/passthrough ONLINE TIDAK PERNAH jadi baris log linear; satu baris judul + **statistik hidup** di dasbor (diklik = rincian per-file, cap 600 item/grup), **gagal naik OTOMATIS sebagai ⚠ linear** (jeda 30 dtk), grup kosong tak tampil; **human.log = ringkasan Σ satu baris** per periode diam ±45 dtk ("Mirror CDN: 470 file · 84,2 MB · 0 gagal — rincian di dasbor"); API baru `GET /api/groups`; **DASBOR sesuai model**: panel status atas (PORT GAME/SERVER LOGIN/SESI PEMAIN) + alur linear + grup lipat di bawahnya + bukti teknis dilipat; Copy = alur + Σ per grup; dedupe **loginchecknative OK** ganda (uid sama <10 dtk = 1 baris); `HumanLog.writeRawLine` (Σ → file saja); harness **80/80 LULUS** (+9 tes grup) | **L5a–L5b ✓ (model final log disepakati owner)** |
@@ -817,7 +883,19 @@ tanpa izin storage tambahan (folder own-app).
 | 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.4.8 (LOG CERITA ALUR — SATU KEJADIAN SATU BARIS, v4.8) — 2026-11-04 — BUILD TERKINI:**
+**Build 0.4.9 (LOG EMOJI + BLOK RINCIAN, v4.9) — 2026-11-04 — BUILD TERKINI:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.4.9.apk` (163.958.779 byte; repo = pointer LFS) |
+| sha256 | `624d995dea72586897819d70f6c8c47a3b47fce3eb0bf3c45e4deabc528d0e9b` |
+| Basis | `releases/APK-LSF-0.4.8.apk` (sha256 `3e74d7ac10081667e189d864de2908c3f2aae0718792bb70b4a1f54ac585077b` — diunduh dari Git LFS via API batch & diverifikasi sha256 penuh; sandbox reset menyebabkan unduhan ulang) |
+| Verifikasi build | `classes.dex` game **identik dasar** (CRC `281225eb`, 6.697.104 B — dex game tidak disentuh) · `AndroidManifest.xml` `2486fd1c` · `resources.arsc` `c6b5e22c` · config properties IDENTIK · `classes2.dex` baru (157.616 B) · `dashboard.html` baru (28.222 B) · QHinfo `http://127.0.0.1:8610` · mirror www/ 31 file utuh (base.zip/all.zip terbawa dari dasar) · payload lama bersih · ditandatangani keystore LSF tetap (zipalign + sign) |
+| Perubahan server lokal | `HumanLog.java` (ikon `char`→`String` emoji + `tree()` blok rincian ├─/└─ — file human.log ikut pohon penuh) · `Starter.java` (boot 3 baris → SATU baris 🚀 ber-rincian Port/Mode/Folder/Pemain) · `SdkData.java` (`noteSdkLogin` 👤 dedupe 10 mnt per uid — registerVisitor & autoLogin tak menduakan baris; 🔑 sesi rinci) · `SdkApi.java` (👤/⚠️ MASUK/DAFTAR ber-rincian; duplikat log daftar akun dihapus) · `LoginServer.java` (📡 handshake naik ke penting + dedupe 10 mnt; ✅ loginGame dgn ms+byte; 📋 serverlist ber-rincian Sumber/Ukuran/Lanjutan) · `FloatingToggle/Monitor/GameServer/Config/Cleaner/RestartHelper/Db/LocalServer/LoginData/SettingBin/LogGroups.java` (ikon emoji + rincian) · `StatusStore.java` (**v0.4.9**) · `dashboard.html` (teks 13px + kontras naik, kolom ikon emoji, rincian pohon `├─/└─` penuh tanpa pemenggalan, Copy ikut blok rincian, legenda footer emoji) · `HarnessSdk.java` (ikon String) · `build.sh` 0.4.9 (basis 0.4.8 + pemeriksaan upgrade paket lintas dasar) |
+| Catatan lingkungan | sandbox reset menghapus `/home/z/db-apk` + `tools2` → repo di-clone ulang dari GitHub, APK dasar 0.4.8 ditarik dari Git LFS (API batch, sha256 terverifikasi), ECJ/r8/android.jar(API 33)/sqlite-jdbc(+slf4j) diunduh ulang; `android.jar` API lama tidak memuat simbol API 23-26 (TYPE_APPLICATION_OVERLAY, FLAG_IMMUTABLE) → dipakai API 33 |
+| Harness | **80/80 LULUS** (JVM + sqlite-jdbc 3.45.1 + slf4j 2.0.9; 1 redaksi detail ⚠️ token disesuaikan agar tidak mengganggu penghitung dedupe) |
+
+**Build 0.4.8 (LOG CERITA ALUR — SATU KEJADIAN SATU BARIS, v4.8) — 2026-11-04:**
 
 | Item | Nilai |
 |---|---|

@@ -93,12 +93,14 @@ public final class Monitor {
                 // log hanya saat KONDISI BERUBAH (atau run pertama); 0.4.5: ✔ = TEKNIS
                 if (lastOk[i] == null || lastOk[i].booleanValue() != nowOk) {
                     if (nowOk) {
-                        HumanLog.evTech('✔', "Server asli " + tgt + " bisa dihubungi · " + HumanLog.fmtMs(ms),
+                        HumanLog.evTech("📡", "Server asli " + tgt + " bisa dihubungi · " + HumanLog.fmtMs(ms),
                                 dnsNote);
                     } else {
-                        HumanLog.ev('⚠', "Server asli " + tgt + " TIDAK bisa dihubungi — " + note
+                        HumanLog.ev("⚠️", "Server asli " + tgt + " TIDAK bisa dihubungi — " + note
                                         + "; bila mode ONLINE, permintaan ke target ini akan gagal",
-                                "waktu coba: " + HumanLog.fmtMs(ms));
+                                "Waktu coba : " + HumanLog.fmtMs(ms) + "\n"
+                                        + (dnsNote == null ? "" : dnsNote + "\n")
+                                        + "Lanjutan   : mode LOCAL tidak terpengaruh (semua dilayani lokal)");
                     }
                 }
                 lastOk[i] = Boolean.valueOf(nowOk);
@@ -107,7 +109,7 @@ public final class Monitor {
             long now = System.currentTimeMillis();
             if (now - lastBeatAt >= 10L * 60L * 1000L) {
                 lastBeatAt = now;
-                HumanLog.evTech('ℹ', "Pantauan rutin berjalan — " + summary() + " (rincian selalu ada di dasbor)", null);
+                HumanLog.evTech("ℹ️", "Pantauan rutin berjalan — " + summary() + " (rincian selalu ada di dasbor)", null);
             }
             StatusStore.persist();
         }

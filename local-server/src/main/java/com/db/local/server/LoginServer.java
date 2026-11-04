@@ -46,6 +46,10 @@ public final class LoginServer extends NanoHTTPD {
     private static final int MAX_SESSIONS = 64;
     /** Dedupe milestone GetServerList (0.4.8): ulangan < 10 menit tidak dilog ulang. */
     private static volatile long lastServerListLogAt = 0L;
+    /** 0.4.9: handshake socket naik ke log penting — dedupe 10 mnt (H5 bisa
+     *  menyambung ulang beberapa kali; yang dilaporkan = koneksi BARU setelah
+     *  jeda, bukan polling yang sama). */
+    private static volatile long lastConnectLogAt = 0L;
     private static final String HANDSHAKE_JSON =
             "{\"sid\":\"%SID%\",\"upgrades\":[],\"pingInterval\":25000,\"pingTimeout\":5000}";
 
@@ -114,7 +118,7 @@ public final class LoginServer extends NanoHTTPD {
             return text(Response.Status.METHOD_NOT_ALLOWED, "Metode tidak didukung — hanya GET/POST polling");
         } catch (Throwable t) {
             try {
-                HumanLog.ev('⚠', "Server login lokal gagal memproses permintaan — dijawab 500", String.valueOf(t));
+                HumanLog.ev("⚠️", "Server login lokal gagal memproses permintaan — dijawab 500", String.valueOf(t));
             } catch (Throwable ignored) {
             }
             return text(Response.Status.INTERNAL_ERROR, "kesalahan server login lokal: " + t);
@@ -135,10 +139,19 @@ public final class LoginServer extends NanoHTTPD {
         String open = HANDSHAKE_JSON.replace("%SID%", sid);
         String body = frame("0" + open) + frame("40");
         try {
-            // 0.4.7: penyambungan socket = TEKNIS (klien H5 bisa menyambung ulang
-            // beberapa kali — kejadian ini bukan hasil/berita). Yang PENTING tetap
-            // linear: loginGame (masuk) & GetServerList (daftar server) di bawah.
-            HumanLog.evTech('ℹ', "Login lokal: client tersambung (sesi " + sid.substring(0, 6) + "…)", null);
+            // 0.4.9 — koneksi klien = bagian ALUR yang harus terlihat (owner:
+            // "log harus menceritakan sampai serverlist"): handshake naik dari
+            // TEKNIS ke PENTING dengan rincian sesi. Dedupe 10 mnt — sambung
+            // ulang dalam sesi yang sama tidak mengulang baris.
+            long nowMs = System.currentTimeMillis();
+            if (nowMs - lastConnectLogAt >= 600000L) {
+                lastConnectLogAt = nowMs;
+                HumanLog.ev("📡", "Klien game tersambung ke server login lokal",
+                        "Sesi     : " + sid.substring(0, 6) + "… (engine.io v3 · polling, tanpa websocket)\n"
+                                + "Tujuan   : 127.0.0.1:" + Config.loginPort()
+                                + " (loginServer hasil rewrite setting bin)\n"
+                                + "Lanjutan : menunggu loginGame + GetServerList dari klien H5");
+            }
         } catch (Throwable ignored) {
         }
         return text(Response.Status.OK, body);
@@ -300,30 +313,38 @@ public final class LoginServer extends NanoHTTPD {
                 userId = LoginData.localUserId();
             }
             String password = strField(msg, "password");
+            long t0 = System.currentTimeMillis();
             data = LoginData.loginGameResponse(userId, password);
+            long ms = System.currentTimeMillis() - t0;
             boolean baru = data.indexOf("\"isCreated\":true") >= 0;
-            // 0.4.8: satu kejadian satu baris — hasil + identitas + sifat akun.
-            HumanLog.ev('✔', "Login game diterima — " + userId
-                            + (baru ? " (akun BARU dibuat)" : " (akun lama)"),
-                    null);
+            // 0.4.9: hasil + rincian proses penuh (TIDAK dipangkas).
+            HumanLog.ev("✅", "Login game sukses — " + (baru ? "akun BARU dibuat" : "akun lama"),
+                    "Akun     : " + userId + "\n"
+                            + "Proses   : " + HumanLog.fmtMs(ms) + " · jawaban " + HumanLog.fmtBytes(data.length())
+                            + " (ret 0, skema asli login.popoh5.com:610)\n"
+                            + "Sumber   : dragonball.db (accounts) — identitas mengikuti pilihan layar SDK");
         } else if ("GetServerList".equals(action)) {
+            long t0 = System.currentTimeMillis();
             data = LoginData.serverListData();
-            // 0.4.8 — MILESTONE + PENJELAS ANTI-BINGUNG:
+            long ms = System.currentTimeMillis() - t0;
+            // 0.4.9 — MILESTONE TUNGGAL + RINCIAN PENUH (permintaan owner:
+            // "kurang rinci" + "gak boleh disingkat"):
             //  1) daftar = bawaan APK yang DISAJIKAN server lokal (bukan diambil
             //     dari server asli) — mematikan dugaan berulang "config loginserver
             //     masih mengarah ke server aslinya";
-            //  2) baris TUNTAS menjelaskan kenapa log "diam" sesudahnya: koneksi
+            //  2) baris Lanjutan menjelaskan kenapa log "diam" sesudahnya: koneksi
             //     gameplay langsung ke server game asli, tidak lewat server lokal.
             //  Dedupe 10 menit (H5 bisa meminta daftar lagi saat bolak-balik layar).
             long nowMs = System.currentTimeMillis();
             boolean dup = (nowMs - lastServerListLogAt) < 600000L;
             lastServerListLogAt = nowMs;
             if (!dup) {
-                HumanLog.ev('✔', "Daftar server terkirim — " + LoginData.serverCount()
-                                + " server (daftar bawaan APK, disajikan server lokal)", null);
-                HumanLog.ev('ℹ', "Tahap login lokal TUNTAS — berikutnya game menyambung LANGSUNG"
-                                + " ke server game asli pilihan pemain (koneksi gameplay tidak lewat"
-                                + " server lokal — wajar log tidak menambah baris di tahap ini)", null);
+                HumanLog.ev("📋", "Daftar server terkirim — " + LoginData.serverCount() + " server",
+                        "Sumber   : snapshot bawaan APK (config/servers.json) — disajikan server lokal, bukan diambil dari server asli\n"
+                                + "Ukuran   : " + HumanLog.fmtBytes(data.length()) + " · " + HumanLog.fmtMs(ms)
+                                + " · pemain sekarang di layar pilih server\n"
+                                + "Lanjutan : pemain pilih server → gameplay LANGSUNG ke server game asli pilihan pemain"
+                                + " (koneksi gameplay tidak lewat server lokal — wajar log tidak menambah baris di tahap ini)");
             }
         } else if ("LoginAnnounce".equals(action)) {
             data = "{}";
@@ -333,7 +354,7 @@ public final class LoginServer extends NanoHTTPD {
         } else {
             // aksi tak dikenal — jawab ret 0 kosong agar game tidak menggantung
             data = "{}";
-            HumanLog.ev('ℹ', "Aksi login tak dikenal: " + (action == null ? "(kosong)" : action)
+            HumanLog.ev("ℹ️", "Aksi login tak dikenal: " + (action == null ? "(kosong)" : action)
                     + " — dijawab ret 0 kosong (game tidak menggantung)", null);
         }
         if (ackId.length() > 0) {

@@ -304,13 +304,13 @@ public class HarnessSdk {
         HumanLog.init(new File(root, "logs"));
         HumanLog.clearMem();
         HumanLog.setTechEnabled(false);
-        HumanLog.ev('✔', "HRNESS penting selalu tampil", null);
-        HumanLog.evTech('◀', "HRNESS teknis tersembunyi di mode bersih", null);
+        HumanLog.ev("✅", "HRNESS penting selalu tampil", null);
+        HumanLog.evTech("ℹ️", "HRNESS teknis tersembunyi di mode bersih", null);
         String snap = HumanLog.snapshotJson(0);
         check("log BERSIH: event PENTING tampil di dasbor", snap.contains("penting selalu tampil"));
         check("log BERSIH: event TEKNIS tidak memenuhi dasbor", !snap.contains("teknis tersembunyi"));
         HumanLog.setTechEnabled(true);
-        HumanLog.evTech('◀', "HRNESS teknis tampil saat rinci", null);
+        HumanLog.evTech("ℹ️", "HRNESS teknis tampil saat rinci", null);
         String snap2 = HumanLog.snapshotJson(0);
         check("log RINCI: event TEKNIS ikut tampil", snap2.contains("teknis tampil saat rinci"));
         check("log RINCI: baris teknis diberi penanda v:1", snap2.contains("\"v\":1"));

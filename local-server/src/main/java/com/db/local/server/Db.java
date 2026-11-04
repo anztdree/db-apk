@@ -136,7 +136,7 @@ public final class Db {
             if (impl == null) {
                 impl = new DbMem();
                 engine = "memori (belum boot)";
-                log('⚠', "dragonball.db dipakai sebelum boot — memakai jaring memori sementara", null);
+                log("⚠️", "dragonball.db dipakai sebelum boot — memakai jaring memori sementara", null);
             }
             return impl;
         }
@@ -167,7 +167,7 @@ public final class Db {
                 } catch (Throwable t2) {
                     impl = new DbMem();
                     engine = "memori (jaring pengaman)";
-                    log('⚠', "dragonball.db: SQLite tidak tersedia — data dijaga di memori (boot tetap jalan)",
+                    log("⚠️", "dragonball.db: SQLite tidak tersedia — data dijaga di memori (boot tetap jalan)",
                             firstErr + " / " + t2);
                 }
             }
@@ -175,14 +175,14 @@ public final class Db {
             try {
                 imported = migrateLegacy(confDir);
             } catch (Throwable t) {
-                log('⚠', "Migrasi data lama ke dragonball.db menemui kendala — boot tetap jalan",
+                log("⚠️", "Migrasi data lama ke dragonball.db menemui kendala — boot tetap jalan",
                         String.valueOf(t));
             }
             if (i().sqlite()) {
                 // 0.4.7: kesiapan DB = TEKNIS (bukan berita — tiap boot sama);
                 // yang PENTING justru kegagalannya (⚠ terpisah di Starter).
                 // Identitas pemain tetap tampil di baris "Pemain:" boot (Starter).
-                HumanLog.evTech('✔', "dragonball.db siap (SQLite, " + HumanLog.fmtBytes(f.length())
+                HumanLog.evTech("💾", "dragonball.db siap (SQLite, " + HumanLog.fmtBytes(f.length())
                         + ") — akun/tamu/sesi tahan reboot" + (imported > 0
                         ? " · migrasi txt lama: " + imported + " baris" : ""),
                         engine + " · " + f.getAbsolutePath());
@@ -324,7 +324,7 @@ public final class Db {
         }
     }
 
-    private static void log(char icon, String msg, String detail) {
+    private static void log(String icon, String msg, String detail) {
         try {
             HumanLog.ev(icon, msg, detail);
         } catch (Throwable ignored) {

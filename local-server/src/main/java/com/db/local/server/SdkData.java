@@ -97,6 +97,46 @@ public final class SdkData {
         }
     }
 
+    // ---------------- log 👤 layar SDK (dedupe 10 mnt per uid — 0.4.9) ----------------
+
+    /** Baris 👤 layar SDK: "siapa yang masuk & bagaimana". Dedupe 10 MENIT per
+     *  uid: registerVisitor (tamu lama/baru) dan autoLogin bisa terpanggil
+     *  hampir bersamaan saat boot — cukup SATU baris; ganti uid → selalu dilog. */
+    private static String lastSdkLoginUid = "";
+    private static long lastSdkLoginAt = 0L;
+
+    /**
+     * Catat satu kali masuk layar SDK (0.4.9 — baris 👤 rinci, TIDAK dipangkas).
+     *
+     * @param uid      identitas yang masuk (tamu/akun)
+     * @param guest    true = tamu, false = akun email
+     * @param how      cara masuk (registerVisitor/autoLogin + sebabnya)
+     * @param deviceId perangkat pemicu (bisa null)
+     */
+    public static void noteSdkLogin(String uid, boolean guest, String how, String deviceId) {
+        if (uid == null || uid.length() == 0) {
+            return;
+        }
+        try {
+            long nowMs = System.currentTimeMillis();
+            boolean dup;
+            synchronized (SdkData.class) {
+                dup = uid.equals(lastSdkLoginUid) && (nowMs - lastSdkLoginAt) < 600000L;
+                lastSdkLoginUid = uid;
+                lastSdkLoginAt = nowMs;
+            }
+            if (dup) {
+                return;
+            }
+            HumanLog.ev("👤", "Layar SDK — masuk sebagai " + (guest ? "tamu" : "akun") + " " + uid,
+                    "Perangkat  : " + shortId(deviceId) + "\n"
+                            + "Cara masuk : " + how + "\n"
+                            + "Identitas  : " + (guest ? "tamu" : "akun") + " " + uid
+                            + " — tersimpan dragonball.db (tahan reboot)");
+        } catch (Throwable ignored) {
+        }
+    }
+
     // ---------------- endpoint: tamu (registerVisitor) ----------------
 
     /**
@@ -111,6 +151,8 @@ public final class SdkData {
                 String existing = Db.i().guestUid(dev);
                 if (existing != null) {
                     LoginData.ensureAccount(existing, "");
+                    noteSdkLogin(existing, true,
+                            "registerVisitor — perangkat ini sudah terikat ke tamu itu (identitas lama dipakai lagi)", dev);
                     return sessionData(tokenFor(existing, dev), existing, true, false);
                 }
                 // tamu baru — migrasikan guest lokal pemilik untuk perangkat pertama
@@ -120,12 +162,10 @@ public final class SdkData {
                 LoginData.ensureAccount(uid, "");
                 Db.i().putGuest(dev, uid, now());
                 try {
-                    // 0.4.8 bahasa cerita — baris ini menjawab "siapa yang masuk &
-                    // kenapa tamu itu": ikatan lama = perangkat memang tamu itu,
-                    // pertama = tamu bawaan server lokal (identitas lama dipertahankan).
-                    HumanLog.ev('ℹ', "Lanjut masuk sebagai tamu " + uid
-                            + (first ? " — tamu bawaan server lokal (identitas lama dipertahankan)"
-                                      : " (perangkat ini memang terikat ke tamu itu)"), null);
+                    noteSdkLogin(uid, true,
+                            first ? "registerVisitor — tamu pertama server lokal: identitas tamu lama pemilik dipertahankan"
+                                  : "registerVisitor — perangkat baru → tamu baru dibuat",
+                            dev);
                 } catch (Throwable ignored) {
                 }
                 return sessionData(tokenFor(uid, dev), uid, true, true);
@@ -149,6 +189,7 @@ public final class SdkData {
                     int tab = ses.indexOf('\t');
                     String uid = tab > 0 ? ses.substring(0, tab) : ses;
                     boolean guest = tab > 0 && "1".equals(ses.substring(tab + 1));
+                    noteSdkLogin(uid, guest, "autoLogin — sesi tersimpan masih valid (token dikenal)", deviceId);
                     return sessionData(authToken, uid, guest, false);
                 }
                 // token lama berbasis (uid, device) — terima bila polanya cocok
@@ -157,6 +198,7 @@ public final class SdkData {
                     String[] c = line.split("\t");
                     if (c.length >= 2 && tokenFor(c[1], c[0]).equals(authToken)) {
                         LoginData.ensureAccount(c[1], "");
+                        noteSdkLogin(c[1], true, "autoLogin — token lama cocok dengan ikatan perangkat", c[0]);
                         return sessionData(authToken, c[1], true, false);
                     }
                 }
@@ -164,6 +206,8 @@ public final class SdkData {
                 for (String uid : names) {
                     if (uid != null && uid.length() > 0 && tokenFor(uid, deviceId).equals(authToken)) {
                         LoginData.ensureAccount(uid, "");
+                        noteSdkLogin(uid, uid.startsWith("guest"),
+                                "autoLogin — token lama cocok dengan akun tersimpan", deviceId);
                         return sessionData(authToken, uid, uid.startsWith("guest"), false);
                     }
                 }
@@ -238,10 +282,6 @@ public final class SdkData {
                 return null;
             }
             LoginData.ensureAccount(name, passwordMd5 == null ? "" : passwordMd5);
-            try {
-                HumanLog.ev('✔', "Akun baru \"" + name + "\" terdaftar", null);
-            } catch (Throwable ignored) {
-            }
             saveLast(name);
             return sessionData(tokenFor(name, null), name, false, true);
         }
@@ -315,8 +355,11 @@ public final class SdkData {
             }
             if (!tokenOk) {
                 try {
-                    HumanLog.ev('⚠', "Token sesi tidak cocok untuk " + uid
-                            + " — tetap diterima karena akun dikenal lokal (loginchecknative)", null);
+                    HumanLog.ev("⚠️", "Token sesi tidak cocok untuk " + uid
+                            + " — tetap diterima karena akun dikenal lokal (loginchecknative)",
+                            "Akun     : " + uid + "\n"
+                                    + "Sebab    : token yang dikirim shell tidak ada di sdk_sessions\n"
+                                    + "Lanjutan : tetap diterima agar boot tidak terkunci — sesi baru ditulis ke dragonball.db");
                 } catch (Throwable ignored) {
                 }
             }
@@ -333,8 +376,11 @@ public final class SdkData {
                 lastNativeOkUid = uid;
                 lastNativeOkAt = nowMs;
                 if (!dup) {
-                    HumanLog.ev('✔', "Sesi " + (guest ? "tamu " : "akun ") + uid + " disahkan"
-                            + " (loginchecknative) — boot game dilanjutkan", null);
+                    HumanLog.ev("🔑", "Sesi " + (guest ? "tamu" : "akun") + " " + uid + " disahkan"
+                            + " — game lanjut boot",
+                            "Uid      : " + uid + " · mode " + (guest ? "tamu" : "akun") + "\n"
+                                    + "Hasil    : code 0 (skema respons asli login.popoh5.com:510) — shell melanjutkan boot ke H5\n"
+                                    + "Sesi     : disimpan ke dragonball.db (sdk_sessions) — url game memakai userid ini");
                 }
             } catch (Throwable ignored) {
             }

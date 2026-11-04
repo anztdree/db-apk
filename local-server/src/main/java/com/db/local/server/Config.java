@@ -111,7 +111,7 @@ public final class Config {
                     }
                 }
             } catch (Throwable t) {
-                HumanLog.ev('⚠', "server.json gagal dibaca — memakai nilai bawaan (mode ONLINE, port game 8080, dasbor 4000)",
+                HumanLog.ev("⚠️", "server.json gagal dibaca — memakai nilai bawaan (mode ONLINE, port game 8080, dasbor 4000)",
                         String.valueOf(t));
             }
         }
@@ -167,7 +167,7 @@ public final class Config {
                 }
             } catch (Throwable t) {
                 try {
-                    HumanLog.ev('⚠', "Gagal menulis logTech ke server.json — pilihan tetap dipakai sampai proses mati",
+                    HumanLog.ev("⚠️", "Gagal menulis logTech ke server.json — pilihan tetap dipakai sampai proses mati",
                             String.valueOf(t));
                 } catch (Throwable ignored) {
                 }
@@ -186,7 +186,7 @@ public final class Config {
                 }
             } catch (Throwable t) {
                 try {
-                    HumanLog.ev('⚠', "Posisi tombol melayang gagal disimpan ke server.json — tetap dipakai sampai proses mati",
+                    HumanLog.ev("⚠️", "Posisi tombol melayang gagal disimpan ke server.json — tetap dipakai sampai proses mati",
                             String.valueOf(t));
                 } catch (Throwable ignored) {
                 }
@@ -210,7 +210,7 @@ public final class Config {
                     writeText(file, json());
                 }
             } catch (Throwable t) {
-                HumanLog.ev('⚠', "Gagal menulis mode ke server.json — mode baru tetap dipakai sampai proses mati",
+                HumanLog.ev("⚠️", "Gagal menulis mode ke server.json — mode baru tetap dipakai sampai proses mati",
                         String.valueOf(t));
             }
         }

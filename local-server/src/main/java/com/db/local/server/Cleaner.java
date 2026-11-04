@@ -75,7 +75,7 @@ public final class Cleaner {
             }
         } catch (Throwable t) {
             try {
-                HumanLog.ev('⚠', "Pembersih folder server menemui kendala — folder tetap dipakai apa adanya",
+                HumanLog.ev("⚠️", "Pembersih folder server menemui kendala — folder tetap dipakai apa adanya",
                         String.valueOf(t));
             } catch (Throwable ignored) {
             }

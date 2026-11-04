@@ -69,11 +69,11 @@ public final class LocalServer extends NanoHTTPD {
             in.close();
             dashboard = bos.toByteArray();
             // 0.4.5: ukuran dasbor = TEKNIS (bukan berita penting)
-            HumanLog.evTech('✔', "Dasbor dimuat dari APK (assets/server/dashboard.html · "
+            HumanLog.evTech("ℹ️", "Dasbor dimuat dari APK (assets/server/dashboard.html · "
                     + HumanLog.fmtBytes(dashboard.length) + ")", null);
         } catch (Throwable t) {
             dashboard = FALLBACK_HTML.getBytes();
-            HumanLog.ev('⚠', "Dasbor utama gagal dimuat dari APK — memakai halaman darurat sederhana",
+            HumanLog.ev("⚠️", "Dasbor utama gagal dimuat dari APK — memakai halaman darurat sederhana",
                     String.valueOf(t));
         }
     }
@@ -163,7 +163,7 @@ public final class LocalServer extends NanoHTTPD {
             status = 500;
             StatusStore.countErr();
             try {
-                HumanLog.ev('⚠', "Permintaan dasbor " + uri + " gagal diproses — dijawab 500",
+                HumanLog.ev("⚠️", "Permintaan dasbor " + uri + " gagal diproses — dijawab 500",
                         String.valueOf(t));
             } catch (Throwable ignored) {
             }

@@ -13,7 +13,7 @@ import java.util.Locale;
  * Log bahasa manusia (aturan README §3) — DUA TINGKAT (0.4.5, koreksi owner
  * "jujur terus terang log anda bagi saya cuma sampah"):
  *
- * - TINGKAT PENTING (ev/ok/warn/info) — selalu tampil: boot (5 baris), mode,
+ * - TINGKAT PENTING (ev/ok/warn/info) — selalu tampil: boot, mode,
  *   tamu/daftar/masuk/loginchecknative, daftar server, peringatan, galat.
  * - TINGKAT TEKNIS (evTech) — hanya tampil bila mode RINCI dinyalakan
  *   (toggle di dasbor, tersimpan di server.json "logTech"): semua baris
@@ -27,15 +27,26 @@ import java.util.Locale;
  * dan copy log = cerita penting. Copy penuh (API /api/logs/file) tetap
  * mengambil semuanya dari file.
  *
- * ATURAN 0.4.8 — SATU KEJADIAN SATU BARIS (koreksi owner "log cuma sampah
- * gak jelas" pada sesi 09:39-09:41): percobaan yang langsung selesai TIDAK
- * diumumkan dulu (cukup baris hasilnya); setiap baris membawa hasil + sebab
- * (+ akibat/lanjutan bila relevan); baris umpan balik UI dasbor (toggle
- * RINCI/BERSIH) tidak dilog.
+ * ATURAN 0.4.8 — SATU KEJADIAN SATU BARIS: percobaan yang langsung selesai
+ * TIDAK diumumkan dulu (cukup baris hasilnya); baris umpan balik UI dasbor
+ * (toggle RINCI/BERSIH) tidak dilog.
  *
- * Simbol: ✔ hasil baik, ⚠ perlu perhatian, ℹ info — ikon ▶/◀ DIHAPUS di
- * 0.4.8 (samar dan tidak menolong membaca alur). Ringkasan grup batch di
- * human.log memakai awalan [Σ] (LogGroups).
+ * ATURAN 0.4.9 — EMOJI + BLOK RINCIAN (permintaan owner "emoji sudah bagus,
+ * hanya saja masih kurang rinci" + "ingat gak boleh disingkat"):
+ *   • Ikon = EMOJI per kategori (bukan simbol tipis ✔/⚠/ℹ yang samar):
+ *       🚀 siap/boot · 👤 pemain · 🔑 pengesahan sesi · 📡 koneksi ·
+ *       ✅ sukses · ⚠️ masalah (tetap jalan) · ❌ gagal (terhenti) ·
+ *       📋 daftar server · 💾 data/db · 🧹 bersih/mirror · ℹ️ info.
+ *   • Setiap baris penting membawa BLOK RINCIAN (field "detail", beberapa
+ *     baris dipisah \n): fakta nyata yang dimiliki server (angka ms, byte,
+ *     sumber data, uid, sebab, akibat/lanjutan). ATURAN: TIDAK BOLEH
+ *     DISINGKAT — semua fakta yang relevan ditulis penuh, di dasbor dan
+ *     di file human.log. Dasbor & Copy menampilkan rincian sebagai pohon
+ *     "├─ … └─ …" (HumanLog.tree saat menulis file, JS setara di dasbor).
+ *   • Ikon kini String (emoji = 2 char UTF-16 — dulu char tunggal membuat
+ *     ikon terbatas & samar).
+ *
+ * Ringkasan grup batch di human.log memakai awalan [Σ] (LogGroups).
  * Angka ramah: 1,4 KB / 12 ms / jam lokal.
  */
 public final class HumanLog {
@@ -80,8 +91,9 @@ public final class HumanLog {
         }
     }
 
-    /** Catat event PENTING — selalu tampil di dasbor (tingkat bawaan). */
-    public static void ev(char icon, String sentence, String detail) {
+    /** Catat event PENTING — selalu tampil di dasbor (tingkat bawaan).
+     *  0.4.9: icon = emoji String (👤 🔑 📡 ✅ ⚠️ ❌ 📋 💾 🧹 🚀 ℹ️). */
+    public static void ev(String icon, String sentence, String detail) {
         evInternal(icon, sentence, detail, false);
     }
 
@@ -89,8 +101,28 @@ public final class HumanLog {
      * Catat event TEKNIS — hanya tampil di dasbor saat mode RINCI.
      * File human.log tetap mencatatnya (aturan: mode bersih tidak menghilangkan bukti).
      */
-    public static void evTech(char icon, String sentence, String detail) {
+    public static void evTech(String icon, String sentence, String detail) {
         evInternal(icon, sentence, detail, true);
+    }
+
+    /**
+     * Format blok rincian sebagai pohon "├─ / └─" (0.4.9) — dipakai penulis
+     * file human.log; dasbor (JS) memakai bentuk yang sama supaya tampilan
+     * & hasil Copy konsisten. Rincian TIDAK pernah dipangkas.
+     */
+    public static String tree(String detail) {
+        if (detail == null || detail.length() == 0) {
+            return null;
+        }
+        String[] lines = detail.split("\n");
+        StringBuilder sb = new StringBuilder(detail.length() + lines.length * 8);
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) {
+                sb.append('\n');
+            }
+            sb.append("    ").append(i < lines.length - 1 ? "├─ " : "└─ ").append(lines[i]);
+        }
+        return sb.toString();
     }
 
     /** Nyalakan/matikan mode RINCI (dipanggil dasbor via /api/logtech + Starter saat boot). */
@@ -103,26 +135,26 @@ public final class HumanLog {
     }
 
     public static void ok(String sentence) {
-        ev('✔', sentence, null);
+        ev("✅", sentence, null);
     }
 
     public static void warn(String sentence, String detail) {
-        ev('⚠', sentence, detail);
+        ev("⚠️", sentence, detail);
     }
 
     public static void info(String sentence) {
-        ev('ℹ', sentence, null);
+        ev("ℹ️", sentence, null);
     }
 
     /** Event permintaan dasbor (path aneh di luar /api — jarang): penting. */
     public static void req(String method, String uri, String query, int status, long ms, long bytes) {
         String sentence = "Dasbor " + method + " " + uri + " — dijawab " + status
                 + " · " + fmtMs(ms) + " · " + fmtBytes(bytes);
-        char icon = (status >= 500) ? '⚠' : '▶';
+        String icon = (status >= 500) ? "⚠️" : "ℹ️";
         evInternal(icon, sentence, query == null || query.length() == 0 ? "-" : query, false);
     }
 
-    private static void evInternal(char icon, String sentence, String detail, boolean tech) {
+    private static void evInternal(String icon, String sentence, String detail, boolean tech) {
         long id;
         String t;
         String jo;
@@ -150,9 +182,16 @@ public final class HumanLog {
             }
         }
         if (logDir != null && humanFile != null) {
-            String line = dateStr() + " " + t + " [" + icon + (tech ? "·" : "") + "] " + sentence
-                    + (detail == null || detail.length() == 0 ? "" : "  ||  " + detail);
-            appendLine(humanFile, line);
+            // 0.4.9 — rincian ditulis sebagai blok pohon penuh (TIDAK dipangkas):
+            //   2026-11-04 09:40:34 [✅] Login game sukses — akun lama
+            //       ├─ Akun   : guest99599159
+            //       └─ Proses : 3 ms · jawaban 1,1 KB (ret 0)
+            String block = dateStr() + " " + t + " [" + icon + (tech ? "·" : "") + "] " + sentence;
+            String treeDetail = tree(detail);
+            if (treeDetail != null) {
+                block += "\n" + treeDetail;
+            }
+            appendLine(humanFile, block);
             appendLine(jsonlFile, jo);
         }
     }

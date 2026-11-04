@@ -127,7 +127,7 @@ public final class SettingBin {
             return xor(replaced.getBytes("UTF-8"));
         } catch (Throwable t) {
             try {
-                HumanLog.ev('⚠', "Penulisan-ulang setting bin gagal — file asli disajikan tanpa diubah",
+                HumanLog.ev("⚠️", "Penulisan-ulang setting bin gagal — file asli disajikan tanpa diubah",
                         String.valueOf(t));
             } catch (Throwable ignored) {
             }

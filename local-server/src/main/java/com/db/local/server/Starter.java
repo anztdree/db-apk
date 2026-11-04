@@ -66,7 +66,7 @@ public final class Starter {
                     doBoot();
                 } catch (Throwable ex) {
                     try {
-                        HumanLog.ev('⚠', "Server lokal gagal disiapkan — game TIDAK terpengaruh dan tetap jalan normal",
+                        HumanLog.ev("⚠️", "Server lokal gagal disiapkan — game TIDAK terpengaruh dan tetap jalan normal",
                                 String.valueOf(ex));
                     } catch (Throwable ignored) {
                     }
@@ -120,7 +120,7 @@ public final class Starter {
                 mk(tmp);
                 mk(www);
             } catch (Throwable secondTry) {
-                HumanLog.ev('⚠', "Folder server tidak bisa dibuat — server tetap dicoba hidup tanpa file log di disk",
+                HumanLog.ev("⚠️", "Folder server tidak bisa dibuat — server tetap dicoba hidup tanpa file log di disk",
                         String.valueOf(secondTry));
             }
         }
@@ -140,7 +140,7 @@ public final class Starter {
             NanoHTTPD.acceptCrashListener = new NanoHTTPD.CrashListener() {
                 public void onAcceptLoopCrash(String port, Throwable t) {
                     try {
-                        HumanLog.ev('⚠', "Port " + port + " menangkap error tak terduga di loop penerima koneksi — server LANJUT melayani",
+                        HumanLog.ev("⚠️", "Port " + port + " menangkap error tak terduga di loop penerima koneksi — server LANJUT melayani",
                                 String.valueOf(t));
                     } catch (Throwable ignored) {
                     }
@@ -158,8 +158,8 @@ public final class Starter {
         try {
             Db.boot(conf);
         } catch (Throwable t) {
-            HumanLog.ev('⚠', "dragonball.db gagal dibuka — data dijaga jaring memori (boot tetap jalan)",
-                    String.valueOf(t));
+            HumanLog.ev("⚠️", "dragonball.db gagal dibuka — data dijaga jaring memori (boot tetap jalan)",
+                    "Sebab    : " + t + "\nLanjutan : login & akun tetap dilayani dari memori — tahan reboot hilang sementara");
         }
 
         // ---------- 1b) PEMBERSIH: folder server hanya boleh config/www/logs/tmp ----------
@@ -168,11 +168,11 @@ public final class Starter {
         try {
             Cleaner.Result cr = Cleaner.clean(root);
             if (cr.removed > 0) {
-                HumanLog.ev('✔', "Folder server dibersihkan: " + cr.removed + " entri di luar whitelist "
-                        + "dihapus (" + HumanLog.fmtBytes(cr.bytes) + ") — " + cr.names, null);
+                HumanLog.ev("🧹", "Folder server dibersihkan — " + cr.removed + " entri di luar whitelist dihapus "
+                        + "(" + HumanLog.fmtBytes(cr.bytes) + ")", "Daftar   : " + cr.names);
             }
         } catch (Throwable t) {
-            HumanLog.ev('⚠', "Pembersih folder gagal jalan — folder tetap dipakai apa adanya",
+            HumanLog.ev("⚠️", "Pembersih folder gagal jalan — folder tetap dipakai apa adanya",
                     String.valueOf(t));
         }
 
@@ -191,16 +191,17 @@ public final class Starter {
             wwwFilesN = pr.files;
             wwwBytesN = pr.bytes;
             if (pr.extracted) {
-                HumanLog.ev('✔', "Mirror server asli diekstrak OTOMATIS dari APK → www/ ("
-                                + pr.files + " file · " + HumanLog.fmtBytes(pr.bytes)
-                                + ") — tanpa langkah manual", pr.note);
+                HumanLog.ev("🧹", "Mirror server asli diekstrak OTOMATIS dari APK → www/",
+                        "Isi      : " + pr.files + " file · " + HumanLog.fmtBytes(pr.bytes)
+                                + " (setting bin, H5 Egret, js, resource, upgrade)\nCara     : sekali saat boot pertama — tanpa langkah manual"
+                                + (pr.note == null || pr.note.length() == 0 ? "" : "\nCatatan  : " + pr.note));
             } else {
-                HumanLog.evTech('ℹ', "Mirror www/ sudah terpasang (" + pr.files
-                        + " file) — tidak ada yang perlu diulang", pr.note);
+                HumanLog.evTech("🧹", "Mirror www/ sudah terpasang (" + pr.files
+                        + " file · " + HumanLog.fmtBytes(pr.bytes) + ") — tidak ada yang perlu diulang", pr.note);
             }
             StatusStore.markWww(pr.files, pr.bytes);
         } catch (Throwable t) {
-            HumanLog.ev('⚠', "Ekstraksi mirror www/ gagal — mode LOCAL melayani apa yang ada; game tetap boot (fallback 404)",
+            HumanLog.ev("⚠️", "Ekstraksi mirror www/ gagal — mode LOCAL melayani apa yang ada; game tetap boot (fallback 404)",
                     String.valueOf(t));
         }
 
@@ -215,20 +216,17 @@ public final class Starter {
             File confDir = new File(root, "config");
             String note = Payload.extractLoginDefaults(appCtx, confDir);
             if (note != null) {
-                HumanLog.evTech('✔', "Default login lokal siap — " + note, null);
+                HumanLog.evTech("💾", "Default login lokal siap — " + note, null);
             }
             LoginData.init(confDir);
             SdkData.init(confDir);
             guestNote = LoginData.localUserId();
             serverCountN = LoginData.serverCount();
         } catch (Throwable t) {
-            HumanLog.ev('⚠', "Persiapan data login lokal gagal — server login tetap dicoba hidup",
+            HumanLog.ev("⚠️", "Persiapan data login lokal gagal — server login tetap dicoba hidup",
                     String.valueOf(t));
         }
-        // SATU baris boot inti DIPINDAH ke blok 3 baris setelah port hidup (0.4.7 —
-        // bentuk kesepakatan owner: "Server lokal siap" → "Mode" → "Pemain";
-        // dulu "Server siap" muncul duluan lalu diikuti "Mode" + "Server lokal
-        // hidup" — tiga baris bertumpuk tanpa urutan cerita yang jelas).
+        // baris boot inti kini SATU baris 🚀 berrinci setelah semua port hidup (0.4.9).
 
         // ---------- 3) config server.json ----------
         Config.load(root);
@@ -258,7 +256,7 @@ public final class Starter {
             StatusStore.markStarted(System.currentTimeMillis(), true);
         } catch (Throwable t) {
             StatusStore.markStarted(System.currentTimeMillis(), false);
-            HumanLog.ev('⚠', "Dasbor debug GAGAL hidup di port " + Config.debugPort()
+            HumanLog.ev("⚠️", "Dasbor debug GAGAL hidup di port " + Config.debugPort()
                     + " — kemungkinan port dipakai proses lain; port game tetap dicoba", String.valueOf(t));
         }
 
@@ -272,9 +270,9 @@ public final class Starter {
             gameOk = true;
         } catch (Throwable t) {
             StatusStore.markGame(false);
-            HumanLog.ev('⚠', "Port game GAGAL hidup di " + Config.gamePort()
-                    + " — game tidak akan menemukan server lokal; cek port atau ubah gamePort di server.json",
-                    String.valueOf(t));
+            HumanLog.ev("❌", "Port game GAGAL hidup di " + Config.gamePort()
+                    + " — game tidak akan menemukan server lokal",
+                    "Sebab    : " + t + "\nLanjutan : cek port atau ubah gamePort di server.json — lalu buka ulang aplikasi");
         }
 
         // ---------- 5b) server LOGIN lokal (PR3 0.4.0) ----------
@@ -290,42 +288,40 @@ public final class Starter {
             loginOk = true;
         } catch (Throwable t) {
             StatusStore.markLogin(false);
-            HumanLog.ev('⚠', "Server login lokal GAGAL hidup di port " + Config.loginPort()
-                    + " — login guest lokal tidak akan berfungsi; cek loginPort di server.json",
-                    String.valueOf(t));
+            HumanLog.ev("❌", "Server login lokal GAGAL hidup di port " + Config.loginPort()
+                    + " — login guest lokal tidak akan berfungsi",
+                    "Sebab    : " + t + "\nLanjutan : cek loginPort di server.json — lalu buka ulang aplikasi");
         }
         StatusStore.persist();
-        // ===== BOOT 3 BARIS (0.4.8 — dirapikan dari 0.4.7: baris Mode tidak lagi
-        // jadi kuliah arsitektur 200 karakter; peta penuh tetap di dasbor/modemap) =====
-        //   ✔ Server lokal hidup — game :8080 · login :8610 · dasbor :4000
-        //   ℹ Mode LOCAL — login & akun: LOKAL :8610 · konten game: MIRROR www/ ·
-        //                  gameplay: SERVER GAME ASLI (progres tersimpan di sana)
-        //   ℹ Pemain: guest… — sesi & data tersimpan di dragonball.db (tahan reboot)
+        // ===== BOOT SATU BARIS BERRINCI (0.4.9 — bentuk disetujui owner: emoji +
+        // blok rincian ├─/└─ penuh, TIDAK dipangkas; dulu 3 baris terpisah) =====
         if (dashOk && gameOk && loginOk) {
-            HumanLog.ev('✔', "Server lokal hidup — game :" + Config.gamePort() + " · login :"
-                            + Config.loginPort() + " · dasbor :" + Config.debugPort(),
-                    root.getAbsolutePath() + " ("
-                            + (ext ? "penyimpanan eksternal" : "penyimpanan internal") + ")");
-            if ("local".equals(Config.mode())) {
-                HumanLog.ev('ℹ', "Mode LOCAL — login & akun: LOKAL :" + Config.loginPort()
-                        + " (config ditulis-ulang otomatis) · konten game: MIRROR www/"
-                        + " · gameplay: SERVER GAME ASLI (progres tersimpan di sana)", null);
-            } else {
-                HumanLog.ev('ℹ', "Mode ONLINE — semua permintaan game diteruskan ke server asli "
-                        + "(login SDK ikut diteruskan) — perilaku online normal", null);
-            }
-            String dbInfo = "";
+            String dbInfo;
             try {
                 File dbf = new File(conf, "dragonball.db");
-                if (dbf.exists() && dbf.length() > 0) {
-                    dbInfo = " — sesi & data tersimpan di dragonball.db "
-                            + HumanLog.fmtBytes(dbf.length()) + " (tahan reboot)";
-                } else {
-                    dbInfo = " — sesi & data tersimpan lokal (tahan reboot)";
-                }
+                dbInfo = (dbf.exists() && dbf.length() > 0)
+                        ? "dragonball.db " + HumanLog.fmtBytes(dbf.length()) + " (tahan reboot)"
+                        : "tersimpan lokal (tahan reboot)";
             } catch (Throwable ignored) {
+                dbInfo = "tersimpan lokal (tahan reboot)";
             }
-            HumanLog.ev('ℹ', "Pemain: " + guestNote + dbInfo, null);
+            String modeDetail;
+            if ("local".equals(Config.mode())) {
+                modeDetail = "LOCAL — konten game: mirror www/ · login & akun: LOKAL :"
+                        + Config.loginPort() + " (config ditulis-ulang otomatis)"
+                        + " · daftar server: snapshot asli bawaan APK"
+                        + " · gameplay: SERVER GAME ASLI (progres tersimpan di sana)";
+            } else {
+                modeDetail = "ONLINE — semua permintaan game diteruskan ke server asli"
+                        + " (login SDK ikut diteruskan) — perilaku online normal";
+            }
+            HumanLog.ev("🚀", "Server lokal siap — mode " + Config.mode().toUpperCase(),
+                    "Port    : game :" + Config.gamePort() + " · login :" + Config.loginPort()
+                            + " · dasbor :" + Config.debugPort() + "\n"
+                            + "Mode    : " + modeDetail + "\n"
+                            + "Folder  : " + root.getAbsolutePath()
+                            + " (" + (ext ? "penyimpanan eksternal" : "penyimpanan internal") + ")\n"
+                            + "Pemain  : " + guestNote + " — sesi & data di " + dbInfo);
         }
         if (!dashOk && gameServer == null) {
             return; // tidak ada yang bisa dilanjutkan
@@ -357,7 +353,7 @@ public final class Starter {
             wd.setPriority(Thread.MIN_PRIORITY);
             wd.start();
         } catch (Throwable t) {
-            HumanLog.ev('⚠', "Penjaga port gagal dinyalakan — pemantauan kesehatan port tidak aktif", String.valueOf(t));
+            HumanLog.ev("⚠️", "Penjaga port gagal dinyalakan — pemantauan kesehatan port tidak aktif", String.valueOf(t));
         }
 
         // ---------- 6) monitor server asli ----------
@@ -411,7 +407,7 @@ public final class Starter {
         if (ok) {
             if (missCount >= 3) {
                 try {
-                    HumanLog.ev('✔', "Port " + nama + " (" + port + ") HIDUP KEMBALI — sebelumnya tidak merespons", null);
+                    HumanLog.ev("✅", "Port " + nama + " (" + port + ") HIDUP KEMBALI — sebelumnya tidak merespons", null);
                 } catch (Throwable ignored) {
                 }
             }
@@ -420,7 +416,7 @@ public final class Starter {
         int miss = missCount + 1;
         if (miss == 1 || miss % 12 == 0) {
             try {
-                HumanLog.ev('⚠', "Port " + nama + " (" + port + ") TIDAK merespons (" + (miss * 5)
+                HumanLog.ev("⚠️", "Port " + nama + " (" + port + ") TIDAK merespons (" + (miss * 5)
                         + " dtk) — game tidak akan bisa menghubungi server lokal bila berlanjut", null);
             } catch (Throwable ignored) {
             }

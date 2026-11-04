@@ -1,20 +1,45 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.4.8 — LOG CERITA ALUR: satu kejadian satu baris + baris
-# "TUNTAS" penjelas keheningan + format Copy rapi
+# Build APK-LSF 0.4.9 — LOG EMOJI + BLOK RINCIAN
 #
-# Dasar: releases/APK-LSF-0.3.2.apk (sudah memuat manifest provider +
-# endpoint 127.0.0.1:8080 + dex game asli + mirror www/ 31 file).
-# Bila file dasar belum ada:
-#   unduh https://github.com/anztdree/db-apk/releases/download/v0.3.2/APK-LSF-0.3.2.apk
-#   (sha256 b64cba53bf96fd6de3bcb5b15c33f6bb9f84c1c170a7808fea7b897dc9ab96d2)
+# Dasar: releases/APK-LSF-0.4.8.apk (LFS — memuat manifest provider +
+# endpoint 127.0.0.1:8080 + dex game asli + mirror www/ lengkap dgn
+# base.zip/all.zip). Bila 0.4.8 tidak ada: unduh dari Git LFS atau
+# pakai APK-LSF-0.3.2.apk dari rilis v0.3.2 (mirror www/ harus lengkap).
 # Patch yang diterapkan (TANPA apktool — dex game & resource tidak disentuh):
 #   1) javac(ECJ) + d8  -> classes2.dex baru (kode server lokal)
 #   2) ganti assets/server/dashboard.html
-#   3) tambah assets/server/www/** — MIRROR PENUH server asli (31 file, ±56 MB)
+#   3) tambah/perbarui assets/server/www/** (file yang ada di repo; berkas
+#      besar base.zip/all.zip ikut terbawa dari APK dasar)
 #   4) tambah assets/server/login/** — DEFAULT LOGIN LOKAL (servers.json)
-#   5) assets/QHinfo → http://127.0.0.1:8610 (0.4.2: layar SDK asli → server SDK lokal)
+#   5) assets/QHinfo → http://127.0.0.1:8610 (layar SDK asli → server SDK lokal)
 #   6) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#
+# Baru 0.4.9 (permintaan owner: "emoji sudah bagus, hanya saja masih kurang
+# rinci" + "ingat gak boleh disingkat" — setelah menyetujui contoh output):
+#   a) IKON EMOJI per kategori (dulu simbol tipis ✔/⚠/ℹ samar): 🚀 siap ·
+#      👤 pemain · 🔑 pengesahan sesi · 📡 koneksi · ✅ sukses · ⚠️ masalah ·
+#      ❌ terhenti · 📋 daftar server · 💾 data · 🧹 bersih/mirror · ℹ️ info.
+#      HumanLog: ikon char → String (emoji = 2 char UTF-16).
+#   b) BLOK RINCIAN tiap baris penting (fakta nyata server: ms, byte, uid,
+#      sid, sumber data, sebab, akibat/lanjutan) — tampil sebagai pohon
+#      ├─/└─ di dasbor, di human.log, dan di hasil Copy. TIDAK dipangkas.
+#   c) Alur utama (contoh sesi 09:39–09:41 versi baru):
+#      🚀 Server lokal siap (rincian Port/Mode/Folder/Pemain)
+#      → 👤 Layar SDK — masuk sebagai tamu … (rincian Perangkat/Cara/Identitas)
+#      → 🔑 Sesi tamu disahkan — game lanjut boot (rincian Uid/Hasil/Sesi)
+#      → 📡 Klien game tersambung ke server login lokal (dulu TEKNIS — kini
+#        penting; dedupe 10 mnt)
+#      → ✅ Login game sukses (rincian Akun/Proses ms+byte/Sumber)
+#      → 📋 Daftar server terkirim — N server (rincian Sumber/Ukuran/Lanjutan;
+#        baris ℹ "TUNTAS" 0.4.8 dilebur ke rincian Lanjutan)
+#   d) 👤 layar SDK = SATU baris walaupun registerVisitor & autoLogin sama-sama
+#      terpanggil (dedupe 10 mnt per uid — SdkData.noteSdkLogin); duplikat log
+#      daftar akun (SdkData + SdkApi berdempet) dihapus.
+#   e) DASBOR: teks diperbesar & kontras dinaikkan, kolom ikon dilebari untuk
+#      emoji, rincian = pohon ├─/└─ penuh (tanpa pemenggalan), Copy ikut
+#      membawa blok rincian penuh; legenda footer emoji.
+#   f) harness disesuaikan (ikon String); StatusStore v0.4.9.
 #
 # Baru 0.4.8 (laporan owner sesi 09:39-09:41: "tidak ada revisi!!!! log masih
 # tidak jelas, padahal sampai loginserver munculkan serverlist.. tapi log cuma
@@ -139,18 +164,23 @@ ECJ="${ECJ:-$REPO/tools/ecj-3.33.0.jar}"               # compiler Java 8 (sandbo
 KS="${KS:-$REPO/keystore/lsf.keystore}"
 KS_ALIAS="${KS_ALIAS:-lsf}"
 KS_PASS="${KS_PASS:-lsf-local-2025}"
-BASE="${BASE:-$REPO/releases/APK-LSF-0.3.2.apk}"         # APK dasar (rilis 0.3.2)
+BASE="${BASE:-$REPO/releases/APK-LSF-0.4.8.apk}"         # APK dasar (rilis 0.4.8 / LFS)
 LOGIN_PORT_QH="${LOGIN_PORT_QH:-8610}"                    # port server SDK lokal (QHinfo)
 SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.4.8.apk"
+OUT="$REPO/releases/APK-LSF-0.4.9.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"
+# base.zip/all.zip boleh: (a) ada di mirror www/ lokal, ATAU (b) ikut terbawa
+# dari APK dasar (0.4.8 memuatnya) — cek keduanya.
 if [ ! -f "$WWW/bs/upgrade/all.zip" ] || [ ! -f "$WWW/bs/upgrade/base.zip" ]; then
-  echo "mirror www/ belum lengkap — jalankan: bash tools/snapshot.sh"; exit 1
+  if ! unzip -l "$BASE" 2>/dev/null | grep -q "assets/server/www/bs/upgrade/base.zip"; then
+    echo "mirror www/ belum lengkap — jalankan: bash tools/snapshot.sh (atau pakai APK dasar yang memuat upgrade paket)"; exit 1
+  fi
+  echo "catatan: base.zip/all.zip tidak di stage — ikut terbawa dari APK dasar"
 fi
 
 echo "[1/8] ECJ compile (sandbox tanpa javac) ..."

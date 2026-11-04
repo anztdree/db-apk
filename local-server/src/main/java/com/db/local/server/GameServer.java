@@ -107,7 +107,7 @@ public final class GameServer extends NanoHTTPD {
         } catch (Throwable t) {
             StatusStore.countErr();
             try {
-                HumanLog.ev('⚠', "Port game gagal memproses " + gameUrl(uri) + " — dijawab 500", String.valueOf(t));
+                HumanLog.ev("⚠️", "Port game gagal memproses " + gameUrl(uri) + " — dijawab 500", String.valueOf(t));
             } catch (Throwable ignored) {
             }
             resp = textResp(Response.Status.INTERNAL_ERROR,
@@ -200,7 +200,7 @@ public final class GameServer extends NanoHTTPD {
             // .bin lain (mis. com_db_local.bin) memang TIDAK ada di server asli —
             // 404-nya perilaku normal, client melanjutkan boot tanpa error.
             if (uri.endsWith("setting_BS_Android.bin")) {
-                ReqLog.ev('⚠', "404 " + uri,
+                ReqLog.ev("⚠️", "404 " + uri,
                         "GET " + gameUrl(uri) + " → 404 · mirror www/ TIDAK berisi setting bin — cek ekstraksi mirror",
                         nullSafe(query));
             } else {
@@ -224,7 +224,7 @@ public final class GameServer extends NanoHTTPD {
                     b.length);
             return r;
         } catch (Throwable t) {
-            HumanLog.ev('⚠', "GET " + gameUrl(uri) + " gagal menyiapkan setting bin", String.valueOf(t));
+            HumanLog.ev("⚠️", "GET " + gameUrl(uri) + " gagal menyiapkan setting bin", String.valueOf(t));
             return textResp(Response.Status.INTERNAL_ERROR, "Gagal menyiapkan setting bin: " + uri);
         }
     }
@@ -261,7 +261,7 @@ public final class GameServer extends NanoHTTPD {
                     out.length);
             return r;
         } catch (Throwable t) {
-            HumanLog.ev('⚠', "GET " + gameUrl(uri) + " gagal menyiapkan serversetting.json", String.valueOf(t));
+            HumanLog.ev("⚠️", "GET " + gameUrl(uri) + " gagal menyiapkan serversetting.json", String.valueOf(t));
             return textResp(Response.Status.INTERNAL_ERROR, "Gagal menyiapkan serversetting.json: " + uri);
         }
     }
@@ -326,7 +326,7 @@ public final class GameServer extends NanoHTTPD {
         } catch (Throwable t) {
             closeQuietly(up.in);
             try {
-                HumanLog.ev('⚠', "Gagal menyimpan file hasil ambilan dari server asli ke www/", String.valueOf(t));
+                HumanLog.ev("⚠️", "Gagal menyimpan file hasil ambilan dari server asli ke www/", String.valueOf(t));
             } catch (Throwable ignored) {
             }
             return null;
@@ -345,7 +345,7 @@ public final class GameServer extends NanoHTTPD {
                     len);
             return r;
         } catch (Throwable t) {
-            HumanLog.ev('⚠', "GET " + gameUrl(uri) + " — file ada tapi gagal dibaca", String.valueOf(t));
+            HumanLog.ev("⚠️", "GET " + gameUrl(uri) + " — file ada tapi gagal dibaca", String.valueOf(t));
             return textResp(Response.Status.INTERNAL_ERROR, "File ada tapi gagal dibaca: " + uri);
         }
     }
@@ -389,7 +389,7 @@ public final class GameServer extends NanoHTTPD {
     private Response servePassthrough(String uri, String query, long t0) {
         String[] base = upstreamBase(uri); // [0]=utama, [1]=fallback (boleh null)
         if (base == null) {
-            ReqLog.ev('⚠', "404 " + uri,
+            ReqLog.ev("⚠️", "404 " + uri,
                     "GET " + gameUrl(uri) + " → 404 · path tidak dipetakan ke server asli — peta: "
                             + "/bs/db/android, /bs, /lzceshi",
                     nullSafe(query));
@@ -402,7 +402,7 @@ public final class GameServer extends NanoHTTPD {
         String usedHost = base[0];
         if (up.status < 0 || up.status >= 500) {
             if (base[1] != null) {
-                HumanLog.ev('⚠', "Server utama gagal (" + (up.status < 0 ? "tak terjangkau" : "HTTP " + up.status)
+                HumanLog.ev("⚠️", "Server utama gagal (" + (up.status < 0 ? "tak terjangkau" : "HTTP " + up.status)
                         + ") → mencoba fallback COS", null);
                 Upstream alt = fetchUpstream(base[1] + uri + q);
                 if (alt.status >= 0 && alt.status < 500) {
@@ -413,7 +413,7 @@ public final class GameServer extends NanoHTTPD {
         }
         long ms = System.currentTimeMillis() - t0;
         if (up.status < 0) {
-            ReqLog.ev('⚠', "502 " + uri,
+            ReqLog.ev("⚠️", "502 " + uri,
                     "GET " + gameUrl(uri) + " → 502 · server asli tidak terjangkau · " + HumanLog.fmtMs(ms)
                             + " — coba mode LOCAL bila www/ sudah terisi",
                     nullSafe(query));
@@ -528,7 +528,7 @@ public final class GameServer extends NanoHTTPD {
         private static final long WINDOW_MS = 10000L;
 
         /** Baris request PENTING (404 tak terpetakan, 502) — selalu tampil. */
-        static void ev(char icon, String key, String sentence, String detail) {
+        static void ev(String icon, String key, String sentence, String detail) {
             long now = System.currentTimeMillis();
             long[] e;
             boolean suppress;

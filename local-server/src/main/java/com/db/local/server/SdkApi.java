@@ -142,7 +142,7 @@ public final class SdkApi {
             if (!initLogged) {
                 initLogged = true;
                 // 0.4.5: kesiapan server SDK = TEKNIS (bukan berita penting)
-                logTech('ℹ', "SDK: server SDK lokal siap — layar login SDK ASLI dilayani di sini"
+                logTech("ℹ️", "Server SDK lokal siap — layar login SDK ASLI dilayani di sini"
                         + " (init dari perangkat " + shortId(deviceId) + ")", null);
             }
         } else if (path.equals("/v1/system/getNotice")) {
@@ -164,11 +164,11 @@ public final class SdkApi {
                 String user = p.get("username");
                 LoginData.ensureAccount(user == null ? String.valueOf(SdkData.primaryGuest()) : user, "");
                 data = "[]";
-                logTech('ℹ', "SDK: ikat email " + (mail == null ? "(kosong)" : mail) + " → "
+                logTech("ℹ️", "Ikat email " + (mail == null ? "(kosong)" : mail) + " → "
                         + (user == null ? "(tamu)" : user) + " — diterima lokal", null);
             } else if (path.equals("/v1/auth/setGameRoleInfo")) {
                 data = "[]";
-                logTech('ℹ', "SDK: info peran — uid " + shortId(p.get("uid")) + " server "
+                logTech("ℹ️", "Info peran — uid " + shortId(p.get("uid")) + " server "
                         + p.get("serverId") + " peran " + p.get("roleId"), null);
             } else if (path.equals("/v1/auth/changePassword")) {
                 String user = p.get("username");
@@ -176,7 +176,7 @@ public final class SdkApi {
                 if (user != null && LoginData.accountPassword(user) != null && pass != null && pass.length() == 32) {
                     LoginData.ensureAccount(user, pass);
                     data = "[]";
-                    log('ℹ', "Kata sandi akun " + user + " diganti", null);
+                    log("✅", "Kata sandi akun " + user + " diganti", null);
                 } else {
                     ok = false;
                     errMsg = "Akun tidak dikenal atau parameter kurang";
@@ -204,8 +204,8 @@ public final class SdkApi {
                 return err(40005, "Otorisasi gagal");
             } else {
                 data = r;
-                log('✔', "Masuk otomatis — " + jsonStr(r, "uid")
-                        + " (sesi tersimpan dipakai lagi)", null);
+                // baris 👤 dipancarkan dari SdkData.noteSdkLogin (dedupe 10 mnt —
+                // registerVisitor & autoLogin bisa terpanggil hampir bersamaan)
             }
         } else if (path.equals("/v1/user/loginByName")) {
             // 0.4.8 ATURAN SATU KEJADIAN SATU BARIS: percobaan yang langsung
@@ -213,11 +213,17 @@ public final class SdkApi {
             // "SDK: MASUK — …" + "SDK: MASUK gagal — …" berdempet 0 dtk = sampah).
             String r = SdkData.loginByName(p.get("username"), p.get("password"));
             if (r == null) {
-                log('⚠', "Login akun \"" + p.get("username") + "\" DITOLAK — akun tidak dikenal / kata sandi salah (40101)", null);
+                log("⚠️", "Login akun \"" + p.get("username") + "\" DITOLAK — akun tidak dikenal / kata sandi salah (40101)",
+                        "Akun     : " + p.get("username") + "\n"
+                                + "Sebab    : tidak ada di dragonball.db atau kata sandi tidak cocok\n"
+                                + "Lanjutan : masuk sebagai tamu tetap bisa — atau daftar akun baru di layar SDK");
                 return err(40101, "akun atau password tidak ada");
             }
             data = r;
-            log('✔', "Akun \"" + p.get("username") + "\" masuk", null);
+            log("👤", "Akun \"" + p.get("username") + "\" masuk",
+                    "Akun     : " + p.get("username") + " (akun + kata sandi)\n"
+                            + "Disimpan : dragonball.db — identitas yang sama dipakai tahap game\n"
+                            + "Sesi     : token baru diterbitkan dan dikirim ke layar SDK");
         } else if (path.equals("/v1/user/registerUser")) {
             // akun layar SDK = EMAIL (dex: regex \w+@\w+.\w+, sandi minimal 6) —
             // server lokal menerima '@' sejak 0.4.4 (SdkData.registerUser).
@@ -226,12 +232,19 @@ public final class SdkApi {
             if (r == null) {
                 boolean taken = regName != null
                         && LoginData.accountPassword(regName.trim().toLowerCase(java.util.Locale.US)) != null;
-                log('⚠', "Daftar akun \"" + regName + "\" DITOLAK — "
-                        + (taken ? "nama sudah dipakai" : "format akun tidak valid") + " (40102)", null);
+                log("⚠️", "Daftar akun \"" + regName + "\" DITOLAK — "
+                                + (taken ? "nama sudah dipakai" : "format akun tidak valid") + " (40102)",
+                        "Akun     : " + regName + "\n"
+                                + "Sebab    : " + (taken ? "nama akun sudah terdaftar di dragonball.db"
+                                                          : "huruf kecil [a-z0-9_.+-@], panjang 3-64") + "\n"
+                                + "Lanjutan : pilih nama lain — atau masuk sebagai tamu");
                 return err(40102, taken ? "nama akun sudah dipakai" : "nama akun tidak valid");
             }
             data = r;
-            log('✔', "Akun baru \"" + regName + "\" terdaftar — langsung masuk", null);
+            log("👤", "Akun baru \"" + regName + "\" terdaftar — langsung masuk",
+                    "Akun     : " + regName + "\n"
+                            + "Disimpan : dragonball.db (kata sandi MD5) — langsung dipakai game\n"
+                            + "Sesi     : token baru diterbitkan dan dikirim ke layar SDK");
         } else if (path.equals("/v1/user/findPassByEmail")) {
             return err(20010, "Server lokal: lupa kata sandi tidak didukung — daftar akun baru saja");
         } else if (path.equals("/v1/auth/createOrder")) {
@@ -239,7 +252,7 @@ public final class SdkApi {
         } else {
             // rute SDK tak dikenal — jawab sukses kosong agar UI tidak menggantung
             data = "[]";
-            logTech('ℹ', "SDK: rute tak dikenal " + path + " — dijawab sukses kosong", null);
+            logTech("ℹ️", "Rute SDK tak dikenal " + path + " — dijawab sukses kosong", null);
         }
         StringBuilder sb = new StringBuilder(data.length() + 64);
         sb.append("{\"result\":").append(ok).append(",\"data\":").append(data)
@@ -260,10 +273,10 @@ public final class SdkApi {
     private static Response proxyV1(String uri, String body) {
         try {
             byte[] out = http("http://qsdk.t4game.com" + uri, body == null ? "" : body, 8000);
-            logTech('↔', "SDK: permintaan diteruskan ke server asli qsdk.t4game.com" + uri, null);
+            logTech("ℹ️", "Permintaan SDK diteruskan ke server asli qsdk.t4game.com" + uri, null);
             return json(NanoHTTPD.Response.Status.OK, new String(out, "UTF-8"));
         } catch (Throwable t) {
-            log('⚠', "SDK: penerusan ke qsdk.t4game.com gagal — " + t, null);
+            log("⚠️", "Penerusan ke qsdk.t4game.com gagal — " + t, null);
             return err(20000, "Connection failed, please check your network.");
         }
     }
@@ -283,7 +296,7 @@ public final class SdkApi {
                     "", 8000);
             return json(NanoHTTPD.Response.Status.OK, new String(out, "UTF-8"));
         } catch (Throwable t) {
-            log('⚠', "SDK: penerusan loginchecknative gagal — " + t, null);
+            log("⚠️", "Penerusan loginchecknative ke server asli gagal — " + t, null);
             return json(NanoHTTPD.Response.Status.OK, "{\"code\":500,\"msg\":\"no sdk\"}");
         }
     }
@@ -436,7 +449,7 @@ public final class SdkApi {
             buf.append(SIGN_SECRET);
             String expect = SdkData.md5(buf.toString());
             if (!expect.equalsIgnoreCase(sign)) {
-                log('⚠', "SDK: tanda tangan permintaan tidak cocok (diterima — server lokal)", "sign=" + sign);
+                log("⚠️", "Tanda tangan permintaan SDK tidak cocok (tetap dilayani — server lokal)", "sign=" + sign);
             }
         } catch (Throwable ignored) {
         }
@@ -499,7 +512,7 @@ public final class SdkApi {
         }
     }
 
-    private static void log(char icon, String msg, String detail) {
+    private static void log(String icon, String msg, String detail) {
         try {
             HumanLog.ev(icon, msg, detail);
         } catch (Throwable ignored) {
@@ -507,7 +520,7 @@ public final class SdkApi {
     }
 
     /** Log TEKNIS (0.4.5) — hanya tampil di dasbor saat mode RINCI. */
-    private static void logTech(char icon, String msg, String detail) {
+    private static void logTech(String icon, String msg, String detail) {
         try {
             HumanLog.evTech(icon, msg, detail);
         } catch (Throwable ignored) {
