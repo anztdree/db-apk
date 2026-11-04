@@ -140,6 +140,32 @@
   .itrow.bad .ittext{color:var(--err)}
   .grempty{padding:8px 12px; color:var(--mut)}
 
+  /* ---- 0.5.0 REKAM — payload mentah semua lapisan (HttpCanary gaya lokal:
+       trafik loopback terlihat 100%, payload didekode, config asli jadi file) ---- */
+  .rkbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin:16px 0 4px}
+  .rktitle{font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--mut); font-weight:700}
+  .rkcount{margin-left:auto; font-size:10.5px; color:var(--mut)}
+  #rekambox{
+    background:var(--code); border:1px solid var(--line); border-radius:10px;
+    font:11.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    max-height:46vh; overflow-y:auto; word-break:break-word;
+    -webkit-overflow-scrolling:touch;
+  }
+  .rkrow{display:flex; gap:8px; padding:4px 10px; border-bottom:1px solid var(--line); align-items:baseline; cursor:pointer}
+  .rkrow:hover{background:rgba(128,128,128,.08)}
+  .rktime{color:var(--mut); flex:none; font-size:10.5px}
+  .rkdir{flex:none; width:16px; text-align:center; font-weight:700}
+  .rkdir.in{color:var(--warn)} .rkdir.out{color:var(--ok)}
+  .rklayer{flex:none; padding:0 7px; border-radius:999px; border:1px solid var(--line); font-size:9.5px; font-weight:700; color:var(--mut); letter-spacing:.5px}
+  .rkname{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600}
+  .rksize{flex:none; color:var(--mut); font-size:10px}
+  .rkms{flex:none; color:var(--mut); font-size:10px; width:52px; text-align:right}
+  .rkdet{display:none; padding:8px 12px 10px; border-bottom:1px solid var(--line); background:rgba(0,0,0,.25)}
+  .rkdet.open{display:block}
+  .rkdet pre{margin:6px 0 8px; white-space:pre-wrap; word-break:break-word; font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--det); max-height:40vh; overflow-y:auto}
+  .rkmeta{color:var(--mut); font-size:10.5px}
+  .rkempty{padding:12px 10px; color:var(--mut)}
+
   /* ---- data teknis (dilipat — bukti tersedia, tidak menutupi) ---- */
   details.datacard{
     background:var(--card); border:1px solid var(--line); border-radius:12px;
@@ -211,6 +237,27 @@
   <div id="grouphdr">Aktivitas batch — klik untuk rincian per-file</div>
   <div id="groups"></div>
 
+  <!-- ===== 0.5.0 REKAM — payload mentah semua lapisan. HttpCanary cuma jejak;
+       ini CONFIG ASLINYA: setting bin didekripsi, body SDK didekode, serverlist
+       utuh, jawaban /v1 server asli (ONLINE) — tersimpan capture/payload/ ===== -->
+  <div class="rkbar">
+    <span class="rktitle">📼 REKAM · payload mentah</span>
+    <span class="rkcount" id="rk-count"></span>
+    <button class="chip" id="rk-toggle">⏺ ON</button>
+    <button class="act" id="rk-probe">Tes server game</button>
+    <button class="act" id="rk-dl">Unduh</button>
+    <button class="act" id="rk-clear">Bersihkan</button>
+  </div>
+  <div class="toolbar">
+    <button class="chip on" id="rk-l-all">semua</button>
+    <button class="chip" id="rk-l-login">login</button>
+    <button class="chip" id="rk-l-sdk">sdk</button>
+    <button class="chip" id="rk-l-game">game</button>
+    <button class="chip" id="rk-dir">arah: semua</button>
+    <input id="rk-q" class="act" placeholder="cari nama/isi…" style="flex:1; min-width:110px; color:var(--tx)">
+  </div>
+  <div id="rekambox"><div class="rkempty">REKAM menyala otomatis — mainkan alurnya (layar SDK → login → pilih server), lalu klik baris untuk payload utuh + tombol Salin.</div></div>
+
   <!-- ===== bukti teknis (dilipat, tidak menutupi) ===== -->
   <details class="datacard">
     <summary>Data &amp; jaringan (rincian teknis)</summary>
@@ -265,8 +312,9 @@
   </details>
 </main>
 <footer>
-  Alur = 🚀 siap · 👤 pemain · 🔑 sesi · 📡 koneksi · ✅ sukses · ⚠️ masalah · ❌ terhenti · 📋 daftar server · 💾 data · 🧹 mirror ·
+  Alur = 🚀 siap · 👤 pemain · 🔑 sesi · 📡 koneksi · 🔌 putus sesi (normal) · ✅ sukses · ⚠️ masalah · ❌ terhenti · 📋 daftar server · 💾 data · 🧹 mirror ·
   rincian tiap baris tampil penuh (├─/└─) · batch = grup Σ lipat ·
+  📼 REKAM = payload mentah + config asli di <b>capture/payload/</b> ·
   login = lokal · gameplay = server game asli (progres di sana) ·
   log penuh di <b>logs/human.log</b>
 </footer>
@@ -362,6 +410,9 @@
     }
 
     $("t-tech").classList.toggle("on", !!sv.logTech);
+    // 0.5.0 REKAM — status perekam + hitungan entri
+    rkState(sv.rekam !== undefined ? !!sv.rekam : true);
+    $("rk-count").textContent = sv.rekamCount ? (sv.rekamCount + " entri terekam") : "";
   }
   function tile(id, ok, text){
     var el = $(id);
@@ -607,12 +658,138 @@
     });
   });
 
+  // ---------- 0.5.0 REKAM — payload mentah semua lapisan ----------
+  var rkSince = 0, rkLoaded = false, rkLayer = "all", rkDirMode = 0, rkQ = "", rkLastId = 0;
+  function rkDirClass(d){ return d === "→" ? "in" : "out"; }
+  function rkPass(e){
+    if(rkLayer !== "all" && e.l !== rkLayer) return false;
+    if(rkDirMode === 1 && e.d !== "→") return false;
+    if(rkDirMode === 2 && e.d !== "←") return false;
+    if(rkQ){
+      var hay = ((e.n||"")+" "+(e.i||"")+" "+(e.p||"")).toLowerCase();
+      if(hay.indexOf(rkQ) < 0) return false;
+    }
+    return true;
+  }
+  function pollRekam(){
+    fetch("/api/rekam?since=" + rkSince).then(function(r){ return r.json(); }).then(function(arr){
+      var box = $("rekambox");
+      if(!rkLoaded){ rkLoaded = true; box.textContent = ""; }
+      if(!arr.length) return;
+      var atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+      var frag = document.createDocumentFragment();
+      arr.forEach(function(e){
+        rkSince = Math.max(rkSince, e.id);
+        rkLastId = Math.max(rkLastId, e.id);
+        var wrap = document.createElement("div");
+        wrap.dataset.id = e.id;
+        wrap.dataset.layer = e.l || "";
+        wrap.dataset.dir = e.d || "";
+        wrap.dataset.hay = ((e.n||"")+" "+(e.i||"")+" "+(e.p||"")).toLowerCase();
+        var row = document.createElement("div"); row.className = "rkrow";
+        var tm = document.createElement("span"); tm.className = "rktime"; tm.textContent = e.t || "";
+        var dr = document.createElement("span"); dr.className = "rkdir " + rkDirClass(e.d); dr.textContent = e.d || "·";
+        var ly = document.createElement("span"); ly.className = "rklayer"; ly.textContent = e.l || "";
+        var nm = document.createElement("span"); nm.className = "rkname"; nm.textContent = (e.n || "") + (e.i ? "  ·  " + e.i : "");
+        var sz = document.createElement("span"); sz.className = "rksize"; sz.textContent = e.s ? fmtBytes(e.s) : "";
+        var ms = document.createElement("span"); ms.className = "rkms"; ms.textContent = (e.ms > 0 ? fmtMs(e.ms) : "");
+        row.appendChild(tm); row.appendChild(dr); row.appendChild(ly); row.appendChild(nm); row.appendChild(sz); row.appendChild(ms);
+        var det = document.createElement("div"); det.className = "rkdet";
+        det.innerHTML = "<div class='rkmeta'>" + esc(e.i || "") + (e.f ? " · file: " + esc(e.f) : "") + "</div>"
+          + "<pre>" + esc(e.p || "(tanpa payload)") + (e.cut ? "\n… (terpotong — klik Salin untuk payload utuh)" : "") + "</pre>"
+          + "<button class='act' style='min-height:30px'>Salin payload utuh</button>";
+        det.querySelector("button").addEventListener("click", function(ev){
+          ev.stopPropagation();
+          var btn = this;
+          fetch("/api/rekam/payload?id=" + e.id).then(function(r){ return r.text(); }).then(function(t){
+            copyText(t, btn, "Salin payload utuh");
+          }).catch(function(){ btn.textContent = "gagal"; });
+        });
+        row.addEventListener("click", function(){ det.classList.toggle("open"); });
+        wrap.appendChild(row); wrap.appendChild(det);
+        wrap.style.display = rkPass(e) ? "" : "none";
+        frag.appendChild(wrap);
+      });
+      box.appendChild(frag);
+      while(box.childNodes.length > 800) box.removeChild(box.firstChild);
+      if(atEnd) box.scrollTop = box.scrollHeight;
+    }).catch(function(){});
+  }
+  function rkApplyFilter(){
+    document.querySelectorAll("#rekambox > div").forEach(function(n){
+      var pass = (rkLayer === "all" || n.dataset.layer === rkLayer)
+        && (rkDirMode === 0 || (rkDirMode === 1 ? n.dataset.dir === "→" : n.dataset.dir === "←"))
+        && (!rkQ || (n.dataset.hay || "").indexOf(rkQ) >= 0);
+      n.style.display = pass ? "" : "none";
+    });
+    $("rk-l-all").classList.toggle("on", rkLayer === "all");
+    $("rk-l-login").classList.toggle("on", rkLayer === "login");
+    $("rk-l-sdk").classList.toggle("on", rkLayer === "sdk");
+    $("rk-l-game").classList.toggle("on", rkLayer === "game");
+  }
+  $("rk-l-all").addEventListener("click", function(){ rkLayer = "all"; rkApplyFilter(); });
+  $("rk-l-login").addEventListener("click", function(){ rkLayer = "login"; rkApplyFilter(); });
+  $("rk-l-sdk").addEventListener("click", function(){ rkLayer = "sdk"; rkApplyFilter(); });
+  $("rk-l-game").addEventListener("click", function(){ rkLayer = "game"; rkApplyFilter(); });
+  $("rk-dir").addEventListener("click", function(){
+    rkDirMode = (rkDirMode + 1) % 3;
+    this.textContent = rkDirMode === 0 ? "arah: semua" : (rkDirMode === 1 ? "arah: → masuk" : "arah: ← keluar");
+    this.classList.toggle("on", rkDirMode !== 0);
+    rkApplyFilter();
+  });
+  $("rk-q").addEventListener("input", function(){ rkQ = this.value.trim().toLowerCase(); rkApplyFilter(); });
+  function rkState(on){
+    var b = $("rk-toggle");
+    if(!b) return;
+    b.textContent = on ? "⏺ ON" : "⏸ OFF";
+    b.classList.toggle("on", !!on);
+  }
+  $("rk-toggle").addEventListener("click", function(){
+    var next = !$("rk-toggle").classList.contains("on");
+    fetch("/api/rekam/toggle?on=" + (next ? "1" : "0")).then(function(){ rkState(next); pollStatus(); }).catch(function(){});
+  });
+  $("rk-clear").addEventListener("click", function(){
+    fetch("/api/rekam/clear").then(function(){
+      $("rekambox").innerHTML = "";
+      rkLoaded = true;
+      rkSince = rkLastId; // jangan tarik ulang entri lama dari ring
+    }).catch(function(){});
+  });
+  $("rk-dl").addEventListener("click", function(){
+    fetch("/api/rekam/download").then(function(r){ return r.text(); }).then(function(t){
+      try {
+        var blob = new Blob([t], {type: "text/plain"});
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "rekam.jsonl";
+        document.body.appendChild(a); a.click(); a.remove();
+      } catch(e){
+        copyText(t, $("rk-dl"), "Unduh");
+      }
+    }).catch(function(){});
+  });
+  $("rk-probe").addEventListener("click", function(){
+    var b = $("rk-probe");
+    b.textContent = "menguji…";
+    b.disabled = true;
+    fetch("/api/rekam/probe").then(function(r){ return r.json(); }).then(function(){
+      b.textContent = "Tes server game";
+      b.disabled = false;
+      pollStatus();
+    }).catch(function(){
+      b.textContent = "Tes server game";
+      b.disabled = false;
+    });
+  });
+
   pollStatus();
   pollLog();
   pollGroups();
+  pollRekam();
   setInterval(pollStatus, 3000);
   setInterval(pollLog, 3000);
   setInterval(pollGroups, 3000);
+  setInterval(pollRekam, 3000);
 })();
 </script>
 </body>

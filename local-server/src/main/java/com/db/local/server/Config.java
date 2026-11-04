@@ -24,8 +24,11 @@ import java.io.Writer;
  *   "monitorSec": 60,
  *   "toggleX": -1,        // posisi terakhir tombol melayang (drag); -1 = posisi bawaan
  *   "toggleY": -1,
- *   "logTech": false      // 0.4.5: false = log BERSIH (penting saja);
+ *   "logTech": false,    // 0.4.5: false = log BERSIH (penting saja);
  *                         // true = RINCI (baris request per-file ikut tampil)
+ *   "rekam": true         // 0.5.0 REKAM: perekam payload mentah semua lapisan
+ *                         // (login/sdk/game) — memori + capture/rekam.jsonl +
+ *                         // capture/payload/ (config asli). Bawaan ON.
  * }
  *
  * Sumber kebenaran mode: file ini. Tombol melayang mengubah mode → file ditulis
@@ -43,6 +46,7 @@ public final class Config {
     private static volatile int toggleX = -1;
     private static volatile int toggleY = -1;
     private static volatile boolean logTech = false;
+    private static volatile boolean rekam = true;
 
     public static final String DEFAULT_JSON =
             "{\n"
@@ -55,7 +59,8 @@ public final class Config {
                     + "  \"monitorSec\": 60,\n"
                     + "  \"toggleX\": -1,\n"
                     + "  \"toggleY\": -1,\n"
-                    + "  \"logTech\": false\n"
+                    + "  \"logTech\": false,\n"
+                    + "  \"rekam\": true\n"
                     + "}\n";
 
     private Config() {
@@ -109,6 +114,10 @@ public final class Config {
                     if (lt != null) {
                         logTech = "true".equalsIgnoreCase(lt.trim());
                     }
+                    String rk = grepStr(raw, "\"rekam\"");
+                    if (rk != null) {
+                        rekam = "true".equalsIgnoreCase(rk.trim());
+                    }
                 }
             } catch (Throwable t) {
                 HumanLog.ev("⚠️", "server.json gagal dibaca — memakai nilai bawaan (mode ONLINE, port game 8080, dasbor 4000)",
@@ -155,6 +164,29 @@ public final class Config {
     /** true = mode log RINCI (baris teknis ikut tampil di dasbor); bawaan false = BERSIH. */
     public static boolean logTech() {
         return logTech;
+    }
+
+    /** true = REKAM menyala (perekam payload mentah semua lapisan) — bawaan ON. */
+    public static boolean rekam() {
+        return rekam;
+    }
+
+    /** Nyalakan/matikan REKAM dan tulis ke server.json (dasbor /api/rekam/toggle). */
+    public static void setRekam(boolean on) {
+        synchronized (LOCK) {
+            rekam = on;
+            try {
+                if (file != null) {
+                    writeText(file, json());
+                }
+            } catch (Throwable t) {
+                try {
+                    HumanLog.ev("⚠️", "Gagal menulis rekam ke server.json — pilihan tetap dipakai sampai proses mati",
+                            String.valueOf(t));
+                } catch (Throwable ignored) {
+                }
+            }
+        }
     }
 
     /** Ubah mode log RINCI dan tulis ke server.json (dipanggil dasbor /api/logtech). */
@@ -227,7 +259,8 @@ public final class Config {
                 + "  \"monitorSec\": " + monitorSec + ",\n"
                 + "  \"toggleX\": " + toggleX + ",\n"
                 + "  \"toggleY\": " + toggleY + ",\n"
-                + "  \"logTech\": " + logTech + "\n"
+                + "  \"logTech\": " + logTech + ",\n"
+                + "  \"rekam\": " + rekam + "\n"
                 + "}\n";
     }
 

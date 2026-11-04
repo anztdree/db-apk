@@ -56,12 +56,15 @@ public final class LoginServer extends NanoHTTPD {
     private final ConcurrentHashMap<String, Sess> sessions = new ConcurrentHashMap<String, Sess>();
     private final Object SWEEPLOCK = new Object();
 
-    /** Sesi engine.io satu client — antrean paket keluar + waktu terakhir hidup. */
+    /** Sesi engine.io satu client — antrean paket keluar + waktu terakhir hidup.
+     *  0.5.0 REKAM: + waktu lahir & aksi terakhir — bahan baris 🔌 disconnect. */
     private static final class Sess {
         final String sid;
         final LinkedBlockingQueue<String> out = new LinkedBlockingQueue<String>();
+        final long createdAt = System.currentTimeMillis();
         volatile long lastSeen = System.currentTimeMillis();
         volatile boolean closed = false;
+        volatile String lastAction = null;
 
         Sess(String sid) {
             this.sid = sid;
@@ -139,6 +142,10 @@ public final class LoginServer extends NanoHTTPD {
         String open = HANDSHAKE_JSON.replace("%SID%", sid);
         String body = frame("0" + open) + frame("40");
         try {
+            // 0.5.0 REKAM — handshake terekam utuh (bahan bangun protokol):
+            Capture.login("→", "handshake", "GET /socket.io/ · engine.io v3 · polling", null, 0, 0);
+            Capture.login("←", "open", "sid " + sid.substring(0, 6) + "… · upgrades [] · ping 25 dtk",
+                    body, body.length(), 0);
             // 0.4.9 — koneksi klien = bagian ALUR yang harus terlihat (owner:
             // "log harus menceritakan sampai serverlist"): handshake naik dari
             // TEKNIS ke PENTING dengan rincian sesi. Dedupe 10 mnt — sambung
@@ -267,6 +274,12 @@ public final class LoginServer extends NanoHTTPD {
         switch (t) {
             case '2': // PING engine.io → PONG
                 s.out.offer("3");
+                try {
+                    // 0.5.0 REKAM — keepalive satu entri (dua arah dalam satu kejadian)
+                    Capture.login("→", "ping→pong", "keepalive engine.io · interval 25 dtk · sid "
+                            + s.sid.substring(0, 6) + "…", null, 1, 0);
+                } catch (Throwable ignored) {
+                }
                 return;
             case '3': // PONG (tidak diharapkan dari client v3) — abaikan
                 return;
@@ -290,13 +303,17 @@ public final class LoginServer extends NanoHTTPD {
             return; // CONNECT namespace "/" — sudah terbuka lewat OPEN
         }
         if (type == '1') {
-            s.closed = true; // DISCONNECT
+            // DISCONNECT — klien menutup sendiri. 0.5.0: TIDAK diam lagi —
+            // ini titik ketika klien pindah ke server game (atau layar ditutup).
+            s.closed = true;
             sessions.remove(s.sid);
+            onSessionEnded(s, true);
             return;
         }
         if (type != '2') {
             return; // 3=ACK dari client? 4=ERROR? — tidak dipakai game
         }
+        long sioT0 = System.currentTimeMillis();
         // EVENT: "42<ackid>[\"handler.process\",{pesan}]"
         int i = 1;
         while (i < p.length() && p.charAt(i) >= '0' && p.charAt(i) <= '9') {
@@ -306,6 +323,15 @@ public final class LoginServer extends NanoHTTPD {
         String json = p.substring(i);
         String msg = firstArgJson(json);
         String action = strField(msg, "action");
+        s.lastAction = (action == null) ? "(tanpa action)" : action;
+        try {
+            // 0.5.0 REKAM — event masuk TEREKAM UTUH (payload penuh):
+            Capture.login("→", action == null ? "handler.process" : action,
+                    "sid " + s.sid.substring(0, 6) + "…"
+                            + (ackId.length() > 0 ? " · ack#" + ackId : ""),
+                    msg, msg.length(), 0);
+        } catch (Throwable ignored) {
+        }
         String data;
         if ("loginGame".equals(action)) {
             String userId = strField(msg, "userId");
@@ -359,7 +385,50 @@ public final class LoginServer extends NanoHTTPD {
         }
         if (ackId.length() > 0) {
             String resp = "{\"ret\":0,\"data\":" + quote(data) + "}";
+            long ms = System.currentTimeMillis() - sioT0;
+            try {
+                // 0.5.0 REKAM — ACK keluar TEREKAM UTUH (jawaban yang dikirim klien;
+                // daftar server 520 KB ikut tersimpan file — config asli):
+                Capture.login("←", "ack#" + ackId + " → "
+                        + (action == null ? "handler.process" : action),
+                        "sid " + s.sid.substring(0, 6) + "…", resp, resp.length(), ms);
+            } catch (Throwable ignored) {
+            }
             s.out.offer("43" + ackId + "[" + resp + "]");
+        }
+    }
+
+    /**
+     * 0.5.0 — penutup sesi login dilaporkan (dulu DIAM total — pemain melihat
+     * log berhenti di 📋 tanpa tahu klien sudah pindah). Klien menutup sendiri
+     * (socket.io DISCONNECT) atau sesi kedaluwarsa 90 dtk (sweepExpired).
+     * Dedupe 60 dtk — sambung-ulang cepat tidak membanjiri.
+     */
+    private static volatile long lastEndLogAt = 0L;
+
+    private static void onSessionEnded(Sess s, boolean byClient) {
+        try {
+            Capture.login("→", byClient ? "disconnect" : "expired",
+                    "sid " + s.sid.substring(0, 6) + "…", null, 0, 0);
+        } catch (Throwable ignored) {
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastEndLogAt < 60000L) {
+            return; // dedupe 60 dtk
+        }
+        lastEndLogAt = now;
+        long age = now - s.createdAt;
+        String act = s.lastAction;
+        if (byClient) {
+            HumanLog.ev("🔌", "Klien menutup sesi login — normal setelah pilih server (pindah ke server game)",
+                    "Sesi     : " + s.sid.substring(0, 6) + "… · hidup " + HumanLog.fmtMs(age) + "\n"
+                            + "Terakhir : " + (act == null ? "(belum ada aksi — hanya handshake)" : act) + "\n"
+                            + "Lanjutan : klien io.connect LANGSUNG ke url server pilihan pemain"
+                            + " (https://sXXXX-bs.popoh5.com — di luar server lokal; alurnya masuk tab"
+                            + " REKAM saat proxy gameplay 0.5.1 aktif)");
+        } else {
+            HumanLog.evTech("🔌", "Sesi login kedaluwarsa (90 dtk tanpa aktivitas) — klien sudah pergi",
+                    "Sesi     : " + s.sid.substring(0, 6) + "… · terakhir " + (act == null ? "-" : act));
         }
     }
 
@@ -515,8 +584,12 @@ public final class LoginServer extends NanoHTTPD {
             while (it.hasNext()) {
                 Map.Entry<String, Sess> e = it.next();
                 if (e.getValue().closed || now - e.getValue().lastSeen > SESSION_TTL_MS) {
+                    boolean report = !e.getValue().closed && e.getValue().lastAction != null;
                     e.getValue().closed = true;
                     it.remove();
+                    if (report) {
+                        onSessionEnded(e.getValue(), false);
+                    }
                 }
             }
         }

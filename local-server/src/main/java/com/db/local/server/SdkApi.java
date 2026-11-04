@@ -96,9 +96,26 @@ public final class SdkApi {
         String username = all.get("username");
         String token = all.get("token");
         String usermode = all.get("usermode");
+        try {
+            // 0.5.0 REKAM — validasi shell terekam (parameter jelas, token DISEMBUNYIKAN)
+            Capture.sdk("→", "/loginchecknative", "uid " + (uid == null ? "-" : uid)
+                    + " · username " + (username == null ? "-" : username)
+                    + " · usermode " + (usermode == null ? "-" : usermode)
+                    + " · token " + (token == null ? "-" : "(ada)"), null, 0, 0);
+        } catch (Throwable ignored) {
+        }
         String data = SdkData.checkNative(uid, username, token, usermode);
         if (data == null) {
-            return json(NanoHTTPD.Response.Status.OK, "{\"code\":500,\"msg\":\"登录参数验证失败\"}");
+            String errBody = "{\"code\":500,\"msg\":\"登录参数验证失败\"}";
+            try {
+                Capture.sdk("←", "/loginchecknative", "code 500 — validasi GAGAL", errBody, errBody.length(), 0);
+            } catch (Throwable ignored) {
+            }
+            return json(NanoHTTPD.Response.Status.OK, errBody);
+        }
+        try {
+            Capture.sdk("←", "/loginchecknative", "code 0 — sesi disahkan, shell lanjut boot", data, data.length(), 0);
+        } catch (Throwable ignored) {
         }
         return json(NanoHTTPD.Response.Status.OK, data);
     }
@@ -136,6 +153,14 @@ public final class SdkApi {
         String data;
         boolean ok = true;
         String errMsg = "";
+        long t0 = System.currentTimeMillis();
+        try {
+            // 0.5.0 REKAM — body SDK DIDEKODE dari base64+sign (bukan jejak, isi aslinya)
+            String reqJson = p.get("__json");
+            Capture.sdk("→", path, "mode LOCAL · sign " + (p.get("__sign") == null ? "-" : "ada"),
+                    reqJson, reqJson == null ? 0 : reqJson.length(), 0);
+        } catch (Throwable ignored) {
+        }
 
         if (path.equals("/v1/system/init")) {
             data = INIT_DATA;
@@ -201,7 +226,7 @@ public final class SdkApi {
             if (r == null) {
                 ok = false;
                 data = "[]";
-                return err(40005, "Otorisasi gagal");
+                return err(path, 40005, "Otorisasi gagal");
             } else {
                 data = r;
                 // baris 👤 dipancarkan dari SdkData.noteSdkLogin (dedupe 10 mnt —
@@ -217,7 +242,7 @@ public final class SdkApi {
                         "Akun     : " + p.get("username") + "\n"
                                 + "Sebab    : tidak ada di dragonball.db atau kata sandi tidak cocok\n"
                                 + "Lanjutan : masuk sebagai tamu tetap bisa — atau daftar akun baru di layar SDK");
-                return err(40101, "akun atau password tidak ada");
+                return err(path, 40101, "akun atau password tidak ada");
             }
             data = r;
             log("👤", "Akun \"" + p.get("username") + "\" masuk",
@@ -238,7 +263,7 @@ public final class SdkApi {
                                 + "Sebab    : " + (taken ? "nama akun sudah terdaftar di dragonball.db"
                                                           : "huruf kecil [a-z0-9_.+-@], panjang 3-64") + "\n"
                                 + "Lanjutan : pilih nama lain — atau masuk sebagai tamu");
-                return err(40102, taken ? "nama akun sudah dipakai" : "nama akun tidak valid");
+                return err(path, 40102, taken ? "nama akun sudah dipakai" : "nama akun tidak valid");
             }
             data = r;
             log("👤", "Akun baru \"" + regName + "\" terdaftar — langsung masuk",
@@ -246,9 +271,9 @@ public final class SdkApi {
                             + "Disimpan : dragonball.db (kata sandi MD5) — langsung dipakai game\n"
                             + "Sesi     : token baru diterbitkan dan dikirim ke layar SDK");
         } else if (path.equals("/v1/user/findPassByEmail")) {
-            return err(20010, "Server lokal: lupa kata sandi tidak didukung — daftar akun baru saja");
+            return err(path, 20010, "Server lokal: lupa kata sandi tidak didukung — daftar akun baru saja");
         } else if (path.equals("/v1/auth/createOrder")) {
-            return err(50001, "Pembayaran tidak tersedia di server lokal");
+            return err(path, 50001, "Pembayaran tidak tersedia di server lokal");
         } else {
             // rute SDK tak dikenal — jawab sukses kosong agar UI tidak menggantung
             data = "[]";
@@ -259,25 +284,51 @@ public final class SdkApi {
                 .append(",\"error\":{\"id\":").append(ok ? 0 : 20000)
                 .append(",\"message\":\"").append(Json.esc(errMsg)).append("\"}}");
         verifySignQuietly(p, body);
+        try {
+            // 0.5.0 REKAM — jawaban SDK penuh (init/getNotice/data sesi — config asli)
+            Capture.sdk("←", path, ok ? "result true" : "result false",
+                    sb.toString(), sb.length(), System.currentTimeMillis() - t0);
+        } catch (Throwable ignored) {
+        }
         return json(NanoHTTPD.Response.Status.OK, sb.toString());
     }
 
+    /** Jawaban error SDK + terekam (0.5.0) — dipakai rute /v1 di atas. */
+    private static Response err(String path, int id, String msg) {
+        String errBody = "{\"result\":false,\"data\":[],\"error\":{\"id\":" + id
+                + ",\"message\":\"" + Json.esc(msg) + "\"}}";
+        try {
+            Capture.sdk("←", path, "error " + id + " — " + msg, errBody, errBody.length(), 0);
+        } catch (Throwable ignored) {
+        }
+        return json(NanoHTTPD.Response.Status.OK, errBody);
+    }
+
     private static Response err(int id, String msg) {
-        return json(NanoHTTPD.Response.Status.OK,
-                "{\"result\":false,\"data\":[],\"error\":{\"id\":" + id
-                        + ",\"message\":\"" + Json.esc(msg) + "\"}}");
+        return err("(tanpa path)", id, msg);
     }
 
     // ---------------- proxy mode ONLINE ----------------
 
     private static Response proxyV1(String uri, String body) {
+        long t0 = System.currentTimeMillis();
         try {
             byte[] out = http("http://qsdk.t4game.com" + uri, body == null ? "" : body, 8000);
             logTech("ℹ️", "Permintaan SDK diteruskan ke server asli qsdk.t4game.com" + uri, null);
+            try {
+                // 0.5.0 REKAM — mode ONLINE: jawaban ASLI server qsdk ikut terekam
+                // (config asli — pembanding langsung untuk versi lokal)
+                String respStr = new String(out, "UTF-8");
+                Capture.sdk("→", uri, "diteruskan ke qsdk.t4game.com (mode ONLINE)",
+                        body, body == null ? 0 : body.length(), 0);
+                Capture.sdk("←", uri, "dari server asli qsdk.t4game.com", respStr, out.length,
+                        System.currentTimeMillis() - t0);
+            } catch (Throwable ignored) {
+            }
             return json(NanoHTTPD.Response.Status.OK, new String(out, "UTF-8"));
         } catch (Throwable t) {
             log("⚠️", "Penerusan ke qsdk.t4game.com gagal — " + t, null);
-            return err(20000, "Connection failed, please check your network.");
+            return err("(proxy) " + uri, 20000, "Connection failed, please check your network.");
         }
     }
 
@@ -294,6 +345,13 @@ public final class SdkApi {
         try {
             byte[] out = http("https://login.popoh5.com:510/loginchecknative" + (qs.length() > 0 ? "?" + qs : ""),
                     "", 8000);
+            try {
+                // 0.5.0 REKAM — mode ONLINE: loginchecknative ASLI ikut terekam
+                String respStr = new String(out, "UTF-8");
+                Capture.sdk("→", "/loginchecknative", "diteruskan ke login.popoh5.com:510 (mode ONLINE)", null, 0, 0);
+                Capture.sdk("←", "/loginchecknative", "dari server asli login.popoh5.com:510", respStr, out.length, 0);
+            } catch (Throwable ignored) {
+            }
             return json(NanoHTTPD.Response.Status.OK, new String(out, "UTF-8"));
         } catch (Throwable t) {
             log("⚠️", "Penerusan loginchecknative ke server asli gagal — " + t, null);

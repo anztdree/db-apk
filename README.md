@@ -560,6 +560,56 @@ Ringkasan grup di Copy kini berbentuk `09:41:20 Σ Mirror CDN — 105 file · 2,
 5. Dasbor: teks log 12→13px, waktu 10→11px, rincian 10→11.5px dengan kontras lebih tinggi (dulu abu-abu tipis), kolom ikon dilebari untuk emoji, tanpa pemenggalan (`overflow-wrap:anywhere`), legenda footer emoji. Copy memuat blok `├─/└─` penuh.
 6. Boot: tiga baris 0.4.7–0.4.8 (siap/Mode/Pemain) dilebur jadi SATU baris 🚀 ber-rincian — isi peta arah koneksi tetap lengkap di rincian `Mode`.
 
+### 2.18 REKAM 0.5.0 — perekam payload mentah + CONFIG ASLI semua lapisan (permintaan owner: *"seperti capture HttpCanary tapi kita buat ini lebih canggih — HttpCanary itu cuma jejaknya, bukan config aslinya"*)
+
+**Latar masalah.** Log 0.4.9 adalah buku cerita (ringkasan kejadian), bukan alat tangkap: isi mentah `loginGame`/`GetServerList` dibuang setelah dihitung ukurannya, body SDK lewat tanpa rekaman, setting bin tidak pernah disimpan dalam bentuk terbaca, dan tahap setelah 📋 buta total — klien `io.connect` LANGSUNG ke `sXXXX-bs.popoh5.com:PORT` (hasil bedah `main.min.js`: `ts.loginInfo.serverItem.url` → `connectToServer` → handshake `verify` TEA kunci `"verification"` → action `enterGame`). Selama ini loginserver dibangun dari bedah JS + probe manual — tidak dari rekaman hidup yang bisa diverifikasi ulang.
+
+**Tiga keunggulan yang HttpCanary tidak mungkin punya:**
+
+1. **Loopback terlihat 100%** — HttpCanary (VPN-capture) buta terhadap trafik ke `127.0.0.1:8080/8610` — justru SELURUH alur LOCAL. REKAM berdiri di dalam server sendiri: tidak ada byte yang luput.
+2. **Payload didekode** — body SDK dibuka dari `base64+sign`, setting bin didekripsi XOR `"DragonBall"` + hasil rewrite; yang terekam adalah config asli yang BENAR-BENAR diterima klien, bukan hexdump.
+3. **Config asli jadi FILE** — setiap jawaban config utuh di `capture/payload/NNNNNN-arah-nama.json` — bisa dipakai ulang sebagai aset (pola yang sama dengan `servers.json` snapshot yang kini dilayani `GetServerList`). HttpCanary menampilkan jejak; REKAM memberi bahan bangun.
+
+**Yang direkam (arah dari sudut pandang server; → masuk, ← keluar):**
+
+| Lapisan | Isi rekaman |
+|---|---|
+| `login` (:8610) | handshake + `open` engine.io, event `handler.process` utuh (`loginGame`, `GetServerList`, `LoginAnnounce`, `Save*`, aksi tak dikenal), ACK `{"ret":0,...}` utuh (daftar server 520 KB ikut tersimpan file), `ping→pong`, `disconnect`/`expired` |
+| `sdk` (/v1/*, loginchecknative) | body DIDEKODE dari base64+sign + jawaban penuh; mode ONLINE = jawaban ASLI `qsdk.t4game.com` / `login.popoh5.com:510` ikut terekam (pembanding langsung versi lokal) |
+| `game` (:8080) | setting bin DIDEKRIPSI + ditulis-ulang, `serversetting.json` hasil rewrite, config `json/version/properties/txt/bin` ≤ 512 KB (mirror & passthrough ONLINE dibuffer lalu disajikan — perilaku tidak berubah); resource biner (png/zip/js) cukup barisnya |
+| `proxy` | disiapkan untuk proxy gameplay 0.5.1 (`verify` TEA → `enterGame` → action gameplay) |
+
+**Penyimpanan dua sisi** (folder baru `capture/` — masuk whitelist Cleaner, bukti tidak terhapus tiap boot):
+
+- `capture/rekam.jsonl` — jejak lengkap berurutan (payload ≤ 32 KB tertanam utuh; rotasi 8 MB).
+- `capture/payload/` — payload utuh per kejadian (≤ 2 MB), maks 400 file, terlama dipangkas. File inilah config asli.
+- Memori: cincin 600 entri untuk tab REKAM (ringan — hanya preview).
+
+**Dasbor — bagian REKAM** di bawah grup batch: `⏺ ON/OFF` (tersimpan `server.json` `"rekam"`, bawaan ON), filter lapisan `login/sdk/game`, arah `→/←`, pencarian payload, klik baris = payload utuh + **Salin payload utuh** (`/api/rekam/payload?id=N`), **Unduh** `rekam.jsonl`, **Bersihkan** (ring dasbor saja — file tetap), dan **Tes server game**.
+
+**Baris log baru 0.5.0** (alur tidak diam lagi setelah 📋):
+
+```
+09:41:10 📡 Server game bisa dihubungi — S2109 — s2109-bs.popoh5.com:8061 · 210 ms
+         ├─ Server  : 2109 — urutan #1 daftar (pilihan paling mungkin)
+         ├─ DNS     : s2109-bs.popoh5.com → 47.88.x.x
+         └─ Lanjutan: klien io.connect LANGSUNG ke sini setelah pemain memilih
+                       (bukan lewat server lokal)
+
+09:41:52 🔌 Klien menutup sesi login — normal setelah pilih server (pindah ke server game)
+         ├─ Sesi     : kFdzRO… · hidup 14 dtk
+         ├─ Terakhir : GetServerList
+         └─ Lanjutan : klien io.connect LANGSUNG ke url server pilihan pemain
+                       (https://sXXXX-bs.popoh5.com — di luar server lokal; alurnya
+                       masuk tab REKAM saat proxy gameplay 0.5.1 aktif)
+```
+
+Jika server game TIDAK terjangkau (seperti `dragon.sjmobilegame.com:82` di beberapa jaringan): baris ⚠️ menjelaskan bahwa game akan DIAM di layar menyambung tanpa log lain — jawaban atas pertanyaan berulang "kenapa log berhenti".
+
+**API dasbor baru:** `GET /api/rekam?since=` · `GET /api/rekam/payload?id=` · `GET /api/rekam/toggle?on=0|1` · `GET /api/rekam/clear` · `GET /api/rekam/download` · `GET /api/rekam/probe`.
+
+**Cara pakai untuk membangun/ menambah server** (alur kerja berbasis bukti): nyalakan REKAM → mainkan alurnya → buka tab REKAM → bandingkan payload asli (ONLINE) dengan jawaban lokal (LOCAL) → tiru skemanya. Bukan menebak dari bedah JS saja — bukti hidup ada di `capture/`.
+
 ---
 
 ## 3. Konsep Solusi (v2.2): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded

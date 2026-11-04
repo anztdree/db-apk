@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.4.9 — LOG EMOJI + BLOK RINCIAN
+# Build APK-LSF 0.5.0 — REKAM: PAYLOAD MENTAH + CONFIG ASLI
 #
 # Dasar: releases/APK-LSF-0.4.8.apk (LFS — memuat manifest provider +
 # endpoint 127.0.0.1:8080 + dex game asli + mirror www/ lengkap dgn
@@ -164,13 +164,13 @@ ECJ="${ECJ:-$REPO/tools/ecj-3.33.0.jar}"               # compiler Java 8 (sandbo
 KS="${KS:-$REPO/keystore/lsf.keystore}"
 KS_ALIAS="${KS_ALIAS:-lsf}"
 KS_PASS="${KS_PASS:-lsf-local-2025}"
-BASE="${BASE:-$REPO/releases/APK-LSF-0.4.8.apk}"         # APK dasar (rilis 0.4.8 / LFS)
+BASE="${BASE:-$REPO/releases/APK-LSF-0.4.9.apk}"         # APK dasar (rilis 0.4.9)
 LOGIN_PORT_QH="${LOGIN_PORT_QH:-8610}"                    # port server SDK lokal (QHinfo)
 SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.4.9.apk"
+OUT="$REPO/releases/APK-LSF-0.5.0.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"
@@ -182,6 +182,26 @@ if [ ! -f "$WWW/bs/upgrade/all.zip" ] || [ ! -f "$WWW/bs/upgrade/base.zip" ]; th
   fi
   echo "catatan: base.zip/all.zip tidak di stage — ikut terbawa dari APK dasar"
 fi
+
+# Baru 0.5.0 (permintaan owner: "seperti capture HttpCanary tapi lebih canggih —
+# HttpCanary cuma jejaknya, bukan config aslinya"):
+#   a) Capture.java — perekam payload mentah SEMUA lapisan (login/sdk/game;
+#      proxy disiapkan 0.5.1): ring memori 600 + capture/rekam.jsonl (embed
+#      <=32 KB, rotasi 8 MB) + capture/payload/ (config asli utuh <=2 MB, maks
+#      400 file). HttpCanary buta loopback; REKAM di dalam server: 100% + didekode.
+#   b) Tap: LoginServer (event/ack/handshake/ping/disconnect utuh), SdkApi (body
+#      didekode base64+sign + jawaban; ONLINE = jawaban asli qsdk/login.popoh5
+#      terekam), GameServer (setting bin DIDEKRIPSI + serversetting + config
+#      json/version/txt/bin <=512 KB; passthrough ONLINE dibuffer), SettingBin
+#      (helper decryptedRewritten).
+#   c) 🔌 baris baru: klien menutup sesi login (normal setelah pilih server —
+#      dulu DIAM total; sesi expired ikut dilaporkan) + sesi simpan lastAction.
+#   d) PROBE SERVER GAME (Tahap A): url serverList 5 teratas DNS+TCP saat boot
+#      (thread belakang) + tombol dasbor "Tes server game" (/api/rekam/probe)
+#      — jawaban "kenapa log diam setelah pilih server".
+#   e) server.json +"rekam":true (bawaan ON; toggle /api/rekam/toggle); Cleaner
+#      whitelist +capture/; dasbor +bagian REKAM (filter, payload utuh+Salin,
+#      Unduh, Tes server game); StatusStore +rekam/rekamCount; README §2.18.
 
 echo "[1/8] ECJ compile (sandbox tanpa javac) ..."
 rm -rf "$BUILD/classes" "$BUILD/dex" "$BUILD/stage" "$BUILD/harness"

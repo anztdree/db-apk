@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class StatusStore {
     private static final Object LOCK = new Object();
-    private static final String VERSION = "0.4.9";
+    private static final String VERSION = "0.5.0";
 
     private static String bind = "127.0.0.1";
     private static int port = 4000;
@@ -188,6 +188,8 @@ public final class StatusStore {
                     .append(Json.num("mirrorSeedBytes", mirrorSeedBytes.get())).append(',')
                     .append(Json.num("notFound", notFoundCount.get())).append(',')
                     .append(Json.bool("logTech", Config.logTech())).append(',')
+                    .append(Json.bool("rekam", Config.rekam())).append(',')
+                    .append(Json.num("rekamCount", Capture.recordedCount())).append(',')
                     .append(Json.str("package", packageName)).append(',')
                     .append(Json.str("version", VERSION)).append(',')
                     .append(Json.num("uptimeMs", up)).append(',')

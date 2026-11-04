@@ -140,6 +140,38 @@ public final class SettingBin {
     }
 
     /**
+     * 0.5.0 REKAM — isi setting bin yang DITERIMA KLIEN dalam bentuk TEKS
+     * (didekripsi + sudah ditulis-ulang ke lokal) — config asli untuk
+     * capture/payload/. Tidak disangga; dipanggil saat disajikan saja.
+     * Skema penggantian = PERSIS compute(); bila suatu hari compute berubah,
+     * ubah di sini juga (sengaja tidak digabung agar compute tetap murni byte).
+     */
+    static String decryptedRewritten(File f) {
+        try {
+            byte[] enc = readAll(f);
+            String s = new String(xor(enc), "UTF-8");
+            String replaced = s.replace(HOST_ORIGINAL, "http://127.0.0.1:" + Config.gamePort());
+            replaced = replaced.replace(LOGIN_ORIGINAL, "http://127.0.0.1");
+            replaced = replaced.replace(TS_LOGIN_ORIGINAL, "http://127.0.0.1:" + Config.loginPort());
+            replaced = setJsonValue(replaced, "loginPort", String.valueOf(Config.loginPort()));
+            replaced = setJsonValue(replaced, "loginWebPort", String.valueOf(Config.loginPort()));
+            if (!Config.useSdk()) {
+                String uid = currentUserIdSuffix();
+                if (uid != null && uid.length() > 0) {
+                    String url = getJsonValue(replaced, "url");
+                    if (url != null && url.indexOf("userid=") < 0) {
+                        String sep = (url.indexOf('?') >= 0) ? "&" : "?";
+                        replaced = setJsonValue(replaced, "url", url + sep + "userid=" + uid);
+                    }
+                }
+            }
+            return replaced;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
      * Ganti nilai string/angka suatu kunci level atas dalam JSON teks — tanpa
      * dependensi parser. Aman bila kunci tidak ada (teks kembali apa adanya).
      */

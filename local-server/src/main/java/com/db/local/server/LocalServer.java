@@ -27,6 +27,12 @@ import fi.iki.elonen.NanoHTTPD;
  *   GET  /api/logs/file   → EKOR human.log penuh (penting+teknis) — sumber "Copy penuh" 0.4.5
  *   GET  /api/logtech     → mode log RINCI on/off (?on=1|0) — tersimpan di server.json 0.4.5
  *   GET  /api/www/list    → isi folder www/ (bukti folder bersih & lengkap)
+ *   GET  /api/rekam       → 0.5.0 REKAM: entri perekaman sejak id (payload preview)
+ *   GET  /api/rekam/payload?id=N → payload UTUH satu entri (baca capture/payload/)
+ *   GET  /api/rekam/toggle?on=0|1 → REKAM nyala/mati (tersimpan server.json "rekam")
+ *   GET  /api/rekam/clear → kosongkan ring dasbor (file & jsonl tetap)
+ *   GET  /api/rekam/download → ekor rekam.jsonl penuh (jejak mentah)
+ *   GET  /api/rekam/probe → uji kesehatan server game (5 teratas daftar) sekarang
  *   POST /api/mode DIHAPUS (koreksi owner 0.3.2 — "website pindah mode itu salah
  *   cuma menuhin tempat"): website TANPA switch mode; ganti mode cukup lewat
  *   tombol melayang di layar game. Endpoint /api/apk/*, /api/analyze,
@@ -151,6 +157,50 @@ public final class LocalServer extends NanoHTTPD {
             if ("/api/www/list".equals(uri)) {
                 String j = wwwListJson();
                 bytes = j.length();
+                return jsonResp(Response.Status.OK, j);
+            }
+            // ---------------- 0.5.0 REKAM — perekam payload mentah ----------------
+            if ("/api/rekam".equals(uri)) {
+                long since = parseLong(session.getParameters().get("since"));
+                String j = Capture.snapshotJson(since);
+                bytes = j.length();
+                return jsonResp(Response.Status.OK, j);
+            }
+            if ("/api/rekam/payload".equals(uri)) {
+                long id = parseLong(session.getParameters().get("id"));
+                String t = Capture.payloadById(id);
+                bytes = t.length();
+                Response r = newFixedLengthResponse(Response.Status.OK, "text/plain; charset=utf-8", t);
+                r.addHeader("Cache-Control", "no-store");
+                return r;
+            }
+            if ("/api/rekam/toggle".equals(uri)) {
+                boolean on = parseBool(session.getParameters().get("on"), Config.rekam());
+                Config.setRekam(on);
+                // tanpa baris log — umpan balik UI (aturan 0.4.8); status di tombol
+                String j = "{\"ok\":true,\"on\":" + on + "}";
+                bytes = j.length();
+                return jsonResp(Response.Status.OK, j);
+            }
+            if ("/api/rekam/clear".equals(uri)) {
+                Capture.clearMem();
+                String j = "{\"ok\":true}";
+                bytes = j.length();
+                return jsonResp(Response.Status.OK, j);
+            }
+            if ("/api/rekam/download".equals(uri)) {
+                String t = Capture.tailText();
+                bytes = t.length();
+                Response r = newFixedLengthResponse(Response.Status.OK, "text/plain; charset=utf-8", t);
+                r.addHeader("Cache-Control", "no-store");
+                return r;
+            }
+            if ("/api/rekam/probe".equals(uri)) {
+                // uji server game SEKARANG (bisa makan sampai ±25 dtk — 5×5 dtk timeout)
+                String res = Monitor.probeGameServers(5);
+                String j = "{\"ok\":true,\"result\":\"" + Json.esc(res == null ? "" : res.replace("\n", " | ")) + "\"}";
+                bytes = j.length();
+                StatusStore.persist();
                 return jsonResp(Response.Status.OK, j);
             }
             status = 404;

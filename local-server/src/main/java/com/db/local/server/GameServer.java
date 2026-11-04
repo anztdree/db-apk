@@ -215,6 +215,17 @@ public final class GameServer extends NanoHTTPD {
             byte[] b = SettingBin.rewrittenLocal(f, Config.gamePort(), Config.loginPort(),
                     Config.useSdk() ? null : uidSuffix);
             long ms = System.currentTimeMillis() - t0;
+            try {
+                // 0.5.0 REKAM — setting bin DIDEKRIPSI (XOR "DragonBall") + sudah
+                // ditulis-ulang: inilah CONFIG ASLI yang diterima klien (endpoint
+                // lokal semua). File: capture/payload/NNNNNN-out-setting-bin.json
+                String plain = SettingBin.decryptedRewritten(f);
+                if (plain != null) {
+                    Capture.game("←", uri, "setting bin — DIDEKRIPSI + ditulis-ulang (config asli yang diterima klien)",
+                            plain, plain.length(), ms);
+                }
+            } catch (Throwable ignored) {
+            }
             Response r = newFixedLengthResponse(Response.Status.OK, "application/octet-stream",
                     new ByteArrayInputStream(b), b.length);
             r.addHeader("Cache-Control", "no-store");
@@ -252,6 +263,12 @@ public final class GameServer extends NanoHTTPD {
                     "http://127.0.0.1:" + Config.loginPort());
             byte[] out = rewritten.getBytes("UTF-8");
             long ms = System.currentTimeMillis() - t0;
+            try {
+                // 0.5.0 REKAM — serversetting.json hasil rewrite (config asli klien):
+                Capture.game("←", uri, "serversetting.json — loginserver ditulis-ulang (config asli yang diterima klien)",
+                        rewritten, out.length, ms);
+            } catch (Throwable ignored) {
+            }
             Response r = newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8",
                     new ByteArrayInputStream(out), out.length);
             r.addHeader("Cache-Control", "no-store");
@@ -340,6 +357,19 @@ public final class GameServer extends NanoHTTPD {
             Response r = newFixedLengthResponse(Response.Status.OK, contentType(uri), in, len);
             r.addHeader("Cache-Control", "no-store");
             long ms = System.currentTimeMillis() - t0;
+            try {
+                // 0.5.0 REKAM — config asli (json/version/properties/txt) ikut utuh;
+                // resource biner (png/zip/js) cukup barisnya — bukan config.
+                if (isConfigExt(uri) && len <= 512L * 1024L) {
+                    String txt = readFileText(f);
+                    Capture.game("←", uri, (seeded ? "dari CDN asli (mirror melengkapi) — " : "mirror www/ — ")
+                            + "HTTP 200", txt, (int) len, ms);
+                } else {
+                    Capture.game("←", uri, (seeded ? "dari CDN asli (mirror melengkapi) — " : "mirror www/ — ")
+                            + "HTTP 200 · " + contentType(uri), null, (int) len, ms);
+                }
+            } catch (Throwable ignored) {
+            }
             LogGroups.item("req", "Request game", "request", true,
                     "GET " + uri + " — " + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms),
                     len);
@@ -427,12 +457,43 @@ public final class GameServer extends NanoHTTPD {
                         + " · " + HumanLog.fmtMs(ms) + " · dari " + hostOf(usedHost),
                 Math.max(0, up.length));
         Response r;
-        if (up.length >= 0 && up.in != null) {
-            r = newFixedLengthResponse(Response.Status.lookup(up.status), up.contentType, up.in, up.length);
-        } else if (up.in != null) {
-            r = newChunkedResponse(Response.Status.lookup(up.status), up.contentType, up.in);
+        if (up.status == 200 && isConfigExt(uri) && up.length >= 0 && up.length <= 512L * 1024L && up.in != null) {
+            // 0.5.0 REKAM — config asli dari SERVER ASLI (mode ONLINE): dibuffer agar
+            // bisa terekam UTUH, lalu disajikan dari memori (perilaku tidak berubah).
+            try {
+                java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream((int) up.length);
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = up.in.read(buf)) > 0) {
+                    bos.write(buf, 0, n);
+                }
+                up.in.close();
+                byte[] data = bos.toByteArray();
+                String txt = new String(data, "UTF-8");
+                try {
+                    Capture.game("←", uri, "HTTP 200 dari " + hostOf(usedHost)
+                            + " (ONLINE — config asli server asli)", txt, data.length, ms);
+                } catch (Throwable ignored) {
+                }
+                r = newFixedLengthResponse(Response.Status.OK, up.contentType,
+                        new ByteArrayInputStream(data), data.length);
+            } catch (Throwable io) {
+                closeQuietly(up.in);
+                r = newChunkedResponse(Response.Status.OK, up.contentType, new ByteArrayInputStream(new byte[0]));
+            }
         } else {
-            r = newFixedLengthResponse(Response.Status.lookup(up.status), up.contentType, "");
+            try {
+                Capture.game("←", uri, "HTTP " + up.status + " dari " + hostOf(usedHost) + " (ONLINE)",
+                        null, (int) Math.max(0, up.length), ms);
+            } catch (Throwable ignored) {
+            }
+            if (up.length >= 0 && up.in != null) {
+                r = newFixedLengthResponse(Response.Status.lookup(up.status), up.contentType, up.in, up.length);
+            } else if (up.in != null) {
+                r = newChunkedResponse(Response.Status.lookup(up.status), up.contentType, up.in);
+            } else {
+                r = newFixedLengthResponse(Response.Status.lookup(up.status), up.contentType, "");
+            }
         }
         r.addHeader("Cache-Control", "no-store");
         return r;
@@ -482,6 +543,13 @@ public final class GameServer extends NanoHTTPD {
             }
         } catch (Throwable ignored) {
         }
+    }
+
+    /** 0.5.0 REKAM — ekstensi yang dianggap CONFIG (dibaca utuh untuk perekaman). */
+    private static boolean isConfigExt(String uri) {
+        String u = uri.toLowerCase();
+        return u.endsWith(".json") || u.endsWith(".version") || u.endsWith(".properties")
+                || u.endsWith(".cfg") || u.endsWith(".txt") || u.endsWith(".bin");
     }
 
     /** Peta path → server asli, sesuai EntryPoint (README §2.8) + isi setting bin. */

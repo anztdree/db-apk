@@ -232,6 +232,19 @@ public final class Starter {
         Config.load(root);
         // 0.4.5: mode log RINCI dari boot sebelumnya (tersimpan di server.json)
         HumanLog.setTechEnabled(Config.logTech());
+        // 0.5.0 REKAM — perekam payload mentah siap (folder capture/ di root;
+        // masuk whitelist Cleaner — bukti protokol tidak boleh terhapus boot).
+        try {
+            Capture.init(root);
+            if (Config.rekam()) {
+                HumanLog.evTech("📼", "REKAM aktif — payload mentah semua lapisan terekam ke capture/"
+                                + " (rekam.jsonl + payload/ config asli) · tab REKAM di dasbor",
+                        null);
+            }
+        } catch (Throwable t) {
+            HumanLog.ev("⚠️", "Folder capture/ tidak bisa disiapkan — REKAM tidak aktif boot ini",
+                    String.valueOf(t));
+        }
         StatusStore.configure(Config.debugPort(), Config.gamePort(), Config.mode(),
                 root.getAbsolutePath(), c.getPackageName());
         StatusStore.setLoginPort(Config.loginPort());
@@ -361,6 +374,24 @@ public final class Starter {
         monitor.startBackground();
         monitor.runOnce();
         StatusStore.persist();
+
+        // ---------- 6b) probe SERVER GAME dari daftar (0.5.0 — Tahap A) ----------
+        // Klien menyambung LANGSUNG ke url serverList setelah pemain memilih —
+        // kegagalan di sana tidak terlihat log mana pun. Diuji di thread belakang
+        // (maks 5 × 5 dtk) agar boot & tombol melayang tidak tertunda.
+        try {
+            Thread pg = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        Monitor.probeGameServers(5);
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }, "dblsf-probe-game");
+            pg.setDaemon(true);
+            pg.start();
+        } catch (Throwable ignored) {
+        }
 
         // ---------- 7) tombol melayang switch mode (BISA DIGESER) ----------
         FloatingToggle.setup(c);
