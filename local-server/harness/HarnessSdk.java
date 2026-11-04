@@ -371,13 +371,14 @@ public class HarnessSdk {
                 readAll(new java.io.FileInputStream(hf)).contains("ringkasan uji"));
         check("grup: Σ ringkasan TIDAK masuk memori dasbor",
                 !HumanLog.snapshotJson(0).contains("ringkasan uji"));
-        // dedupe loginchecknative OK ganda (0.4.6) — denyut dua kali = satu baris
+        // dedupe loginchecknative ganda (0.4.6; pesan 0.4.8 "Sesi … disahkan
+        // (loginchecknative)") — denyut dua kali = satu baris
         LoginData.ensureAccount("dupuid", "");
         HumanLog.clearMem();
         SdkData.checkNative("dupuid", "dupuid", null, "1");
         SdkData.checkNative("dupuid", "dupuid", null, "1");
-        int okLines = HumanLog.snapshotJson(0).split("loginchecknative OK", -1).length - 1;
-        check("grup: loginchecknative OK ganda didedupe (uid sama < 10 dtk = 1 baris)",
+        int okLines = HumanLog.snapshotJson(0).split("disahkan", -1).length - 1;
+        check("grup: loginchecknative ganda didedupe (uid sama < 10 dtk = 1 baris)",
                 okLines == 1);
         LogGroups.clear();
 

@@ -27,7 +27,15 @@ import java.util.Locale;
  * dan copy log = cerita penting. Copy penuh (API /api/logs/file) tetap
  * mengambil semuanya dari file.
  *
- * Simbol: ▶ masuk, ◀ jawaban, ⚠ perlu perhatian, ✔ sehat, ℹ info.
+ * ATURAN 0.4.8 — SATU KEJADIAN SATU BARIS (koreksi owner "log cuma sampah
+ * gak jelas" pada sesi 09:39-09:41): percobaan yang langsung selesai TIDAK
+ * diumumkan dulu (cukup baris hasilnya); setiap baris membawa hasil + sebab
+ * (+ akibat/lanjutan bila relevan); baris umpan balik UI dasbor (toggle
+ * RINCI/BERSIH) tidak dilog.
+ *
+ * Simbol: ✔ hasil baik, ⚠ perlu perhatian, ℹ info — ikon ▶/◀ DIHAPUS di
+ * 0.4.8 (samar dan tidak menolong membaca alur). Ringkasan grup batch di
+ * human.log memakai awalan [Σ] (LogGroups).
  * Angka ramah: 1,4 KB / 12 ms / jam lokal.
  */
 public final class HumanLog {

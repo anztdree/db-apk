@@ -120,10 +120,12 @@ public final class SdkData {
                 LoginData.ensureAccount(uid, "");
                 Db.i().putGuest(dev, uid, now());
                 try {
-                    // 0.4.7: kata-kata jelas — yang BARU adalah ikatan perangkat,
-                    // bukan tamunya (tamunya guest lokal pemilik, migrasi identitas)
-                    HumanLog.ev('▶', "SDK: perangkat " + shortId(dev) + " → tamu " + uid
-                            + (first ? " (identitas tamu lama dipertahankan)" : " (tamu baru)"), null);
+                    // 0.4.8 bahasa cerita — baris ini menjawab "siapa yang masuk &
+                    // kenapa tamu itu": ikatan lama = perangkat memang tamu itu,
+                    // pertama = tamu bawaan server lokal (identitas lama dipertahankan).
+                    HumanLog.ev('ℹ', "Lanjut masuk sebagai tamu " + uid
+                            + (first ? " — tamu bawaan server lokal (identitas lama dipertahankan)"
+                                      : " (perangkat ini memang terikat ke tamu itu)"), null);
                 } catch (Throwable ignored) {
                 }
                 return sessionData(tokenFor(uid, dev), uid, true, true);
@@ -237,7 +239,7 @@ public final class SdkData {
             }
             LoginData.ensureAccount(name, passwordMd5 == null ? "" : passwordMd5);
             try {
-                HumanLog.ev('▶', "SDK: akun BARU terdaftar — " + name, null);
+                HumanLog.ev('✔', "Akun baru \"" + name + "\" terdaftar", null);
             } catch (Throwable ignored) {
             }
             saveLast(name);
@@ -313,8 +315,8 @@ public final class SdkData {
             }
             if (!tokenOk) {
                 try {
-                    HumanLog.ev('⚠', "SDK: token loginchecknative tidak cocok untuk " + uid
-                            + " — diterima karena akun dikenal lokal", null);
+                    HumanLog.ev('⚠', "Token sesi tidak cocok untuk " + uid
+                            + " — tetap diterima karena akun dikenal lokal (loginchecknative)", null);
                 } catch (Throwable ignored) {
                 }
             }
@@ -331,8 +333,8 @@ public final class SdkData {
                 lastNativeOkUid = uid;
                 lastNativeOkAt = nowMs;
                 if (!dup) {
-                    HumanLog.ev('✔', "SDK: loginchecknative OK — " + (guest ? "tamu " : "akun ") + uid
-                            + " (mode " + (guest ? "tamu" : "akun") + ")", null);
+                    HumanLog.ev('✔', "Sesi " + (guest ? "tamu " : "akun ") + uid + " disahkan"
+                            + " (loginchecknative) — boot game dilanjutkan", null);
                 }
             } catch (Throwable ignored) {
             }

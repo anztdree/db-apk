@@ -156,8 +156,8 @@ public final class LoginData {
             String sdkUid = SdkData.lastKnownUid();
             if (sdkUid != null && sdkUid.length() > 0 && !sdkUid.equals(userId)) {
                 try {
-                    HumanLog.ev('ℹ', "loginGame: url minta \"" + userId + "\" — mengikuti sesi SDK: "
-                            + sdkUid + " (pilihan layar SDK)", null);
+                    HumanLog.ev('ℹ', "loginGame minta \"" + userId + "\" — dijawab dengan identitas"
+                            + " pilihan layar SDK: " + sdkUid, null);
                 } catch (Throwable ignored) {
                 }
                 userId = sdkUid;

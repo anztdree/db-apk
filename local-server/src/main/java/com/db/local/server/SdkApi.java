@@ -176,7 +176,7 @@ public final class SdkApi {
                 if (user != null && LoginData.accountPassword(user) != null && pass != null && pass.length() == 32) {
                     LoginData.ensureAccount(user, pass);
                     data = "[]";
-                    log('ℹ', "SDK: kata sandi akun " + user + " diganti", null);
+                    log('ℹ', "Kata sandi akun " + user + " diganti", null);
                 } else {
                     ok = false;
                     errMsg = "Akun tidak dikenal atau parameter kurang";
@@ -204,38 +204,34 @@ public final class SdkApi {
                 return err(40005, "Otorisasi gagal");
             } else {
                 data = r;
-                log('▶', "SDK: masuk otomatis — " + jsonStr(r, "uid"), null);
+                log('✔', "Masuk otomatis — " + jsonStr(r, "uid")
+                        + " (sesi tersimpan dipakai lagi)", null);
             }
         } else if (path.equals("/v1/user/loginByName")) {
-            // 0.4.4: log permintaan MASUK — username yang dikirim layar SDK (email)
-            // + panjang kata sandi, agar percobaan gagal selalu terlihat di dasbor.
-            log('▶', "SDK: MASUK — akun \"" + p.get("username") + "\" · kata sandi "
-                    + (p.get("password") == null ? "(tidak ada)" : p.get("password").length() + " karakter"), null);
+            // 0.4.8 ATURAN SATU KEJADIAN SATU BARIS: percobaan yang langsung
+            // selesai TIDAK diumumkan dulu — cukup baris hasilnya (dulu dua baris
+            // "SDK: MASUK — …" + "SDK: MASUK gagal — …" berdempet 0 dtk = sampah).
             String r = SdkData.loginByName(p.get("username"), p.get("password"));
             if (r == null) {
-                log('⚠', "SDK: MASUK gagal — akun tidak dikenal / kata sandi salah → 40101 ("
-                        + p.get("username") + ")", null);
+                log('⚠', "Login akun \"" + p.get("username") + "\" DITOLAK — akun tidak dikenal / kata sandi salah (40101)", null);
                 return err(40101, "akun atau password tidak ada");
             }
             data = r;
-            log('✔', "SDK: akun masuk — " + p.get("username"), null);
+            log('✔', "Akun \"" + p.get("username") + "\" masuk", null);
         } else if (path.equals("/v1/user/registerUser")) {
-            // 0.4.4: log permintaan DAFTAR — akun layar SDK = EMAIL (dex: regex
-            // \w+@\w+.\w+, sandi minimal 6). Sebelumnya server menolak '@' sehingga
-            // DAFTAR selalu 40102 — kini diterima (SdkData.registerUser).
+            // akun layar SDK = EMAIL (dex: regex \w+@\w+.\w+, sandi minimal 6) —
+            // server lokal menerima '@' sejak 0.4.4 (SdkData.registerUser).
             String regName = p.get("username");
-            log('▶', "SDK: DAFTAR — akun \"" + regName + "\" · kata sandi "
-                    + (p.get("password") == null ? "(tidak ada)" : p.get("password").length() + " karakter"), null);
             String r = SdkData.registerUser(regName, p.get("password"));
             if (r == null) {
                 boolean taken = regName != null
                         && LoginData.accountPassword(regName.trim().toLowerCase(java.util.Locale.US)) != null;
-                log('⚠', "SDK: DAFTAR gagal → 40102 ("
-                        + (taken ? "nama sudah dipakai" : "format akun tidak valid") + "): " + regName, null);
+                log('⚠', "Daftar akun \"" + regName + "\" DITOLAK — "
+                        + (taken ? "nama sudah dipakai" : "format akun tidak valid") + " (40102)", null);
                 return err(40102, taken ? "nama akun sudah dipakai" : "nama akun tidak valid");
             }
             data = r;
-            log('✔', "SDK: daftar + masuk otomatis — " + regName, null);
+            log('✔', "Akun baru \"" + regName + "\" terdaftar — langsung masuk", null);
         } else if (path.equals("/v1/user/findPassByEmail")) {
             return err(20010, "Server lokal: lupa kata sandi tidak didukung — daftar akun baru saja");
         } else if (path.equals("/v1/auth/createOrder")) {

@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DB LOCAL · Dasbor</title>
 <style>
-  /* 0.4.6 — MODEL FINAL LOG (kesepakatan owner):
+  /* 0.4.8 — MODEL FINAL LOG (kesepakatan owner):
      "group itu kalau terdeteksi emang config/resource yg banyak. kalau alur
-     ya gk usah di group" —
-     • ALUR (boot → SDK → masuk) = baris linear, tidak pernah dikelompokkan.
+     ya gk usah di group" + "satu kejadian satu baris: hasil, sebab, akibat" —
+     • ALUR (boot → login → tamu → sesi → daftar server → TUNTAS) = baris linear
+       ✔/⚠/ℹ — ikon ▶/◀ DIHAPUS (samar), awalan "SDK:" dibuang.
      • BATCH (mirror/requests/404/passthrough) = GRUP lipat: satu baris judul
        dengan statistik hidup, diklik untuk rincian per-file; gagal naik
        sendiri sebagai baris ⚠ di alur; grup kosong tidak tampil.
@@ -97,6 +98,10 @@
   .logtime{color:var(--mut); flex:none; font-size:10px}
   .logic{flex:none; width:13px; text-align:center}
   .logtext{flex:1; min-width:0}
+  /* 0.4.8 — sebab/akibat (detail) tampil kecil di bawah baris — dulu detail
+     hanya hidup di human.log dan tidak pernah terlihat di dasbor */
+  .logdetail{display:block; color:var(--mut); font-size:10px; line-height:1.45;
+    white-space:pre-wrap; word-break:break-all; margin-top:1px}
   .logempty{padding:12px 10px; color:var(--mut)}
 
   /* ---- grup batch: satu baris judul + statistik; diklik = rincian ---- */
@@ -259,7 +264,7 @@
   </details>
 </main>
 <footer>
-  Alur = baris penting · batch = grup lipat · gagal selalu naik sebagai ⚠ ·
+  Alur = ✔ hasil · ⚠ masalah · ℹ info (satu kejadian satu baris) · batch = grup Σ lipat ·
   konten = mirror lokal · login = lokal · gameplay = server game asli (progres di sana) ·
   log penuh di <b>logs/human.log</b>
 </footer>
@@ -387,12 +392,20 @@
         row.className = "logrow" + (tech ? " tech" : "") + (e.icon === "⚠" ? " err" : "")
           + (e.icon === "✔" ? " ok" : "");
         row.dataset.warn = (e.icon === "⚠") ? "1" : "0";
-        if(filterWarn && row.dataset.warn === "0"){
-          row.style.display = "none";
-        }
+        // 0.4.8 — data mentah disimpan di dataset supaya Copy menghasilkan
+        // "09:40:24 ⚠ Login … (40101)" dengan jarak rapi (dulu nempel:
+        // "09:40:24⚠SDK: MASUK gagal…" — terlihat rusak saat ditempel)
+        row.dataset.time = e.t || "";
+        row.dataset.icon = tech ? "·" : (e.icon || "");
+        row.dataset.text = e.text || "";
+        row.dataset.detail = e.detail || "";
         var tm = document.createElement("span"); tm.className = "logtime"; tm.textContent = e.t;
         var ic = document.createElement("span"); ic.className = "logic"; ic.textContent = tech ? "·" : e.icon;
         var tx = document.createElement("span"); tx.className = "logtext"; tx.textContent = e.text;
+        if(e.detail){
+          var dt = document.createElement("span"); dt.className = "logdetail"; dt.textContent = e.detail;
+          tx.appendChild(dt);
+        }
         row.appendChild(tm); row.appendChild(ic); row.appendChild(tx);
         frag.appendChild(row);
       });
@@ -511,15 +524,29 @@
       setTimeout(function(){ btn.textContent = label; }, 1500);
     });
   }
-  // Copy = cerita utk ditempel: baris alur + ringkasan Σ satu baris per grup
+  // Copy = cerita utk ditempel — 0.4.8 format rapi & konsisten:
+  //   alur     : "09:40:24 ⚠ Login akun … (40101)"
+  //   detail   : baris kedua kecil bila ada (sebab teknis)
+  //   grup Σ   : "09:41:20 Σ Mirror CDN — 105 file · 2,4 MB · 0 gagal (3,9 dtk)"
+  // (dulu: jam+ikon+teks nempel tanpa jarak + ringkasan grup menggantung tanpa
+  //  jam/ikon di bawah — kelihatan seperti sampah saat ditempel ke chat)
+  function copyRow(n){
+    if(!n.dataset || n.dataset.text === undefined) return n.textContent || "";
+    var line = [n.dataset.time, n.dataset.icon, n.dataset.text].filter(Boolean).join(" ");
+    if(n.dataset.detail) line += "\n    " + n.dataset.detail.replace(/\s*\n\s*/g, " | ");
+    return line;
+  }
   $("copylog").addEventListener("click", function(){
-    var lines = Array.prototype.map.call($("logbox").childNodes, function(n){ return n.textContent; });
+    var now = new Date();
+    var hh = function(x){ return (x < 10 ? "0" : "") + x; };
+    var ts = hh(now.getHours()) + ":" + hh(now.getMinutes()) + ":" + hh(now.getSeconds());
+    var lines = Array.prototype.map.call($("logbox").childNodes, copyRow);
     document.querySelectorAll("#groups .grp").forEach(function(g){
       var title = g.querySelector(".grptitle").textContent;
       var stat = g.querySelector(".grpstat").textContent;
       var dur = g.querySelector(".grpdur").textContent;
-      lines.push(title + ": " + stat.replace(/\s+/g," ").trim() + (dur ? " (" + dur + ")" : "")
-        + " — rincian di dasbor");
+      lines.push(ts + " Σ " + title + " — " + stat.replace(/\s+/g," ").trim()
+        + (dur ? " (" + dur + ")" : "") + " — rincian di dasbor");
     });
     copyText(lines.join("\n"), $("copylog"), "Copy");
   });

@@ -295,28 +295,21 @@ public final class Starter {
                     String.valueOf(t));
         }
         StatusStore.persist();
-        // ===== BOOT 3 BARIS (0.4.7 — bentuk kesepakatan owner) =====
-        //   ✔ Server lokal siap — game :8080 · login :8610 · dasbor :4000
-        //   ℹ Mode LOCAL — peta arah koneksi (anti salah paham "config masih ke asli")
-        //   ℹ Pemain: guest… — identitas & sesi tersimpan lokal
+        // ===== BOOT 3 BARIS (0.4.8 — dirapikan dari 0.4.7: baris Mode tidak lagi
+        // jadi kuliah arsitektur 200 karakter; peta penuh tetap di dasbor/modemap) =====
+        //   ✔ Server lokal hidup — game :8080 · login :8610 · dasbor :4000
+        //   ℹ Mode LOCAL — login & akun: LOKAL :8610 · konten game: MIRROR www/ ·
+        //                  gameplay: SERVER GAME ASLI (progres tersimpan di sana)
+        //   ℹ Pemain: guest… — sesi & data tersimpan di dragonball.db (tahan reboot)
         if (dashOk && gameOk && loginOk) {
-            HumanLog.ev('✔', "Server lokal siap — game :" + Config.gamePort() + " · login :"
+            HumanLog.ev('✔', "Server lokal hidup — game :" + Config.gamePort() + " · login :"
                             + Config.loginPort() + " · dasbor :" + Config.debugPort(),
                     root.getAbsolutePath() + " ("
                             + (ext ? "penyimpanan eksternal" : "penyimpanan internal") + ")");
             if ("local".equals(Config.mode())) {
-                // PETA ARAH KONEKSI mode LOCAL — menjawab pertanyaan berulang owner
-                // ("isi config loginserver masih mengarah ke server aslinya?"):
-                //   konten game   = MIRROR lokal www/
-                //   login & akun  = LOKAL port login (setting bin + serversetting.json
-                //                   ditulis-ulang SAAT DISAJIKAN — bukti: sesi di 8610)
-                //   daftar server = snapshot ASLI bawaan APK (sengaja — dapat diganti
-                //                   pemilik lewat config/servers.json)
-                //   gameplay      = server game ASLI pilihan pemain (s<N>-bs.popoh5.com)
-                HumanLog.ev('ℹ', "Mode LOCAL — konten game: mirror www/ (" + wwwFilesN
-                        + " file) · login & akun: lokal :" + Config.loginPort()
-                        + " · daftar server: snapshot asli (" + serverCountN + " server) · gameplay: "
-                        + "server game asli — progres tersimpan di sana", null);
+                HumanLog.ev('ℹ', "Mode LOCAL — login & akun: LOKAL :" + Config.loginPort()
+                        + " (config ditulis-ulang otomatis) · konten game: MIRROR www/"
+                        + " · gameplay: SERVER GAME ASLI (progres tersimpan di sana)", null);
             } else {
                 HumanLog.ev('ℹ', "Mode ONLINE — semua permintaan game diteruskan ke server asli "
                         + "(login SDK ikut diteruskan) — perilaku online normal", null);
@@ -325,12 +318,14 @@ public final class Starter {
             try {
                 File dbf = new File(conf, "dragonball.db");
                 if (dbf.exists() && dbf.length() > 0) {
-                    dbInfo = " · dragonball.db " + HumanLog.fmtBytes(dbf.length());
+                    dbInfo = " — sesi & data tersimpan di dragonball.db "
+                            + HumanLog.fmtBytes(dbf.length()) + " (tahan reboot)";
+                } else {
+                    dbInfo = " — sesi & data tersimpan lokal (tahan reboot)";
                 }
             } catch (Throwable ignored) {
             }
-            HumanLog.ev('ℹ', "Pemain: " + guestNote + " — identitas & sesi tersimpan lokal"
-                    + dbInfo + " (tahan reboot)", null);
+            HumanLog.ev('ℹ', "Pemain: " + guestNote + dbInfo, null);
         }
         if (!dashOk && gameServer == null) {
             return; // tidak ada yang bisa dilanjutkan

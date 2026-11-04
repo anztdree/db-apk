@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.4.7 — LOG BAHASA MANUSIA: boot 3 baris + peta arah koneksi
+# Build APK-LSF 0.4.8 — LOG CERITA ALUR: satu kejadian satu baris + baris
+# "TUNTAS" penjelas keheningan + format Copy rapi
 #
 # Dasar: releases/APK-LSF-0.3.2.apk (sudah memuat manifest provider +
 # endpoint 127.0.0.1:8080 + dex game asli + mirror www/ 31 file).
@@ -14,6 +15,27 @@
 #   4) tambah assets/server/login/** — DEFAULT LOGIN LOKAL (servers.json)
 #   5) assets/QHinfo → http://127.0.0.1:8610 (0.4.2: layar SDK asli → server SDK lokal)
 #   6) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#
+# Baru 0.4.8 (laporan owner sesi 09:39-09:41: "tidak ada revisi!!!! log masih
+# tidak jelas, padahal sampai loginserver munculkan serverlist.. tapi log cuma
+# Sampah gak jelas" — paste-nya = keluaran tombol Copy):
+#   a) SATU KEJADIAN SATU BARIS: percobaan login yang langsung selesai tidak
+#      diumumkan dua kali (dulu "SDK: MASUK — …" + "SDK: MASUK gagal — …"
+#      berdempet 0 dtk). Hasil saja: "⚠ Login akun \"…\" DITOLAK — … (40101)".
+#   b) IKON ▶/◀ DIHAPUS + awalan "SDK:" dibuang — alur kini membaca seperti
+#      cerita: Login ditolak → Lanjut masuk sebagai tamu → Sesi disahkan →
+#      Daftar server terkirim → TUNTAS.
+#   c) BARIS TUNTAS setelah GetServerList (dedupe 10 mnt): daftar = bawaan APK
+#      DISAJIKAN server lokal (bukan diambil dari server asli) + penjelas
+#      kenapa log diam setelahnya (koneksi gameplay langsung ke server game
+#      asli, tidak lewat server lokal).
+#   d) FORMAT COPY DIRAPIKAN (akar "paste sampah"): jam-ikon-teks berjarak,
+#      ringkasan grup diberi "Σ " + jam (dulu menggantung tanpa identitas),
+#      detail (sebab teknis) kini TAMPIL kecil di dasbor & ikut disalin.
+#   e) Baris umpan balik UI dihapus dari log: toggle RINCI/BERSIH tidak lagi
+#      menghasilkan baris (statusnya terlihat di tombol + server.json).
+#   f) Boot: baris Mode dipangkas jadi satu kalimat (peta penuh tetap di
+#      dasbor — modemap + kartu "Ke mana koneksi mengarah").
 #
 # Baru 0.4.7 (laporan owner "login server muncul .. saya rasa isi config
 # loginserver anda masih mengarah ke server aslinya.. log ini pun tidak
@@ -123,7 +145,7 @@ SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.4.7.apk"
+OUT="$REPO/releases/APK-LSF-0.4.8.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"

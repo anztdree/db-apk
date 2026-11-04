@@ -44,6 +44,8 @@ public final class LoginServer extends NanoHTTPD {
     private static final long SESSION_TTL_MS = 90000L;
     private static final long POLL_WAIT_MS = 20000L;
     private static final int MAX_SESSIONS = 64;
+    /** Dedupe milestone GetServerList (0.4.8): ulangan < 10 menit tidak dilog ulang. */
+    private static volatile long lastServerListLogAt = 0L;
     private static final String HANDSHAKE_JSON =
             "{\"sid\":\"%SID%\",\"upgrades\":[],\"pingInterval\":25000,\"pingTimeout\":5000}";
 
@@ -289,7 +291,6 @@ public final class LoginServer extends NanoHTTPD {
         }
         String ackId = p.substring(1, i);
         String json = p.substring(i);
-        long t0 = System.currentTimeMillis();
         String msg = firstArgJson(json);
         String action = strField(msg, "action");
         String data;
@@ -301,17 +302,29 @@ public final class LoginServer extends NanoHTTPD {
             String password = strField(msg, "password");
             data = LoginData.loginGameResponse(userId, password);
             boolean baru = data.indexOf("\"isCreated\":true") >= 0;
-            // 0.4.7: alur linear, bahasa manusia — ini penanda "login lokal bekerja"
-            HumanLog.ev('▶', "Login lokal OK — " + userId + (baru ? " (akun BARU dibuat)" : " (akun lama)")
-                            + " · " + HumanLog.fmtMs(System.currentTimeMillis() - t0),
+            // 0.4.8: satu kejadian satu baris — hasil + identitas + sifat akun.
+            HumanLog.ev('✔', "Login game diterima — " + userId
+                            + (baru ? " (akun BARU dibuat)" : " (akun lama)"),
                     null);
         } else if ("GetServerList".equals(action)) {
             data = LoginData.serverListData();
-            // 0.4.7: sebut sumbernya — daftar = snapshot ASLI bawaan APK (bukan
-            // server lokal), supaya tidak disalahartikan "config masih ke server asli"
-            HumanLog.ev('◀', "Daftar server dikirim: " + LoginData.serverCount()
-                            + " server (snapshot asli bawaan APK) · "
-                            + HumanLog.fmtMs(System.currentTimeMillis() - t0), null);
+            // 0.4.8 — MILESTONE + PENJELAS ANTI-BINGUNG:
+            //  1) daftar = bawaan APK yang DISAJIKAN server lokal (bukan diambil
+            //     dari server asli) — mematikan dugaan berulang "config loginserver
+            //     masih mengarah ke server aslinya";
+            //  2) baris TUNTAS menjelaskan kenapa log "diam" sesudahnya: koneksi
+            //     gameplay langsung ke server game asli, tidak lewat server lokal.
+            //  Dedupe 10 menit (H5 bisa meminta daftar lagi saat bolak-balik layar).
+            long nowMs = System.currentTimeMillis();
+            boolean dup = (nowMs - lastServerListLogAt) < 600000L;
+            lastServerListLogAt = nowMs;
+            if (!dup) {
+                HumanLog.ev('✔', "Daftar server terkirim — " + LoginData.serverCount()
+                                + " server (daftar bawaan APK, disajikan server lokal)", null);
+                HumanLog.ev('ℹ', "Tahap login lokal TUNTAS — berikutnya game menyambung LANGSUNG"
+                                + " ke server game asli pilihan pemain (koneksi gameplay tidak lewat"
+                                + " server lokal — wajar log tidak menambah baris di tahap ini)", null);
+            }
         } else if ("LoginAnnounce".equals(action)) {
             data = "{}";
         } else if ("SaveHistory".equals(action) || "SaveLanguage".equals(action)
@@ -320,8 +333,8 @@ public final class LoginServer extends NanoHTTPD {
         } else {
             // aksi tak dikenal — jawab ret 0 kosong agar game tidak menggantung
             data = "{}";
-            HumanLog.ev('ℹ', "Aksi login lokal tak dikenal: " + (action == null ? "(kosong)" : action)
-                    + " — dijawab ret 0 kosong", null);
+            HumanLog.ev('ℹ', "Aksi login tak dikenal: " + (action == null ? "(kosong)" : action)
+                    + " — dijawab ret 0 kosong (game tidak menggantung)", null);
         }
         if (ackId.length() > 0) {
             String resp = "{\"ret\":0,\"data\":" + quote(data) + "}";

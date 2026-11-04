@@ -125,12 +125,13 @@ public final class LocalServer extends NanoHTTPD {
                 return jsonResp(Response.Status.OK, j);
             }
             // 0.4.5 — mode log RINCI on/off (toggle dasbor; tersimpan di server.json)
+            // 0.4.8: TIDAK lagi jadi baris log — itu umpan balik UI, bukan laporan
+            // server (statusnya sudah terlihat di tombol RINCI + tersimpan server.json;
+            // tiga baris "Mode log dasbor: …" hanya menambah sampah di alur).
             if ("/api/logtech".equals(uri)) {
                 boolean on = parseBool(session.getParameters().get("on"), Config.logTech());
                 Config.setLogTech(on);
                 HumanLog.setTechEnabled(on);
-                HumanLog.ev('ℹ', "Mode log dasbor: " + (on ? "RINCI — baris teknis (request per-file, probe) ikut tampil"
-                        : "BERSIH — hanya kejadian penting") + " (tersimpan di server.json)", null);
                 String j = "{\"ok\":true,\"tech\":" + on + "}";
                 bytes = j.length();
                 return jsonResp(Response.Status.OK, j);
