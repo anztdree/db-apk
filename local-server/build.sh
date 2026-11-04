@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.4.6 — MODEL FINAL LOG (grup batch + alur linear)
+# Build APK-LSF 0.4.7 — LOG BAHASA MANUSIA: boot 3 baris + peta arah koneksi
 #
 # Dasar: releases/APK-LSF-0.3.2.apk (sudah memuat manifest provider +
 # endpoint 127.0.0.1:8080 + dex game asli + mirror www/ 31 file).
@@ -14,6 +14,27 @@
 #   4) tambah assets/server/login/** — DEFAULT LOGIN LOKAL (servers.json)
 #   5) assets/QHinfo → http://127.0.0.1:8610 (0.4.2: layar SDK asli → server SDK lokal)
 #   6) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#
+# Baru 0.4.7 (laporan owner "login server muncul .. saya rasa isi config
+# loginserver anda masih mengarah ke server aslinya.. log ini pun tidak
+# membantu kurang efektif kurang jelas"):
+#   a) BOOT 3 BARIS (bentuk kesepakatan): "✔ Server lokal siap — game :8080 ·
+#      login :8610 · dasbor :4000" → "ℹ Mode LOCAL — <peta arah koneksi>" →
+#      "ℹ Pemain: guest… — identitas & sesi tersimpan lokal". Dulu TIGA baris
+#      siap bertumpuk ("Server siap" + "Mode" + "Server lokal hidup") + db +
+#      tombol melayang = 6 baris boot tanpa cerita.
+#   b) PETA ARAH KONEKSI dinyatakan EKSPLISIT di baris Mode, di log GetServerList
+#      ("snapshot asli bawaan APK"), dan di dasbor (modemap + kartu lipat "Ke mana
+#      koneksi mengarah") — menjawab dugaan "config loginserver masih ke server
+#      asli": login LOKAL (bukti sesi 8610), daftar server = snapshot ASLI by
+#      design, gameplay = server game asli (progres di sana).
+#   c) DEDUPE loginchecknative OK diperlebar 10 dtk → 10 MENIT per uid — denyut
+#      berjarak 21 dtk (boot 06:47:30 vs 06:47:51) masih bocor dua baris.
+#   d) Turun tingkat ke TEKNIS (tetap terekam di human.log): db siap, tombol
+#      melayang tampil, handshake socket login (client tersambung).
+#   e) Bahasa: "Pemain" (bukan "guest" — akun email juga pemain), "identitas &
+#      sesi tersimpan lokal" (bukan "progres lokal dipakai" — progres ada di
+#      server game asli), "perangkat → tamu" (bukan "diikat … migrasi identitas").
 #
 # Baru 0.4.6 (model final log — kesepakatan owner:
 #   "group itu kalau terdeteksi emang config/resource yg banyak. kalau alur ya
@@ -102,7 +123,7 @@ SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.4.6.apk"
+OUT="$REPO/releases/APK-LSF-0.4.7.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"

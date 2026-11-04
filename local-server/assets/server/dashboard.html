@@ -59,6 +59,15 @@
   .tile.down .v .dot{background:var(--err)}
   #strip{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px; color:var(--mut); padding:2px 2px 10px}
   #strip b{color:var(--tx); font-weight:600}
+  /* 0.4.7 — peta arah koneksi: jawaban tetap "apa yang lokal, apa yang asli"
+     (pertanyaan berulang owner: "isi config loginserver masih mengarah ke
+     server aslinya?") — selalu terlihat, bukan terlipat */
+  #modemap{
+    margin:0 0 8px; font-size:12.5px; color:var(--mut); line-height:1.55;
+    background:var(--card); border:1px solid var(--line); border-radius:9px; padding:7px 11px;
+  }
+  #modemap b{color:var(--ok); font-weight:700}
+  #modemap .asli{color:var(--warn)}
 
   /* ---- toolbar & log linear (alur) ---- */
   .toolbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin:6px 0 8px}
@@ -173,6 +182,8 @@
       <div class="v"><span class="t">…</span></div>
     </div>
   </div>
+  <!-- ===== peta arah koneksi (0.4.7): apa yang lokal, apa yang asli ===== -->
+  <div id="modemap">Konten game: <b>MIRROR lokal www/</b> · Login &amp; akun: <b>LOKAL :<span id="m-login">…</span></b> · Daftar server: snapshot asli · Gameplay: <span class="asli"><b>server game asli</b> (progres tersimpan di sana)</span></div>
   <div id="strip">
     <span>www/ <b id="s-www">…</b></span>
     <span>akun <b id="s-acc">…</b></span>
@@ -198,6 +209,16 @@
   <details class="datacard">
     <summary>Data &amp; jaringan (rincian teknis)</summary>
     <div class="databody">
+      <div class="card">
+        <h2>Ke mana koneksi mengarah (mode LOCAL)</h2>
+        <div class="kv">
+          <b>Konten game</b><span>mirror <b>www/</b> — H5, JS, config dilayani lokal (kurang → diambil sekali dari CDN asli, lalu tersimpan)</span>
+          <b>Login &amp; akun</b><span><b>LOKAL :<span id="e-login">…</span></b> — layar SDK, loginchecknative, loginGame, GetServerList</span>
+          <b>setting bin + serversetting.json</b><span>ditulis-ulang SAAT DISAJIKAN → loginserver = <b>http://127.0.0.1:<span id="e-login2">…</span></b> (file di www/ tetap asli — by design)</span>
+          <b>Daftar server</b><span id="e-srv">…</span>
+          <b>Gameplay</b><span><b>server game ASLI</b> pilihan pemain (s&lt;N&gt;-bs.popoh5.com) — progres/keselamatan data ada di server asli; server lokal tidak menjalankan logika game</span>
+        </div>
+      </div>
       <div class="card">
         <h2>Server asli (jaringan)</h2>
         <table><tbody id="origbody"><tr><td style="color:var(--mut)">memuat…</td></tr></tbody></table>
@@ -238,8 +259,9 @@
   </details>
 </main>
 <footer>
-  Alur = baris penting · batch = grup lipat di bawahnya · gagal selalu naik sebagai ⚠ ·
-  log penuh tersimpan di <b>logs/human.log</b>
+  Alur = baris penting · batch = grup lipat · gagal selalu naik sebagai ⚠ ·
+  konten = mirror lokal · login = lokal · gameplay = server game asli (progres di sana) ·
+  log penuh di <b>logs/human.log</b>
 </footer>
 
 <script>
@@ -287,6 +309,13 @@
 
     tile("tile-game", sv.gameAlive, "game :" + sv.gamePort + (sv.gameAlive ? " siap" : " MATI"));
     tile("tile-login", sv.loginAlive, "login :" + sv.loginPort + (sv.loginAlive ? " siap" : " MATI"));
+    // 0.4.7 — peta arah koneksi (modemap + kartu lipat)
+    var lp = sv.loginPort || "?";
+    $("m-login").textContent = lp;
+    $("e-login").textContent = lp;
+    $("e-login2").textContent = lp;
+    $("e-srv").textContent = (sv.loginServers || 0)
+      + " server — snapshot ASLI bawaan APK (sengaja; dapat diganti lewat config/servers.json)";
     var uid = sv.sdkUid || sv.sdkGuest || sv.loginUser || "belum masuk";
     var ts = $("tile-sesi").querySelector(".v .t");
     ts.textContent = uid;

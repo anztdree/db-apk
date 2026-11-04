@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (**v4.6 — build 0.4.6**) — **MODEL FINAL LOG: ALUR LINEAR + GRUP BATCH** (kesepakatan owner *"group itu kalau terdeteksi emang config/resource yg banyak. kalau alur ya gk usah di group"*, §2.14): **ALUR** (boot → SDK → login → masuk game) = baris linear yang tidak pernah dikelompokkan; **AKTIVITAS BATCH** (mirror CDN per-file, request game, 404 fallback, passthrough ONLINE) = **GRUP lipat** di dasbor — satu baris judul dengan **statistik hidup** (`▸ Mirror CDN 470 file · 84,2 MB · 0 gagal (3 dtk)`), diklik untuk rincian per-file, **kegagalan naik sendiri sebagai ⚠ linear**, grup kosong tak tampil; `logs/human.log` = cerita tempel — grup ditulis **SEKALI sebagai ringkasan Σ satu baris** (`Mirror CDN: 470 file · 84,2 MB · 0 gagal — rincian di dasbor`); dasbor baru: **panel status atas (game/login/sesi) + alur + grup di bawahnya**, bukti teknis dilipat di bawah; dedupe `loginchecknative OK` ganda. Di bawahnya (v4.5): **LOG BERSIH + DASBOR FOKUS** — log DUA TINGKAT (PENTING selalu / TEKNIS hanya mode RINCI; `logs/human.log` tetap lengkap + "Copy penuh"). Di bawahnya (v4.4): **FIX MASUK/DAFTAR: AKUN LAYAR SDK = EMAIL** (bedah dex §2.13) + whitelist Cleaner +`servers.json`. Di bawahnya (v4.3): **DATABASE SQLITE `dragonball.db`** (nama FINAL dari owner; §2.12; migrasi otomatis txt → DB, tahan reboot). Di bawahnya (v4.2): **ALUR SDK: LAYAR LOGIN SDK ASLI DULUAN, SEMUA TAHAP SDK DILAYANI LOKAL** (§2.11); `assets/QHinfo` → 127.0.0.1:8610. Di bawahnya (v4.1): **ANTI "ERROR NETWORK"**. Di bawahnya (v4.0): **LOGIN LOKAL** (port 8610 — engine.io v3 + socket.io v2). Di bawahnya (v3.2): **WEBSITE TANPA SWITCH MODE**. Di bawahnya (v3.0): **MIRROR PENUH server asli** (31 file, ±56 MB) + tombol melayang bisa digeser
+> **Status dokumen:** Fondasi & Implementasi (**v4.7 — build 0.4.7**) — **LOG BAHASA MANUSIA: BOOT 3 BARIS + PEMETAAN ARAH KONEKSI** (laporan owner *"login server muncul .. saya rasa isi config loginserver anda masih mengarah ke server aslinya.. log ini pun tidak membantu kurang efektif kurang jelas"*, §2.15): **BOOT 3 BARIS** — `✔ Server lokal siap` → `ℹ Mode LOCAL — <peta arah koneksi>` → `ℹ Pemain: …` (dulu 5-6 baris siap bertumpuk tanpa cerita); dugaan "config loginserver masih ke server asli" DIJAWAB DENGAN BUKTI (login **LOKAL** — sesi 8610; daftar server = snapshot asli **sengaja**; gameplay = server game asli — progres di sana, §2.15); peta arah koneksi tampil permanen di dasbor (modemap + kartu lipat); dedupe `loginchecknative OK` diperlebar 10 dtk → 10 menit. Di bawahnya (v4.6): **MODEL FINAL LOG: ALUR LINEAR + GRUP BATCH** (kesepakatan owner *"group itu kalau terdeteksi emang config/resource yg banyak. kalau alur ya gk usah di group"*, §2.14): **ALUR** (boot → SDK → login → masuk game) = baris linear yang tidak pernah dikelompokkan; **AKTIVITAS BATCH** (mirror CDN per-file, request game, 404 fallback, passthrough ONLINE) = **GRUP lipat** di dasbor — satu baris judul dengan **statistik hidup** (`▸ Mirror CDN 470 file · 84,2 MB · 0 gagal (3 dtk)`), diklik untuk rincian per-file, **kegagalan naik sendiri sebagai ⚠ linear**, grup kosong tak tampil; `logs/human.log` = cerita tempel — grup ditulis **SEKALI sebagai ringkasan Σ satu baris** (`Mirror CDN: 470 file · 84,2 MB · 0 gagal — rincian di dasbor`); dasbor baru: **panel status atas (game/login/sesi) + alur + grup di bawahnya**, bukti teknis dilipat di bawah.
 > **Temuan 2026-10-31 (probe ulang, mengoreksi catatan lama):** **SERVER ASLI MASIH HIDUP** — `setting_BS_Android.bin` (711 B, terenkripsi XOR kunci **`DragonBall`**) berhasil didekripsi → membongkar host sesungguhnya: **dragonh5cdn.popoh5.com** (H5 game + folder upgrade). Seluruh file fisik server asli berhasil diunduh & menjadi isi mirror (daftar lengkap §2.9). Catatan lama "server asli sudah mati" TERBANTAHKAN — server hanya memindahkan file ke host CDN.
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-11-02
@@ -411,7 +411,45 @@ Laporan owner yang memicu: *"group itu kalau terdeteksi emang config/resource yg
 5. **Grup kosong tidak tampil** sama sekali — tidak ada item → tidak ada baris.
 6. **`logs/human.log` = cerita untuk ditempel**: grup ditulis SEKALI sebagai ringkasan Σ saat aktivitas diam ±45 dtk — `Mirror CDN: 470 file · 84,2 MB · 0 gagal (3 dtk) — rincian di dasbor`. Rincian per-file tidak masuk file (tinggal di dasbor). Tombol **Copy** = alur + ringkasan Σ per grup; **Copy penuh** = ekor `human.log` dari disk.
 7. **Dasbor 4000 dibangun sesuai model**: panel status atas — `PORT GAME siap · SERVER LOGIN siap · SESI PEMAIN <uid>` — lalu alur linear, lalu kelompok batch di bawahnya; bukti teknis (server asli, 6 request terakhir, isi `www/`, identitas) dilipat di bagian bawah.
-8. **Dedupe `loginchecknative OK`**: shell+H5 kadang memanggil dua kali — uid sama < 10 dtk = satu baris ✔ saja (dulu muncul dua baris kembar).
+8. **Dedupe `loginchecknative OK`**: shell+H5 kadang memanggil dua kali — uid sama < 10 dtk = satu baris ✔ saja (dulu muncul dua baris kembar). *(0.4.7: diperlebar ke 10 menit — denyut 21 dtk masih bocor dua baris.)*
+
+---
+
+### 2.15 PEMETAAN ARAH KONEKSI + BOOT 3 BARIS (0.4.7; laporan owner "login server muncul .. saya rasa isi config loginserver anda masih mengarah ke server aslinya.. log ini pun tidak membantu kurang efektif kurang jelas")
+
+Dugaan "config loginserver masih mengarah ke server asli" dijawab dengan **BUKTI lewat kode yang sama saat serving** (`SettingBin.rewrittenLocal` + `GameServer.serveServersetting` dijalankan langsung terhadap mirror — bukan tebakan):
+
+**a) Bukti rewrite (output nyata):**
+
+| Field | File di www/ (asli) | Dijawab server (mode LOCAL) |
+|---|---|---|
+| setting bin `loginServer` | `https://login.popoh5.com` | **`http://127.0.0.1`** (+`loginPort`/`loginWebPort` → 8610) |
+| setting bin `tsLoginServer` | `http://118.24.68.91:7003` | **`http://127.0.0.1:8610`** |
+| setting bin `url` (H5) | `https://dragonh5cdn.popoh5.com/bs/index-native.html?v=…` | **`http://127.0.0.1:8080/bs/index-native.html?v=…`** |
+| `serversetting.json` `loginserver` | `https://login.popoh5.com:610` | **`http://127.0.0.1:8610`** |
+
+File di `www/` TIDAK pernah diubah — penulisan-ulang terjadi **SAAT DIJAWAB server** (aturan §4 "rewrite sisi server"). Bukti login memang lokal dari log owner sendiri: sesi `UHeZbC…`/`ElOe1M…` = klien H5 tersambung ke **8610 lokal** (bila loginserver masih ke server asli, sesi itu tidak akan pernah ada).
+
+**b) Peta arah koneksi (mode LOCAL):**
+
+| Koneksi | Arah | Sengaja/by design? |
+|---|---|---|
+| Konten game (H5, JS, config, resource) | **LOKAL** — mirror `www/` (kurang → diambil sekali dari CDN, tersimpan) | ya — inti proyek |
+| Layar SDK, daftar/masuk, loginchecknative | **LOKAL** port 8610 (dragonball.db) | ya — §2.11–§2.12 |
+| Daftar server (GetServerList) | **SNAPSHOT ASLI bawaan APK** (2109 server — `assets/server/login/servers.json`) | **SENGAJA** — §2.10; boleh diganti pemilik lewat `config/servers.json` tanpa rebuild |
+| Gameplay (setelah pilih server) | **SERVER GAME ASLI** `s<N>-bs.popoh5.com:<port>` | **SENGAJA** — progres/keselamatan data ada di sana; server lokal tidak menjalankan logika game (lingkup §Lingkup: analisis gameplay dikecualikan). Mengosongkan daftar = game tak bisa masuk |
+
+**c) BOOT 3 BARIS** (menggantikan 5-6 baris siap bertumpuk 0.4.5–0.4.6: "dragonball.db siap" + "Server siap — mirror…" + "Mode:" + "Server lokal hidup" + "Tombol melayang tampil"):
+
+```
+06:47:24  ✔ Server lokal siap — game :8080 · login :8610 · dasbor :4000
+06:47:24  ℹ Mode LOCAL — konten game: mirror www/ (31 file) · login & akun: lokal :8610 · daftar server: snapshot asli (2109 server) · gameplay: server game asli — progres tersimpan di sana
+06:47:24  ℹ Pemain: guest99599159 — identitas & sesi tersimpan lokal · dragonball.db 44,0 KB (tahan reboot)
+```
+
+Lalu alur SDK linear: `▶ SDK: perangkat 8655A9EB39… → tamu guest99599159 (identitas tamu lama dipertahankan)` → `✔ SDK: loginchecknative OK — tamu guest99599159` → `▶ Login lokal OK — guest99599159 (akun lama) · 0 ms` → `◀ Daftar server dikirim: 2109 server (snapshot asli bawaan APK) · 0 ms`.
+
+Perubahan kecil 0.4.7: dedupe `loginchecknative OK` 10 dtk → **10 menit** per uid (ganti uid tetap dilaporkan); turun tingkat ke TEKNIS (tetap terekam di `human.log`): `dragonball.db siap`, `Tombol melayang tampil`, `Login lokal: client tersambung`; bahasa diperbaiki: **"Pemain"** (akun email juga pemain — bukan "guest"), **"identitas & sesi tersimpan lokal"** (bukan "progres lokal dipakai" — progres ada di server game asli), **"perangkat → tamu"** (bukan "diikat … migrasi identitas"); dasbor + baris **modemap** permanen (`Konten game: MIRROR lokal www/ · Login & akun: LOKAL :8610 · Daftar server: snapshot asli · Gameplay: server game asli`) + kartu lipat **"Ke mana koneksi mengarah"** di Data & jaringan.
 
 ---
 
@@ -716,6 +754,7 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
+| **0.4.7** | **(v4.7) + LOG BAHASA MANUSIA: BOOT 3 BARIS + PEMETAAN ARAH KONEKSI** (laporan owner "login server muncul .. saya rasa isi config loginserver anda masih mengarah ke server aslinya.. log ini pun tidak membantu kurang efektif kurang jelas", §2.15): **BOOT 3 BARIS** — `✔ Server lokal siap — game :8080 · login :8610 · dasbor :4000` → `ℹ Mode LOCAL — <peta arah koneksi>` → `ℹ Pemain: … — identitas & sesi tersimpan lokal` (dulu 5-6 baris siap bertumpuk); **peta arah koneksi eksplisit** di baris Mode, di GetServerList ("snapshot asli bawaan APK"), dan di dasbor (modemap + kartu "Ke mana koneksi mengarah") — bukti rewrite login LOKAL tercatat §2.15-a; dedupe **loginchecknative OK 10 dtk → 10 menit** per uid; `dragonball.db siap`/`Tombol melayang tampil`/handshake socket → TEKNIS (tetap terekam human.log); bahasa log diperbaiki ("Pemain", "identitas & sesi tersimpan lokal", "perangkat → tamu"); harness **80/80 LULUS** | **L5a–L5b ✓ (log & peta koneksi)** |
 | **0.4.6** | **(v4.6) + MODEL FINAL LOG — ALUR LINEAR + GRUP BATCH** (kesepakatan owner "group itu kalau terdeteksi emang config/resource yg banyak. kalau alur ya gk usah di group", §2.14): **LogGroups.java** — mirror CDN/request game/404 fallback/passthrough ONLINE TIDAK PERNAH jadi baris log linear; satu baris judul + **statistik hidup** di dasbor (diklik = rincian per-file, cap 600 item/grup), **gagal naik OTOMATIS sebagai ⚠ linear** (jeda 30 dtk), grup kosong tak tampil; **human.log = ringkasan Σ satu baris** per periode diam ±45 dtk ("Mirror CDN: 470 file · 84,2 MB · 0 gagal — rincian di dasbor"); API baru `GET /api/groups`; **DASBOR sesuai model**: panel status atas (PORT GAME/SERVER LOGIN/SESI PEMAIN) + alur linear + grup lipat di bawahnya + bukti teknis dilipat; Copy = alur + Σ per grup; dedupe **loginchecknative OK** ganda (uid sama <10 dtk = 1 baris); `HumanLog.writeRawLine` (Σ → file saja); harness **80/80 LULUS** (+9 tes grup) | **L5a–L5b ✓ (model final log disepakati owner)** |
 | **0.4.5** | **(v4.5) + LOG BERSIH + DASBOR FOKUS** (laporan owner "jujur terus terang log anda bagi saya cuma sampah apalagi UI website banyak informasi yg tidak bermanfaat"): log **DUA TINGKAT** (`HumanLog.ev` penting / `HumanLog.evTech` teknis) — **PENTING selalu tampil**: boot dipadatkan **12+ → ±5 baris** ("Server siap — mirror www/ N file · guest X · N server" + "Server lokal hidup — game 8080 · login 8610 · dasbor 4000"), mode, tamu/daftar/masuk/loginchecknative, daftar server dikirim, ⚠/500; **TEKNIS hanya di mode RINCI**: semua baris request per-file (200 dari www/, 404 normal, seed CDN, passthrough), probe DNS ✔, denyut pantauan, geser tombol, dasbor dimuat — toggle **RINCI** di dasbor tersimpan `server.json "logTech"` (tahan reboot); **file `logs/human.log` TETAP LENGKAP** (penting+teknis — mode bersih tidak menghilangkan bukti) + API baru `/api/logtech` & `/api/logs/file?tail=` ("Copy penuh" dari disk); penghitung dasbor (`mirrorSeeded/mirrorSeedBytes/notFound`) menggantikan 100+ baris GET resource; **DASBOR DIROMBAK**: Log pusat (filter Semua/⚠ saja + toggle RINCI + Copy/Copy penuh/Bersihkan) + strip status 1 baris + tab Data (dragonball.db + server asli) & Teknis (root/port/penghitung, 6 request terakhir, daftar www/ dilipat) — kartu besar berulang dihapus; harness **71/71 LULUS** (+9 tes: dua tingkat, file tetap lengkap, tailText, logTech persisten) | **L5a–L5b ✓ (log & dasbor didengarkan owner)** |
 | **0.4.4** | **(v4.4) + FIX MASUK/DAFTAR — AKUN LAYAR SDK = EMAIL** (laporan owner "login register gak work .. ini jelas PR"): bedah dex fragmen UI MASUK/DAFTAR (`timidcompletely`/`navyshop`) + validator (`feedtonight.singersmooth`) → akun yang dikirim client = **EMAIL** (regex `\w+@\w+.\w+`, sandi ≥6, DAFTAR wajib centang persetujuan) — server lokal dulu menolak `@`/`+` (charset 3-32) → **DAFTAR selalu 40102, MASUK selalu 40101**; kini `SdkData.registerUser` menerima email (huruf kecil, `[a-z0-9_.+-@]`, 3-64), `loginByName` tidak peka huruf besar/kecil, `SdkApi` log verbose MASUK/DAFTAR (sukses+gagal+sebab), uid=email mengalir utuh ke loginchecknative→url H5→loginGame; + whitelist Cleaner **`servers.json`** (bug lanjutan: file dihapus-restor tiap boot — suntingsan pemilik hilang); pesan log tamu dirapikan; harness **63/63 LULUS** (+15 tes baru: email + Cleaner) | **L5a–L5b ✓ (login/daftar natural)** |
@@ -733,7 +772,19 @@ tanpa izin storage tambahan (folder own-app).
 | 1.1.0 | Persistensi state (SQLite) + stub SDK cloud | L6 awal |
 | 2.0.0 | Standalone penuh tanpa internet | L6 |
 
-**Build 0.4.6 (MODEL FINAL LOG — GRUP BATCH, v4.6) — 2026-11-03 — BUILD TERKINI:**
+**Build 0.4.7 (LOG BAHASA MANUSIA — BOOT 3 BARIS + PEMETAAN KONEKSI, v4.7) — 2026-11-04 — BUILD TERKINI:**
+
+| Item | Nilai |
+|---|---|
+| Artefak | `releases/APK-LSF-0.4.7.apk` (163.954.683 byte; repo = pointer LFS) |
+| sha256 | `0683119f4576b984cabc9d3e7894d0bc8da65b9cac52d92010cd2aaa537fd603` |
+| Basis | `releases/APK-LSF-0.3.2.apk` (sha256 `b64cba53bf96fd6de3bcb5b15c33f6bb9f84c1c170a7808fea7b897dc9ab96d2` — terverifikasi saat unduh ulang) |
+| Verifikasi build | `classes.dex` game **identik dasar** (6.697.104 B — dex game tidak disentuh) · `classes2.dex` baru (155.320 B) · QHinfo `http://127.0.0.1:8610` · mirror www/ 31 file utuh (sha base.zip/all.zip = pin §2.9) · payload lama bersih · ditandatangani keystore LSF tetap (zipalign + sign) |
+| Perubahan server lokal | `Starter.java` (BOOT 3 BARIS + peta arah koneksi — "Server siap"/"Mode"/"Server lokal hidup" lama digabung) · `LoginServer.java` (handshake → TEKNIS; "Login lokal OK — …"; GetServerList "(snapshot asli bawaan APK)") · `SdkData.java` (dedupe loginchecknative 10 MENIT; "perangkat → tamu") · `Db.java` (db siap → TEKNIS) · `FloatingToggle.java` (tampil → TEKNIS) · `dashboard.html` (modemap + kartu "Ke mana koneksi mengarah" + footer) · `build.sh` 0.4.7 |
+| Bukti rewrite (§2.15-a) | `loginServer` → `http://127.0.0.1` · `tsLoginServer` → `http://127.0.0.1:8610` · `url` H5 → `http://127.0.0.1:8080` · `serversetting.json loginserver` → `http://127.0.0.1:8610` — dijalankan lewat `SettingBin.rewrittenLocal`/`serveServersetting` yang sama saat serving |
+| Harness | **80/80 LULUS** (JVM + sqlite-jdbc; tanpa perubahan tes) |
+
+**Build 0.4.6 (MODEL FINAL LOG — GRUP BATCH, v4.6) — 2026-11-03:**
 
 | Item | Nilai |
 |---|---|

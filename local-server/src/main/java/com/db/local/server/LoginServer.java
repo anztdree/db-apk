@@ -133,7 +133,10 @@ public final class LoginServer extends NanoHTTPD {
         String open = HANDSHAKE_JSON.replace("%SID%", sid);
         String body = frame("0" + open) + frame("40");
         try {
-            HumanLog.ev('ℹ', "Login lokal: client tersambung (sesi " + sid.substring(0, 6) + "…)", null);
+            // 0.4.7: penyambungan socket = TEKNIS (klien H5 bisa menyambung ulang
+            // beberapa kali — kejadian ini bukan hasil/berita). Yang PENTING tetap
+            // linear: loginGame (masuk) & GetServerList (daftar server) di bawah.
+            HumanLog.evTech('ℹ', "Login lokal: client tersambung (sesi " + sid.substring(0, 6) + "…)", null);
         } catch (Throwable ignored) {
         }
         return text(Response.Status.OK, body);
@@ -298,12 +301,16 @@ public final class LoginServer extends NanoHTTPD {
             String password = strField(msg, "password");
             data = LoginData.loginGameResponse(userId, password);
             boolean baru = data.indexOf("\"isCreated\":true") >= 0;
-            HumanLog.ev('▶', "Login lokal: " + userId + (baru ? " masuk — akun BARU dibuat" : " masuk — akun lama")
-                            + " · " + HumanLog.fmtMs(System.currentTimeMillis() - t0) + " — channel game_origin",
+            // 0.4.7: alur linear, bahasa manusia — ini penanda "login lokal bekerja"
+            HumanLog.ev('▶', "Login lokal OK — " + userId + (baru ? " (akun BARU dibuat)" : " (akun lama)")
+                            + " · " + HumanLog.fmtMs(System.currentTimeMillis() - t0),
                     null);
         } else if ("GetServerList".equals(action)) {
             data = LoginData.serverListData();
-            HumanLog.ev('◀', "Daftar server dikirim: " + LoginData.serverCount() + " server · "
+            // 0.4.7: sebut sumbernya — daftar = snapshot ASLI bawaan APK (bukan
+            // server lokal), supaya tidak disalahartikan "config masih ke server asli"
+            HumanLog.ev('◀', "Daftar server dikirim: " + LoginData.serverCount()
+                            + " server (snapshot asli bawaan APK) · "
                             + HumanLog.fmtMs(System.currentTimeMillis() - t0), null);
         } else if ("LoginAnnounce".equals(action)) {
             data = "{}";

@@ -170,7 +170,9 @@ public final class FloatingToggle {
             // me-pause/resume activity beberapa kali saat boot, dulu lognya berulang).
             if (!shownOnceLogged) {
                 shownOnceLogged = true;
-                HumanLog.ev('✔', "Tombol melayang tampil — GESER pindah · TEKAN ganti mode", null);
+                // 0.4.7: tombol tampil = TEKNIS (bukan hasil/berita; tiap boot sama).
+                // Yang tetap PENTING: gagal tampil (⚠) & pergantian mode (ℹ).
+                HumanLog.evTech('✔', "Tombol melayang tampil — GESER pindah · TEKAN ganti mode", null);
             }
         } catch (Throwable t) {
             logSilent("Tombol melayang gagal tampil", t);

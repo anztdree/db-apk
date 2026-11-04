@@ -120,10 +120,10 @@ public final class SdkData {
                 LoginData.ensureAccount(uid, "");
                 Db.i().putGuest(dev, uid, now());
                 try {
-                    // 0.4.4: kata-kata jelas — yang BARU adalah ikatan perangkat,
+                    // 0.4.7: kata-kata jelas — yang BARU adalah ikatan perangkat,
                     // bukan tamunya (tamunya guest lokal pemilik, migrasi identitas)
-                    HumanLog.ev('▶', "SDK: perangkat " + shortId(dev) + " diikat ke tamu " + uid
-                            + (first ? " — guest lokal pemilik (migrasi identitas)" : " — tamu baru"), null);
+                    HumanLog.ev('▶', "SDK: perangkat " + shortId(dev) + " → tamu " + uid
+                            + (first ? " (identitas tamu lama dipertahankan)" : " (tamu baru)"), null);
                 } catch (Throwable ignored) {
                 }
                 return sessionData(tokenFor(uid, dev), uid, true, true);
@@ -264,8 +264,11 @@ public final class SdkData {
 
     // ---------------- loginchecknative (validasi shell → url H5) ----------------
 
-    /** Dedupe baris OK beruntun (0.4.6): shell/H5 kadang memanggil dua kali —
-     *  uid sama dalam 10 dtk = denyut yang sama, cukup SATU baris ✔. */
+    /** Dedupe baris OK beruntun (0.4.7): shell/H5 memanggil loginchecknative
+     *  berkali-kali sepanjang hidup game (boot, balik dari background, re-enter).
+     *  uid sama dalam 10 MENIT = denyut sesi yang sama → cukup SATU baris ✔;
+     *  ganti uid (ganti akun/tamu) → selalu dilaporkan. Dulu 10 dtk — denyut
+     *  berjarak 21 dtk (boot 06:47:30 vs 06:47:51) masih bocor dua baris. */
     private static String lastNativeOkUid = "";
     private static long lastNativeOkAt = 0L;
 
@@ -324,7 +327,7 @@ public final class SdkData {
             try {
                 long nowMs = System.currentTimeMillis();
                 boolean dup = uid.equals(lastNativeOkUid)
-                        && (nowMs - lastNativeOkAt) < 10000L;
+                        && (nowMs - lastNativeOkAt) < 600000L;
                 lastNativeOkUid = uid;
                 lastNativeOkAt = nowMs;
                 if (!dup) {

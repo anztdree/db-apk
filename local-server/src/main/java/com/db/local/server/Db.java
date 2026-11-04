@@ -179,8 +179,10 @@ public final class Db {
                         String.valueOf(t));
             }
             if (i().sqlite()) {
-                // 0.4.5: kalimat pendek di dasbor; detail engine+ukuran ke kolom detail
-                log('✔', "dragonball.db siap (SQLite, " + HumanLog.fmtBytes(f.length())
+                // 0.4.7: kesiapan DB = TEKNIS (bukan berita — tiap boot sama);
+                // yang PENTING justru kegagalannya (⚠ terpisah di Starter).
+                // Identitas pemain tetap tampil di baris "Pemain:" boot (Starter).
+                HumanLog.evTech('✔', "dragonball.db siap (SQLite, " + HumanLog.fmtBytes(f.length())
                         + ") — akun/tamu/sesi tahan reboot" + (imported > 0
                         ? " · migrasi txt lama: " + imported + " baris" : ""),
                         engine + " · " + f.getAbsolutePath());
