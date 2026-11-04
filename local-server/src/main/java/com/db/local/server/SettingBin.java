@@ -281,6 +281,30 @@ public final class SettingBin {
         }
     }
 
+    /**
+     * 0.5.2 AKAR — teks JSON ASLI hasil dekripsi file bin (TANPA tulis-ulang).
+     * Bahan pembedah ConfigAkar di mode LOCAL; null bila gagal.
+     */
+    static String decryptedPlain(File f) {
+        try {
+            return new String(xor(readAll(f)), "UTF-8");
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
+     * 0.5.2 AKAR — teks JSON ASLI hasil dekripsi byte bin dari server asli
+     * (TANPA tulis-ulang). Bahan pembedah ConfigAkar di mode ONLINE; null bila gagal.
+     */
+    static String decryptedPlain(byte[] enc) {
+        try {
+            return new String(xor(enc), "UTF-8");
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     /** Baca nilai string level atas dari JSON teks; null bila tidak ada. */
     static String getJsonValue(String json, String key) {
         try {
@@ -309,6 +333,68 @@ public final class SettingBin {
                 return null;
             }
             return json.substring(a + 1, b);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
+     * 0.5.2 AKAR — nilai MENTAH level atas (string dengan kutip ATAU angka
+     * polos): "loginPort": 610 → "610". Pembedah ConfigAkar butuh angka
+     * (testMode/checkTime/loginPort/loginWebPort) yang tidak tercakup
+     * getJsonValue. Null bila kunci tidak ada / nilai bukan string-angka.
+     * Publik — diuji harness.
+     */
+    public static String getJsonRaw(String json, String key) {
+        try {
+            String needle = "\"" + key + "\"";
+            int i = json.indexOf(needle);
+            if (i < 0) {
+                return null;
+            }
+            int c = json.indexOf(':', i + needle.length());
+            if (c < 0) {
+                return null;
+            }
+            int j = c + 1;
+            final int len = json.length();
+            while (j < len && (json.charAt(j) == ' ' || json.charAt(j) == '\t')) {
+                j++;
+            }
+            if (j >= len) {
+                return null;
+            }
+            char first = json.charAt(j);
+            if (first == '"') {
+                int b = j + 1;
+                while (b < len && json.charAt(b) != '"') {
+                    if (json.charAt(b) == '\\') {
+                        b++;
+                    }
+                    b++;
+                }
+                if (b >= len) {
+                    return null;
+                }
+                return json.substring(j, b + 1); // dengan kutip — mentah apa adanya
+            }
+            if (first == '-' || (first >= '0' && first <= '9')) {
+                int b = j;
+                if (json.charAt(b) == '-') {
+                    b++;
+                }
+                while (b < len && ((json.charAt(b) >= '0' && json.charAt(b) <= '9')
+                        || json.charAt(b) == '.')) {
+                    b++;
+                }
+                return json.substring(j, b);
+            }
+            // true/false/null — ambil sampai koma/kurung tutup/baris baru
+            int b = j;
+            while (b < len && ",}]\n\r".indexOf(json.charAt(b)) < 0) {
+                b++;
+            }
+            return json.substring(j, b).trim();
         } catch (Throwable t) {
             return null;
         }

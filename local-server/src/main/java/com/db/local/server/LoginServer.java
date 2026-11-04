@@ -560,8 +560,11 @@ public final class LoginServer extends NanoHTTPD {
                     String action = strField(msg, "action");
                     if ("loginGame".equals(action)) {
                         String userId = strField(msg, "userId");
+                        String pwd = strField(msg, "password");
                         HumanLog.ev("✅", "Login game diteruskan ke server ASLI (passthrough)",
                                 "Akun     : " + (userId == null ? "-" : userId) + "\n"
+                                        + "Sandi    : " + (pwd == null ? "-"
+                                                : pwd.length() + " karakter — diteruskan UTUH") + "\n"
                                         + "Proses   : permintaan klien diteruskan utuh ke login.popoh5.com:610\n"
                                         + "Sumber   : SERVER ASLI — token & identitas dikeluarkan di sana "
                                         + "(progres pemain tetap tersimpan di server asli)");
@@ -598,15 +601,51 @@ public final class LoginServer extends NanoHTTPD {
                 long now = System.currentTimeMillis();
                 if (now - lastServerListLogAt >= 600000L) {
                     lastServerListLogAt = now;
+                    String gw = firstAndLastGateway(respText);
                     HumanLog.ev("📋", "Daftar server ASLI terkirim — " + count + " server (passthrough)",
                             "Sumber   : SERVER ASLI login.popoh5.com:610 — diteruskan utuh lewat server lokal "
                                     + "(bukan snapshot; daftar hidup dari server)\n"
-                                    + "Ukuran   : " + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms) + "\n"
+                                    + "Gerbang  : " + (gw == null ? "(url tidak terbaca dari jawaban)" : gw) + "\n"
+                                    + "Ukuran   : " + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms)
+                                    + " · pemain sekarang di layar pilih server\n"
                                     + "Lanjutan : pemain pilih server → gameplay LANGSUNG ke server game asli pilihan "
                                     + "pemain (progres tersimpan di sana — wajar log tidak menambah baris)");
                 }
             }
         } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * 0.5.2 AKAR — gerbang PERTAMA dan TERAKHIR dari daftar server ASLI
+     * ("url":"https://sXXXX-bs.popoh5.com:PORT") — pemain tahu persis ke mana
+     * klien akan lompat saat tombol Play ditekan. Null bila tidak terbaca.
+     */
+    public static String firstAndLastGateway(String respText) {
+        try {
+            String needle = "\"url\":\"";
+            int a = respText.indexOf(needle);
+            if (a < 0) {
+                return null;
+            }
+            int p = a + needle.length();
+            int e = respText.indexOf('"', p);
+            if (e < 0) {
+                return null;
+            }
+            String first = respText.substring(p, e);
+            int b = respText.lastIndexOf(needle);
+            String last = first;
+            if (b > a) {
+                int q = b + needle.length();
+                int f = respText.indexOf('"', q);
+                if (f > q) {
+                    last = respText.substring(q, f);
+                }
+            }
+            return first.equals(last) ? first : first + "  …  " + last + " (pertama … terakhir)";
+        } catch (Throwable t) {
+            return null;
         }
     }
 

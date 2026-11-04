@@ -36,7 +36,8 @@ import java.util.Locale;
  *   • Ikon = EMOJI per kategori (bukan simbol tipis ✔/⚠/ℹ yang samar):
  *       🚀 siap/boot · 👤 pemain · 🔑 pengesahan sesi · 📡 koneksi ·
  *       ✅ sukses · ⚠️ masalah (tetap jalan) · ❌ gagal (terhenti) ·
- *       📋 daftar server · 💾 data/db · 🧹 bersih/mirror · ℹ️ info.
+ *       📋 daftar server · 💾 data/db · 🧹 bersih/mirror · ℹ️ info ·
+ *       📦 config dibedah (0.5.2 — isi config field-per-field).
  *   • Setiap baris penting membawa BLOK RINCIAN (field "detail", beberapa
  *     baris dipisah \n): fakta nyata yang dimiliki server (angka ms, byte,
  *     sumber data, uid, sebab, akibat/lanjutan). ATURAN: TIDAK BOLEH

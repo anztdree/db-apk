@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import com.db.local.server.Config;
+import com.db.local.server.ConfigAkar;
 import com.db.local.server.Db;
 import com.db.local.server.HumanLog;
 import com.db.local.server.LogGroups;
@@ -440,6 +441,83 @@ public class HarnessSdk {
                         && LoginServer.countServerIds(null) == 0);
         check("0.5.1 passthrough: upstream login ASLI = HTTPS (probe: HTTP polos ditolak server)",
                 LoginServer.UPSTREAM_LOGIN.startsWith("https://"));
+
+        // ---------------- TAHAP 17: AKAR CONFIG (0.5.2 — tegasan owner "log yg
+        // jelas rinci itu penting"; jawaban "pakai config online murni .. akarnya
+        // aja gak tau") — isi config DIBEDAH FIELD-PER-FIELD di log ----------------
+        // 17a) pembedah setting bin: nilai ASLI → nilai yang diterima klien
+        String akar = ConfigAkar.settingBin(binOnlineJson, binOnlinePlain);
+        check("0.5.2 akar bin: enkripsi disebut (XOR \"DragonBall\")",
+                akar.contains("DragonBall"));
+        check("0.5.2 akar bin: url ASLI ditulis PENUH (tidak disingkat)",
+                akar.contains("https://dragonh5cdn.popoh5.com/bs/index-native.html?v=9"));
+        check("0.5.2 akar bin: url KLIEN ditulis penuh dengan tanda →",
+                akar.contains("→  http://127.0.0.1:8080/bs/index-native.html?v=9"));
+        check("0.5.2 akar bin: tsUrl ditandai (asli) — varian uji tidak disentuh",
+                akar.contains("http://dragon.sjmobilegame.com:82/bs103/index-native.html")
+                        && akar.contains("(asli)"));
+        check("0.5.2 akar bin: loginServer ASLI → lokal ditulis dua-duanya",
+                akar.contains("https://login.popoh5.com")
+                        && akar.contains("http://127.0.0.1"));
+        check("0.5.2 akar bin: port 610 → 8610 terlihat",
+                akar.contains("610") && akar.contains("8610"));
+        check("0.5.2 akar bin: peran loginWebPort dijelaskan (loginchecknative)",
+                akar.contains("loginchecknative"));
+        check("0.5.2 akar bin: config tanpa clientParams dilaporkan jujur",
+                akar.contains("clientParams") && akar.contains("tidak ada di config"));
+        // 17b) getJsonRaw — nilai mentah string/angka/bool
+        check("0.5.2 getJsonRaw: angka MURNI bin asli (loginPort 610 tanpa kutip)",
+                "610".equals(SettingBin.getJsonRaw(
+                        "{\"loginPort\":610,\"checkTime\":300}", "loginPort")));
+        check("0.5.2 getJsonRaw: angka MURNI bin asli (loginWebPort 510 tanpa kutip)",
+                "510".equals(SettingBin.getJsonRaw(
+                        "{\"loginWebPort\":510}", "loginWebPort")));
+        check("0.5.2 getJsonRaw: string berangka (fixture tahap 16) = mentah dgn kutip",
+                "\"610\"".equals(SettingBin.getJsonRaw(binOnlineJson, "loginPort")));
+        check("0.5.2 getJsonRaw: string loginServer dengan kutip dibuang",
+                "\"https://login.popoh5.com\"".equals(SettingBin.getJsonRaw(binOnlineJson, "loginServer")));
+        check("0.5.2 getJsonRaw: bool false terbaca",
+                "false".equals(SettingBin.getJsonRaw(ssAsli, "requireSDK")));
+        check("0.5.2 getJsonRaw: kunci tak ada = null",
+                SettingBin.getJsonRaw(binOnlineJson, "tidakAda") == null);
+        // 17c) pembedah clientParams (bin ASLI 711 B memuat objek ini)
+        String binCp = "{\"testMode\":1,\"checkTime\":300,"
+                + "\"clientParams\":{\"hideList\":[\"1.99\",\"2.99\"],"
+                + "\"supportLang\":[{\"languageName\":\"English\",\"lang\":\"en\"},"
+                + "{\"languageName\":\"Français\",\"lang\":\"fr\"}],"
+                + "\"showCurChannel\":\"toFacebook\"}}";
+        String akarCp = ConfigAkar.settingBin(binCp, binCp);
+        check("0.5.2 akar clientParams: hideList 2 harga",
+                akarCp.contains("hideList 2 harga"));
+        check("0.5.2 akar clientParams: supportLang 2 bahasa (en, fr)",
+                akarCp.contains("supportLang 2 bahasa (en, fr)"));
+        check("0.5.2 akar clientParams: showCurChannel toFacebook",
+                akarCp.contains("showCurChannel toFacebook"));
+        check("0.5.2 akar angka: testMode & checkTime tampil (asli)",
+                akarCp.contains("testMode") && akarCp.contains("300"));
+        // 17d) pembedah serversetting.json
+        String akarSs = ConfigAkar.serversetting(ssAsli, ssBaru);
+        check("0.5.2 akar serversetting: loginserver ASLI → klien (tanda →)",
+                akarSs.contains("https://login.popoh5.com:610")
+                        && akarSs.contains("→") && akarSs.contains("http://127.0.0.1:8610"));
+        check("0.5.2 akar serversetting: requireSDK ditandai (asli)",
+                akarSs.contains("requireSDK") && akarSs.contains("(asli)"));
+        check("0.5.2 akar serversetting: enkripsi disebut (JSON polos)",
+                akarSs.contains("JSON polos"));
+        // 17e) gerbang pertama & terakhir dari daftar server ASLI (passthrough)
+        String ackGw = "{\"serverList\":["
+                + "{\"serverId\":\"1\",\"url\":\"https://s1-bs.popoh5.com:8001\"},"
+                + "{\"serverId\":\"2\",\"url\":\"https://s2-bs.popoh5.com:8002\"},"
+                + "{\"serverId\":\"2109\",\"url\":\"https://s2109-bs.popoh5.com:8061\"}]}";
+        check("0.5.2 gerbang: pertama = s1 … terakhir = s2109",
+                "https://s1-bs.popoh5.com:8001  …  https://s2109-bs.popoh5.com:8061 (pertama … terakhir)"
+                        .equals(LoginServer.firstAndLastGateway(ackGw)));
+        check("0.5.2 gerbang: satu url saja → tanpa tanda …",
+                "https://s1-bs.popoh5.com:8001".equals(
+                        LoginServer.firstAndLastGateway("{\"serverList\":[{\"url\":\"https://s1-bs.popoh5.com:8001\"}]}")));
+        check("0.5.2 gerbang: tanpa url = null (tidak meledak)",
+                LoginServer.firstAndLastGateway("{}") == null
+                        && LoginServer.firstAndLastGateway(null) == null);
 
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");

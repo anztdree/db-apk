@@ -197,6 +197,46 @@ public final class GameServer extends NanoHTTPD {
         return serveFile(f, uri, query, t0, false);
     }
 
+    // ---------------- 0.5.2 AKAR CONFIG: bedah isi config di log ----------------
+
+    /** Kunci dedupe: uri + isi hasil bedah — config sama tidak membanjiri log. */
+    private static volatile String lastAkarKey = "";
+
+    /**
+     * Log AKAR CONFIG (0.5.2 — tuntutan owner "log yg jelas rinci itu penting";
+     * jawaban "pakai config online murni .. akarnya aja gak tau"): isi config
+     * yang DITERIMA KLIEN ditulis penuh — field per field, nilai ASLI → klien.
+     * Penting (selalu tampil). Isi sama beruntun → TEKNIS (tetap terekam file).
+     */
+    private static void logAkar(String uri, String detail, long bytes, long ms, String sumber) {
+        try {
+            if (detail == null) {
+                detail = "(pembedah tidak menghasilkan rincian)";
+            }
+            String key = uri + "#" + detail.hashCode();
+            boolean sama = key.equals(lastAkarKey);
+            lastAkarKey = key;
+            if (sama) {
+                HumanLog.evTech("📦", "CONFIG " + uri + " disajikan lagi — isi sama, tidak dibedah ulang",
+                        HumanLog.fmtBytes(bytes) + " · " + HumanLog.fmtMs(ms));
+            } else {
+                HumanLog.ev("📦", "AKAR CONFIG " + uri + " — dibedah field-per-field (" + sumber + ")",
+                        detail + "\n" + pad("Diterima klien", HumanLog.fmtBytes(bytes) + " · " + HumanLog.fmtMs(ms)));
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** Baris "label : nilai" dengan lebar label sama seperti ConfigAkar. */
+    private static String pad(String label, String value) {
+        StringBuilder sb = new StringBuilder(64);
+        sb.append(label);
+        while (sb.length() < 13) {
+            sb.append(' ');
+        }
+        return sb.append(": ").append(value).toString();
+    }
+
     /** Setting bin: mirror + penulisan-ulang host (satu-satunya konten yang berubah). */
     private Response serveSettingBin(String uri, String query, long t0) {
         File f = resolveLocal(uri);
@@ -220,17 +260,22 @@ public final class GameServer extends NanoHTTPD {
             byte[] b = SettingBin.rewrittenLocal(f, Config.gamePort(), Config.loginPort(),
                     Config.useSdk() ? null : uidSuffix);
             long ms = System.currentTimeMillis() - t0;
+            String plain = null;
             try {
                 // 0.5.0 REKAM — setting bin DIDEKRIPSI (XOR "DragonBall") + sudah
                 // ditulis-ulang: inilah CONFIG ASLI yang diterima klien (endpoint
                 // lokal semua). File: capture/payload/NNNNNN-out-setting-bin.json
-                String plain = SettingBin.decryptedRewritten(f);
+                plain = SettingBin.decryptedRewritten(f);
                 if (plain != null) {
                     Capture.game("←", uri, "setting bin — DIDEKRIPSI + ditulis-ulang (config asli yang diterima klien)",
                             plain, plain.length(), ms);
                 }
             } catch (Throwable ignored) {
             }
+            // 0.5.2 AKAR — isi config DIBEDAH FIELD-PER-FIELD di log (tuntutan
+            // owner "log yg jelas rinci"): nilai ASLI → nilai yang diterima klien.
+            logAkar(uri, ConfigAkar.settingBin(SettingBin.decryptedPlain(f), plain),
+                    b.length, ms, "LOCAL");
             Response r = newFixedLengthResponse(Response.Status.OK, "application/octet-stream",
                     new ByteArrayInputStream(b), b.length);
             r.addHeader("Cache-Control", "no-store");
@@ -277,6 +322,8 @@ public final class GameServer extends NanoHTTPD {
             Response r = newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8",
                     new ByteArrayInputStream(out), out.length);
             r.addHeader("Cache-Control", "no-store");
+            // 0.5.2 AKAR — isi serversetting.json dibedah di log (nilai ASLI → klien).
+            logAkar(uri, ConfigAkar.serversetting(text, rewritten), out.length, ms, "LOCAL");
             LogGroups.item("req", "Request game", "request", true,
                     "GET " + uri + " — " + HumanLog.fmtBytes(out.length) + " · " + HumanLog.fmtMs(ms)
                             + " · loginserver ditulis-ulang ke lokal",
@@ -492,6 +539,10 @@ public final class GameServer extends NanoHTTPD {
                         txt = (plain == null) ? txt : plain;
                         info += " · endpoint login + url H5 ditulis-ulang ke server lokal (passthrough ke asli)";
                     }
+                    // 0.5.2 AKAR — config dari server asli DIBEDAH sebelum disajikan:
+                    // setiap field nilai ASLI → nilai yang diterima klien.
+                    logAkar(uri, ConfigAkar.settingBin(SettingBin.decryptedPlain(bos.toByteArray()), txt),
+                            data.length, ms, "ONLINE · dari server asli");
                 } else if (uri.endsWith("/serversetting.json")) {
                     String rw = SettingBin.setJsonValue(txt, "loginserver",
                             "http://127.0.0.1:" + Config.loginPort());
@@ -500,6 +551,8 @@ public final class GameServer extends NanoHTTPD {
                         data = rw.getBytes("UTF-8");
                         info += " · loginserver ditulis-ulang ke server login lokal (passthrough ke asli)";
                     }
+                    logAkar(uri, ConfigAkar.serversetting(new String(bos.toByteArray(), "UTF-8"), txt),
+                            data.length, ms, "ONLINE · dari server asli");
                 }
                 try {
                     Capture.game("←", uri, info, txt, data.length, ms);

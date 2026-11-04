@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.5.1 — CONFIG LOGIN SEMUA MODE (bukan rekam jejak)
+# Build APK-LSF 0.5.2 — AKAR CONFIG (isi config dibedah field-per-field di log)
 #
-# Dasar: releases/APK-LSF-0.5.0.apk (LFS — memuat REKAM 0.5.0 + mirror www/
-# lengkap dgn base.zip/all.zip + QHinfo 127.0.0.1:8610).
+# Dasar: releases/APK-LSF-0.5.1.apk (LFS — memuat CONFIG LOGIN SEMUA MODE 0.5.1
+# + mirror www/ lengkap dgn base.zip/all.zip + QHinfo 127.0.0.1:8610).
 # Patch yang diterapkan (TANPA apktool — dex game & resource tidak disentuh):
 #   1) javac(ECJ) + d8  -> classes2.dex baru (kode server lokal)
 #   2) ganti assets/server/dashboard.html
@@ -188,14 +188,34 @@ ECJ="${ECJ:-$REPO/tools/ecj-3.33.0.jar}"               # compiler Java 8 (sandbo
 KS="${KS:-$REPO/keystore/lsf.keystore}"
 KS_ALIAS="${KS_ALIAS:-lsf}"
 KS_PASS="${KS_PASS:-lsf-local-2025}"
-BASE="${BASE:-$REPO/releases/APK-LSF-0.5.0.apk}"         # APK dasar (rilis 0.5.0 — REKAM)
+BASE="${BASE:-$REPO/releases/APK-LSF-0.5.1.apk}"         # APK dasar (rilis 0.5.1 — CONFIG LOGIN SEMUA MODE)
 LOGIN_PORT_QH="${LOGIN_PORT_QH:-8610}"                    # port server SDK lokal (QHinfo)
 SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.5.1.apk"
+OUT="$REPO/releases/APK-LSF-0.5.2.apk"
 MIN_API="${MIN_API:-21}"
+
+# Baru 0.5.2 (tegasan owner: "pakai config online murni untuk server lokal,
+# padahal akarnya aja gak tau .. Saya sudah TEGASKAN log yg jelas rinci itu
+# penting" — README §2.20):
+#   a) ConfigAkar.java BARU — pembedah config field-per-field. Setiap config
+#      yang disajikan (setting bin bs/db/android + lzceshi + serversetting.json,
+#      mode LOCAL & ONLINE) di-log 📦 "AKAR CONFIG … dibedah field-per-field"
+#      (PENTING — selalu tampil): nilai ASLI server → nilai yang diterima
+#      klien, utuh tanpa singkatan, + peran tiap field (url = boot H5,
+#      loginServer:loginPort = socket.io, loginServer:loginWebPort =
+#      loginchecknative, update = paket pembaruan, clientParams = toko/bahasa).
+#   b) SettingBin +getJsonRaw (angka murni/string/bool) + decryptedPlain.
+#   c) GameServer.logAkar — dedupe per isi: config sama beruntun turun ke
+#      TEKNIS (tetap terekam human.log — aturan 0.4.5 tidak hilang bukti).
+#   d) Rincian alur login ONLINE diperkaya: ✅ loginGame +Akun/Sandi (panjang,
+#      diteruskan UTUH); 📋 daftar server ASLI +Gerbang pertama … terakhir
+#      (firstAndLastGateway) — sebelum Play, log sudah menunjukkan gerbang.
+#   e) Ikon 📦 masuk legenda emoji 0.4.9 (HumanLog). StatusStore 0.5.2.
+#   f) Harness +24 tes TAHAP 17 — 129 tes (105 LULUS + 15 GAGAL LINGKUNGAN
+#      SQLite native sandbox — sama di HEAD, bukan regresi; 0.5.2 LULUS 24/24).
 
 WWW="$ASSETS/server/www"
 # base.zip/all.zip boleh: (a) ada di mirror www/ lokal, ATAU (b) ikut terbawa

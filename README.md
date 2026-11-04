@@ -650,6 +650,56 @@ Jika server game TIDAK terjangkau (seperti `dragon.sjmobilegame.com:82` di beber
 
 ---
 
+### 2.20 AKAR CONFIG — ISI CONFIG DIBEDAH DI LOG (0.5.2 — tegasan owner: *"pakai config online murni untuk server lokal, padahal akarnya aja gak tau .. Saya sudah TEGASKAN log yg jelas rinci itu penting"*)
+
+**Latar.** 0.5.1 sudah menulis-ulang config di SEMUA mode, tetapi log hanya **MENGATAKAN** "endpoint login ditulis-ulang ke server lokal" — isi config-nya sendiri tidak pernah tampil. Owner tidak bisa memeriksa akarnya. 0.5.2 menjadikan isi config **BUKTI DI LOG**: setiap config yang disajikan (mode mana pun) **dibedah field-per-field** — nilai **ASLI dari server → nilai yang benar-benar diterima klien** — baris `📦` PENTING (selalu tampil), tanpa singkatan.
+
+**Hasil bedah akar (file nyata, didekripsi XOR "DragonBall" → JSON):**
+
+| Field | Nilai ASLI (server) | Klien terima (server lokal) | Peran (akar) |
+|---|---|---|---|
+| `testMode` | `1` | `1` (asli) | flag mode uji bawaan server |
+| `url` | `https://dragonh5cdn.popoh5.com/bs/index-native.html?v=202109150935` | `http://127.0.0.1:8080/bs/index-native.html?v=202109150935&userid=<uid>` (LOCAL; ONLINE tanpa `userid`) | URL H5 game dibuka shell WebView (boot game) |
+| `tsUrl` | `http://dragon.sjmobilegame.com:82/bs103/index-native.html` | **ASLI** — varian uji, jalur produksi tidak memakainya | — |
+| `update` | `https://dragonh5cdn.popoh5.com/bs/upgrade` | `http://127.0.0.1:8080/bs/upgrade` | paket pembaruan (zip + upgrade.json) |
+| `checkTime` | `300` | `300` (asli) | jarak cek pembaruan (detik) |
+| `loginServer` | `https://login.popoh5.com` | `http://127.0.0.1` | **HOST login** — shell menambah `:loginPort` (socket.io) dan `:loginWebPort` (loginchecknative) sendiri |
+| `tsLoginServer` | `http://118.24.68.91:7003` | `http://127.0.0.1:8610` | HOST login varian uji |
+| `loginPort` | `610` | `8610` | port socket.io login |
+| `loginWebPort` | `510` | `8610` | port web login SDK (loginchecknative) |
+| `clientParams` | `hideList` 5 harga · `supportLang` 3 bahasa (en, fr, kr) · `showCurChannel` toFacebook | **ASLI** | pengaturan klien (toko/bahasa/kanal) |
+
+Bin kedua `lzceshi/native_setting/Android/setting_BS_Android.bin` (350 B) = config sama **TANPA** `clientParams`. `serversetting.json` (JSON polos, dibaca H5 `main.min connectToLogin`): `loginserver` `https://login.popoh5.com:610` → `http://127.0.0.1:8610`; `requireSDK` false (asli).
+
+**Bentuk baris log baru (contoh nyata hasil bedah — mode ONLINE):**
+
+```
+📦 AKAR CONFIG /bs/db/android/setting_BS_Android.bin — dibedah field-per-field (ONLINE · dari server asli)
+    ├─ Enkripsi     : XOR kunci "DragonBall" — dibedah field-per-field sebelum disajikan
+    ├─ testMode     : 1  (asli) — flag mode uji bawaan server
+    ├─ url          : https://dragonh5cdn.popoh5.com/bs/index-native.html?v=202109150935  →  http://127.0.0.1:8080/bs/index-native.html?v=202109150935
+    │               : URL H5 game dibuka shell WebView (boot game)
+    ├─ tsUrl        : http://dragon.sjmobilegame.com:82/bs103/index-native.html  (asli) — varian uji — jalur produksi tidak memakainya
+    ├─ update       : https://dragonh5cdn.popoh5.com/bs/upgrade  →  http://127.0.0.1:8080/bs/upgrade
+    │               : endpoint paket pembaruan (zip + upgrade.json)
+    ├─ checkTime    : 300  (asli) — jarak cek pembaruan (detik)
+    ├─ loginServer  : https://login.popoh5.com  →  http://127.0.0.1
+    │               : HOST login — shell menambah :loginPort (socket.io) dan :loginWebPort (loginchecknative) sendiri
+    ├─ tsLoginServer: http://118.24.68.91:7003  →  http://127.0.0.1:8610
+    ├─ loginPort    : 610  →  8610
+    ├─ loginWebPort : 510  →  8610
+    ├─ clientParams : hideList 5 harga disembunyikan · supportLang 3 bahasa (en, fr, kr) · showCurChannel toFacebook
+    └─ Diterima klien: 716 B · 12 ms
+```
+
+**Rincian tambahan alur login (passthrough ONLINE, 0.5.2):** ✅ *Login game diteruskan* kini membawa **Akun + Sandi (panjang karakter, diteruskan UTUH)**; 📋 *Daftar server ASLI terkirim* kini membawa **Gerbang pertama … terakhir** dari daftar ASLI (`https://s1-bs… … https://s2109-bs…`) — jadi sebelum tombol Play ditekan, log sudah menunjukkan ke mana klien akan lompat.
+
+**Perubahan kode:** `ConfigAkar.java` (BARU — pembedah config: setting bin + serversetting, field mentah via `SettingBin.getJsonRaw`, ringkas `clientParams`); `SettingBin` +`getJsonRaw`/`decryptedPlain(File)`/`decryptedPlain(byte[])`; `GameServer.logAkar` (dedupe per isi — config sama beruntun turun ke TEKNIS, tetap terekam human.log); ikon 📦 masuk legenda (HumanLog).
+
+**Harness:** +24 tes TAHAP 17 (bedah bin ASLI→klien penuh; `getJsonRaw` angka murni/string/bool/tak-ada; `clientParams` hideList/supportLang/showCurChannel; bedah serversetting; gerbang pertama/terakhir + tahan rusak) — **129 tes: 105 LULUS + 15 GAGAL LINGKUNGAN** (engine "SQLite sungguhan" butuh native lib sqlite-jdbc yang tidak bisa dimuat di sandbox lari saat ini — 15 GAGAL yang sama persis di kode 0.5.1/HEAD, bukan regresi; semua tes 0.5.2 LULUS 24/24).
+
+---
+
 ## 3. Konsep Solusi (v2.2): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded
 
 **Satu sumber, satu APK.** `DB-LOCAL.apk` di-decompile → **ditambah local server**
@@ -952,6 +1002,7 @@ tanpa izin storage tambahan (folder own-app).
 | Versi | Isi | Fase |
 |---|---|---|
 | **0.5.1** | **(v5.1) + CONFIG LOGIN SEMUA MODE — BUKAN REKAM JEJAK** (tegasan owner *"SAYA TEGASKAN LAGI CONFIG YG JELAS BUKAN REKAM JEJAAAAK"*; laporan *"config Setelah SDK login ini masuk ke loginserver sampai detik ini anda ngeyel"* + *"saya sudah pilih server lalu klik play dan log hanya tampil itu"* — jawaban atas bisunya alur login ONLINE, §2.19): **klien TIDAK PERNAH lagi langsung ke login.popoh5.com di mode mana pun** — `SettingBin.rewrittenOnline` (mode ONLINE: bin dari `configus`/COS ditulis-ulang HANYA jalur login + url H5 → server lokal; `tsUrl` tetap asli persis gaya LOCAL; TANPA `userid` di url — identitas boot = mekanisme shell asli); `GameServer.servePassthrough` menulis-ulang setting bin + `serversetting.json` (loginserver → `http://127.0.0.1:8610`) SEBELUM disajikan + catatan grup "endpoint login ditulis-ulang ke server lokal"; `LoginServer.proxyOnline` — socket.io **diteruskan UTUH byte-per-byte** ke `https://login.popoh5.com:610` (probe 2026-11-05: **HTTPS wajib** — HTTP polos ditolak `400 plain HTTP request sent to HTTPS port`; TLSv1.2 DigiCert `*.popoh5.com`; websocket dijawab 400 → engine.io client tetap polling — perilaku terbukti device); `SdkApi` loginchecknative = **jalur BAKU** ke `https://login.popoh5.com:510` + baris 🔑 *Sesi disahkan via SERVER ASLI (passthrough)* (dedupe 10 mnt/uid); **log alur ONLINE kini hidup**: 📡 *Klien tersambung — diteruskan ke SERVER ASLI* → ✅ *Login game diteruskan ke server ASLI* → 📋 *Daftar server ASLI terkirim — N server (passthrough; dihitung dari payload, bukan snapshot)* → 🔌 *pindah ke server game* (dedupe = gaya LOCAL; REKAM lapisan login ONLINE kini berisi payload ASLI `loginGame`/`GetServerList` — pembanding utama 0.6); dasbor: modemap + kartu "Ke mana koneksi mengarah" = **semua mode**; baris 🚀 Mode ONLINE diperbarui; `StatusStore` 0.5.1; token & identitas tetap dikeluarkan SERVER ASLI — progres pemain tidak berubah; passthrough gagal → ⚠️ + 502 (gagal = sama seperti langsung gagal, tanpa regresi); **uji asap HIDUP**: handshake relayed memuat sid ASLI upstream; urutan langsung vs lewat proxy = jawaban identik (byte-per-byte); harness **96/96 LULUS** (+16 tes TAHAP 16) | **L5b ✓ (config login semua mode — pembanding asli-vs-lokal hidup)** |
+| **0.5.2** | **(v5.2) + AKAR CONFIG — ISI CONFIG DIBEDAH DI LOG** (tegasan owner *"pakai config online murni untuk server lokal, padahal akarnya aja gak tau .. Saya sudah TEGASKAN log yg jelas rinci itu penting"* — log 0.5.1 hanya MENGATAKAN "endpoint ditulis-ulang" tanpa menunjukkan isinya, §2.20): **`ConfigAkar.java` BARU** — pembedah config field-per-field; setiap config yang disajikan (setting bin `bs/db/android` + `lzceshi` + `serversetting.json`, mode LOCAL & ONLINE) kini di-log 📦 *AKAR CONFIG … dibedah field-per-field* **PENTING** (selalu tampil): nilai **ASLI server → nilai yang diterima klien** utuh tanpa singkatan + peran tiap field (`testMode`, `url`, `tsUrl`, `update`, `checkTime`, `loginServer`, `tsLoginServer`, `loginPort`, `loginWebPort`, `clientParams` — anatomi penuh README §2.20); `SettingBin` +`getJsonRaw` (nilai mentah angka/string/bool) + `decryptedPlain(File/byte[])`; `GameServer.logAkar` dedupe per isi (config sama beruntun → TEKNIS, tetap terekam human.log); rincian alur login ONLINE diperkaya — ✅ loginGame kini +**Akun/Sandi (panjang, diteruskan UTUH)**, 📋 daftar server ASLI kini +**Gerbang pertama … terakhir** (`firstAndLastGateway`) — sebelum Play ditekan log sudah menunjukkan gerbang tujuan; ikon 📦 masuk legenda 0.4.9; StatusStore 0.5.2; harness +24 tes TAHAP 17 — **129 tes: 105 LULUS + 15 GAGAL LINGKUNGAN** (SQLite native sandbox, sama di HEAD — bukan regresi; 0.5.2 LULUS 24/24); APK-LSF-0.5.2.apk | **L5b ✓ (akar config terbuka di log)** |
 | **0.5.0** | **(v5.0) + REKAM — perekam payload mentah + CONFIG ASLI semua lapisan** (permintaan owner *"seperti capture HttpCanary tapi kita buat ini lebih canggih — HttpCanary itu cuma jejaknya, bukan config aslinya"*, §2.18): `Capture.java` — ring 600 + `capture/rekam.jsonl` (embed ≤32 KB, rotasi 8 MB) + `capture/payload/` (≤2 MB, maks 400 file); tap di LoginServer/SdkApi/GameServer/SettingBin (event/ack/handshake/ping/disconnect utuh; body SDK didekode base64+sign; setting bin DIDEKRIPSI; jawaban ASLI qsdk/login.popoh5 mode ONLINE terekam); baris 🔌 disconnect sesi; probe server game boot + tombol "Tes server game" (`/api/rekam/probe`); `server.json +"rekam"`; Cleaner whitelist +`capture/`; dasbor bagian REKAM (filter/payload utuh/Salin/Unduh/Bersihkan) | **L5b ✓ (alat tangkap semua lapisan)** |
 | **0.4.9** | **(v4.9) + LOG EMOJI + BLOK RINCIAN PENUH** (umpan balik owner *"emoji sudah bagus, hanya saja masih kurang rinci"* + *"ingat gak boleh disingkat"* — setelah menyetujui contoh output, §2.17): **ikon emoji per kategori** menggantikan simbol tipis ✔/⚠/ℹ (🚀 siap · 👤 pemain · 🔑 sesi · 📡 koneksi · ✅ sukses · ⚠️ masalah · ❌ terhenti · 📋 daftar server · 💾 data · 🧹 mirror · ℹ️ info; `HumanLog` ikon `char` → `String`); **blok rincian ├─/└─ di SEMUA baris penting** (fakta nyata: ms, byte, uid, sid, sumber data, sebab, akibat/lanjutan) — tampil penuh & identik di dasbor, human.log, dan Copy (**TIDAK dipangkas**); alur sesi 09:39–09:41 kini: 🚀 Server lokal siap (rincian Port/Mode/Folder/Pemain) → 👤 Layar SDK (rincian Perangkat/Cara/Identitas) → 🔑 Sesi disahkan (rincian Uid/Hasil/Sesi) → 📡 Klien tersambung (dari TEKNIS naik ke penting, dedupe 10 mnt) → ✅ Login game sukses (rincian Akun/Proses/Sumber) → 📋 Daftar server terkirim (rincian Sumber/Ukuran/Lanjutan — baris ℹ TUNTAS 0.4.8 dilebur ke rincian, isi tidak hilang); 👤 layar SDK = SATU baris walau registerVisitor+autoLogin sama-sama terpanggil (`SdkData.noteSdkLogin` dedupe 10 mnt per uid); duplikat log daftar akun berdempet dihapus; boot 3 baris → SATU baris 🚀 ber-rincian; dasbor: teks diperbesar & kontras dinaikkan, kolom ikon emoji, rincian pohon tanpa pemenggalan; harness **80/80 LULUS** (1 redaksi detail ⚠️ disesuaikan) | **L5a–L5b ✓ (log emoji + rinci)** |
 | **0.4.8** | **(v4.8) + LOG CERITA ALUR — SATU KEJADIAN SATU BARIS + PENJELAS TUNTAS + COPY RAPI** (laporan owner sesi 09:39–09:41 "tidak ada revisi!!!! log masih tidak jelas, padahal sampai loginserver munculkan serverlist.. tapi log cuma Sampah gak jelas", §2.16 — paste-nya = keluaran Copy): **satu kejadian satu baris** — percobaan login yang langsung selesai tidak diumumkan dua kali ("SDK: MASUK — …" + "SDK: MASUK gagal — …" berdempet 0 dtk dihapus), setiap baris membawa hasil+sebab(+akibat); **ikon ▶/◀ dihapus + awalan "SDK:" dibuang** (alur kini cerita: Login ditolak → Lanjut masuk sebagai tamu → Sesi disahkan → Daftar server terkirim → TUNTAS); **baris TUNTAS setelah GetServerList** (dedupe 10 mnt) — daftar = bawaan APK DISAJIKAN server lokal + penjelas kenapa log diam setelahnya (gameplay langsung ke server game asli); **format Copy dirapikan** (jam-ikon-teks berjarak, ringkasan grup berawalan Σ + jam, detail sebab TAMPIL kecil di dasbor & ikut disalin); baris toggle RINCI/BERSIH tidak dilog lagi; boot baris Mode dipangkas satu kalimat; harness **80/80 LULUS** | **L5a–L5b ✓ (log = cerita alur)** |
