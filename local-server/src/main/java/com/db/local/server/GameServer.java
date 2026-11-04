@@ -29,7 +29,12 @@ import fi.iki.elonen.NanoHTTPD;
  *           ke www/ (mirror melengkapi dirinya sendiri); bila server asli juga
  *           tidak bisa dihubungi → 404 — client melanjutkan boot (fallback dex
  *           terbukti §2.8: "Server base.version is Not Exist").
- * - ONLINE: teruskan permintaan ke server asli (passthrough) apa adanya.
+ * - ONLINE: teruskan permintaan ke server asli (passthrough) — TETAPI 0.5.1:
+ *           setting bin & serversetting.json ditulis-ulang dulu (HANYA jalur
+ *           login + url H5 → server lokal; sisanya asli). Semua koneksi login
+ *           masuk ke server login lokal yang meneruskan utuh ke server asli
+ *           (tuntutan owner: config setelah SDK login HARUS ke loginserver
+ *           lokal di SEMUA mode — bukan lagi "file asli apa adanya").
  *
  * Peta passthrough (persis hasil dekode EntryPoint §2.8 + temuan setting bin):
  *   /bs/db/android/… → configus.sjmobilegame.com (fallback COS)
@@ -451,10 +456,14 @@ public final class GameServer extends NanoHTTPD {
                     "Server asli tidak terjangkau untuk " + uri + " — coba mode LOCAL bila www/ sudah terisi.");
         }
         // 0.4.6: jawaban server asli = GRUP "Passthrough ONLINE" — 5xx naik ⚠.
+        // 0.5.1: dua config kunci ditulis-ulang dulu (setting bin / serversetting) —
+        // catatan grup menyebutnya agar owner melihat config LEWAT server lokal.
+        boolean loginCfg = uri.endsWith("setting_BS_Android.bin") || uri.endsWith("/serversetting.json");
         LogGroups.item("pass", "Passthrough ONLINE", "request", up.status < 500,
                 "GET " + uri + " — HTTP " + up.status
                         + (up.length >= 0 ? " · " + HumanLog.fmtBytes(up.length) : "")
-                        + " · " + HumanLog.fmtMs(ms) + " · dari " + hostOf(usedHost),
+                        + " · " + HumanLog.fmtMs(ms) + " · dari " + hostOf(usedHost)
+                        + (loginCfg ? " · endpoint login ditulis-ulang ke server lokal" : ""),
                 Math.max(0, up.length));
         Response r;
         if (up.status == 200 && isConfigExt(uri) && up.length >= 0 && up.length <= 512L * 1024L && up.in != null) {
@@ -470,9 +479,30 @@ public final class GameServer extends NanoHTTPD {
                 up.in.close();
                 byte[] data = bos.toByteArray();
                 String txt = new String(data, "UTF-8");
+                String info = "HTTP 200 dari " + hostOf(usedHost) + " (ONLINE — config asli server asli)";
+                // 0.5.1 CONFIG — jalur login selalu ke server lokal (SEMUA mode):
+                // setting bin (HANYA login + url H5) & serversetting.json (loginserver)
+                // ditulis-ulang SEBELUM disajikan — klien tidak pernah langsung ke
+                // login.popoh5.com; server login lokal yang meneruskan utuh.
+                if (uri.endsWith("setting_BS_Android.bin")) {
+                    byte[] rw = SettingBin.rewrittenOnline(data, Config.gamePort(), Config.loginPort());
+                    if (rw != data) {
+                        data = rw;
+                        String plain = SettingBin.plainOnline(bos.toByteArray(), Config.gamePort(), Config.loginPort());
+                        txt = (plain == null) ? txt : plain;
+                        info += " · endpoint login + url H5 ditulis-ulang ke server lokal (passthrough ke asli)";
+                    }
+                } else if (uri.endsWith("/serversetting.json")) {
+                    String rw = SettingBin.setJsonValue(txt, "loginserver",
+                            "http://127.0.0.1:" + Config.loginPort());
+                    if (!rw.equals(txt)) {
+                        txt = rw;
+                        data = rw.getBytes("UTF-8");
+                        info += " · loginserver ditulis-ulang ke server login lokal (passthrough ke asli)";
+                    }
+                }
                 try {
-                    Capture.game("←", uri, "HTTP 200 dari " + hostOf(usedHost)
-                            + " (ONLINE — config asli server asli)", txt, data.length, ms);
+                    Capture.game("←", uri, info, txt, data.length, ms);
                 } catch (Throwable ignored) {
                 }
                 r = newFixedLengthResponse(Response.Status.OK, up.contentType,

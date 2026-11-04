@@ -2,6 +2,9 @@ package com.db.local.server;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +32,20 @@ import fi.iki.elonen.NanoHTTPD;
  *     GetServerList      → daftar server (config/servers.json — snapshot asli)
  *     LoginAnnounce      → pengumuman (kosong)
  *     SaveHistory / SaveLanguage / SaveUserEnterInfo → diterima, dijawab ret 0
+ *
+ * MODE ONLINE (0.5.1 — tuntutan owner "CONFIG yg jelas bukan rekam jejak"):
+ *   socket.io TIDAK dilayani lokal, melainkan DITERUSKAN UTUH (byte-per-byte)
+ *   ke server asli https://login.popoh5.com:610 (HTTPS — hasil probe 2026-11-05:
+ *   TLSv1.2, sertifikat DigiCert *.popoh5.com; HTTP polos ditolak "plain HTTP
+ *   request sent to HTTPS port"). Alasannya: 0.5.1 config setting bin &
+ *   serversetting.json menulis-ulang jalur login ke server lokal di SEMUA mode
+ *   (GameServer/SettingBin) — maka server ini WAJIB punya jalur passthrough,
+ *   kalau tidak login online mati. Token & daftar server tetap dikeluarkan
+ *   SERVER ASLI (progres pemain tetap di sana), tetapi seluruh alur login kini
+ *   LEWAT server lokal — terlihat di log (📡 handshake, ✅ loginGame, 📋 daftar
+ *   server ASLI, 🔌 pindah) dan terekam REKAM lapisan login.
+ *   Websocket TIDAK diteruskan: klien engine.io v3 gagal upgrade → tetap di
+ *   polling (perilaku terbukti di device: "polling, tanpa websocket").
  *
  * Catatan desain:
  * - Sesi engine.io = sid 16 karakter; kedaluwarsa 90 dtk tanpa aktivitas
@@ -107,6 +124,12 @@ public final class LoginServer extends NanoHTTPD {
                 return text(Response.Status.NOT_FOUND,
                         "Server login lokal melayani /socket.io/ (protokol game) + API SDK (/v1/*, "
                                 + "/loginchecknative). Dasbor developer ada di port " + Config.debugPort() + ".");
+            }
+            // 0.5.1 — mode ONLINE: passthrough utuh ke server login ASLI. Config
+            // (bin/serversetting) sudah menulis-ulang jalur login ke server lokal
+            // di SEMUA mode — di sini tempatnya diteruskan (byte-per-byte).
+            if ("online".equals(Config.mode())) {
+                return proxyOnline(session, m);
             }
             if (Method.GET == m) {
                 String sid = parm(parms, "sid");
@@ -430,6 +453,274 @@ public final class LoginServer extends NanoHTTPD {
             HumanLog.evTech("🔌", "Sesi login kedaluwarsa (90 dtk tanpa aktivitas) — klien sudah pergi",
                     "Sesi     : " + s.sid.substring(0, 6) + "… · terakhir " + (act == null ? "-" : act));
         }
+    }
+
+    // ---------------- 0.5.1: mode ONLINE — passthrough ke server login asli ----------------
+
+    /** Server login ASLI (hasil probe 2026-11-05 — HTTPS wajib, TLSv1.2 DigiCert). Publik — diuji harness. */
+    public static final String UPSTREAM_LOGIN = "https://login.popoh5.com:610";
+
+    private static final int PROXY_TIMEOUT_GET_MS = 45000;  // long-poll upstream ~25-30 dtk
+    private static final int PROXY_TIMEOUT_POST_MS = 30000;
+
+    /** Jawaban upstream yang diteruskan — byte utuh + status + content-type. */
+    private static final class UpResp {
+        final int status;
+        final String contentType;
+        final byte[] body;
+        UpResp(int status, String contentType, byte[] body) {
+            this.status = status;
+            this.contentType = (contentType == null || contentType.length() == 0)
+                    ? "text/plain; charset=utf-8" : contentType;
+            this.body = body;
+        }
+    }
+
+    /**
+     * Teruskan GET/POST polling engine.io ke login.popoh5.com:610 apa adanya
+     * (query sama, body sama, jawaban byte-per-byte sama). Setiap arah terekam
+     * REKAM; kejadian penting naik ke log (dedupe sama dengan mode LOCAL).
+     */
+    private Response proxyOnline(IHTTPSession session, Method m) {
+        String query = session.getQueryParameterString();
+        String qs = (query == null || query.length() == 0) ? "" : query;
+        String transport = parm(session.getParms(), "transport");
+        if ("websocket".equals(transport)) {
+            // Klien mencoba upgrade websocket → kita tidak meneruskan → engine.io
+            // client akan tetap di polling (perilaku terbukti di device).
+            return text(Response.Status.lookup(400),
+                    "websocket tidak diteruskan — klien engine.io kembali ke polling");
+        }
+        long t0 = System.currentTimeMillis();
+        String body = null;
+        if (Method.POST == m) {
+            try {
+                body = readBody(session);
+            } catch (Throwable t) {
+                body = "";
+            }
+        }
+        String target = UPSTREAM_LOGIN + "/socket.io/" + (qs.length() > 0 ? ("?" + qs) : "");
+        UpResp up;
+        try {
+            up = forwardLogin(target, body, Method.POST == m,
+                    Method.POST == m ? PROXY_TIMEOUT_POST_MS : PROXY_TIMEOUT_GET_MS);
+        } catch (Throwable t) {
+            long ms = System.currentTimeMillis() - t0;
+            try {
+                Capture.login("→", "proxy-gagal", "ke login.popoh5.com:610", body == null ? null : body,
+                        body == null ? 0 : body.length(), ms);
+            } catch (Throwable ignored) {
+            }
+            HumanLog.ev("⚠️", "Server login ASLI tidak terjangkau lewat passthrough — login online gagal "
+                            + "(perilaku sama seperti koneksi langsung)", String.valueOf(t));
+            return text(Response.Status.lookup(502),
+                    "upstream login.popoh5.com:610 tidak terjangkau — " + t);
+        }
+        long ms = System.currentTimeMillis() - t0;
+        String respText = new String(up.body, StandardCharsets.UTF_8);
+        try {
+            // REKAM — payload asli dua arah (pembanding utama utk versi lokal):
+            Capture.login("→", Method.POST == m ? "handler.process (passthrough)" : "polling (passthrough)",
+                    "ke login.popoh5.com:610" + (qs.length() > 0 ? " · " + ringkasQuery(qs) : ""),
+                    body, body == null ? 0 : body.length(), ms);
+            Capture.login("←", "HTTP " + up.status + " (passthrough)",
+                    "dari login.popoh5.com:610", respText, up.body.length, ms);
+        } catch (Throwable ignored) {
+        }
+        // ----- log alur (dedupe = persis mode LOCAL) -----
+        if (Method.POST == m && body != null && body.length() > 0) {
+            logOnlineEvents(body);
+        }
+        if (Method.GET == m) {
+            logOnlineResponse(qs, respText, up.body.length, ms);
+        }
+        Response r = newFixedLengthResponse(Response.Status.lookup(up.status == -1 ? 502 : up.status),
+                up.contentType, new ByteArrayInputStream(up.body), up.body.length);
+        r.addHeader("Cache-Control", "no-store");
+        r.addHeader("Access-Control-Allow-Origin", "*");
+        return r;
+    }
+
+    /** POST passthrough: urai framing → event socket.io → baris log alur. */
+    private void logOnlineEvents(String body) {
+        try {
+            java.util.ArrayList<String> pkts = parseFrames(body);
+            for (String pkt : pkts) {
+                if (pkt.length() >= 2 && pkt.charAt(0) == '4' && pkt.charAt(1) == '1') {
+                    // socket.io DISCONNECT — klien pindah ke server game
+                    onlineDisconnect();
+                }
+                if (pkt.length() >= 3 && pkt.charAt(0) == '4' && pkt.charAt(1) == '2') {
+                    int i = 2;
+                    while (i < pkt.length() && pkt.charAt(i) >= '0' && pkt.charAt(i) <= '9') {
+                        i++;
+                    }
+                    String msg = firstArgJson(pkt.substring(i));
+                    String action = strField(msg, "action");
+                    if ("loginGame".equals(action)) {
+                        String userId = strField(msg, "userId");
+                        HumanLog.ev("✅", "Login game diteruskan ke server ASLI (passthrough)",
+                                "Akun     : " + (userId == null ? "-" : userId) + "\n"
+                                        + "Proses   : permintaan klien diteruskan utuh ke login.popoh5.com:610\n"
+                                        + "Sumber   : SERVER ASLI — token & identitas dikeluarkan di sana "
+                                        + "(progres pemain tetap tersimpan di server asli)");
+                    } else if (action != null && action.length() > 0
+                            && !"GetServerList".equals(action)) {
+                        HumanLog.evTech("ℹ️", "Aksi login (passthrough): " + action, null);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** GET passthrough: OPEN handshake / ACK daftar server → baris log alur. */
+    private void logOnlineResponse(String qs, String respText, int len, long ms) {
+        try {
+            boolean handshake = (qs == null || qs.indexOf("sid=") < 0);
+            if (handshake && respText.indexOf("\"sid\"") >= 0) {
+                long now = System.currentTimeMillis();
+                if (now - lastConnectLogAt >= 600000L) {
+                    lastConnectLogAt = now;
+                    HumanLog.ev("📡", "Klien game tersambung ke server login lokal — diteruskan ke SERVER ASLI",
+                            "Sesi     : sid dari server asli (passthrough utuh)\n"
+                                    + "Tujuan   : 127.0.0.1:" + Config.loginPort() + " → login.popoh5.com:610"
+                                    + " (HTTPS, TLS 1.2)\n"
+                                    + "Config   : setting bin + serversetting.json menunjuk server lokal "
+                                    + "(semua mode) — server ini yang meneruskan\n"
+                                    + "Lanjutan : loginGame + GetServerList dijawab SERVER ASLI (progres tetap di sana)");
+                }
+                return;
+            }
+            if (respText.indexOf("serverList") >= 0) {
+                int count = countServerIds(respText);
+                long now = System.currentTimeMillis();
+                if (now - lastServerListLogAt >= 600000L) {
+                    lastServerListLogAt = now;
+                    HumanLog.ev("📋", "Daftar server ASLI terkirim — " + count + " server (passthrough)",
+                            "Sumber   : SERVER ASLI login.popoh5.com:610 — diteruskan utuh lewat server lokal "
+                                    + "(bukan snapshot; daftar hidup dari server)\n"
+                                    + "Ukuran   : " + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms) + "\n"
+                                    + "Lanjutan : pemain pilih server → gameplay LANGSUNG ke server game asli pilihan "
+                                    + "pemain (progres tersimpan di sana — wajar log tidak menambah baris)");
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** 🔌 klien menutup sesi (passthrough) — dedupe 60 dtk, gaya 0.5.0. */
+    private void onlineDisconnect() {
+        long now = System.currentTimeMillis();
+        if (now - lastEndLogAt < 60000L) {
+            return;
+        }
+        lastEndLogAt = now;
+        HumanLog.ev("🔌", "Klien menutup sesi login — normal setelah pilih server (pindah ke server game)",
+                "Sesi     : passthrough ke login.popoh5.com:610\n"
+                        + "Lanjutan : klien io.connect LANGSUNG ke url server pilihan pemain "
+                        + "(https://sXXXX-bs.popoh5.com — gameplay di luar server lokal)");
+    }
+
+    /**
+     * Kirim satu permintaan HTTP(S) ke upstream login — GET (long-poll) atau
+     * POST (flush paket). Jawaban dibaca UTUH lalu diteruskan (byte-per-byte).
+     */
+    private static UpResp forwardLogin(String target, String body, boolean post, int timeoutMs) throws Exception {
+        HttpURLConnection c = null;
+        try {
+            URL u = new URL(target);
+            c = (HttpURLConnection) u.openConnection();
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(timeoutMs);
+            c.setInstanceFollowRedirects(true);
+            c.setRequestMethod(post ? "POST" : "GET");
+            if (post) {
+                byte[] b = (body == null) ? new byte[0] : body.getBytes("UTF-8");
+                c.setDoOutput(true);
+                c.setRequestProperty("Content-Type", "text/plain; charset=UTF-8");
+                c.setRequestProperty("Content-Length", String.valueOf(b.length));
+                java.io.OutputStream os = c.getOutputStream();
+                os.write(b);
+                os.flush();
+                os.close();
+            }
+            int status = c.getResponseCode();
+            String ct = c.getContentType();
+            java.io.InputStream in = (status >= 400) ? c.getErrorStream() : c.getInputStream();
+            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while (in != null && (n = in.read(buf)) > 0) {
+                bos.write(buf, 0, n);
+            }
+            if (in != null) {
+                in.close();
+            }
+            return new UpResp(status, ct, bos.toByteArray());
+        } finally {
+            try {
+                if (c != null) {
+                    c.disconnect();
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    /** Ringkas query utk info Capture (t param bisa panjang). */
+    private static String ringkasQuery(String qs) {
+        return qs.length() > 80 ? qs.substring(0, 80) + "…" : qs;
+    }
+
+    // ---------------- util bersama (mode LOCAL + ONLINE) ----------------
+
+    /**
+     * Urai framing polling engine.io v3 "<panjang>:<paket>" berurutan → daftar
+     * paket. Publik — diuji harness (0.5.1: dipakai juga passthrough ONLINE).
+     */
+    public static java.util.ArrayList<String> parseFrames(String body) {
+        java.util.ArrayList<String> out = new java.util.ArrayList<String>();
+        if (body == null) {
+            return out;
+        }
+        int i = 0;
+        final int len = body.length();
+        while (i < len) {
+            int c = body.indexOf(':', i);
+            if (c < 0) {
+                break;
+            }
+            int plen;
+            try {
+                plen = Integer.parseInt(body.substring(i, c));
+            } catch (NumberFormatException nfe) {
+                break;
+            }
+            if (plen < 0 || c + 1 + plen > len) {
+                break;
+            }
+            out.add(body.substring(c + 1, c + 1 + plen));
+            i = c + 1 + plen;
+        }
+        return out;
+    }
+
+    /** Hitung jumlah server dalam payload daftar (kunci "serverId") — passthrough.
+     *  Dicari TANPA tanda kutip: di wire, data ACK = string JSON ter-escape
+     *  (\"serverId\") — bentuk escape & polos sama-sama terhitung. */
+    public static int countServerIds(String data) {
+        if (data == null) {
+            return 0;
+        }
+        int n = 0;
+        int i = 0;
+        while ((i = data.indexOf("serverId", i)) >= 0) {
+            n++;
+            i += 8;
+        }
+        return n;
     }
 
     // ---------------- parser JSON mini (cukup untuk pesan game) ----------------

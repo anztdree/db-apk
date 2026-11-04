@@ -215,7 +215,7 @@
     </div>
   </div>
   <!-- ===== peta arah koneksi (0.4.7): apa yang lokal, apa yang asli ===== -->
-  <div id="modemap">Konten game: <b>MIRROR lokal www/</b> · Login &amp; akun: <b>LOKAL :<span id="m-login">…</span></b> · Daftar server: snapshot asli · Gameplay: <span class="asli"><b>server game asli</b> (progres tersimpan di sana)</span></div>
+  <div id="modemap">Config login (bin + serversetting): <b>selalu menunjuk server lokal</b> (semua mode) · LOCAL: login &amp; akun <b>LOKAL :<span id="m-login">…</span></b> · ONLINE: login <b>diteruskan utuh ke server asli lewat server lokal</b> · Gameplay: <span class="asli"><b>server game asli</b> (progres tersimpan di sana)</span></div>
   <div id="strip">
     <span>www/ <b id="s-www">…</b></span>
     <span>akun <b id="s-acc">…</b></span>
@@ -263,12 +263,11 @@
     <summary>Data &amp; jaringan (rincian teknis)</summary>
     <div class="databody">
       <div class="card">
-        <h2>Ke mana koneksi mengarah (mode LOCAL)</h2>
+        <h2>Ke mana koneksi mengarah (semua mode — 0.5.1)</h2>
         <div class="kv">
-          <b>Konten game</b><span>mirror <b>www/</b> — H5, JS, config dilayani lokal (kurang → diambil sekali dari CDN asli, lalu tersimpan)</span>
-          <b>Login &amp; akun</b><span><b>LOKAL :<span id="e-login">…</span></b> — layar SDK, loginchecknative, loginGame, GetServerList</span>
-          <b>setting bin + serversetting.json</b><span>ditulis-ulang SAAT DISAJIKAN → loginserver = <b>http://127.0.0.1:<span id="e-login2">…</span></b> (file di www/ tetap asli — by design)</span>
-          <b>Daftar server</b><span id="e-srv">…</span>
+          <b>Config login (setting bin + serversetting.json)</b><span><b>SELALU ditulis-ulang ke server lokal</b> saat disajikan — di LOCAL maupun ONLINE (0.5.1: klien tidak pernah langsung ke login.popoh5.com)</span>
+          <b>Mode LOCAL</b><span>konten game = mirror <b>www/</b> · login &amp; akun = <b>LOKAL :<span id="e-login">…</span></b> (layar SDK, loginchecknative, loginGame, GetServerList — akun di dragonball.db) · daftar server = snapshot asli</span>
+          <b>Mode ONLINE</b><span>file game = passthrough ke server asli · seluruh tahap login (SDK → loginchecknative → socket.io loginGame/GetServerList) = <b>diteruskan utuh (byte-per-byte) ke server asli LEWAT server lokal</b> — token &amp; daftar dari SERVER ASLI (progres tetap di sana), alurnya terlihat di log</span>
           <b>Gameplay</b><span><b>server game ASLI</b> pilihan pemain (s&lt;N&gt;-bs.popoh5.com) — progres/keselamatan data ada di server asli; server lokal tidak menjalankan logika game</span>
         </div>
       </div>

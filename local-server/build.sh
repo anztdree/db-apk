@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.5.0 — REKAM: PAYLOAD MENTAH + CONFIG ASLI
+# Build APK-LSF 0.5.1 — CONFIG LOGIN SEMUA MODE (bukan rekam jejak)
 #
-# Dasar: releases/APK-LSF-0.4.8.apk (LFS — memuat manifest provider +
-# endpoint 127.0.0.1:8080 + dex game asli + mirror www/ lengkap dgn
-# base.zip/all.zip). Bila 0.4.8 tidak ada: unduh dari Git LFS atau
-# pakai APK-LSF-0.3.2.apk dari rilis v0.3.2 (mirror www/ harus lengkap).
+# Dasar: releases/APK-LSF-0.5.0.apk (LFS — memuat REKAM 0.5.0 + mirror www/
+# lengkap dgn base.zip/all.zip + QHinfo 127.0.0.1:8610).
 # Patch yang diterapkan (TANPA apktool — dex game & resource tidak disentuh):
 #   1) javac(ECJ) + d8  -> classes2.dex baru (kode server lokal)
 #   2) ganti assets/server/dashboard.html
@@ -14,6 +12,32 @@
 #   4) tambah assets/server/login/** — DEFAULT LOGIN LOKAL (servers.json)
 #   5) assets/QHinfo → http://127.0.0.1:8610 (layar SDK asli → server SDK lokal)
 #   6) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#
+# Baru 0.5.1 (tegasan owner: "SAYA TEGASKAN LAGI CONFIG YG JELAS BUKAN REKAM
+# JEJAAAAK"; laporan "config Setelah SDK login ini masuk ke loginserver sampai
+# detik ini anda ngeyel" + "saya sudah pilih server lalu klik play dan log hanya
+# tampil itu" — README §2.19):
+#   a) CONFIG SEMUA MODE — klien TIDAK PERNAH langsung ke login.popoh5.com lagi:
+#      SettingBin.rewrittenOnline (mode ONLINE: HANYA jalur login + url H5 →
+#      server lokal; tsUrl tetap asli; tanpa userid — identitas = shell asli);
+#      GameServer.servePassthrough menulis-ulang setting bin + serversetting.json
+#      SEBELUM disajikan; SdkApi loginchecknative = jalur BAKU ke 510 + baris 🔑
+#      passthrough (dedupe 10 mnt/uid).
+#   b) LoginServer.proxyOnline — socket.io diteruskan UTUH byte-per-byte ke
+#      https://login.popoh5.com:610 (probe: HTTPS wajib — HTTP polos ditolak;
+#      TLSv1.2 DigiCert *.popoh5.com). Websocket dijawab 400 → client tetap
+#      polling (perilaku terbukti device). Token & daftar server ASLI keluar
+#      dari SERVER ASLI (progres pemain tetap di sana) — tetapi seluruh alur
+#      login LEWAT server lokal: 📡 → 🔑 → ✅ → 📋 → 🔌 kini hidup di ONLINE.
+#   c) Log alur ONLINE: 📡 Klien tersambung — diteruskan ke SERVER ASLI ·
+#      ✅ Login game diteruskan · 📋 Daftar server ASLI terkirim (dihitung dari
+#      payload, bukan snapshot) · 🔌 pindah ke server game (dedupe sama dgn LOCAL).
+#   d) Dasbor: modemap + kartu "Ke mana koneksi mengarah" = SEMUA mode (config
+#      login selalu ke server lokal; ONLINE = passthrough utuh). StatusStore 0.5.1.
+#   e) Harness 96/96 LULUS (+16 tes TAHAP 16: bin ONLINE, serversetting ONLINE,
+#      parser framing tahan rusak, hitung server ACK, upstream HTTPS).
+#   f) Uji asap HIDUP: handshake relayed identik upstream (sid asli diteruskan);
+#      urutan langsung vs lewat proxy = jawaban identik (byte-per-byte terbukti).
 #
 # Baru 0.4.9 (permintaan owner: "emoji sudah bagus, hanya saja masih kurang
 # rinci" + "ingat gak boleh disingkat" — setelah menyetujui contoh output):
@@ -164,13 +188,13 @@ ECJ="${ECJ:-$REPO/tools/ecj-3.33.0.jar}"               # compiler Java 8 (sandbo
 KS="${KS:-$REPO/keystore/lsf.keystore}"
 KS_ALIAS="${KS_ALIAS:-lsf}"
 KS_PASS="${KS_PASS:-lsf-local-2025}"
-BASE="${BASE:-$REPO/releases/APK-LSF-0.4.9.apk}"         # APK dasar (rilis 0.4.9)
+BASE="${BASE:-$REPO/releases/APK-LSF-0.5.0.apk}"         # APK dasar (rilis 0.5.0 — REKAM)
 LOGIN_PORT_QH="${LOGIN_PORT_QH:-8610}"                    # port server SDK lokal (QHinfo)
 SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.5.0.apk"
+OUT="$REPO/releases/APK-LSF-0.5.1.apk"
 MIN_API="${MIN_API:-21}"
 
 WWW="$ASSETS/server/www"

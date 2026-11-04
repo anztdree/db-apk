@@ -325,8 +325,11 @@ public final class Starter {
                         + " · daftar server: snapshot asli bawaan APK"
                         + " · gameplay: SERVER GAME ASLI (progres tersimpan di sana)";
             } else {
-                modeDetail = "ONLINE — semua permintaan game diteruskan ke server asli"
-                        + " (login SDK ikut diteruskan) — perilaku online normal";
+                // 0.5.1 — ONLINE: config login tetap menulis-ulang ke server lokal
+                // (SEMUA mode); server lokal meneruskan utuh ke server asli.
+                modeDetail = "ONLINE — config login (bin + serversetting) TETAP ditulis-ulang ke server lokal"
+                        + " · file game & seluruh tahap login diteruskan LEWAT server lokal ke server asli"
+                        + " (passthrough utuh) — token & progres tetap dari/ke server asli";
             }
             HumanLog.ev("🚀", "Server lokal siap — mode " + Config.mode().toUpperCase(),
                     "Port    : game :" + Config.gamePort() + " · login :" + Config.loginPort()

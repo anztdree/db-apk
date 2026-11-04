@@ -87,8 +87,10 @@ public final class SdkApi {
     private static Response loginCheckNative(Method m, String uri, Map<String, String> parms, String body) {
         boolean online = "online".equals(Config.mode());
         if (online) {
-            // mode ONLINE: bin asli dipakai shell (login.popoh5.com:510) — bila tetap
-            // tiba di sini (sisa bin lokal sebelum ganti mode), teruskan apa adanya.
+            // 0.5.1 — mode ONLINE: jalur login SELALU lewat server lokal (config
+            // setting bin ditulis-ulang di SEMUA mode — SettingBin.rewrittenOnline).
+            // Server ini meneruskan utuh ke https://login.popoh5.com:510 — bukan
+            // lagi "sisa bin lokal"; ini jalur BAKU login online.
             return proxyLoginCheckNative(mergeParms(parms, body));
         }
         Map<String, String> all = mergeParms(parms, body);
@@ -342,6 +344,7 @@ public final class SdkApi {
                 qs.append(urlEnc(e.getKey())).append('=').append(urlEnc(e.getValue()));
             }
         }
+        String uid = (parms == null) ? null : parms.get("uid");
         try {
             byte[] out = http("https://login.popoh5.com:510/loginchecknative" + (qs.length() > 0 ? "?" + qs : ""),
                     "", 8000);
@@ -350,6 +353,21 @@ public final class SdkApi {
                 String respStr = new String(out, "UTF-8");
                 Capture.sdk("→", "/loginchecknative", "diteruskan ke login.popoh5.com:510 (mode ONLINE)", null, 0, 0);
                 Capture.sdk("←", "/loginchecknative", "dari server asli login.popoh5.com:510", respStr, out.length, 0);
+                // 0.5.1 — alur login online kini LEWAT server lokal: sahkan di log
+                // (dedupe 10 mnt per uid — gaya baris 🔑 mode LOCAL).
+                if (respStr.contains("\"code\":0") || respStr.contains("\"code\": 0")) {
+                    long now = System.currentTimeMillis();
+                    if (!uid.equals(lastCnUid) || now - lastCnLogAt >= 600000L) {
+                        lastCnUid = uid;
+                        lastCnLogAt = now;
+                        HumanLog.ev("🔑", "Sesi disahkan via SERVER ASLI (passthrough) — game lanjut boot",
+                                "Uid      : " + (uid == null ? "-" : uid) + "\n"
+                                        + "Hasil    : code 0 dari login.popoh5.com:510 — diteruskan utuh lewat "
+                                        + "server login lokal (127.0.0.1:" + Config.loginPort() + ")\n"
+                                        + "Sumber   : SERVER ASLI — token & identitas dikeluarkan di sana "
+                                        + "(progres pemain tetap tersimpan di server asli)");
+                    }
+                }
             } catch (Throwable ignored) {
             }
             return json(NanoHTTPD.Response.Status.OK, new String(out, "UTF-8"));
@@ -358,6 +376,10 @@ public final class SdkApi {
             return json(NanoHTTPD.Response.Status.OK, "{\"code\":500,\"msg\":\"no sdk\"}");
         }
     }
+
+    /** 0.5.1 — dedupe baris 🔑 loginchecknative passthrough (per uid, 10 mnt). */
+    private static volatile String lastCnUid = null;
+    private static volatile long lastCnLogAt = 0L;
 
     private static byte[] http(String url, String body, int timeoutMs) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();

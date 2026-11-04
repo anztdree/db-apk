@@ -382,6 +382,65 @@ public class HarnessSdk {
                 okLines == 1);
         LogGroups.clear();
 
+        // ---------------- TAHAP 16: CONFIG LOGIN SEMUA MODE (0.5.1 — tuntutan owner
+        // "config setelah SDK login masuk ke loginserver" — bukan rekam jejak) ----------------
+        // 16a) setting bin mode ONLINE: HANYA jalur login + url H5 → server lokal;
+        //      tsUrl (varian uji) tetap ASLI; TANPA userid di url H5.
+        String binOnlineJson = "{\"url\":\"https://dragonh5cdn.popoh5.com/bs/index-native.html?v=9\","
+                + "\"tsUrl\":\"http://dragon.sjmobilegame.com:82/bs103/index-native.html\","
+                + "\"update\":\"https://dragonh5cdn.popoh5.com/bs/upgrade\","
+                + "\"loginServer\":\"https://login.popoh5.com\","
+                + "\"tsLoginServer\":\"http://118.24.68.91:7003\","
+                + "\"loginPort\":\"610\",\"loginWebPort\":\"510\"}";
+        byte[] binOnlineEnc = xor(binOnlineJson.getBytes("UTF-8"));
+        byte[] binOnlineOut = SettingBin.rewrittenOnline(binOnlineEnc, 8080, 8610);
+        String binOnlinePlain = new String(xor(binOnlineOut), "UTF-8");
+        check("0.5.1 ONLINE bin: url H5 → port game lokal (8080)",
+                "http://127.0.0.1:8080/bs/index-native.html?v=9".equals(jsonStr(binOnlinePlain, "url")));
+        check("0.5.1 ONLINE bin: update → port game lokal (H5 lewat server — serversetting ikut)",
+                "http://127.0.0.1:8080/bs/upgrade".equals(jsonStr(binOnlinePlain, "update")));
+        check("0.5.1 ONLINE bin: loginServer → server login lokal (TANPA port — gaya 0.4.2)",
+                "http://127.0.0.1".equals(jsonStr(binOnlinePlain, "loginServer")));
+        check("0.5.1 ONLINE bin: loginPort + loginWebPort → 8610",
+                "8610".equals(jsonStr(binOnlinePlain, "loginPort"))
+                        && "8610".equals(jsonStr(binOnlinePlain, "loginWebPort")));
+        check("0.5.1 ONLINE bin: tsLoginServer → server login lokal",
+                "http://127.0.0.1:8610".equals(jsonStr(binOnlinePlain, "tsLoginServer")));
+        check("0.5.1 ONLINE bin: tsUrl tetap ASLI (varian uji — persis gaya LOCAL)",
+                "http://dragon.sjmobilegame.com:82/bs103/index-native.html"
+                        .equals(jsonStr(binOnlinePlain, "tsUrl")));
+        check("0.5.1 ONLINE bin: TIDAK ada userid di url H5 (identitas boot = mekanisme shell asli)",
+                !binOnlinePlain.contains("userid="));
+        check("0.5.1 ONLINE bin: hasil tetap bin terenkripsi valid (bukan JSON polos)",
+                !new String(binOnlineOut).contains("loginServer"));
+        // 16b) serversetting.json mode ONLINE (GameServer passthrough): loginserver → lokal
+        String ssAsli = "{\n\t\"loginserver\": \"https://login.popoh5.com:610\",\n\t\"requireSDK\": false\n}";
+        String ssBaru = SettingBin.setJsonValue(ssAsli, "loginserver", "http://127.0.0.1:8610");
+        check("0.5.1 ONLINE serversetting: loginserver → http://127.0.0.1:8610",
+                ssBaru.contains("http://127.0.0.1:8610") && !ssBaru.contains("login.popoh5.com"));
+        check("0.5.1 ONLINE serversetting: field lain UTUH (requireSDK)",
+                ssBaru.contains("requireSDK") && ssBaru.contains("false"));
+        // 16c) passthrough engine.io — parser framing (dipakai log alur ONLINE)
+        java.util.ArrayList<String> fr = LoginServer.parseFrames("14:0{\"sid\":\"abc\"}2:40");
+        check("0.5.1 passthrough: framing engine.io terurai (OPEN + CONNECT)",
+                fr.size() == 2 && fr.get(0).startsWith("0{") && "40".equals(fr.get(1)));
+        java.util.ArrayList<String> fr2 = LoginServer.parseFrames("8:420[\"x\"]6:43bad:8:410[\"y\"]");
+        check("0.5.1 passthrough: framing beruntun + panjang berdigit (tahan framing asal)",
+                fr2.size() == 3 && fr2.get(1).equals("43bad:") && fr2.get(2).equals("410[\"y\"]"));
+        check("0.5.1 passthrough: framing rusak tidak meledak (aman)",
+                LoginServer.parseFrames(null).size() == 0
+                        && LoginServer.parseFrames("abc:def").size() == 0);
+        // 16d) hitung server dalam payload daftar ASLI (passthrough)
+        String ack = "43p[{\"ret\":0,\"data\":\"{\\\"errorCode\\\":0,\\\"serverList\\\":["
+                + "{\\\"serverId\\\":\\\"2109\\\"},{\\\"serverId\\\":\\\"2108\\\"},{\\\"serverId\\\":\\\"2107\\\"}]}\"}]";
+        check("0.5.1 passthrough: jumlah server dalam ACK daftar = 3",
+                LoginServer.countServerIds(ack) == 3);
+        check("0.5.1 passthrough: ACK tanpa daftar = 0",
+                LoginServer.countServerIds("43p[{\"ret\":0,\"data\":\"{}\"}]") == 0
+                        && LoginServer.countServerIds(null) == 0);
+        check("0.5.1 passthrough: upstream login ASLI = HTTPS (probe: HTTP polos ditolak server)",
+                LoginServer.UPSTREAM_LOGIN.startsWith("https://"));
+
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");
         System.exit(fail == 0 ? 0 : 1);

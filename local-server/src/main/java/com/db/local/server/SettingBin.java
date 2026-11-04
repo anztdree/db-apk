@@ -31,7 +31,25 @@ import java.io.ByteArrayOutputStream;
  *                       SDK terakhir — hasil layar login SDK asli, bukan guest
  *                       karangan; fallback guest lokal bila sesi SDK belum ada.
  *                       H5: checkLastLogin → doOriginLoginRequest — README §2.11)
- * Mode ONLINE: file asli diteruskan apa adanya (tanpa rewrite).
+ * Mode ONLINE (0.5.1 — TUNTUTAN owner "config yg jelas bukan rekam jejak";
+ * jawaban atas laporan "config setelah SDK login ini masuk ke loginserver sampai
+ * detik ini anda ngeyel"): file DITERUSKAN dari server asli TETAPI jalur LOGIN
+ * dan url H5 tetap ditulis-ulang ke SERVER LOKAL — di SEMUA mode:
+ *   url/update        → http://127.0.0.1:<gamePort>   (H5 lewat port game;
+ *                       serversetting.json ikut lewat → loginserver-nya
+ *                       ditulis-ulang ke server login lokal — GameServer)
+ *   loginServer       → http://127.0.0.1               (shell loginchecknative
+ *                       → :loginWebPort → server login lokal → diteruskan ke
+ *                       https://login.popoh5.com:510 — SdkApi.proxyLoginCheckNative)
+ *   tsLoginServer     → http://127.0.0.1:<loginPort>
+ *   loginPort/loginWebPort → <loginPort>
+ *   tsUrl             → ASLI (varian uji — persis perilaku mode LOCAL)
+ * Server login lokal meneruskan socket.io & loginchecknative UTUH (byte-per-
+ * byte) ke server asli — token & daftar server tetap dikeluarkan SERVER ASLI,
+ * progres pemain tetap di sana; tetapi seluruh alur login LEWAT server lokal
+ * dan terlihat di log (tidak ada lagi jalur yang langsung ke pusat).
+ * TIDAK ada userid di url H5 pada mode ONLINE — identitas boot = mekanisme
+ * shell asli (startGame), bukan penggantian kita.
  *
  * Skema XOR simetris: operasi enkripsi = dekripsi. Gagal apa pun → file asli
  * disajikan tanpa diubah (game tetap jalan, fallback terbukti §2.8).
@@ -140,6 +158,45 @@ public final class SettingBin {
     }
 
     /**
+     * 0.5.1 — mode ONLINE: tulis-ulang jalur LOGIN + url H5 ke server lokal.
+     * Input = byte bin ASLI hasil passthrough dari server asli (GameServer
+     * servePassthrough memanggil ini sebelum menyajikan). Gagal apa pun →
+     * byte asli kembali (perilaku lama — game tetap jalan).
+     */
+    public static byte[] rewrittenOnline(byte[] enc, int gamePort, int loginPort) {
+        String plain = plainOnline(enc, gamePort, loginPort);
+        if (plain == null) {
+            return enc;
+        }
+        try {
+            return xor(plain.getBytes("UTF-8"));
+        } catch (Throwable t) {
+            return enc;
+        }
+    }
+
+    /**
+     * 0.5.1 — teks hasil dekripsi + tulis-ulang mode ONLINE (bahan Capture);
+     * null bila gagal. Penggantian = PERSIS rewrittenOnline.
+     */
+    static String plainOnline(byte[] enc, int gamePort, int loginPort) {
+        try {
+            String s = new String(xor(enc), "UTF-8");
+            String replaced = s.replace(HOST_ORIGINAL, "http://127.0.0.1:" + gamePort);
+            replaced = replaced.replace(LOGIN_ORIGINAL, "http://127.0.0.1");
+            replaced = replaced.replace(TS_LOGIN_ORIGINAL, "http://127.0.0.1:" + loginPort);
+            replaced = setJsonValue(replaced, "loginPort", String.valueOf(loginPort));
+            replaced = setJsonValue(replaced, "loginWebPort", String.valueOf(loginPort));
+            if (replaced.equals(s)) {
+                return null; // tidak ada yang cocok — biarkan asli
+            }
+            return replaced;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
      * 0.5.0 REKAM — isi setting bin yang DITERIMA KLIEN dalam bentuk TEKS
      * (didekripsi + sudah ditulis-ulang ke lokal) — config asli untuk
      * capture/payload/. Tidak disangga; dipanggil saat disajikan saja.
@@ -153,6 +210,8 @@ public final class SettingBin {
             String replaced = s.replace(HOST_ORIGINAL, "http://127.0.0.1:" + Config.gamePort());
             replaced = replaced.replace(LOGIN_ORIGINAL, "http://127.0.0.1");
             replaced = replaced.replace(TS_LOGIN_ORIGINAL, "http://127.0.0.1:" + Config.loginPort());
+            // (0.5.0 — decryptedRewritten tetap gaya LOCAL; mode ONLINE memakai
+            //  plainOnline() terpisah agar kedua gaya tidak saling menimpa)
             replaced = setJsonValue(replaced, "loginPort", String.valueOf(Config.loginPort()));
             replaced = setJsonValue(replaced, "loginWebPort", String.valueOf(Config.loginPort()));
             if (!Config.useSdk()) {
@@ -174,8 +233,9 @@ public final class SettingBin {
     /**
      * Ganti nilai string/angka suatu kunci level atas dalam JSON teks — tanpa
      * dependensi parser. Aman bila kunci tidak ada (teks kembali apa adanya).
+     * Publik — dipakai GameServer (serversetting ONLINE 0.5.1) + diuji harness.
      */
-    static String setJsonValue(String json, String key, String newValue) {
+    public static String setJsonValue(String json, String key, String newValue) {
         try {
             String needle = "\"" + key + "\"";
             int i = json.indexOf(needle);
