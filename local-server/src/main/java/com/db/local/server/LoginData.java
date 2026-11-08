@@ -16,15 +16,19 @@ import java.util.Date;
  *   tabel accounts         — akun lokal (username PK · pass_md5 · dibuat ·
  *                            login terakhir · jumlah login) — dipakai BERSAMA
  *                            tahap SDK (daftar/masuk) & tahap game (loginGame)
- *   config/servers.json    — TETAP berupa file: daftar server GetServerList,
- *                            snapshot asli 2109 server, BOLEH diubah pemilik
- *                            tanpa rebuild (bukan data transaksional).
+ *   config-offline/servers.json — 0.5.3: daftar server GetServerList = paket
+ *                            MANUAL bawaan APK (1 entri "Server Lokal" url
+ *                            127.0.0.1) — BUKAN snapshot online (owner: online
+ *                            hanya jejak arah, bukan config asli offline).
+ *                            Dilayani apa adanya; bukan data transaksional.
  *
- * Tanpa dependensi — skema respons = salinan server asli (README §2.10).
+ * Tanpa dependensi — skema respons mengikuti protokol asli (jejak arah).
  */
 public final class LoginData {
     private static final Object LOCK = new Object();
     private static volatile File confDir = null;
+    /** 0.5.3 — folder paket CONFIG OFFLINE manual (sumber daftar server). */
+    private static volatile File offlineDir = null;
     private static volatile String cachedServersJson = null;
     private static volatile int cachedServerCount = -1;
 
@@ -33,8 +37,18 @@ public final class LoginData {
 
     /** Folder config (dipanggil Starter setelah root siap). */
     public static void init(File configDir) {
+        init(configDir, null);
+    }
+
+    /**
+     * 0.5.3 — folder config (data transaksional) + folder paket CONFIG OFFLINE
+     * manual (sumber daftar server GetServerList). Dipanggil Starter setelah
+     * root siap; harness memanggil ini dengan dua folder uji.
+     */
+    public static void init(File configDir, File offlinePkgDir) {
         synchronized (LOCK) {
             confDir = configDir;
+            offlineDir = offlinePkgDir;
             cachedServersJson = null;
             cachedServerCount = -1;
         }
@@ -207,10 +221,13 @@ public final class LoginData {
     // ---------------- action GetServerList ----------------
 
     /**
-     * Isi data untuk action "GetServerList" — baca config/servers.json (bawaan APK =
-     * snapshot asli 2109 server hasil probe; BOLEH diganti pemilik tanpa rebuild).
+     * 0.5.3 — isi data untuk action "GetServerList". SATU-SATUNYA sumber: paket
+     * CONFIG OFFLINE manual (config-offline/servers.json — 1 entri "Server Lokal"
+     * url http://127.0.0.1:&lt;gamePort&gt;). Snapshot online DIHAPUS dari jalur
+     * aktif (owner: "online cuma jejak arah bukan config asli ke offline").
      * Format yang dibaca H5 (main.min): {errorCode, serverList:[{serverId,url,name,
-     * online,new,hot,openDate,offlineReason,merge,mergeTo,...}], history}.
+     * online,new,hot,openDate,offlineReason,merge,mergeTo,urlInner,chatInner}],
+     * history}.
      */
     public static String serverListData() {
         synchronized (LOCK) {
@@ -219,21 +236,26 @@ public final class LoginData {
             }
             String raw = null;
             try {
-                File f = new File(confDir, "servers.json");
-                if (f.exists() && f.length() > 2) {
+                // 0.5.3 — SATU-SATUNYA sumber: paket CONFIG OFFLINE manual
+                // (config-offline/servers.json — 1 entri "Server Lokal" url lokal).
+                // Snapshot online TIDAK lagi dibaca di jalur mana pun.
+                File f = (offlineDir == null) ? null : new File(offlineDir, "servers.json");
+                if (f != null && f.exists() && f.length() > 2) {
                     raw = readText(f);
                 }
             } catch (Throwable ignored) {
             }
             if (raw == null || raw.indexOf("\"serverList\"") < 0) {
-                // fallback darurat: satu server terbaru yang diketahui hidup
-                raw = "{\"errorCode\":0,\"serverList\":[{\"serverId\":\"2109\","
-                        + "\"url\":\"https://s2109-bs.popoh5.com:8061\",\"new\":true,\"hot\":false,"
-                        + "\"name\":\"Server 2109\",\"online\":true,\"openDate\":\"2026-10-30T07:00:06.409Z\","
+                // fallback darurat — TETAP LOKAL (tidak pernah popoh5): satu entri
+                // manual dengan url port game aktif supaya Play tetap masuk lokal.
+                raw = "{\"errorCode\":0,\"serverList\":[{\"serverId\":\"1\","
+                        + "\"url\":\"http://127.0.0.1:" + Config.gamePort() + "\",\"new\":true,\"hot\":true,"
+                        + "\"name\":\"Server Lokal\",\"online\":true,\"openDate\":\"\","
                         + "\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\","
-                        + "\"urlInner\":\"http://127.0.0.1:8071\",\"chatInner\":\"\"}],\"history\":[]}";
+                        + "\"urlInner\":\"\",\"chatInner\":\"\"}],\"history\":[]}";
                 try {
-                    HumanLog.ev("⚠️", "config/servers.json tidak ada atau salah format — memakai daftar darurat 1 server",
+                    HumanLog.ev("⚠️", "config-offline/servers.json tidak ada atau salah format"
+                            + " — memakai daftar darurat 1 server LOKAL (127.0.0.1)",
                             null);
                 } catch (Throwable ignored) {
                 }

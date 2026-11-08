@@ -3,11 +3,10 @@ package com.db.local.server;
 import android.content.Context;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
@@ -29,14 +28,26 @@ import fi.iki.elonen.NanoHTTPD;
  *           ke www/ (mirror melengkapi dirinya sendiri); bila server asli juga
  *           tidak bisa dihubungi → 404 — client melanjutkan boot (fallback dex
  *           terbukti §2.8: "Server base.version is Not Exist").
- * - ONLINE: teruskan permintaan ke server asli (passthrough) — TETAPI 0.5.1:
+ * - ONLINE: teruskan permintaan ke server asli (passthrough) — 0.5.1:
  *           setting bin & serversetting.json ditulis-ulang dulu (HANYA jalur
  *           login + url H5 → server lokal; sisanya asli). Semua koneksi login
  *           masuk ke server login lokal yang meneruskan utuh ke server asli
  *           (tuntutan owner: config setelah SDK login HARUS ke loginserver
  *           lokal di SEMUA mode — bukan lagi "file asli apa adanya").
  *
- * Peta passthrough (persis hasil dekode EntryPoint §2.8 + temuan setting bin):
+ * 0.5.3 — DUA JALUR 100% TERPISAH (owner: "online tebaca itu cuma jadikan jejak
+ * arah bukan untuk dijadikan config asli ke offline" + "config offline murni
+ * disiapkan manual"):
+ *   LOCAL  = NOL sentuh jaringan luar. Setting bin & serversetting.json dilayani
+ *           APA ADANYA dari paket MANUAL <root>/config-offline/ (setting.json,
+ *           bin XOR DragonBall, serversetting, servers.json 1 entri "Server
+ *           Lokal" url 127.0.0.1). TIDAK ada penulisan-ulang runtime, TIDAK ada
+ *           mirror-melengkapi-diri dari CDN. www/ hanya resource H5 (statis).
+ *   ONLINE = passthrough ke server asli (configus/dragonh5cdn/dragon) +
+ *           penulisan-ulang jalur login (SettingBin.rewrittenOnline) — jalur
+ *           kode terpisah, tidak berbagi config dengan LOCAL.
+ *
+ * Peta passthrough (HANYA mode ONLINE — persis hasil dekode EntryPoint §2.8):
  *   /bs/db/android/… → configus.sjmobilegame.com (fallback COS)
  *   /bs/…            → dragonh5cdn.popoh5.com        (H5 game + folder upgrade)
  *   /lzceshi/…       → dragon.sjmobilegame.com:82
@@ -49,7 +60,7 @@ import fi.iki.elonen.NanoHTTPD;
  * gk usah di group"): SEMUA aktivitas batch per-file TIDAK PERNAH jadi baris
  * log linear — masuk GRUP LogGroups (dasbor: satu baris judul dengan statistik
  * hidup, bisa dibuka untuk rincian; human.log: ringkasan Σ satu baris):
- *   "mirror" → Mirror CDN   (file baru diambil dari server asli → www/)
+ *   "mirror" → Mirror CDN   (HANYA ONLINE — file baru diambil dari server asli → www/)
  *   "req"    → Request game (setiap 200 dari www/, termasuk setting bin)
  *   "404"    → 404 fallback (normal — game melanjutkan boot)
  *   "pass"   → Passthrough ONLINE (jawaban server asli mode ONLINE)
@@ -77,11 +88,18 @@ public final class GameServer extends NanoHTTPD {
 
     private final Context appCtx;
     private final File wwwRoot;
+    /** 0.5.3 — folder paket CONFIG OFFLINE manual (saudara www/): &lt;root&gt;/config-offline. */
+    private final File offlineRoot;
+    /** Dedupe peringatan port bin manual ≠ server.json — cukup sekali. */
+    private static volatile boolean portWarned = false;
 
     public GameServer(Context appCtx, String bind, int port, File wwwRoot) throws java.io.IOException {
         super(bind, port);
         this.appCtx = appCtx;
         this.wwwRoot = wwwRoot;
+        this.offlineRoot = (wwwRoot != null && wwwRoot.getParentFile() != null)
+                ? new File(wwwRoot.getParentFile(), "config-offline")
+                : null;
         setTempFileManagerFactory(new TempFileManagerFactory() {
             public TempFileManager create() {
                 return new DefaultTempFileManager();
@@ -163,36 +181,29 @@ public final class GameServer extends NanoHTTPD {
     // ---------------- mode LOCAL: layani dari www/ ----------------
 
     private Response serveLocal(String uri, String query, long t0) {
-        // Setting bin = ditulis-ulang saat disajikan (README §4 + PR1 0.4.0).
-        // Berlaku untuk kedua jalur: bs/db/android (configus) & lzceshi/native_setting/Android
-        // (dragon) — keduanya terenkripsi XOR "DragonBall" dan sama-sama menunjuk dragonh5cdn.
+        // 0.5.3 — setting bin = paket MANUAL config-offline/, dilayani APA ADANYA
+        // (byte-per-byte, TANPA penulisan-ulang runtime). Berlaku untuk kedua jalur
+        // path lama: bs/db/android (configus) & lzceshi/native_setting/Android (dragon).
         if ((uri.startsWith("/bs/db/android/") || uri.startsWith("/lzceshi/native_setting/Android/"))
                 && uri.endsWith(".bin")) {
             return serveSettingBin(uri, query, t0);
         }
-        // serversetting.json = peta login yang dibaca H5 (main.min connectToLogin →
-        // serversetting.json, karena bridge native getLoginServer TIDAK ada di dex — §2.10).
-        // "loginserver" ditulis-ulang ke server login lokal (PR1 — endpoint tak lagi ke pusat).
+        // serversetting.json = peta login yang dibaca H5 — paket MANUAL, apa adanya.
         if (uri.endsWith("/serversetting.json")) {
             return serveServersetting(uri, query, t0);
         }
         File f = resolveLocal(uri);
         long ms = System.currentTimeMillis() - t0;
         if (f == null) {
-            // Mirror belum berisi file ini → ambil SEKALI dari server asli, simpan
-            // ke www/ (mirror melengkapi diri), baru disajikan.
-            Response seeded = trySeed(uri, query, t0);
-            if (seeded != null) {
-                return seeded;
-            }
-            // 404 = perilaku NORMAL (server asli pun tidak memilikinya — client lanjut
-            // boot). 0.4.6: masuk GRUP "404 fallback" — bukan baris log linear.
+            // 0.5.3 — LOCAL = NOL sentuh jaringan luar: TIDAK ADA lagi "mirror
+            // melengkapi diri" dari CDN (trySeed dihapus dari jalur ini). 404 =
+            // perilaku normal (client lanjut boot — fallback terbukti §2.8).
             StatusStore.count404();
             LogGroups.item("404", "404 fallback", "file", true,
-                    "GET " + uri + " — normal", 0);
+                    "GET " + uri + " — normal (LOCAL tidak mengambil dari luar)", 0);
             return textResp(Response.Status.NOT_FOUND,
-                    "Tidak ada di mirror www/" + uri + " — mode LOCAL melayani mirror server asli hasil "
-                            + "ekstraksi otomatis dari APK. Game melanjutkan boot saat jawaban tidak ada.");
+                    "Tidak ada di mirror www/" + uri + " — mode LOCAL melayani mirror statis bawaan APK "
+                            + "+ paket config-offline/ manual. Game melanjutkan boot saat jawaban tidak ada.");
         }
         return serveFile(f, uri, query, t0, false);
     }
@@ -237,101 +248,84 @@ public final class GameServer extends NanoHTTPD {
         return sb.append(": ").append(value).toString();
     }
 
-    /** Setting bin: mirror + penulisan-ulang host (satu-satunya konten yang berubah). */
+    /**
+     * 0.5.3 — setting bin mode LOCAL: dilayani APA ADANYA dari paket MANUAL
+     * config-offline/setting_BS_Android.bin (byte-per-byte — TANPA penulisan-ulang
+     * runtime). Bin manual sudah menunjuk 127.0.0.1 sejak disiapkan (lihat
+     * setting.json di paket + manifest.txt sha256). Isi dibedah di log (📦) dari
+     * file yang sama — yang diterima klien PERSIS paket manual.
+     */
     private Response serveSettingBin(String uri, String query, long t0) {
-        File f = resolveLocal(uri);
-        if (f == null) {
-            // setting_BS_Android.bin = WAJIB ada di mirror (inti bootstrap);
-            // .bin lain (mis. com_db_local.bin) memang TIDAK ada di server asli —
-            // 404-nya perilaku normal, client melanjutkan boot tanpa error.
-            if (uri.endsWith("setting_BS_Android.bin")) {
-                ReqLog.ev("⚠️", "404 " + uri,
-                        "GET " + gameUrl(uri) + " → 404 · mirror www/ TIDAK berisi setting bin — cek ekstraksi mirror",
-                        nullSafe(query));
-            } else {
-                StatusStore.count404();
-                LogGroups.item("404", "404 fallback", "file", true,
-                        "GET " + uri + " — normal", 0);
-            }
-            return textResp(Response.Status.NOT_FOUND, "Mirror www/ tidak berisi " + uri);
+        File f = (offlineRoot == null) ? null : new File(offlineRoot, "setting_BS_Android.bin");
+        if (f == null || !f.exists() || !f.isFile()) {
+            ReqLog.ev("⚠️", "404 " + uri,
+                    "GET " + gameUrl(uri) + " → 404 · paket config-offline/ TIDAK berisi setting bin manual "
+                            + "— cek ekstraksi paket config OFFLINE",
+                    nullSafe(query));
+            return textResp(Response.Status.NOT_FOUND, "Paket config-offline/ tidak berisi setting_BS_Android.bin");
         }
         try {
-            String uidSuffix = SettingBin.currentUserIdSuffix();
-            byte[] b = SettingBin.rewrittenLocal(f, Config.gamePort(), Config.loginPort(),
-                    Config.useSdk() ? null : uidSuffix);
+            byte[] b = readAllBytes(f);
             long ms = System.currentTimeMillis() - t0;
-            String plain = null;
-            try {
-                // 0.5.0 REKAM — setting bin DIDEKRIPSI (XOR "DragonBall") + sudah
-                // ditulis-ulang: inilah CONFIG ASLI yang diterima klien (endpoint
-                // lokal semua). File: capture/payload/NNNNNN-out-setting-bin.json
-                plain = SettingBin.decryptedRewritten(f);
-                if (plain != null) {
-                    Capture.game("←", uri, "setting bin — DIDEKRIPSI + ditulis-ulang (config asli yang diterima klien)",
-                            plain, plain.length(), ms);
-                }
-            } catch (Throwable ignored) {
+            // Pengaman konfigurasi (sekali per proses): bin manual memakai port
+            // DEFAULT (8080/8610) — bila server.json mengubah port, paket manual
+            // harus dibuat ulang (bukan ditulis-ulang saat runtime — keputusan 0.5.3).
+            if (!portWarned && (Config.gamePort() != 8080 || Config.loginPort() != 8610)) {
+                portWarned = true;
+                HumanLog.ev("⚠️", "Port server.json beda dari bin manual (8080/8610) — paket config-offline "
+                        + "harus dibuat ulang agar cocok", "gamePort=" + Config.gamePort()
+                        + " · loginPort=" + Config.loginPort());
             }
-            // 0.5.2 AKAR — isi config DIBEDAH FIELD-PER-FIELD di log (tuntutan
-            // owner "log yg jelas rinci"): nilai ASLI → nilai yang diterima klien.
-            logAkar(uri, ConfigAkar.settingBin(SettingBin.decryptedPlain(f), plain),
-                    b.length, ms, "LOCAL");
+            // 0.5.2 AKAR — isi config DIBEDAH FIELD-PER-FIELD di log: paket manual
+            // (yang diterima klien PERSIS file ini).
+            String plain = SettingBin.decryptedPlain(b);
+            logAkar(uri, ConfigAkar.settingBin(plain, plain), b.length, ms,
+                    "OFFLINE · paket manual config-offline/");
             Response r = newFixedLengthResponse(Response.Status.OK, "application/octet-stream",
                     new ByteArrayInputStream(b), b.length);
             r.addHeader("Cache-Control", "no-store");
             LogGroups.item("req", "Request game", "request", true,
                     "GET " + uri + " — " + HumanLog.fmtBytes(b.length) + " · " + HumanLog.fmtMs(ms)
-                            + " · endpoint di dalam bin ditulis-ulang ke lokal",
+                            + " · paket config-offline/ manual (apa adanya)",
                     b.length);
             return r;
         } catch (Throwable t) {
-            HumanLog.ev("⚠️", "GET " + gameUrl(uri) + " gagal menyiapkan setting bin", String.valueOf(t));
-            return textResp(Response.Status.INTERNAL_ERROR, "Gagal menyiapkan setting bin: " + uri);
+            HumanLog.ev("⚠️", "GET " + gameUrl(uri) + " gagal membaca setting bin manual", String.valueOf(t));
+            return textResp(Response.Status.INTERNAL_ERROR, "Gagal membaca setting bin manual: " + uri);
         }
     }
 
     /**
-     * serversetting.json — nilai "loginserver" (asal https://login.popoh5.com:610)
-     * ditulis-ulang ke http://127.0.0.1:&lt;loginPort&gt; saat disajikan di mode LOCAL
-     * (PR1). File asli di www/ tidak pernah disentuh — hanya jawaban server ini.
+     * 0.5.3 — serversetting.json mode LOCAL: dilayani APA ADANYA dari paket MANUAL
+     * config-offline/serversetting.json (loginserver = http://127.0.0.1:&lt;loginPort&gt;
+     * sejak disiapkan — TANPA penulisan-ulang runtime).
      */
     private Response serveServersetting(String uri, String query, long t0) {
-        File f = resolveLocal(uri);
-        if (f == null) {
-            trySeed(uri, query, t0);
-            f = resolveLocal(uri);
-        }
-        if (f == null) {
+        File f = (offlineRoot == null) ? null : new File(offlineRoot, "serversetting.json");
+        if (f == null || !f.exists() || !f.isFile()) {
             StatusStore.count404();
             LogGroups.item("404", "404 fallback", "file", true,
-                    "GET " + uri + " — normal", 0);
-            return textResp(Response.Status.NOT_FOUND, "Mirror www/ tidak berisi " + uri);
+                    "GET " + uri + " — paket config-offline/ tidak berisi serversetting.json", 0);
+            return textResp(Response.Status.NOT_FOUND, "Paket config-offline/ tidak berisi serversetting.json");
         }
         try {
             String text = readFileText(f);
-            String rewritten = SettingBin.setJsonValue(text, "loginserver",
-                    "http://127.0.0.1:" + Config.loginPort());
-            byte[] out = rewritten.getBytes("UTF-8");
+            byte[] out = text.getBytes("UTF-8");
             long ms = System.currentTimeMillis() - t0;
-            try {
-                // 0.5.0 REKAM — serversetting.json hasil rewrite (config asli klien):
-                Capture.game("←", uri, "serversetting.json — loginserver ditulis-ulang (config asli yang diterima klien)",
-                        rewritten, out.length, ms);
-            } catch (Throwable ignored) {
-            }
             Response r = newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8",
                     new ByteArrayInputStream(out), out.length);
             r.addHeader("Cache-Control", "no-store");
-            // 0.5.2 AKAR — isi serversetting.json dibedah di log (nilai ASLI → klien).
-            logAkar(uri, ConfigAkar.serversetting(text, rewritten), out.length, ms, "LOCAL");
+            // 0.5.2 AKAR — isi serversetting.json manual dibedah di log.
+            logAkar(uri, ConfigAkar.serversetting(text, text), out.length, ms,
+                    "OFFLINE · paket manual config-offline/");
             LogGroups.item("req", "Request game", "request", true,
                     "GET " + uri + " — " + HumanLog.fmtBytes(out.length) + " · " + HumanLog.fmtMs(ms)
-                            + " · loginserver ditulis-ulang ke lokal",
+                            + " · paket config-offline/ manual (apa adanya)",
                     out.length);
             return r;
         } catch (Throwable t) {
-            HumanLog.ev("⚠️", "GET " + gameUrl(uri) + " gagal menyiapkan serversetting.json", String.valueOf(t));
-            return textResp(Response.Status.INTERNAL_ERROR, "Gagal menyiapkan serversetting.json: " + uri);
+            HumanLog.ev("⚠️", "GET " + gameUrl(uri) + " gagal membaca serversetting.json manual", String.valueOf(t));
+            return textResp(Response.Status.INTERNAL_ERROR, "Gagal membaca serversetting.json manual: " + uri);
         }
     }
 
@@ -347,59 +341,17 @@ public final class GameServer extends NanoHTTPD {
         return new String(bos.toByteArray(), "UTF-8");
     }
 
-    /** Ambil file yang belum ada di mirror dari server asli, simpan ke www/, sajikan. */
-    private Response trySeed(String uri, String query, long t0) {
-        String[] base = upstreamBase(uri);
-        if (base == null) {
-            return null;
+    /** Baca seluruh isi file (byte) — paket config-offline dilayani byte-per-byte. */
+    private static byte[] readAllBytes(File f) throws Exception {
+        FileInputStream in = new FileInputStream(f);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream((int) Math.max(32, f.length()));
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = in.read(buf)) > 0) {
+            bos.write(buf, 0, n);
         }
-        String q = (query != null && query.length() > 0) ? ("?" + query) : "";
-        Upstream up = fetchUpstream(base[0] + uri + q);
-        if (up.status != 200 || up.in == null) {
-            closeQuietly(up.in);
-            if (up.status < 0) {
-                // CDN/server asli TIDAK TERJANGKAU (bukan sekadar 404) — gagal
-                // nyata: naik ⚠ linear (jeda 30 dtk), lanjutannya dihitung grup.
-                LogGroups.item("mirror", "Mirror CDN", "file", false,
-                        uri + " — server asli tidak terjangkau (dicoba ulang saat diminta lagi)", 0);
-            }
-            return null;
-        }
-        File out = safePath(uri);
-        if (out == null) {
-            closeQuietly(up.in);
-            return null;
-        }
-        try {
-            File parent = out.getParentFile();
-            if (parent != null && !parent.exists()) {
-                parent.mkdirs();
-            }
-            OutputStream os = new FileOutputStream(out, false);
-            byte[] buf = new byte[65536];
-            int n;
-            long total = 0;
-            while ((n = up.in.read(buf)) > 0) {
-                os.write(buf, 0, n);
-                total += n;
-            }
-            os.close();
-            closeQuietly(up.in);
-            long ms = System.currentTimeMillis() - t0;
-            StatusStore.addSeed(total);
-            LogGroups.item("mirror", "Mirror CDN", "file", true,
-                    uri + " — " + HumanLog.fmtBytes(total) + " dari " + hostOf(base[0])
-                            + " → disimpan ke www/ · " + HumanLog.fmtMs(ms),
-                    total);
-            return serveFile(out, uri, query, t0, true);
-        } catch (Throwable t) {
-            closeQuietly(up.in);
-            try {
-                HumanLog.ev("⚠️", "Gagal menyimpan file hasil ambilan dari server asli ke www/", String.valueOf(t));
-            } catch (Throwable ignored) {
-            }
-            return null;
-        }
+        in.close();
+        return bos.toByteArray();
     }
 
     private Response serveFile(File f, String uri, String query, long t0, boolean seeded) {

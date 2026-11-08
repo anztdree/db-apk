@@ -205,25 +205,27 @@ public final class Starter {
                     String.valueOf(t));
         }
 
-        // ---------- 2b) default LOGIN LOKAL: config/servers.json (PR3 0.4.0) ----------
-        // Dibawa APK (assets/server/login/servers.json = snapshot ASLI daftar server
-        // login.popoh5.com, hasil probe §2.10) — diekstrak SEKALI; file yang sudah
-        // ada TIDAK ditimpa (boleh diubah pemilik tanpa rebuild).
-        // 0.4.5: rinciannya TEKNIS — ringkasan guest+server masuk baris "Server siap".
+        // ---------- 2b) CONFIG OFFLINE MANUAL (0.5.3) + data login lokal ----------
+        // Dua jalur 100% terpisah (owner: "online tebaca itu cuma jadikan jejak arah
+        // bukan untuk dijadikan config asli ke offline"):
+        //   - config-offline/ = paket MANUAL bawaan APK (setting.json + bin XOR,
+        //     serversetting, servers.json 1 entri lokal) — SELALU ditimpa: kanonik.
+        //   - config/ = data transaksional (dragonball.db, server.json, status.json)
+        //     — snapshot online TIDAK lagi disalin ke sini.
         String guestNote = "?";
         int serverCountN = 0;
         try {
             File confDir = new File(root, "config");
-            String note = Payload.extractLoginDefaults(appCtx, confDir);
-            if (note != null) {
-                HumanLog.evTech("💾", "Default login lokal siap — " + note, null);
+            String offlineNote = Payload.extractOfflineConfig(appCtx, root);
+            if (offlineNote != null) {
+                HumanLog.evTech("💾", "Config OFFLINE manual siap — " + offlineNote, null);
             }
-            LoginData.init(confDir);
+            LoginData.init(confDir, new File(root, "config-offline"));
             SdkData.init(confDir);
             guestNote = LoginData.localUserId();
             serverCountN = LoginData.serverCount();
         } catch (Throwable t) {
-            HumanLog.ev("⚠️", "Persiapan data login lokal gagal — server login tetap dicoba hidup",
+            HumanLog.ev("⚠️", "Persiapan config offline + data login lokal gagal — server login tetap dicoba hidup",
                     String.valueOf(t));
         }
         // baris boot inti kini SATU baris 🚀 berrinci setelah semua port hidup (0.4.9).

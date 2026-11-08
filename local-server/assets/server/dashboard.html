@@ -5,15 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DB LOCAL · Dasbor</title>
 <style>
-  /* 0.4.9 — LOG EMOJI + BLOK RINCIAN (permintaan owner: "emoji sudah bagus,
-     hanya saja masih kurang rinci" + "ingat gak boleh disingkat"):
-     • Ikon emoji per kategori: 🚀 siap · 👤 pemain · 🔑 sesi · 📡 koneksi ·
-       ✅ sukses · ⚠️ masalah · ❌ terhenti · 📋 daftar server · 💾 data · 🧹 mirror.
-     • Tiap baris penting membawa BLOK RINCIAN (fakta nyata: ms, byte, uid,
-       sumber, sebab, akibat) — tampil penuh sebagai pohon ├─/└─, TIDAK
-       dipangkas, di dasbor & hasil Copy.
-     • Teks diperbesar & kontras dinaikkan (dulu abu-abu tipis).
-     • 0.4.8 — alur linear satu kejadian satu baris; batch = grup Σ lipat. */
+  /* 0.5.3 — DASBOR SATU LAYAR (owner: "kebanyakan tab semua di pisahkan malah
+     bikin kacau" + "log yg jelas rinci itu penting"):
+     • SATU kolom log kronologis — alur login penuh tidak dipecah tab/grup.
+     • Seksi REKAM DIHAPUS — CONFIG bukan rekam jejak.
+     • Jalur [OFFLINE]/[ONLINE] terlihat jelas di kepala + garis config akar;
+       bingkai log ikut warna jalur (hijau = OFFLINE manual, kuning = ONLINE).
+     • Grup batch (req/404/pass) tetap ada sebagai Σ lipat di bawah — aktivitas
+       per-file tidak membanjiri alur (kesepakatan 0.4.6).
+     • Ikon + blok rincian ├─/└─ tampil penuh (0.4.9 — tidak dipangkas). */
   :root{
     --bg:#0c0a09; --card:#1c1917; --line:#292524; --tx:#fafaf9; --mut:#a8a29e;
     --det:#d6d3d1;
@@ -44,35 +44,20 @@
     background:#7f1d1d33; color:var(--err); border:1px solid var(--line);
   }
   .pill.up{background:#064e3b33; color:var(--ok)}
-  main{flex:1; padding:10px 14px 18px; max-width:900px; width:100%; margin:0 auto}
+  main{flex:1; padding:10px 14px 18px; max-width:960px; width:100%; margin:0 auto}
 
-  /* ---- panel status: tiga keadaan inti, jawaban "apakah semua baik-baik saja" ---- */
-  #tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:10px 0 6px}
-  @media(max-width:560px){ #tiles{grid-template-columns:1fr 1fr} #tiles .tile:first-child{grid-column:1/-1} }
-  .tile{
-    background:var(--card); border:1px solid var(--line); border-radius:12px;
-    padding:10px 12px; min-height:44px;
-  }
-  .tile .k{font-size:10.5px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
-  .tile .v{font-size:14.5px; font-weight:700; margin-top:2px; word-break:break-all}
-  .tile .v .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px; background:var(--mut); vertical-align:1px}
-  .tile.up .v .dot{background:var(--ok)}
-  .tile.down .v{color:var(--err)}
-  .tile.down .v .dot{background:var(--err)}
-  #strip{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px; color:var(--mut); padding:2px 2px 10px}
+  /* ---- satu baris status + satu baris jalur config (config akar) ---- */
+  #strip{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px; color:var(--mut); padding:6px 2px 2px}
   #strip b{color:var(--tx); font-weight:600}
-  /* 0.4.7 — peta arah koneksi: jawaban tetap "apa yang lokal, apa yang asli"
-     (pertanyaan berulang owner: "isi config loginserver masih mengarah ke
-     server aslinya?") — selalu terlihat, bukan terlipat */
-  #modemap{
-    margin:0 0 8px; font-size:12.5px; color:var(--mut); line-height:1.55;
+  #cfgline{
+    margin:6px 0 10px; font-size:12.5px; color:var(--mut); line-height:1.55;
     background:var(--card); border:1px solid var(--line); border-radius:9px; padding:7px 11px;
   }
-  #modemap b{color:var(--ok); font-weight:700}
-  #modemap .asli{color:var(--warn)}
+  #cfgline b{color:var(--ok); font-weight:700}
+  #cfgline .asli{color:var(--warn)}
 
-  /* ---- toolbar & log linear (alur) ---- */
-  .toolbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin:6px 0 8px}
+  /* ---- toolbar & SATU kolom log kronologis ---- */
+  .toolbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin:4px 0 8px}
   .chip{
     min-height:38px; padding:6px 12px; border-radius:999px; border:1px solid var(--line);
     background:var(--card); color:var(--mut); font-weight:600; font-size:12.5px; cursor:pointer;
@@ -85,11 +70,12 @@
   }
   button.act:active{transform:translateY(1px)}
   #logbox{
-    background:var(--code); border:1px solid var(--line); border-radius:10px;
+    background:var(--code); border:1px solid var(--ok); border-radius:10px;
     font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    max-height:52vh; overflow-y:auto; word-break:break-word;
+    max-height:64vh; overflow-y:auto; word-break:break-word;
     -webkit-overflow-scrolling:touch;
   }
+  #logbox.online{border-color:var(--warn)}
   .logrow{display:flex; gap:8px; padding:4px 10px; border-bottom:1px solid var(--line); align-items:baseline}
   .logrow:last-child{border-bottom:none}
   .logrow:hover{background:rgba(128,128,128,.08)}
@@ -99,8 +85,6 @@
   .logtime{color:var(--mut); flex:none; font-size:11px}
   .logic{flex:none; width:22px; text-align:center; font-size:14px}
   .logtext{flex:1; min-width:0}
-  /* 0.4.9 — blok rincian penuh sebagai pohon ├─/└─: teks lebih besar & kontras
-     lebih tinggi (dulu kecil abu-abu sulit dibaca); TIDAK pernah dipangkas */
   .logdetail{display:block; color:var(--det); font-size:11.5px; line-height:1.55;
     white-space:pre-wrap; word-break:break-word; margin-top:2px; overflow-wrap:anywhere}
   .logempty{padding:12px 10px; color:var(--mut)}
@@ -127,7 +111,7 @@
   .grpdur{flex:none; color:var(--mut); font-size:10.5px}
   .grpitems{
     display:none; border-top:1px solid var(--line);
-    max-height:45vh; overflow-y:auto;
+    max-height:40vh; overflow-y:auto;
     font:11px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
   .grp.open .grpitems{display:block}
@@ -140,51 +124,6 @@
   .itrow.bad .ittext{color:var(--err)}
   .grempty{padding:8px 12px; color:var(--mut)}
 
-  /* ---- 0.5.0 REKAM — payload mentah semua lapisan (HttpCanary gaya lokal:
-       trafik loopback terlihat 100%, payload didekode, config asli jadi file) ---- */
-  .rkbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin:16px 0 4px}
-  .rktitle{font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--mut); font-weight:700}
-  .rkcount{margin-left:auto; font-size:10.5px; color:var(--mut)}
-  #rekambox{
-    background:var(--code); border:1px solid var(--line); border-radius:10px;
-    font:11.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    max-height:46vh; overflow-y:auto; word-break:break-word;
-    -webkit-overflow-scrolling:touch;
-  }
-  .rkrow{display:flex; gap:8px; padding:4px 10px; border-bottom:1px solid var(--line); align-items:baseline; cursor:pointer}
-  .rkrow:hover{background:rgba(128,128,128,.08)}
-  .rktime{color:var(--mut); flex:none; font-size:10.5px}
-  .rkdir{flex:none; width:16px; text-align:center; font-weight:700}
-  .rkdir.in{color:var(--warn)} .rkdir.out{color:var(--ok)}
-  .rklayer{flex:none; padding:0 7px; border-radius:999px; border:1px solid var(--line); font-size:9.5px; font-weight:700; color:var(--mut); letter-spacing:.5px}
-  .rkname{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600}
-  .rksize{flex:none; color:var(--mut); font-size:10px}
-  .rkms{flex:none; color:var(--mut); font-size:10px; width:52px; text-align:right}
-  .rkdet{display:none; padding:8px 12px 10px; border-bottom:1px solid var(--line); background:rgba(0,0,0,.25)}
-  .rkdet.open{display:block}
-  .rkdet pre{margin:6px 0 8px; white-space:pre-wrap; word-break:break-word; font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--det); max-height:40vh; overflow-y:auto}
-  .rkmeta{color:var(--mut); font-size:10.5px}
-  .rkempty{padding:12px 10px; color:var(--mut)}
-
-  /* ---- data teknis (dilipat — bukti tersedia, tidak menutupi) ---- */
-  details.datacard{
-    background:var(--card); border:1px solid var(--line); border-radius:12px;
-    margin-top:12px; padding:0;
-  }
-  details.datacard summary{
-    cursor:pointer; padding:11px 14px; font-weight:600; font-size:13.5px; color:var(--mut);
-  }
-  .databody{padding:0 14px 12px}
-  .card{margin-bottom:10px}
-  .card h2{margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--mut)}
-  .kv{display:grid; grid-template-columns:auto 1fr; gap:3px 14px; font-size:13px}
-  .kv b{color:var(--mut); font-weight:600; white-space:nowrap}
-  .dot2{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; background:var(--mut)}
-  .dot2.up{background:var(--ok)} .dot2.down{background:var(--err)}
-  table{width:100%; border-collapse:collapse; font-size:12.5px}
-  th{text-align:left; color:var(--mut); font-weight:600; padding:5px 6px; border-bottom:1px solid var(--line)}
-  td{padding:6px 6px; border-bottom:1px solid var(--line); vertical-align:top; word-break:break-all}
-  tr:last-child td{border-bottom:none}
   footer{
     margin-top:auto; padding:12px 14px calc(12px + env(safe-area-inset-bottom));
     border-top:1px solid var(--line); color:var(--mut); font-size:12px; text-align:center;
@@ -199,30 +138,19 @@
   <span class="pill" id="pill">menyambung…</span>
 </header>
 <main>
-  <!-- ===== panel status: jawaban "apakah semuanya baik-baik saja" ===== -->
-  <div id="tiles">
-    <div class="tile" id="tile-game">
-      <div class="k">Port game</div>
-      <div class="v"><span class="dot"></span><span class="t">…</span></div>
-    </div>
-    <div class="tile" id="tile-login">
-      <div class="k">Server login</div>
-      <div class="v"><span class="dot"></span><span class="t">…</span></div>
-    </div>
-    <div class="tile" id="tile-sesi">
-      <div class="k">Sesi pemain</div>
-      <div class="v"><span class="t">…</span></div>
-    </div>
-  </div>
-  <!-- ===== peta arah koneksi (0.4.7): apa yang lokal, apa yang asli ===== -->
-  <div id="modemap">Config login (bin + serversetting): <b>selalu menunjuk server lokal</b> (semua mode) · LOCAL: login &amp; akun <b>LOKAL :<span id="m-login">…</span></b> · ONLINE: login <b>diteruskan utuh ke server asli lewat server lokal</b> · Gameplay: <span class="asli"><b>server game asli</b> (progres tersimpan di sana)</span></div>
+  <!-- ===== satu baris status inti ===== -->
   <div id="strip">
-    <span>www/ <b id="s-www">…</b></span>
+    <span>game <b id="s-game">…</b></span>
+    <span>login <b id="s-login">…</b></span>
+    <span>sesi <b id="s-sesi">…</b></span>
     <span>akun <b id="s-acc">…</b></span>
+    <span>www/ <b id="s-www">…</b></span>
     <span>uptime <b id="s-up">…</b></span>
   </div>
+  <!-- ===== SATU baris jalur config (config akar — selalu terlihat) ===== -->
+  <div id="cfgline">memuat jalur config…</div>
 
-  <!-- ===== alur: baris penting linear ===== -->
+  <!-- ===== SATU kolom log kronologis (alur penuh, tidak dipecah) ===== -->
   <div class="toolbar">
     <button class="chip on" id="f-all">Semua</button>
     <button class="chip" id="f-warn">⚠ saja</button>
@@ -233,88 +161,15 @@
   </div>
   <div id="logbox">(memuat log…)</div>
 
-  <!-- ===== grup batch: lipat, judul = statistik hidup ===== -->
+  <!-- ===== grup batch Σ (lipat — aktivitas per-file tidak membanjiri alur) ===== -->
   <div id="grouphdr">Aktivitas batch — klik untuk rincian per-file</div>
   <div id="groups"></div>
-
-  <!-- ===== 0.5.0 REKAM — payload mentah semua lapisan. HttpCanary cuma jejak;
-       ini CONFIG ASLINYA: setting bin didekripsi, body SDK didekode, serverlist
-       utuh, jawaban /v1 server asli (ONLINE) — tersimpan capture/payload/ ===== -->
-  <div class="rkbar">
-    <span class="rktitle">📼 REKAM · payload mentah</span>
-    <span class="rkcount" id="rk-count"></span>
-    <button class="chip" id="rk-toggle">⏺ ON</button>
-    <button class="act" id="rk-probe">Tes server game</button>
-    <button class="act" id="rk-dl">Unduh</button>
-    <button class="act" id="rk-clear">Bersihkan</button>
-  </div>
-  <div class="toolbar">
-    <button class="chip on" id="rk-l-all">semua</button>
-    <button class="chip" id="rk-l-login">login</button>
-    <button class="chip" id="rk-l-sdk">sdk</button>
-    <button class="chip" id="rk-l-game">game</button>
-    <button class="chip" id="rk-dir">arah: semua</button>
-    <input id="rk-q" class="act" placeholder="cari nama/isi…" style="flex:1; min-width:110px; color:var(--tx)">
-  </div>
-  <div id="rekambox"><div class="rkempty">REKAM menyala otomatis — mainkan alurnya (layar SDK → login → pilih server), lalu klik baris untuk payload utuh + tombol Salin.</div></div>
-
-  <!-- ===== bukti teknis (dilipat, tidak menutupi) ===== -->
-  <details class="datacard">
-    <summary>Data &amp; jaringan (rincian teknis)</summary>
-    <div class="databody">
-      <div class="card">
-        <h2>Ke mana koneksi mengarah (semua mode — 0.5.1)</h2>
-        <div class="kv">
-          <b>Config login (setting bin + serversetting.json)</b><span><b>SELALU ditulis-ulang ke server lokal</b> saat disajikan — di LOCAL maupun ONLINE (0.5.1: klien tidak pernah langsung ke login.popoh5.com)</span>
-          <b>Mode LOCAL</b><span>konten game = mirror <b>www/</b> · login &amp; akun = <b>LOKAL :<span id="e-login">…</span></b> (layar SDK, loginchecknative, loginGame, GetServerList — akun di dragonball.db) · daftar server = snapshot asli</span>
-          <b>Mode ONLINE</b><span>file game = passthrough ke server asli · seluruh tahap login (SDK → loginchecknative → socket.io loginGame/GetServerList) = <b>diteruskan utuh (byte-per-byte) ke server asli LEWAT server lokal</b> — token &amp; daftar dari SERVER ASLI (progres tetap di sana), alurnya terlihat di log</span>
-          <b>Gameplay</b><span><b>server game ASLI</b> pilihan pemain (s&lt;N&gt;-bs.popoh5.com) — progres/keselamatan data ada di server asli; server lokal tidak menjalankan logika game</span>
-        </div>
-      </div>
-      <div class="card">
-        <h2>Server asli (jaringan)</h2>
-        <table><tbody id="origbody"><tr><td style="color:var(--mut)">memuat…</td></tr></tbody></table>
-      </div>
-      <div class="card">
-        <h2>Data lokal (dragonball.db)</h2>
-        <div class="kv">
-          <b>Akun</b><span id="d-acc">…</span>
-          <b>Perangkat tamu</b><span id="d-dev">…</span>
-          <b>Server game</b><span id="d-srv">…</span>
-        </div>
-      </div>
-      <div class="card">
-        <h2>6 permintaan game terakhir</h2>
-        <table>
-          <thead><tr><th>Path</th><th>St</th><th>Lama</th></tr></thead>
-          <tbody id="lastbody"><tr><td colspan="3" style="color:var(--mut)">belum ada</td></tr></tbody>
-        </table>
-      </div>
-      <div class="card">
-        <h2>Identitas</h2>
-        <div class="kv">
-          <b>Root</b><span id="t-root">…</span>
-          <b>Port</b><span id="t-port">…</span>
-          <b>Permintaan</b><span id="t-req">…</span>
-        </div>
-      </div>
-      <div class="card">
-        <h2>Isi www/</h2>
-        <details>
-          <summary id="wwwsum">tampilkan daftar file…</summary>
-          <div style="max-height:40vh; overflow-y:auto; margin-top:6px">
-            <table><tbody id="wwwbody"><tr><td style="color:var(--mut)">—</td></tr></tbody></table>
-          </div>
-        </details>
-      </div>
-    </div>
-  </details>
 </main>
 <footer>
-  Alur = 🚀 siap · 👤 pemain · 🔑 sesi · 📡 koneksi · 🔌 putus sesi (normal) · ✅ sukses · ⚠️ masalah · ❌ terhenti · 📋 daftar server · 💾 data · 🧹 mirror ·
+  Alur = 🚀 siap · 👤 pemain · 🔑 sesi · 📡 koneksi · 🔌 putus sesi (normal) · ✅ sukses ·
+  ⚠️ masalah · ❌ terhenti · 📋 daftar server · 📦 config akar · 💾 data · ℹ️ info ·
   rincian tiap baris tampil penuh (├─/└─) · batch = grup Σ lipat ·
-  📼 REKAM = payload mentah + config asli di <b>capture/payload/</b> ·
-  login = lokal · gameplay = server game asli (progres di sana) ·
+  OFFLINE = config manual config-offline/ · ONLINE = passthrough server asli ·
   log penuh di <b>logs/human.log</b>
 </footer>
 
@@ -350,73 +205,39 @@
     });
   }
 
-  // ---------- panel status + strip ----------
+  // ---------- status + SATU baris jalur config ----------
   function renderStatus(s){
     var sv = s.server || {};
     $("ver").textContent = "v" + (sv.version || "?");
     $("pill").textContent = sv.alive ? "HIDUP" : "MATI";
     $("pill").className = "pill" + (sv.alive ? " up" : "");
     var mode = String(sv.mode || "?");
+    var offline = (mode === "local");
     var mb = $("modebadge");
-    mb.textContent = "MODE " + mode.toUpperCase();
-    mb.className = "badge" + (mode === "local" ? " mode-local" : (mode === "online" ? " mode-online" : ""));
+    mb.textContent = offline ? "OFFLINE · config manual" : "ONLINE · jalur server asli";
+    mb.className = "badge" + (offline ? " mode-local" : " mode-online");
+    var lb = $("logbox");
+    if(lb) lb.className = offline ? "" : "online";
 
-    tile("tile-game", sv.gameAlive, "game :" + sv.gamePort + (sv.gameAlive ? " siap" : " MATI"));
-    tile("tile-login", sv.loginAlive, "login :" + sv.loginPort + (sv.loginAlive ? " siap" : " MATI"));
-    // 0.4.7 — peta arah koneksi (modemap + kartu lipat)
-    var lp = sv.loginPort || "?";
-    $("m-login").textContent = lp;
-    $("e-login").textContent = lp;
-    $("e-login2").textContent = lp;
-    $("e-srv").textContent = (sv.loginServers || 0)
-      + " server — snapshot ASLI bawaan APK (sengaja; dapat diganti lewat config/servers.json)";
-    var uid = sv.sdkUid || sv.sdkGuest || sv.loginUser || "belum masuk";
-    var ts = $("tile-sesi").querySelector(".v .t");
-    ts.textContent = uid;
-    $("tile-sesi").className = "tile" + ((sv.sdkUid || sv.sdkGuest) ? " up" : "");
-
-    $("s-www").textContent = (sv.wwwFiles || 0) + " file · " + fmtBytes(sv.wwwBytes || 0);
+    $("s-game").textContent = ":" + sv.gamePort + (sv.gameAlive ? " ✓" : " ✗");
+    $("s-login").textContent = ":" + sv.loginPort + (sv.loginAlive ? " ✓" : " ✗");
+    $("s-sesi").textContent = sv.sdkUid || sv.sdkGuest || sv.loginUser || "belum masuk";
     $("s-acc").textContent = sv.loginAccounts || 0;
+    $("s-www").textContent = (sv.wwwFiles || 0) + " file · " + fmtBytes(sv.wwwBytes || 0);
     $("s-up").textContent = fmtUptime(sv.uptimeMs);
 
-    // --- dalam lipatan Data & jaringan ---
-    $("d-acc").textContent = (sv.loginAccounts || 0) + " akun";
-    $("d-dev").textContent = (sv.sdkDevices || 0) + " perangkat";
-    $("d-srv").textContent = (sv.loginServers || 0) + " server (snapshot asli)";
-    $("t-root").textContent = sv.root || "?";
-    $("t-port").textContent = "game " + sv.gamePort + " · login " + sv.loginPort + " · dasbor " + sv.port;
-    $("t-req").textContent = (sv.requests || 0) + " · gagal " + (sv.errors || 0);
-
-    var ob = $("origbody");
-    if(s.original && s.original.length){
-      ob.innerHTML = s.original.map(function(o){
-        return "<tr><td><span class='dot2 " + (o.ok ? "up" : "down") + "'></span>" + esc(o.target)
-          + "</td><td style='white-space:nowrap'>" + (o.latencyMs >= 0 ? fmtMs(o.latencyMs) : "gagal")
-          + "</td></tr>";
-      }).join("");
-    }
-
-    var arr = (s.last || []).slice(0, 6);
-    var tb = $("lastbody");
-    if(!arr.length){
-      tb.innerHTML = "<tr><td colspan='3' style='color:var(--mut)'>belum ada permintaan game</td></tr>";
-    } else {
-      tb.innerHTML = arr.map(function(p){
-        var col = (p.s >= 200 && p.s < 400) ? "var(--ok)" : (p.s === 404 ? "var(--warn)" : "var(--err)");
-        return "<tr><td>" + esc(p.p) + "</td><td style='color:" + col + ";font-weight:700'>" + p.s
-          + "</td><td>" + fmtMs(p.ms) + "</td></tr>";
-      }).join("");
-    }
-
+    // SATU baris config akar — dari mana config datang & ke mana menunjuk:
+    // OFFLINE = paket manual config-offline/ (bukan turunan online);
+    // ONLINE  = config dari server asli (passthrough), jalur login lewat lokal.
+    $("cfgline").innerHTML = offline
+      ? "<b>OFFLINE — CONFIG MANUAL</b> (paket <b>config-offline/</b>: setting.json + bin XOR + "
+        + "serversetting + servers.json) · loginServer 127.0.0.1:" + (sv.loginPort || "?")
+        + " · daftar server 1 entri \"Server Lokal\" → url 127.0.0.1:" + (sv.gamePort || "?")
+        + " (klik Play masuk server game lokal) · TIDAK ada unduhan dari server asli"
+      : "ONLINE — config dari <span class='asli'>SERVER ASLI</span> (passthrough) · jalur login ditulis-ulang "
+        + "ke server lokal :" + (sv.loginPort || "?") + " lalu diteruskan utuh ke login.popoh5.com:610 · "
+        + "daftar server &amp; token dari server asli (progres pemain di sana)";
     $("t-tech").classList.toggle("on", !!sv.logTech);
-    // 0.5.0 REKAM — status perekam + hitungan entri
-    rkState(sv.rekam !== undefined ? !!sv.rekam : true);
-    $("rk-count").textContent = sv.rekamCount ? (sv.rekamCount + " entri terekam") : "";
-  }
-  function tile(id, ok, text){
-    var el = $(id);
-    el.className = "tile " + (ok ? "up" : "down");
-    el.querySelector(".v .t").textContent = text;
   }
 
   function pollStatus(){
@@ -426,9 +247,7 @@
     });
   }
 
-  // ---------- log linear (alur penting) ----------
-  // 0.4.9 — blok rincian dirender sebagai pohon ├─/└─ PENUH (tidak dipangkas),
-  // bentuk sama dengan human.log & hasil Copy.
+  // ---------- SATU kolom log (alur penting, blok rincian penuh) ----------
   function treeify(detail){
     var lines = String(detail).split(/\n/);
     var out = "";
@@ -521,8 +340,6 @@
       return;
     }
     hdr.className = "show";
-    // grup baru muncul / lama hilang → render ulang kerangka; selain itu
-    // cukup perbarui statistik judul + isi grup yang sedang dibuka.
     var sig = list.map(function(g){ return g.id + ":" + g.count + ":" + g.fail; }).join("|");
     var itemsChanged = false;
     list.forEach(function(g){
@@ -552,7 +369,6 @@
           + "</div>";
       }).join("");
     } else {
-      // statistik judul hidup tanpa render ulang (tidak mengganggu yang dibuka)
       list.forEach(function(g){
         var el = box.querySelector(".grp[data-g='" + g.id + "'] .grpstat");
         if(el) el.innerHTML = grpStatLine(g);
@@ -569,14 +385,13 @@
   function pollGroups(){
     fetch("/api/groups").then(function(r){ return r.json(); }).then(renderGroups).catch(function(){});
   }
-  // klik judul grup = buka/tutup (delegasi — daftar bisa terganti kapan saja)
   $("groups").addEventListener("click", function(ev){
     var hdr = ev.target.closest(".grphdr");
     if(!hdr) return;
     var wrap = hdr.parentElement, id = wrap.dataset.g;
     grpOpen[id] = !grpOpen[id];
     wrap.classList.toggle("open", grpOpen[id]);
-    pollGroups(); // ambil rincian segera
+    pollGroups();
   });
 
   // ---------- tombol ----------
@@ -592,10 +407,10 @@
       setTimeout(function(){ btn.textContent = label; }, 1500);
     });
   }
-  // Copy = cerita utk ditempel — 0.4.9 format rapi & RINCIAN PENUH:
+  // Copy = cerita utk ditempel — format rapi & RINCIAN PENUH (0.4.9):
   //   alur   : "09:40:34 ✅ Login game sukses — akun lama"
   //   detail : blok pohon ├─/└─ tiap baris (TIDAK digabung/dipangkas)
-  //   grup Σ : "09:41:20 Σ Mirror CDN — 105 file · 2,4 MB · 0 gagal (3,9 dtk)"
+  //   grup Σ : "09:41:20 Σ Request game — 105 file · 2,4 MB · 0 gagal (3,9 dtk)"
   function copyRow(n){
     if(!n.dataset || n.dataset.text === undefined) return n.textContent || "";
     var line = [n.dataset.time, n.dataset.icon, n.dataset.text].filter(Boolean).join(" ");
@@ -642,153 +457,12 @@
     }).catch(function(){});
   });
 
-  // ---------- daftar www/ (dalam lipatan; dimuat saat dibuka pertama kali) ----------
-  var wwwLoaded = false;
-  $("wwwsum").addEventListener("click", function(){
-    if(wwwLoaded) return;
-    fetch("/api/www/list").then(function(r){ return r.json(); }).then(function(j){
-      wwwLoaded = true;
-      $("wwwsum").textContent = j.count + " file · " + fmtBytes(j.bytes);
-      $("wwwbody").innerHTML = (j.files || []).map(function(f){
-        return "<tr><td>" + esc(f.p) + "</td><td style='white-space:nowrap'>" + fmtBytes(f.s) + "</td></tr>";
-      }).join("") || "<tr><td style='color:var(--mut)'>www/ kosong</td></tr>";
-    }).catch(function(){
-      $("wwwbody").innerHTML = "<tr><td style='color:var(--err)'>gagal memuat</td></tr>";
-    });
-  });
-
-  // ---------- 0.5.0 REKAM — payload mentah semua lapisan ----------
-  var rkSince = 0, rkLoaded = false, rkLayer = "all", rkDirMode = 0, rkQ = "", rkLastId = 0;
-  function rkDirClass(d){ return d === "→" ? "in" : "out"; }
-  function rkPass(e){
-    if(rkLayer !== "all" && e.l !== rkLayer) return false;
-    if(rkDirMode === 1 && e.d !== "→") return false;
-    if(rkDirMode === 2 && e.d !== "←") return false;
-    if(rkQ){
-      var hay = ((e.n||"")+" "+(e.i||"")+" "+(e.p||"")).toLowerCase();
-      if(hay.indexOf(rkQ) < 0) return false;
-    }
-    return true;
-  }
-  function pollRekam(){
-    fetch("/api/rekam?since=" + rkSince).then(function(r){ return r.json(); }).then(function(arr){
-      var box = $("rekambox");
-      if(!rkLoaded){ rkLoaded = true; box.textContent = ""; }
-      if(!arr.length) return;
-      var atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
-      var frag = document.createDocumentFragment();
-      arr.forEach(function(e){
-        rkSince = Math.max(rkSince, e.id);
-        rkLastId = Math.max(rkLastId, e.id);
-        var wrap = document.createElement("div");
-        wrap.dataset.id = e.id;
-        wrap.dataset.layer = e.l || "";
-        wrap.dataset.dir = e.d || "";
-        wrap.dataset.hay = ((e.n||"")+" "+(e.i||"")+" "+(e.p||"")).toLowerCase();
-        var row = document.createElement("div"); row.className = "rkrow";
-        var tm = document.createElement("span"); tm.className = "rktime"; tm.textContent = e.t || "";
-        var dr = document.createElement("span"); dr.className = "rkdir " + rkDirClass(e.d); dr.textContent = e.d || "·";
-        var ly = document.createElement("span"); ly.className = "rklayer"; ly.textContent = e.l || "";
-        var nm = document.createElement("span"); nm.className = "rkname"; nm.textContent = (e.n || "") + (e.i ? "  ·  " + e.i : "");
-        var sz = document.createElement("span"); sz.className = "rksize"; sz.textContent = e.s ? fmtBytes(e.s) : "";
-        var ms = document.createElement("span"); ms.className = "rkms"; ms.textContent = (e.ms > 0 ? fmtMs(e.ms) : "");
-        row.appendChild(tm); row.appendChild(dr); row.appendChild(ly); row.appendChild(nm); row.appendChild(sz); row.appendChild(ms);
-        var det = document.createElement("div"); det.className = "rkdet";
-        det.innerHTML = "<div class='rkmeta'>" + esc(e.i || "") + (e.f ? " · file: " + esc(e.f) : "") + "</div>"
-          + "<pre>" + esc(e.p || "(tanpa payload)") + (e.cut ? "\n… (terpotong — klik Salin untuk payload utuh)" : "") + "</pre>"
-          + "<button class='act' style='min-height:30px'>Salin payload utuh</button>";
-        det.querySelector("button").addEventListener("click", function(ev){
-          ev.stopPropagation();
-          var btn = this;
-          fetch("/api/rekam/payload?id=" + e.id).then(function(r){ return r.text(); }).then(function(t){
-            copyText(t, btn, "Salin payload utuh");
-          }).catch(function(){ btn.textContent = "gagal"; });
-        });
-        row.addEventListener("click", function(){ det.classList.toggle("open"); });
-        wrap.appendChild(row); wrap.appendChild(det);
-        wrap.style.display = rkPass(e) ? "" : "none";
-        frag.appendChild(wrap);
-      });
-      box.appendChild(frag);
-      while(box.childNodes.length > 800) box.removeChild(box.firstChild);
-      if(atEnd) box.scrollTop = box.scrollHeight;
-    }).catch(function(){});
-  }
-  function rkApplyFilter(){
-    document.querySelectorAll("#rekambox > div").forEach(function(n){
-      var pass = (rkLayer === "all" || n.dataset.layer === rkLayer)
-        && (rkDirMode === 0 || (rkDirMode === 1 ? n.dataset.dir === "→" : n.dataset.dir === "←"))
-        && (!rkQ || (n.dataset.hay || "").indexOf(rkQ) >= 0);
-      n.style.display = pass ? "" : "none";
-    });
-    $("rk-l-all").classList.toggle("on", rkLayer === "all");
-    $("rk-l-login").classList.toggle("on", rkLayer === "login");
-    $("rk-l-sdk").classList.toggle("on", rkLayer === "sdk");
-    $("rk-l-game").classList.toggle("on", rkLayer === "game");
-  }
-  $("rk-l-all").addEventListener("click", function(){ rkLayer = "all"; rkApplyFilter(); });
-  $("rk-l-login").addEventListener("click", function(){ rkLayer = "login"; rkApplyFilter(); });
-  $("rk-l-sdk").addEventListener("click", function(){ rkLayer = "sdk"; rkApplyFilter(); });
-  $("rk-l-game").addEventListener("click", function(){ rkLayer = "game"; rkApplyFilter(); });
-  $("rk-dir").addEventListener("click", function(){
-    rkDirMode = (rkDirMode + 1) % 3;
-    this.textContent = rkDirMode === 0 ? "arah: semua" : (rkDirMode === 1 ? "arah: → masuk" : "arah: ← keluar");
-    this.classList.toggle("on", rkDirMode !== 0);
-    rkApplyFilter();
-  });
-  $("rk-q").addEventListener("input", function(){ rkQ = this.value.trim().toLowerCase(); rkApplyFilter(); });
-  function rkState(on){
-    var b = $("rk-toggle");
-    if(!b) return;
-    b.textContent = on ? "⏺ ON" : "⏸ OFF";
-    b.classList.toggle("on", !!on);
-  }
-  $("rk-toggle").addEventListener("click", function(){
-    var next = !$("rk-toggle").classList.contains("on");
-    fetch("/api/rekam/toggle?on=" + (next ? "1" : "0")).then(function(){ rkState(next); pollStatus(); }).catch(function(){});
-  });
-  $("rk-clear").addEventListener("click", function(){
-    fetch("/api/rekam/clear").then(function(){
-      $("rekambox").innerHTML = "";
-      rkLoaded = true;
-      rkSince = rkLastId; // jangan tarik ulang entri lama dari ring
-    }).catch(function(){});
-  });
-  $("rk-dl").addEventListener("click", function(){
-    fetch("/api/rekam/download").then(function(r){ return r.text(); }).then(function(t){
-      try {
-        var blob = new Blob([t], {type: "text/plain"});
-        var a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "rekam.jsonl";
-        document.body.appendChild(a); a.click(); a.remove();
-      } catch(e){
-        copyText(t, $("rk-dl"), "Unduh");
-      }
-    }).catch(function(){});
-  });
-  $("rk-probe").addEventListener("click", function(){
-    var b = $("rk-probe");
-    b.textContent = "menguji…";
-    b.disabled = true;
-    fetch("/api/rekam/probe").then(function(r){ return r.json(); }).then(function(){
-      b.textContent = "Tes server game";
-      b.disabled = false;
-      pollStatus();
-    }).catch(function(){
-      b.textContent = "Tes server game";
-      b.disabled = false;
-    });
-  });
-
   pollStatus();
   pollLog();
   pollGroups();
-  pollRekam();
   setInterval(pollStatus, 3000);
-  setInterval(pollLog, 3000);
+  setInterval(pollLog, 2000);
   setInterval(pollGroups, 3000);
-  setInterval(pollRekam, 3000);
 })();
 </script>
 </body>

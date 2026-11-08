@@ -388,12 +388,13 @@ public final class LoginServer extends NanoHTTPD {
             boolean dup = (nowMs - lastServerListLogAt) < 600000L;
             lastServerListLogAt = nowMs;
             if (!dup) {
-                HumanLog.ev("📋", "Daftar server terkirim — " + LoginData.serverCount() + " server",
-                        "Sumber   : snapshot bawaan APK (config/servers.json) — disajikan server lokal, bukan diambil dari server asli\n"
+                HumanLog.ev("📋", "Daftar server terkirim — " + LoginData.serverCount() + " server (paket MANUAL)",
+                        "Sumber   : config-offline/servers.json — paket CONFIG OFFLINE MANUAL bawaan APK\n"
+                                + "           (bukan snapshot online — owner: online cuma jejak arah, bukan config asli offline)\n"
+                                + "Tujuan   : url tiap entri = 127.0.0.1:" + Config.gamePort()
+                                + " — klik Play masuk SERVER GAME LOKAL\n"
                                 + "Ukuran   : " + HumanLog.fmtBytes(data.length()) + " · " + HumanLog.fmtMs(ms)
-                                + " · pemain sekarang di layar pilih server\n"
-                                + "Lanjutan : pemain pilih server → gameplay LANGSUNG ke server game asli pilihan pemain"
-                                + " (koneksi gameplay tidak lewat server lokal — wajar log tidak menambah baris di tahap ini)");
+                                + " · pemain sekarang di layar pilih server");
             }
         } else if ("LoginAnnounce".equals(action)) {
             data = "{}";
@@ -446,9 +447,9 @@ public final class LoginServer extends NanoHTTPD {
             HumanLog.ev("🔌", "Klien menutup sesi login — normal setelah pilih server (pindah ke server game)",
                     "Sesi     : " + s.sid.substring(0, 6) + "… · hidup " + HumanLog.fmtMs(age) + "\n"
                             + "Terakhir : " + (act == null ? "(belum ada aksi — hanya handshake)" : act) + "\n"
-                            + "Lanjutan : klien io.connect LANGSUNG ke url server pilihan pemain"
-                            + " (https://sXXXX-bs.popoh5.com — di luar server lokal; alurnya masuk tab"
-                            + " REKAM saat proxy gameplay 0.5.1 aktif)");
+                            + "Lanjutan : klien io.connect ke url entri daftar server — di OFFLINE = "
+                            + "http://127.0.0.1:" + Config.gamePort()
+                            + " (server game lokal; alur lanjutan terlihat di log port game)");
         } else {
             HumanLog.evTech("🔌", "Sesi login kedaluwarsa (90 dtk tanpa aktivitas) — klien sudah pergi",
                     "Sesi     : " + s.sid.substring(0, 6) + "… · terakhir " + (act == null ? "-" : act));

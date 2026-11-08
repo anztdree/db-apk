@@ -1,0 +1,20 @@
+{
+	"errorCode": 0,
+	"serverList": [
+		{
+			"serverId": "1",
+			"url": "http://127.0.0.1:8080",
+			"new": true,
+			"hot": true,
+			"name": "Server Lokal",
+			"online": true,
+			"openDate": "2026-11-08T00:00:00.000Z",
+			"offlineReason": "",
+			"merge": false,
+			"mergeTo": "",
+			"urlInner": "",
+			"chatInner": ""
+		}
+	],
+	"history": []
+}

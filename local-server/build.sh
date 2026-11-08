@@ -1,17 +1,39 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.5.2 — AKAR CONFIG (isi config dibedah field-per-field di log)
+# Build APK-LSF 0.5.3 — DUA JALUR: CONFIG OFFLINE MANUAL / ONLINE PASSTHROUGH
 #
-# Dasar: releases/APK-LSF-0.5.1.apk (LFS — memuat CONFIG LOGIN SEMUA MODE 0.5.1
-# + mirror www/ lengkap dgn base.zip/all.zip + QHinfo 127.0.0.1:8610).
+# Dasar: releases/APK-LSF-0.5.2.apk (LFS — memuat AKAR CONFIG 0.5.2 + mirror
+# www/ lengkap dgn base.zip/all.zip + QHinfo 127.0.0.1:8610).
 # Patch yang diterapkan (TANPA apktool — dex game & resource tidak disentuh):
 #   1) javac(ECJ) + d8  -> classes2.dex baru (kode server lokal)
 #   2) ganti assets/server/dashboard.html
 #   3) tambah/perbarui assets/server/www/** (file yang ada di repo; berkas
 #      besar base.zip/all.zip ikut terbawa dari APK dasar)
-#   4) tambah assets/server/login/** — DEFAULT LOGIN LOKAL (servers.json)
+#   4) tambah assets/server/config-offline/** — PAKET CONFIG OFFLINE MANUAL
+#      (setting.json + bin XOR + serversetting + servers.json + manifest)
 #   5) assets/QHinfo → http://127.0.0.1:8610 (layar SDK asli → server SDK lokal)
 #   6) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#
+# Baru 0.5.3 (owner: "100% beda jalur!! offline dan online .. config offline
+# murni disiapkan manual" + "online tebaca itu cuma jadikan jejak arah bukan
+# untuk dijadikan config asli ke offline" — README §2.21):
+#   a) Paket config-offline/ MANUAL (disiapkan saat build, sha256 di manifest):
+#      bin menunjuk 127.0.0.1 SEJAK DIBUAT — dilayani APA ADANYA, tanpa
+#      penulisan-ulang runtime; trySeed (mirror-melengkapi-diri) DIHAPUS dari
+#      LOCAL — OFFLINE nol sentuh jaringan luar.
+#   b) GetServerList = 1 entri manual "Server Lokal" url 127.0.0.1:<gamePort>
+#      — klik Play masuk SERVER GAME LOKAL (dulu: url popoh5 di snapshot 2109
+#      server membuat klien io.connect langsung ke asli — log diam; akar
+#      ditemukan via bedah main.min: serverItem.url = tujuan io.connect).
+#   c) Snapshot online DIHAPUS dari assets (login/servers.json 2109 entri,
+#      bin asli www/, serversetting www/) — online hanya jejak arah.
+#   d) LoginData.init(confDir, offlineDir) — sumber daftar = config-offline/
+#      saja; fallback darurat TETAP lokal (tidak pernah popoh5).
+#   e) Dasbor SATU LAYAR: REKAM dihapus (config bukan rekam jejak), satu kolom
+#      log kronologis, jalur OFFLINE/ONLINE terlihat di kepala + garis config.
+#   f) Cleaner +config-offline/ (paket manual dilindungi). Payload.VERSION www → 4.
+#   g) Harness +13 tes TAHAP 18 — 133 tes (118 LULUS + 15 GAGAL LINGKUNGAN
+#      SQLite native sandbox — sama di HEAD, bukan regresi).
 #
 # Baru 0.5.1 (tegasan owner: "SAYA TEGASKAN LAGI CONFIG YG JELAS BUKAN REKAM
 # JEJAAAAK"; laporan "config Setelah SDK login ini masuk ke loginserver sampai
@@ -188,13 +210,13 @@ ECJ="${ECJ:-$REPO/tools/ecj-3.33.0.jar}"               # compiler Java 8 (sandbo
 KS="${KS:-$REPO/keystore/lsf.keystore}"
 KS_ALIAS="${KS_ALIAS:-lsf}"
 KS_PASS="${KS_PASS:-lsf-local-2025}"
-BASE="${BASE:-$REPO/releases/APK-LSF-0.5.1.apk}"         # APK dasar (rilis 0.5.1 — CONFIG LOGIN SEMUA MODE)
+BASE="${BASE:-$REPO/releases/APK-LSF-0.5.2.apk}"         # APK dasar (rilis 0.5.2 — AKAR CONFIG)
 LOGIN_PORT_QH="${LOGIN_PORT_QH:-8610}"                    # port server SDK lokal (QHinfo)
 SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.5.2.apk"
+OUT="$REPO/releases/APK-LSF-0.5.3.apk"
 MIN_API="${MIN_API:-21}"
 
 # Baru 0.5.2 (tegasan owner: "pakai config online murni untuk server lokal,
@@ -270,12 +292,14 @@ java -cp "$TOOLS/r8.jar" com.android.tools.r8.D8 --release \
   --output "$BUILD/dex" "${CLASS_FILES[@]}"
 cp "$BUILD/dex/classes.dex" "$BUILD/stage/classes2.dex"
 
-echo "[3/8] siapkan aset server (dashboard + mirror www/ + default login + QHinfo) ..."
+echo "[3/8] siapkan aset server (dashboard + mirror www/ + paket config-offline + QHinfo) ..."
 mkdir -p "$BUILD/stage/assets/server"
 cp "$ASSETS/server/dashboard.html" "$BUILD/stage/assets/server/dashboard.html"
 cp -R "$WWW" "$BUILD/stage/assets/server/www"
-if [ -d "$ASSETS/server/login" ]; then
-  cp -R "$ASSETS/server/login" "$BUILD/stage/assets/server/login"
+if [ -d "$ASSETS/server/config-offline" ]; then
+  cp -R "$ASSETS/server/config-offline" "$BUILD/stage/assets/server/config-offline"
+else
+  echo "PERINGATAN: paket config-offline/ tidak ada — bin manual tidak akan tersedia"
 fi
 # 0.4.2 ALUR SDK — QHinfo (host SDK quickgame) → server SDK lokal.
 # Asli: http://qsdk.t4game.com (salinan di /tmp dari APK 0.4.1 untuk pembanding).
@@ -289,13 +313,19 @@ cp "$BASE" "$BUILD/work.apk"
 zip -d "$BUILD/work.apk" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.DSA' 'META-INF/MANIFEST.MF' >/dev/null 2>&1 || true
 zip -d "$BUILD/work.apk" 'assets/server/payload/*' >/dev/null 2>&1 || true
 zip -d "$BUILD/work.apk" 'assets/QHinfo' >/dev/null 2>&1 || true
+# 0.5.3 — cermin config ONLINE di www/ dibuang dari APK (offline murni manual;
+# online passthrough mengambil langsung dari server asli — tidak ada salinan):
+zip -d "$BUILD/work.apk" \
+  'assets/server/www/bs/db/android/setting_BS_Android.bin' \
+  'assets/server/www/lzceshi/native_setting/Android/setting_BS_Android.bin' \
+  'assets/server/www/bs/resource/properties/serversetting.json' >/dev/null 2>&1 || true
 
-echo "[5/8] sisipkan classes2.dex + dashboard + mirror www/ + login + QHinfo ..."
+echo "[5/8] sisipkan classes2.dex + dashboard + mirror www/ + config-offline + QHinfo ..."
 (
   cd "$BUILD/stage"
   # shellcheck disable=SC2046
   zip -X -0 ../work.apk classes2.dex assets/QHinfo assets/server/dashboard.html \
-    $(cd "$BUILD/stage" && find assets/server/www assets/server/login -type f | sort) >/dev/null
+    $(cd "$BUILD/stage" && find assets/server/www assets/server/config-offline -type f | sort) >/dev/null
 )
 
 echo "[6/8] zipalign + sign (keystore tetap) ..."

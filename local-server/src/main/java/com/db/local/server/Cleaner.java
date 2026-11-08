@@ -21,8 +21,10 @@ import java.io.File;
  */
 public final class Cleaner {
 
-    /** Entri yang diizinkan di root folder server (0.5.0: + capture — perekaman REKAM). */
-    private static final String[] ROOT_WHITELIST = {"config", "www", "logs", "tmp", "capture"};
+    /** Entri yang diizinkan di root folder server (0.5.0: + capture — perekaman REKAM;
+     *  0.5.3: + config-offline — paket CONFIG OFFLINE MANUAL, dilindungi Cleaner). */
+    private static final String[] ROOT_WHITELIST = {"config", "config-offline", "www", "logs", "tmp",
+            "capture"};
 
     /** File yang diizinkan di dalam config/ (0.4.3: + DATABASE dragonball.db; 0.4.4: + servers.json). */
     private static final String[] CONFIG_WHITELIST = {"server.json", "status.json", "www.stamp",

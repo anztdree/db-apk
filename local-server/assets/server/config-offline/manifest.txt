@@ -1,0 +1,17 @@
+MANIFEST CONFIG OFFLINE — DISIAPKAN MANUAL (bukan hasil unduh server asli)
+Online hanya jejak arah format/protokol — semua nilai di bawah keputusan manual.
+
+sha256  a8eb0b30b0db39e981f40ca9b88fe652517529d1a8921cba2491f0516fd1d9ab
+  setting.json  ·  668 B
+sha256  caaae67fa242785dfab38224a698c99a63f56cb4efd949359ba03fec118fc368
+  setting_BS_Android.bin  ·  668 B
+sha256  057710e738589dbaef081374dcf0f85cdc263fa1940af270437928e1be64305e
+  serversetting.json  ·  66 B
+sha256  3bfbfd3d3e5e5d23701d421cf1b2c6c1c4f4893ffd87407ffd8ccf3d5871abff
+  servers.json  ·  340 B
+
+CATATAN:
+- setting_BS_Android.bin = setting.json dienkripsi XOR kunci 'DragonBall' (protokol shell).
+- Port di dalam bin = DEFAULT (game 8080, login 8610). Jika server.json mengubah
+  port, file ini HARUS dibuat ulang (sunting setting.json, XOR ulang) - bukan saat runtime.
+- servers.json = 1 entri manual 'Server Lokal' url http://127.0.0.1:8080 (Server Lokal).

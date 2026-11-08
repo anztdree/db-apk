@@ -78,6 +78,14 @@ public class HarnessSdk {
                 "{\"errorCode\":0,\"serverList\":[{\"serverId\":\"2109\",\"url\":\"https://s2109-bs.popoh5.com:8061\","
                         + "\"name\":\"S2109\",\"online\":true,\"new\":false,\"hot\":false,\"openDate\":\"\",\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\"}],\"history\":[]}");
 
+        // ---------------- 0.5.3: paket CONFIG OFFLINE MANUAL (folder config-offline/) ----------------
+        File off = new File(root, "config-offline");
+        off.mkdirs();
+        write(new File(off, "servers.json"),
+                "{\"errorCode\":0,\"serverList\":[{\"serverId\":\"1\",\"url\":\"http://127.0.0.1:8080\","
+                        + "\"new\":true,\"hot\":true,\"name\":\"Server Lokal\",\"online\":true,\"openDate\":\"\","
+                        + "\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\",\"urlInner\":\"\",\"chatInner\":\"\"}],\"history\":[]}");
+
         // ---------------- TAHAP 1: MIGRASI txt lama → dragonball.db ----------------
         write(new File(conf, "local-user.txt"), LEGACY_GUEST + "\n");
         write(new File(conf, "accounts.txt"),
@@ -87,7 +95,7 @@ public class HarnessSdk {
         write(new File(conf, "sdk-last.txt"), LEGACY_GUEST + "\t" + LEGACY_GUEST + "\t2026-11-02 21:31:05\n");
 
         Db.boot(conf);
-        LoginData.init(conf);
+        LoginData.init(conf, off); // 0.5.3 — dua folder: config/ + config-offline/
         SdkData.init(conf);
 
         check("engine = SQLite sungguhan (JDBC) — SQL beneran diuji", Db.i().sqlite());
@@ -224,7 +232,11 @@ public class HarnessSdk {
         check("handshake engine.io framing 0{...}40", r.contains(":0{") && r.contains(":40"));
         frame = "420[\"handler.process\",{\"action\":\"GetServerList\"}]";
         r = socketIoPost(frame);
-        check("GetServerList 1 server (uji)", r.contains("serverId"));
+        check("GetServerList 1 server (paket MANUAL)", r.contains("serverId"));
+        check("GetServerList OFFLINE: url entri = 127.0.0.1:8080 (Play masuk lokal)",
+                r.contains("http://127.0.0.1:8080"));
+        check("GetServerList OFFLINE: TIDAK ada url popoh5 di jawaban",
+                !r.contains("popoh5.com"));
 
         // 11) rewrite setting bin — loginServer TANPA port + userid sesi SDK
         String binJson = "{\n\t\"testMode\": 1,\n"
@@ -299,6 +311,9 @@ public class HarnessSdk {
         String cleaned = cr.getClass().getField("names").get(cr).toString();
         check("Cleaner: servers.json TIDAK dihapus (boleh disunting pemilik)", !cleaned.contains("servers.json"));
         check("Cleaner: dragonball.db tetap dilindungi", !cleaned.contains("dragonball.db"));
+        check("Cleaner: folder config-offline/ TIDAK dihapus (paket MANUAL dilindungi 0.5.3)",
+                new File(root, "config-offline").exists()
+                        && new File(root, "config-offline/servers.json").exists());
 
         // 13) LOG BERSIH 0.4.5 — dua tingkat (penting selalu / teknis hanya RINCI);
         //     file human.log TETAP lengkap — mode bersih tidak menghilangkan bukti
@@ -518,6 +533,52 @@ public class HarnessSdk {
         check("0.5.2 gerbang: tanpa url = null (tidak meledak)",
                 LoginServer.firstAndLastGateway("{}") == null
                         && LoginServer.firstAndLastGateway(null) == null);
+
+        // ---------------- TAHAP 18: DUA JALUR — CONFIG OFFLINE MANUAL (0.5.3 —
+        // owner: "100% beda jalur!! offline dan online .. config offline murni
+        // disiapkan manual" + "online tebaca itu cuma jadikan jejak arah bukan
+        // untuk dijadikan config asli ke offline") ----------------
+        // 18a) daftar server HANYA dari config-offline/ — snapshot config/ TIDAK
+        //      dibaca lagi (uji: config/ memuat popoh5, jawaban tetap lokal).
+        String daftar = LoginData.serverListData();
+        check("0.5.3 daftar server: SATU entri manual (Server Lokal)",
+                daftar.contains("Server Lokal") && LoginData.serverCount() == 1);
+        check("0.5.3 daftar server: url = 127.0.0.1:8080 (bukan snapshot config/)",
+                daftar.contains("http://127.0.0.1:8080"));
+        check("0.5.3 daftar server: snapshot online (config/ popoh5) TIDAK dibaca lagi",
+                !daftar.contains("popoh5.com"));
+        // 18b) fallback darurat TANPA paket manual tetap LOKAL (tidak pernah popoh5)
+        LoginData.init(conf, null);
+        String darurat = LoginData.serverListData();
+        check("0.5.3 fallback tanpa paket: tetap 1 entri LOKAL 127.0.0.1", 
+                darurat.contains("http://127.0.0.1:8080") && darurat.contains("Server Lokal"));
+        check("0.5.3 fallback tanpa paket: TIDAK PERNAH popoh5 (dulu s2109-bs.popoh5.com)",
+                !darurat.contains("popoh5.com"));
+        LoginData.init(conf, off); // pulihkan sumber manual untuk sisa uji
+        // 18c) templat paket manual: semua alamat lokal, nol popoh5 (kunci isi)
+        String templatBin = "{\"testMode\":1,"
+                + "\"url\":\"http://127.0.0.1:8080/bs/index-native.html\","
+                + "\"tsUrl\":\"http://127.0.0.1:8080/bs/index-native.html\","
+                + "\"update\":\"http://127.0.0.1:8080/bs/upgrade\","
+                + "\"checkTime\":300,\"loginServer\":\"http://127.0.0.1\","
+                + "\"tsLoginServer\":\"http://127.0.0.1:8610\","
+                + "\"loginPort\":8610,\"loginWebPort\":8610}";
+        check("0.5.3 templat bin manual: semua endpoint = 127.0.0.1",
+                templatBin.indexOf("popoh5") < 0 && templatBin.indexOf("sjmobilegame") < 0
+                        && templatBin.contains("http://127.0.0.1"));
+        check("0.5.3 templat bin manual: loginServer TANPA port (shell sambung sendiri)",
+                templatBin.contains("\"loginServer\":\"http://127.0.0.1\"")
+                        && templatBin.contains("\"loginPort\":8610"));
+        // 18d) serversetting manual: loginserver lokal + requireSDK false
+        String ssManual = "{\n\t\"loginserver\": \"http://127.0.0.1:8610\",\n\t\"requireSDK\": false\n}";
+        check("0.5.3 serversetting manual: loginserver lokal, nol popoh5",
+                ssManual.contains("http://127.0.0.1:8610") && ssManual.indexOf("popoh5") < 0);
+        check("0.5.3 serversetting manual: requireSDK false (dibaca ConfigAkar)",
+                "false".equals(SettingBin.getJsonRaw(ssManual, "requireSDK")));
+        // 18e) pembedah akar tetap bekerja utk paket manual (asli == klien)
+        String akarManual = ConfigAkar.settingBin(templatBin, templatBin);
+        check("0.5.3 akar paket manual: bedah tampil, nilai = paket (tanpa tanda →)",
+                akarManual.contains("127.0.0.1") && akarManual.contains("(asli)"));
 
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");

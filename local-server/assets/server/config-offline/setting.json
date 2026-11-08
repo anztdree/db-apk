@@ -1,0 +1,35 @@
+{
+	"testMode": 1,
+	"url": "http://127.0.0.1:8080/bs/index-native.html",
+	"tsUrl": "http://127.0.0.1:8080/bs/index-native.html",
+	"update": "http://127.0.0.1:8080/bs/upgrade",
+	"checkTime": 300,
+	"loginServer": "http://127.0.0.1",
+	"tsLoginServer": "http://127.0.0.1:8610",
+	"loginPort": 8610,
+	"loginWebPort": 8610,
+	"clientParams": {
+		"hideList": [
+			"1.99",
+			"2.99",
+			"14.99",
+			"59.99",
+			"89.99"
+		],
+		"supportLang": [
+			{
+				"languageName": "English",
+				"lang": "en"
+			},
+			{
+				"languageName": "Fran\u00e7ais",
+				"lang": "fr"
+			},
+			{
+				"languageName": "\ud55c\uad6d\uc778",
+				"lang": "kr"
+			}
+		],
+		"showCurChannel": "toFacebook"
+	}
+}

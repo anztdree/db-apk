@@ -16,13 +16,18 @@ import java.util.List;
  * OTOMATIS ke &lt;root&gt;/www/ saat aplikasi hidup (BootProvider), SEBELUM server
  * menyala. TIDAK ADA langkah manual — "semua itu terekstrak ke sana".
  *
- * Isi mirror v3 (snapshot nyata server asli yang masih hidup, hasil probe 2025):
- *   bs/db/android/setting_BS_Android.bin      (cermin configus, XOR "DragonBall")
+ * Isi mirror v4 (resource H5 Egret — CONFIG TIDAK LAGI di sini):
  *   bs/index-native.html · bs/manifest.json · bs/js/* (15 file H5 Egret)
- *   bs/resource/properties/clientversion.json · serversetting.json
+ *   bs/resource/properties/clientversion.json
  *   bs/upgrade/base.version · resource.version · upgrade.json · size.json
- *   bs/upgrade/base.zip · all.zip · 11386–11389_11390.zip (zip resource)
- *   lzceshi/native_setting/Android/*          (cermin dragon, bila tersedia)
+ *   bs/upgrade/11386–11389_11390.zip (zip resource; base.zip/all.zip via tools/snapshot.sh)
+ *
+ * 0.5.3 — DUA JALUR 100% TERPISAH (owner: "online tebaca itu cuma jadikan jejak
+ * arah bukan untuk dijadikan config asli ke offline"):
+ *   - CONFIG OFFLINE = paket MANUAL assets/server/config-offline/ → <root>/config-offline/
+ *     (extractOfflineConfig — SELALU ditimpa: paket kanonik bawaan, bukan cermin online).
+ *   - Cermin online (setting bin popoh5, snapshot 2109 server) DIHAPUS dari assets —
+ *     jalur ONLINE mengambil langsung dari server asli saat passthrough.
  *
  * - Struktur folder www/ = path URL server asli, sehingga port game lokal
  *   menjawab di alamat yang sama seperti server asli.
@@ -36,10 +41,10 @@ import java.util.List;
  */
 public final class Payload {
     /** Versi isi mirror — NAIKKAN bila isi berubah, www/ ikut diperbarui otomatis. */
-    public static final String VERSION = "3";
+    public static final String VERSION = "4";
 
     private static final String ASSET_DIR = "server/www";
-    private static final String LOGIN_ASSET_DIR = "server/login";
+    private static final String OFFLINE_ASSET_DIR = "server/config-offline";
     private static final String MARKER_NAME = "www.stamp";
 
     private Payload() {
@@ -114,31 +119,33 @@ public final class Payload {
         }
     }
 
-    // ---------- default login lokal (PR3 0.4.0) ----------
+    // ---------- 0.5.3: paket CONFIG OFFLINE manual ----------
 
     /**
-     * Ekstrak default data login lokal: assets/server/login/* → &lt;root&gt;/config/.
-     * File yang SUDAH ada TIDAK PERNAH ditimpa (boleh diubah pemilik tanpa rebuild;
-     * versi baru ikut terpasang hanya lewat pemasangan bersih / hapus manual).
-     * return ringkasan untuk log, atau null bila tidak ada yang perlu dilakukan.
+     * 0.5.3 — ekstrak paket CONFIG OFFLINE MANUAL: assets/server/config-offline/*
+     * → &lt;root&gt;/config-offline/. SELALU DITIMPA (berbeda dari www/): ini paket
+     * kanonik bawaan APK — bukan cermin online, bukan data pemilik. Nilainya
+     * disiapkan manual saat build (lihat manifest.txt di dalam paket); online
+     * hanya jejak arah format/protokol, BUKAN sumber nilai.
+     *
+     * Isi: setting.json (sumber terbaca), setting_BS_Android.bin (XOR DragonBall
+     * dari setting.json — protokol shell asli), serversetting.json, servers.json
+     * (1 entri "Server Lokal" url 127.0.0.1), manifest.txt (kunci sha256).
+     *
+     * return ringkasan untuk log, atau null bila paket tidak ada.
      */
-    public static String extractLoginDefaults(Context ctx, File confDir) {
+    public static String extractOfflineConfig(Context ctx, File root) {
         try {
-            if (confDir == null) {
+            if (root == null) {
                 return null;
             }
-            if (!confDir.exists()) {
-                confDir.mkdirs();
-            }
-            // bersihkan sisa bug 0.4.0: file login default pernah salah tulis ke
-            // config/login/ (prefix "server/www" dipakai buat path "server/login")
-            File legacy = new File(confDir, "login");
-            if (legacy.exists()) {
-                deleteTree(legacy);
+            File outDir = new File(root, "config-offline");
+            if (!outDir.exists()) {
+                outDir.mkdirs();
             }
             AssetManager am = ctx.getAssets();
             List<String> rel = new ArrayList<String>();
-            collect(am, LOGIN_ASSET_DIR, LOGIN_ASSET_DIR, rel);
+            collect(am, OFFLINE_ASSET_DIR, OFFLINE_ASSET_DIR, rel);
             if (rel.isEmpty()) {
                 return null;
             }
@@ -147,16 +154,13 @@ public final class Payload {
             StringBuilder names = new StringBuilder();
             for (int i = 0; i < rel.size(); i++) {
                 String relPath = rel.get(i);
-                File out = new File(confDir, relPath);
-                if (out.exists()) {
-                    continue; // jangan timpa suntingan pemilik
-                }
                 try {
+                    File out = new File(outDir, relPath);
                     File parent = out.getParentFile();
                     if (parent != null && !parent.exists()) {
                         parent.mkdirs();
                     }
-                    copyStream(am.open(LOGIN_ASSET_DIR + "/" + relPath), out);
+                    copyStream(am.open(OFFLINE_ASSET_DIR + "/" + relPath), out);
                     ok++;
                     bytes += out.length();
                     if (names.length() > 0) {
@@ -167,7 +171,8 @@ public final class Payload {
                 }
             }
             return (ok > 0)
-                    ? ("config/ + " + names + " (" + ok + " file · " + fmt(bytes) + ") — snapshot asli, boleh disunting")
+                    ? ("config-offline/ (" + ok + " file · " + fmt(bytes) + ") — paket MANUAL "
+                            + "(setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)")
                     : null;
         } catch (Throwable t) {
             return null;
@@ -283,20 +288,6 @@ public final class Payload {
             if (in != null) {
                 in.close();
             }
-        } catch (Throwable ignored) {
-        }
-    }
-
-    /** Hapus folder/file rekursif — hanya dipakai untuk sisa bug 0.4.0 (config/login/). */
-    private static void deleteTree(File f) {
-        try {
-            File[] kids = f.listFiles();
-            if (kids != null) {
-                for (int i = 0; i < kids.length; i++) {
-                    deleteTree(kids[i]);
-                }
-            }
-            f.delete();
         } catch (Throwable ignored) {
         }
     }
