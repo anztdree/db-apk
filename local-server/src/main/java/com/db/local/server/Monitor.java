@@ -122,135 +122,87 @@ public final class Monitor {
     private static final java.util.HashSet<String> gameSeen = new java.util.HashSet<String>();
 
     /**
-     * Uji kesehatan SERVER GAME (url serverList — cth s2109-bs.popoh5.com:8061).
-     * Klien menyambung LANGSUNG ke sini setelah pemain memilih server (di luar
-     * server lokal) — kegagalan di sini TIDAK terlihat di log mana pun (game
-     * diam di layar menyambung tanpa satu baris pun). Kini diuji EKSPLISIT:
-     * boot = N server teratas (thread belakang); dasbor = tombol "Tes server game".
-     * Hasil: StatusStore.original (tab Data) + log 📡/⚠️ + return ringkasan.
+     * 0.5.4 — uji kesehatan SERVER GAME untuk mode LOCAL: tujuan = UPSTREAM
+     * (field "upstream" paket manual / config/game-upstream.txt — server game
+     * ASLI tujuan relay :8080). Dulu probe iterasi url serverList — di 0.5.3
+     * url itu = 127.0.0.1:8080 (NanoHTTPD sendiri) sehingga "bisa dihubungi ·
+     * 2 ms" = Positif Palsu (TCP HTTP terbuka padahal jalur socket game belum
+     * ada) dan di mode ONLINE jadi tidak relevan (gameplay langsung ke server
+     * asli). Upstream kosong → baris ⚠ yang menjelaskan cara mengisi.
+     * Hasil: StatusStore.original + log 📡/⚠️ + return ringkasan.
      */
     public static String probeGameServers(int n) {
         synchronized (GAMEPROBELOCK) {
-            StringBuilder out = new StringBuilder(256);
-            String raw;
+            if (!"local".equals(Config.mode())) {
+                return "(mode ONLINE — gameplay langsung ke server game asli; probe relay lokal tidak relevan)";
+            }
+            String up = LoginData.gameUpstream();
+            String[] upEx = LoginData.gameUpstreamEx();
+            if (up == null || up.length() == 0) {
+                return "(upstream server game belum diisi — isi config/game-upstream.txt"
+                        + " atau field \"upstream\" di config-offline/servers.json)";
+            }
+            String host;
+            int port;
             try {
-                raw = LoginData.serverListData();
+                java.net.URL u = new java.net.URL(up);
+                host = u.getHost();
+                port = u.getPort() > 0 ? u.getPort() : ("https".equals(u.getProtocol()) ? 443 : 80);
             } catch (Throwable t) {
-                return "(daftar server tidak tersedia)";
+                return "(upstream tidak valid: " + up + ")";
             }
-            int pos = 0;
-            int tested = 0;
-            for (int k = 0; k < n; k++) {
-                int a = raw.indexOf("\"serverId\"", pos);
-                if (a < 0) {
-                    break;
+            String tgt = host + ":" + port;
+            long t0 = System.currentTimeMillis();
+            boolean ok = false;
+            String note;
+            String dnsNote = null;
+            try {
+                java.net.InetAddress[] addrs = java.net.InetAddress.getAllByName(host);
+                if (addrs == null || addrs.length == 0) {
+                    throw new java.net.UnknownHostException(host);
                 }
-                String sid = jsonVal(raw, a);
-                int b = raw.indexOf("\"url\"", a);
-                if (b < 0) {
-                    break;
-                }
-                String url = jsonVal(raw, b);
-                pos = b + 4;
-                if (sid == null || url == null || url.length() < 6) {
-                    continue;
-                }
-                String host;
-                int port;
+                dnsNote = "DNS     : " + host + " → " + addrs[0].getHostAddress();
+                java.net.Socket s = new java.net.Socket();
                 try {
-                    java.net.URL u = new java.net.URL(url);
-                    host = u.getHost();
-                    port = u.getPort() > 0 ? u.getPort() : ("https".equals(u.getProtocol()) ? 443 : 80);
-                } catch (Throwable t) {
-                    continue;
-                }
-                String tgt = host + ":" + port;
-                tested++;
-                long t0 = System.currentTimeMillis();
-                boolean ok = false;
-                String note;
-                String dnsNote = null;
-                try {
-                    java.net.InetAddress[] addrs = java.net.InetAddress.getAllByName(host);
-                    if (addrs == null || addrs.length == 0) {
-                        throw new java.net.UnknownHostException(host);
-                    }
-                    dnsNote = "DNS     : " + host + " → " + addrs[0].getHostAddress();
-                    java.net.Socket s = new java.net.Socket();
+                    s.connect(new java.net.InetSocketAddress(addrs[0], port), 5000);
+                } finally {
                     try {
-                        s.connect(new java.net.InetSocketAddress(addrs[0], port), 5000);
-                    } finally {
-                        try {
-                            s.close();
-                        } catch (Throwable ignored) {
-                        }
+                        s.close();
+                    } catch (Throwable ignored) {
                     }
-                    ok = true;
-                    note = "bisa dihubungi";
-                } catch (Throwable ex) {
-                    boolean dnsFail = (ex instanceof java.net.UnknownHostException);
-                    note = dnsFail ? "DNS gagal (nama domain tidak ditemukan)"
-                            : "koneksi gagal (" + ex.getClass().getSimpleName() + ")";
                 }
-                long ms = System.currentTimeMillis() - t0;
-                StatusStore.putOriginal("Server game " + tgt + " · S" + sid, ok, note, ok ? ms : -1);
-                boolean first = !gameSeen.contains(tgt);
-                gameSeen.add(tgt);
-                String label = "S" + sid + " — " + tgt;
-                if (ok) {
-                    String detail = "Server  : " + sid + " — urutan #" + tested
-                            + " daftar (pilihan paling mungkin)\n"
-                            + dnsNote + "\n"
-                            + "Lanjutan: klien io.connect LANGSUNG ke sini setelah pemain memilih"
-                            + " (bukan lewat server lokal)";
-                    if (first) {
-                        HumanLog.ev("📡", "Server game bisa dihubungi — " + label + " · " + HumanLog.fmtMs(ms), detail);
-                    } else {
-                        HumanLog.evTech("📡", "Server game " + label + " bisa dihubungi · " + HumanLog.fmtMs(ms), dnsNote);
-                    }
-                    out.append("✓ ").append(label).append(" · ").append(HumanLog.fmtMs(ms)).append("\n");
+                ok = true;
+                note = "bisa dihubungi";
+            } catch (Throwable ex) {
+                boolean dnsFail = (ex instanceof java.net.UnknownHostException);
+                note = dnsFail ? "DNS gagal (nama domain tidak ditemukan)"
+                        : "koneksi gagal (" + ex.getClass().getSimpleName() + ")";
+            }
+            long ms = System.currentTimeMillis() - t0;
+            StatusStore.putOriginal("Server game " + tgt + " (upstream)", ok, note, ok ? ms : -1);
+            boolean first = !gameSeen.contains(tgt);
+            gameSeen.add(tgt);
+            if (ok) {
+                String detail = "Upstream : " + up + " (sumber: "
+                        + ("file".equals(upEx[1]) ? "config/game-upstream.txt" : "config-offline/servers.json")
+                        + ")\n" + dnsNote + "\n"
+                        + "Lanjutan : relay socket game :" + Config.gamePort() + " meneruskan Play ke sini";
+                if (first) {
+                    HumanLog.ev("📡", "Server game ASLI (upstream) bisa dihubungi — " + tgt
+                            + " · " + HumanLog.fmtMs(ms), detail);
                 } else {
-                    HumanLog.ev("⚠️", "Server game TIDAK bisa dihubungi — " + label + " (" + note + ")",
-                            "Server     : " + sid + " — urutan #" + tested + " daftar\n"
-                                    + "Waktu coba : " + HumanLog.fmtMs(ms) + "\n"
-                                    + (dnsNote == null ? "" : dnsNote + "\n")
-                                    + "Lanjutan   : bila pemain memilih server ini, game DIAM di layar menyambung —"
-                                    + " tidak ada log lain yang muncul (proxy gameplay 0.5.1 pun tidak menolong"
-                                    + " bila host ini yang terhalang)");
-                    out.append("✗ ").append(label).append(" — ").append(note).append("\n");
+                    HumanLog.evTech("📡", "Server game " + tgt + " (upstream) bisa dihubungi · "
+                            + HumanLog.fmtMs(ms), dnsNote);
                 }
+                return "✓ " + tgt + " · " + HumanLog.fmtMs(ms);
             }
-            if (tested == 0) {
-                return "(tidak ada server valid di daftar)";
-            }
-            return out.toString().trim();
-        }
-    }
-
-    /** Nilai string JSON tepat setelah posisi kunci ("key":"value") — util kecil. */
-    private static String jsonVal(String raw, int keyIdx) {
-        try {
-            int c = raw.indexOf(':', keyIdx);
-            if (c < 0) {
-                return null;
-            }
-            int a = raw.indexOf('"', c);
-            if (a < 0) {
-                return null;
-            }
-            int b = a + 1;
-            while (b < raw.length() && raw.charAt(b) != '"') {
-                if (raw.charAt(b) == '\\') {
-                    b++;
-                }
-                b++;
-            }
-            if (b >= raw.length()) {
-                return null;
-            }
-            return raw.substring(a + 1, b);
-        } catch (Throwable t) {
-            return null;
+            HumanLog.ev("⚠️", "Server game ASLI (upstream) TIDAK bisa dihubungi — " + tgt + " (" + note + ")",
+                    "Upstream   : " + up + "\n"
+                            + "Waktu coba : " + HumanLog.fmtMs(ms) + "\n"
+                            + (dnsNote == null ? "" : dnsNote + "\n")
+                            + "Lanjutan   : bila upstream ini terhalang, klik Play akan berhenti di "
+                            + "layar menyambung — baris relay di log akan menunjukkan kegagalannya");
+            return "✗ " + tgt + " — " + note;
         }
     }
 

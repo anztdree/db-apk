@@ -12,6 +12,7 @@
 			"offlineReason": "",
 			"merge": false,
 			"mergeTo": "",
+			"upstream": "",
 			"urlInner": "",
 			"chatInner": ""
 		}

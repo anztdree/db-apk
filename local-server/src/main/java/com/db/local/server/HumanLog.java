@@ -60,6 +60,14 @@ public final class HumanLog {
     private static final ArrayList<String> mem = new ArrayList<String>(CAP + 8);
     /** Mode RINCI: teknis ikut masuk memori dasbor. Bawaan BERSIH (false). */
     private static volatile boolean techEnabled = false;
+    /**
+     * 0.5.4 — TAG MODE per entri ("local"/"online"; kosong sebelum di-set).
+     * Setiap baris log membawa mode proses saat baris lahir ("m":"…" di JSON)
+     * — dasbor & human.log bisa membedakan baris OFFLINE dan ONLINE (owner:
+     * "kalau sedang local log ya isinya local sesuai, kalau log online ya log
+     * aslinya seperti httpcanary" — log campur aduk antar mode = sampah).
+     */
+    private static volatile String modeTag = "";
 
     private HumanLog() {
     }
@@ -131,6 +139,16 @@ public final class HumanLog {
         techEnabled = on;
     }
 
+    /** 0.5.4 — pasang tag mode utk SEMUA baris berikutnya (dipanggil Starter saat boot). */
+    public static void setMode(String mode) {
+        modeTag = (mode == null) ? "" : mode;
+    }
+
+    /** Tag mode aktif ("local"/"online" — bisa kosong sebelum boot selesai). */
+    public static String mode() {
+        return modeTag;
+    }
+
     public static boolean isTechEnabled() {
         return techEnabled;
     }
@@ -170,6 +188,9 @@ public final class HumanLog {
                     .append(",\"detail\":\"").append(Json.esc(detail == null ? "" : detail)).append('"');
             if (tech) {
                 sb.append(",\"v\":1"); // penanda TEKNIS — dasbor meredupkan baris ini
+            }
+            if (modeTag.length() > 0) {
+                sb.append(",\"m\":\"").append(modeTag).append('\"'); // 0.5.4 — tag mode
             }
             sb.append('}');
             jo = sb.toString();

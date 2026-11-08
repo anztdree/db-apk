@@ -55,19 +55,31 @@ import fi.iki.elonen.NanoHTTPD;
  * Query anti-cache (?rnd= / ?v=) diteruskan ke server asli apa adanya,
  * dan diabaikan saat mencari file lokal.
  *
- * FORMAT LOG REQUEST (0.4.6 — model final log, kesepakatan owner:
- * "group itu kalau terdeteksi emang config/resource yg banyak. kalau alur ya
- * gk usah di group"): SEMUA aktivitas batch per-file TIDAK PERNAH jadi baris
- * log linear — masuk GRUP LogGroups (dasbor: satu baris judul dengan statistik
- * hidup, bisa dibuka untuk rincian; human.log: ringkasan Σ satu baris):
- *   "mirror" → Mirror CDN   (HANYA ONLINE — file baru diambil dari server asli → www/)
- *   "req"    → Request game (setiap 200 dari www/, termasuk setting bin)
- *   "404"    → 404 fallback (normal — game melanjutkan boot)
- *   "pass"   → Passthrough ONLINE (jawaban server asli mode ONLINE)
- * Kegagalan (CDN tak terjangkau, upstream 5xx) NAIK OTOMATIS sebagai ⚠ linear
- * (jeda 30 dtk antar laporan — lanjutannya hanya menaikkan hitung grup).
- * Yang tetap PENTING (linear): mirror tanpa setting bin, 404 path tak
- * terpetakan, 502 server asli tak terjangkau, file gagal dibaca, 500.
+ * FORMAT LOG REQUEST (0.5.4 — koreksi owner "kalau sedang local log ya isinya
+ * local sesuai, kalau log online ya log aslinya seperti httpcanary" + "log isi
+ * config di ikutkan ngapain, kalau isi config besar ya bisa show hide"):
+ *   - MODE ONLINE : setiap request passthrough = SATU baris gaya HttpCanary —
+ *     🌐 GET dragonh5cdn.popoh5.com/bs/... → 200 · 412,3 KB · 340 ms
+ *     (config/protokol & galat = PENTING; aset statis = TEKNIS — RINCI).
+ *   - MODE LOCAL  : setiap serve = SATU baris gaya lokal — 📄 GET /bs/... ·
+ *     mirror www/ · 412,3 KB · 12 ms (aset TEKNIS; config PENTING).
+ *   - ISI CONFIG  : TIDAK dibuang ke feed lagi (dulu 📦 AKAR CONFIG belasan
+ *     baris × 4 ulang = sampah). Bedah field-per-field ConfigAkar pindah ke
+ *     seksi CONFIG dasbor (ConfigView — show/hide); feed hanya SATU baris 📦
+ *     padat (dedupe 10 mnt per file).
+ *   - Batch tetap masuk GRUP LogGroups (statistik Σ di dasbor).
+ *
+ * 0.5.4 RELAY SOCKET GAME :8080 (penutup "loading muter-muter tanpa kejelasan"):
+ * url entri daftar server manual = http://127.0.0.1:8080 → klik Play membuat
+ * klien io.connect KE PORT INI memakai engine.io v3 polling (persis jalur login).
+ * Dulu :8080 hanya HTTP statis → klien retry selamanya, log DIAM. Kini
+ * /socket.io/ di mode LOCAL diteruskan utuh (byte-per-byte) ke SERVER GAME
+ * ASLI = field "upstream" (config-offline/servers.json) atau SATU baris di
+ * config/game-upstream.txt — LoginData.gameUpstream(). Upstream kosong =
+ * baris ❌ yang menjelaskan PERSIS cara mengisi (bukan loading tanpa cerita).
+ * Relay memakai mesin yang sama dengan passthrough login (LoginServer).
+ * Di mode ONLINE /socket.io/ dijawab 404 jelas — gameplay langsung ke server
+ * asli (url daftar ASLI), server lokal tidak berada di jalur itu.
  *
  * Halaman root port ini (http://127.0.0.1:&lt;gamePort&gt;/ di browser) = STATUS
  * MINI tanpa tombol apa pun (koreksi owner 0.3.2 — "website pindah mode itu
@@ -122,6 +134,11 @@ public final class GameServer extends NanoHTTPD {
                         "Metode " + m + " tidak didukung — kontrak bootstrap hanya GET");
             } else if ("/".equals(uri) || "/index.html".equals(uri)) {
                 resp = rootPage();
+            } else if ("/socket.io/".equals(uri) || "/socket.io".equals(uri)) {
+                // 0.5.4 — klik Play: klien io.connect ke url entri daftar server.
+                // LOCAL = relay ke server game ASLI (upstream); ONLINE = 404 jelas
+                // (gameplay langsung ke server asli, bukan lewat port ini).
+                resp = socketIo(session, m, mode);
             } else if ("local".equals(mode)) {
                 resp = serveLocal(uri, query, t0);
             } else {
@@ -178,6 +195,153 @@ public final class GameServer extends NanoHTTPD {
         return htmlResp(sb.toString().getBytes());
     }
 
+    // ---------------- 0.5.4 RELAY SOCKET GAME :8080 → upstream ----------------
+
+    /** Dedupe baris sesi game (10 mnt — sama dengan 📡/📋 server login). */
+    private static volatile long lastGameSessLogAt = 0L;
+
+    /**
+     * Klik Play: klien io.connect(url entri daftar). Di LOCAL url itu = port ini
+     * → /socket.io/ diteruskan UTUH ke server game ASLI (upstream — mesin relay
+     * yang sama dgn passthrough login 0.5.1). Di ONLINE: gameplay LANGSUNG ke
+     * server asli — port ini tidak dipakai; dijawab 404 dengan penjelasan.
+     */
+    private Response socketIo(IHTTPSession session, Method m, String mode) {
+        if (!"local".equals(mode)) {
+            return textResp(Response.Status.NOT_FOUND,
+                    "Mode ONLINE: gameplay LANGSUNG ke server game asli pilihan pemain "
+                            + "(url daftar server ASLI) — bukan lewat port ini. Port ini melayani "
+                            + "bootstrap game (/bs/*). Socket game lokal hanya aktif di mode LOCAL.");
+        }
+        String query = session.getQueryParameterString();
+        String qs = (query == null || query.length() == 0) ? "" : query;
+        String transport = session.getParms() == null ? null : session.getParms().get("transport");
+        if ("websocket".equals(transport)) {
+            // klien mencoba upgrade websocket → ditolak → engine.io tetap polling
+            // (perilaku terbukti di device pada passthrough login 0.5.1).
+            return textResp(Response.Status.lookup(400),
+                    "websocket tidak diteruskan — klien engine.io tetap di polling");
+        }
+        String up = LoginData.gameUpstream();
+        String[] upEx = LoginData.gameUpstreamEx();
+        if (up.length() == 0) {
+            // PENJELASAN LOUD — dulu loading muter-muter tanpa satu baris pun.
+            long now = System.currentTimeMillis();
+            if (now - lastGameSessLogAt >= 60000L) {
+                lastGameSessLogAt = now;
+                HumanLog.ev("❌", "Play berhenti — server game lokal :" + Config.gamePort()
+                                + " belum punya UPSTREAM (tujuan relay)",
+                        "Kejadian : klien io.connect ke http://127.0.0.1:" + Config.gamePort()
+                                + " (url entri daftar server manual)\n"
+                                + "Sebab    : field \"upstream\" kosong — relay tidak tahu harus meneruskan ke mana\n"
+                                + "Solusi   : isi SATU baris URL server game asli di config/game-upstream.txt"
+                                + " (cth: https://s2109-bs.popoh5.com:8061) — tanpa build ulang, lalu klik Play lagi\n"
+                                + "           atau isi field \"upstream\" entri di config-offline/servers.json");
+            }
+            return textResp(Response.Status.lookup(502),
+                    "upstream server game belum diisi — isi config/game-upstream.txt");
+        }
+        long t0 = System.currentTimeMillis();
+        String body = null;
+        if (Method.POST == m) {
+            try {
+                body = LoginServer.readBody(session);
+            } catch (Throwable t) {
+                body = "";
+            }
+        }
+        String target = up + "/socket.io/" + (qs.length() > 0 ? ("?" + qs) : "");
+        LoginServer.UpResp u;
+        try {
+            u = LoginServer.forwardLogin(target, body, Method.POST == m,
+                    Method.POST == m ? 30000 : 45000);
+        } catch (Throwable t) {
+            long ms = System.currentTimeMillis() - t0;
+            HumanLog.ev("⚠️", "Server game ASLI (upstream) tidak terjangkau — Play tidak bisa lanjut",
+                    "Upstream : " + up + "\n"
+                            + "Sebab    : " + t + "\n"
+                            + "Waktu    : " + HumanLog.fmtMs(ms) + " — klien akan mencoba ulang sendiri");
+            return textResp(Response.Status.lookup(502),
+                    "upstream tidak terjangkau — " + t);
+        }
+        long ms = System.currentTimeMillis() - t0;
+        String respText = new String(u.body, java.nio.charset.StandardCharsets.UTF_8);
+        // ---- log relay: satu baris per arah (gaya HttpCanary, tanpa isi payload) ----
+        if (Method.GET == m) {
+            boolean handshake = (qs.indexOf("sid=") < 0) && respText.indexOf("\"sid\"") >= 0;
+            if (handshake) {
+                long now = System.currentTimeMillis();
+                if (now - lastGameSessLogAt >= 600000L) {
+                    lastGameSessLogAt = now;
+                    HumanLog.ev("🎮", "Play → socket game lokal :" + Config.gamePort()
+                                    + " — diteruskan ke SERVER GAME ASLI",
+                            "Upstream : " + up + " (sumber: "
+                                    + ("file".equals(upEx[1]) ? "config/game-upstream.txt"
+                                            : "config-offline/servers.json") + ")\n"
+                                    + "Sesi     : sid dari server asli (relay utuh, polling)\n"
+                                    + "Lanjutan : klien login game ke sini — enterGame dijawab SERVER ASLI "
+                                    + "(progres tersimpan di sana)");
+                }
+            } else if (u.body.length > 0 && ms > 0) {
+                HumanLog.evTech("🎮", "← upstream " + hostOf(up) + " · "
+                        + HumanLog.fmtBytes(u.body.length) + " · " + HumanLog.fmtMs(ms), null);
+            }
+        } else if (Method.POST == m && body != null && body.length() > 0) {
+            String act = ringkasAksi(body);
+            if (act != null) {
+                HumanLog.ev("🎮", "→ " + act + " diteruskan ke server game ASLI · "
+                                + HumanLog.fmtBytes(body.length()) + " · " + HumanLog.fmtMs(ms),
+                        "Upstream : " + up + "\n"
+                                + "Catatan  : payload diteruskan UTUH (byte-per-byte) — isi tidak dibaca diubah");
+            } else {
+                HumanLog.evTech("🎮", "→ upstream · " + HumanLog.fmtBytes(body.length())
+                        + " · " + HumanLog.fmtMs(ms), null);
+            }
+        }
+        Response r = newFixedLengthResponse(Response.Status.lookup(u.status == -1 ? 502 : u.status),
+                u.contentType, new ByteArrayInputStream(u.body), u.body.length);
+        r.addHeader("Cache-Control", "no-store");
+        r.addHeader("Access-Control-Allow-Origin", "*");
+        return r;
+    }
+
+    /**
+     * Ringkas nama aksi game dari flush POST (framing engine.io → event
+     * socket.io "42...[\"handler.process\",{...action...}]"). Null bila hanya
+     * ping/keepalive — tidak banjir log.
+     */
+    private static String ringkasAksi(String body) {
+        try {
+            java.util.ArrayList<String> pkts = LoginServer.parseFrames(body);
+            StringBuilder sb = new StringBuilder(48);
+            for (int i = 0; i < pkts.size(); i++) {
+                String pkt = pkts.get(i);
+                if (pkt.length() < 3 || pkt.charAt(0) != '4' || pkt.charAt(1) != '2') {
+                    continue;
+                }
+                int j = 2;
+                while (j < pkt.length() && pkt.charAt(j) >= '0' && pkt.charAt(j) <= '9') {
+                    j++;
+                }
+                String msg = LoginServer.firstArgJson(pkt.substring(j));
+                String action = LoginServer.strField(msg, "action");
+                String type = LoginServer.strField(msg, "type");
+                if (action != null && action.length() > 0) {
+                    if (sb.length() > 0) {
+                        sb.append(", ");
+                    }
+                    sb.append(action);
+                    if (type != null && type.length() > 0) {
+                        sb.append('(').append(type).append(')');
+                    }
+                }
+            }
+            return sb.length() == 0 ? null : sb.toString();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     // ---------------- mode LOCAL: layani dari www/ ----------------
 
     private Response serveLocal(String uri, String query, long t0) {
@@ -208,44 +372,31 @@ public final class GameServer extends NanoHTTPD {
         return serveFile(f, uri, query, t0, false);
     }
 
-    // ---------------- 0.5.2 AKAR CONFIG: bedah isi config di log ----------------
-
-    /** Kunci dedupe: uri + isi hasil bedah — config sama tidak membanjiri log. */
-    private static volatile String lastAkarKey = "";
+    // ---------------- 0.5.4 CONFIG: baris padat + isi penuh ke seksi CONFIG dasbor ----------------
 
     /**
-     * Log AKAR CONFIG (0.5.2 — tuntutan owner "log yg jelas rinci itu penting";
-     * jawaban "pakai config online murni .. akarnya aja gak tau"): isi config
-     * yang DITERIMA KLIEN ditulis penuh — field per field, nilai ASLI → klien.
-     * Penting (selalu tampil). Isi sama beruntun → TEKNIS (tetap terekam file).
+     * 0.5.4 — dedupe baris 📦 config per file: 10 mnt (owner: isi config yang
+     * sama muncul 4× beruntun = sampah). Isi penuh (bedah field-per-field +
+     * teks config) masuk ConfigView → seksi CONFIG dasbor dengan show/hide.
      */
-    private static void logAkar(String uri, String detail, long bytes, long ms, String sumber) {
-        try {
-            if (detail == null) {
-                detail = "(pembedah tidak menghasilkan rincian)";
-            }
-            String key = uri + "#" + detail.hashCode();
-            boolean sama = key.equals(lastAkarKey);
-            lastAkarKey = key;
-            if (sama) {
-                HumanLog.evTech("📦", "CONFIG " + uri + " disajikan lagi — isi sama, tidak dibedah ulang",
-                        HumanLog.fmtBytes(bytes) + " · " + HumanLog.fmtMs(ms));
-            } else {
-                HumanLog.ev("📦", "AKAR CONFIG " + uri + " — dibedah field-per-field (" + sumber + ")",
-                        detail + "\n" + pad("Diterima klien", HumanLog.fmtBytes(bytes) + " · " + HumanLog.fmtMs(ms)));
-            }
-        } catch (Throwable ignored) {
-        }
-    }
+    private static final java.util.HashMap<String, Long> CFG_LOG_SEEN =
+            new java.util.HashMap<String, Long>();
 
-    /** Baris "label : nilai" dengan lebar label sama seperti ConfigAkar. */
-    private static String pad(String label, String value) {
-        StringBuilder sb = new StringBuilder(64);
-        sb.append(label);
-        while (sb.length() < 13) {
-            sb.append(' ');
+    private static void cfgLog(String uri, String sentence, String detail) {
+        long now = System.currentTimeMillis();
+        Long prev;
+        boolean tampil;
+        synchronized (CFG_LOG_SEEN) {
+            if (CFG_LOG_SEEN.size() > 64) {
+                CFG_LOG_SEEN.clear();
+            }
+            prev = CFG_LOG_SEEN.get(uri);
+            tampil = (prev == null || now - prev.longValue() >= 600000L);
+            CFG_LOG_SEEN.put(uri, Long.valueOf(now));
         }
-        return sb.append(": ").append(value).toString();
+        if (tampil) {
+            HumanLog.ev("📦", sentence, detail);
+        }
     }
 
     /**
@@ -276,11 +427,19 @@ public final class GameServer extends NanoHTTPD {
                         + "harus dibuat ulang agar cocok", "gamePort=" + Config.gamePort()
                         + " · loginPort=" + Config.loginPort());
             }
-            // 0.5.2 AKAR — isi config DIBEDAH FIELD-PER-FIELD di log: paket manual
-            // (yang diterima klien PERSIS file ini).
+            // 0.5.4 — feed: SATU baris padat (dedupe 10 mnt); ISI PENUH (bedah
+            // field-per-field + teks setting.json) → seksi CONFIG dasbor (show/hide).
             String plain = SettingBin.decryptedPlain(b);
-            logAkar(uri, ConfigAkar.settingBin(plain, plain), b.length, ms,
-                    "OFFLINE · paket manual config-offline/");
+            String breakdown = ConfigAkar.settingBin(plain, plain);
+            ConfigView.put("setting-bin", "setting_BS_Android.bin",
+                    "OFFLINE · paket manual config-offline/ · " + HumanLog.fmtBytes(b.length)
+                            + " · " + HumanLog.fmtMs(ms) + " · apa adanya (tanpa tulis-ulang)",
+                    breakdown + "\n\n— teks config (setting.json dienkripsi XOR “DragonBall”) —\n" + plain);
+            cfgLog(uri, "CONFIG setting bin disajikan — paket manual config-offline/ · "
+                            + HumanLog.fmtBytes(b.length) + " · " + HumanLog.fmtMs(ms),
+                    "Isi penuh (bedah field-per-field): seksi CONFIG di dasbor — show/hide\n"
+                            + "Menunjuk : 127.0.0.1 (game :" + Config.gamePort() + " · login :"
+                            + Config.loginPort() + ") — sejak disiapkan manual");
             Response r = newFixedLengthResponse(Response.Status.OK, "application/octet-stream",
                     new ByteArrayInputStream(b), b.length);
             r.addHeader("Cache-Control", "no-store");
@@ -315,9 +474,15 @@ public final class GameServer extends NanoHTTPD {
             Response r = newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8",
                     new ByteArrayInputStream(out), out.length);
             r.addHeader("Cache-Control", "no-store");
-            // 0.5.2 AKAR — isi serversetting.json manual dibedah di log.
-            logAkar(uri, ConfigAkar.serversetting(text, text), out.length, ms,
-                    "OFFLINE · paket manual config-offline/");
+            // 0.5.4 — feed: SATU baris padat; isi penuh → seksi CONFIG dasbor.
+            ConfigView.put("serversetting", "serversetting.json",
+                    "OFFLINE · paket manual config-offline/ · " + HumanLog.fmtBytes(out.length)
+                            + " · " + HumanLog.fmtMs(ms) + " · apa adanya (tanpa tulis-ulang)",
+                    ConfigAkar.serversetting(text, text) + "\n\n— teks config —\n" + text);
+            cfgLog(uri, "CONFIG serversetting.json disajikan — paket manual config-offline/ · "
+                            + HumanLog.fmtBytes(out.length) + " · " + HumanLog.fmtMs(ms),
+                    "Isi penuh: seksi CONFIG di dasbor — show/hide\n"
+                            + "Menunjuk : loginserver 127.0.0.1:" + Config.loginPort() + " — sejak disiapkan manual");
             LogGroups.item("req", "Request game", "request", true,
                     "GET " + uri + " — " + HumanLog.fmtBytes(out.length) + " · " + HumanLog.fmtMs(ms)
                             + " · paket config-offline/ manual (apa adanya)",
@@ -362,16 +527,10 @@ public final class GameServer extends NanoHTTPD {
             r.addHeader("Cache-Control", "no-store");
             long ms = System.currentTimeMillis() - t0;
             try {
-                // 0.5.0 REKAM — config asli (json/version/properties/txt) ikut utuh;
-                // resource biner (png/zip/js) cukup barisnya — bukan config.
-                if (isConfigExt(uri) && len <= 512L * 1024L) {
-                    String txt = readFileText(f);
-                    Capture.game("←", uri, (seeded ? "dari CDN asli (mirror melengkapi) — " : "mirror www/ — ")
-                            + "HTTP 200", txt, (int) len, ms);
-                } else {
-                    Capture.game("←", uri, (seeded ? "dari CDN asli (mirror melengkapi) — " : "mirror www/ — ")
-                            + "HTTP 200 · " + contentType(uri), null, (int) len, ms);
-                }
+                // 0.5.4 — baris lokal per file: aset = TEKNIS (feed tetap tenang,
+                // terlihat saat RINCI); LogGroups tetap menghitung statistik Σ.
+                HumanLog.evTech("📄", "GET " + uri + " · mirror www/ · "
+                        + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms), null);
             } catch (Throwable ignored) {
             }
             LogGroups.item("req", "Request game", "request", true,
@@ -465,9 +624,12 @@ public final class GameServer extends NanoHTTPD {
                         + (loginCfg ? " · endpoint login ditulis-ulang ke server lokal" : ""),
                 Math.max(0, up.length));
         Response r;
+        long sentBytes = Math.max(0, up.length);
+        String rewriteNote = "";
         if (up.status == 200 && isConfigExt(uri) && up.length >= 0 && up.length <= 512L * 1024L && up.in != null) {
-            // 0.5.0 REKAM — config asli dari SERVER ASLI (mode ONLINE): dibuffer agar
-            // bisa terekam UTUH, lalu disajikan dari memori (perilaku tidak berubah).
+            // 0.5.4 — config asli dibuffer agar bisa ditulis-ulang (bin/serversetting)
+            // lalu disajikan dari memori. Isi penuh → seksi CONFIG dasbor (show/hide);
+            // feed hanya baris ⇄ padat.
             try {
                 java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream((int) up.length);
                 byte[] buf = new byte[8192];
@@ -478,38 +640,43 @@ public final class GameServer extends NanoHTTPD {
                 up.in.close();
                 byte[] data = bos.toByteArray();
                 String txt = new String(data, "UTF-8");
-                String info = "HTTP 200 dari " + hostOf(usedHost) + " (ONLINE — config asli server asli)";
                 // 0.5.1 CONFIG — jalur login selalu ke server lokal (SEMUA mode):
                 // setting bin (HANYA login + url H5) & serversetting.json (loginserver)
                 // ditulis-ulang SEBELUM disajikan — klien tidak pernah langsung ke
                 // login.popoh5.com; server login lokal yang meneruskan utuh.
                 if (uri.endsWith("setting_BS_Android.bin")) {
                     byte[] rw = SettingBin.rewrittenOnline(data, Config.gamePort(), Config.loginPort());
+                    String originalPlain = SettingBin.decryptedPlain(bos.toByteArray());
                     if (rw != data) {
                         data = rw;
                         String plain = SettingBin.plainOnline(bos.toByteArray(), Config.gamePort(), Config.loginPort());
                         txt = (plain == null) ? txt : plain;
-                        info += " · endpoint login + url H5 ditulis-ulang ke server lokal (passthrough ke asli)";
+                        rewriteNote = " · login + url H5 ditulis-ulang ke server lokal";
                     }
-                    // 0.5.2 AKAR — config dari server asli DIBEDAH sebelum disajikan:
-                    // setiap field nilai ASLI → nilai yang diterima klien.
-                    logAkar(uri, ConfigAkar.settingBin(SettingBin.decryptedPlain(bos.toByteArray()), txt),
-                            data.length, ms, "ONLINE · dari server asli");
+                    // 0.5.4 — isi penuh (bedah ASLI → klien) ke seksi CONFIG dasbor.
+                    ConfigView.put("setting-bin", "setting_BS_Android.bin",
+                            "ONLINE · dari server asli " + hostOf(usedHost) + " · "
+                                    + HumanLog.fmtBytes(data.length) + " · " + HumanLog.fmtMs(ms)
+                                    + rewriteNote,
+                            ConfigAkar.settingBin(originalPlain, txt)
+                                    + "\n\n— teks config yang diterima klien —\n" + txt);
                 } else if (uri.endsWith("/serversetting.json")) {
                     String rw = SettingBin.setJsonValue(txt, "loginserver",
                             "http://127.0.0.1:" + Config.loginPort());
+                    String originalText = txt;
                     if (!rw.equals(txt)) {
                         txt = rw;
                         data = rw.getBytes("UTF-8");
-                        info += " · loginserver ditulis-ulang ke server login lokal (passthrough ke asli)";
+                        rewriteNote = " · loginserver ditulis-ulang ke server lokal";
                     }
-                    logAkar(uri, ConfigAkar.serversetting(new String(bos.toByteArray(), "UTF-8"), txt),
-                            data.length, ms, "ONLINE · dari server asli");
+                    ConfigView.put("serversetting", "serversetting.json",
+                            "ONLINE · dari server asli " + hostOf(usedHost) + " · "
+                                    + HumanLog.fmtBytes(data.length) + " · " + HumanLog.fmtMs(ms)
+                                    + rewriteNote,
+                            ConfigAkar.serversetting(originalText, txt)
+                                    + "\n\n— teks config yang diterima klien —\n" + txt);
                 }
-                try {
-                    Capture.game("←", uri, info, txt, data.length, ms);
-                } catch (Throwable ignored) {
-                }
+                sentBytes = data.length;
                 r = newFixedLengthResponse(Response.Status.OK, up.contentType,
                         new ByteArrayInputStream(data), data.length);
             } catch (Throwable io) {
@@ -517,11 +684,6 @@ public final class GameServer extends NanoHTTPD {
                 r = newChunkedResponse(Response.Status.OK, up.contentType, new ByteArrayInputStream(new byte[0]));
             }
         } else {
-            try {
-                Capture.game("←", uri, "HTTP " + up.status + " dari " + hostOf(usedHost) + " (ONLINE)",
-                        null, (int) Math.max(0, up.length), ms);
-            } catch (Throwable ignored) {
-            }
             if (up.length >= 0 && up.in != null) {
                 r = newFixedLengthResponse(Response.Status.lookup(up.status), up.contentType, up.in, up.length);
             } else if (up.in != null) {
@@ -529,6 +691,21 @@ public final class GameServer extends NanoHTTPD {
             } else {
                 r = newFixedLengthResponse(Response.Status.lookup(up.status), up.contentType, "");
             }
+        }
+        // 0.5.4 — SATU baris gaya HttpCanary per request passthrough (owner:
+        // "log online ya log aslinya seperti httpcanary"): config/protokol &
+        // galat = PENTING; aset statis = TEKNIS (RINCI). Statistik Σ tetap di grup.
+        try {
+            String qStr = (query != null && query.length() > 0) ? ("?" + query) : "";
+            String line = "⇄ GET " + hostOf(usedHost) + uri + qStr + " → HTTP " + up.status
+                    + (sentBytes > 0 ? " · " + HumanLog.fmtBytes(sentBytes) : "")
+                    + " · " + HumanLog.fmtMs(ms) + rewriteNote;
+            if (isConfigExt(uri) || up.status >= 400) {
+                HumanLog.ev("🌐", line, null);
+            } else {
+                HumanLog.evTech("🌐", line, null);
+            }
+        } catch (Throwable ignored) {
         }
         r.addHeader("Cache-Control", "no-store");
         return r;

@@ -214,12 +214,14 @@ public final class Starter {
         //     — snapshot online TIDAK lagi disalin ke sini.
         String guestNote = "?";
         int serverCountN = 0;
+        String offlineNote = null;
         try {
             File confDir = new File(root, "config");
-            String offlineNote = Payload.extractOfflineConfig(appCtx, root);
-            if (offlineNote != null) {
-                HumanLog.evTech("💾", "Config OFFLINE manual siap — " + offlineNote, null);
-            }
+            // 0.5.4 — catatan paket manual TIDAK lagi dilog di sini: Config.mode()
+            // belum terbaca (server.json dibaca di langkah 3) — dulu baris 💾
+            // "Config OFFLINE manual siap" muncul JUGA di boot ONLINE (log campur
+            // aduk). Disimpan, dilog SETELAH mode terbaca — hanya di LOCAL.
+            offlineNote = Payload.extractOfflineConfig(appCtx, root);
             LoginData.init(confDir, new File(root, "config-offline"));
             SdkData.init(confDir);
             guestNote = LoginData.localUserId();
@@ -228,24 +230,17 @@ public final class Starter {
             HumanLog.ev("⚠️", "Persiapan config offline + data login lokal gagal — server login tetap dicoba hidup",
                     String.valueOf(t));
         }
-        // baris boot inti kini SATU baris 🚀 berrinci setelah semua port hidup (0.4.9).
+        // baris boot inti kini SATU baris berrinci setelah semua port hidup (0.4.9).
 
         // ---------- 3) config server.json ----------
         Config.load(root);
         // 0.4.5: mode log RINCI dari boot sebelumnya (tersimpan di server.json)
         HumanLog.setTechEnabled(Config.logTech());
-        // 0.5.0 REKAM — perekam payload mentah siap (folder capture/ di root;
-        // masuk whitelist Cleaner — bukti protokol tidak boleh terhapus boot).
-        try {
-            Capture.init(root);
-            if (Config.rekam()) {
-                HumanLog.evTech("📼", "REKAM aktif — payload mentah semua lapisan terekam ke capture/"
-                                + " (rekam.jsonl + payload/ config asli) · tab REKAM di dasbor",
-                        null);
-            }
-        } catch (Throwable t) {
-            HumanLog.ev("⚠️", "Folder capture/ tidak bisa disiapkan — REKAM tidak aktif boot ini",
-                    String.valueOf(t));
+        // 0.5.4 — TAG MODE: semua baris log berikutnya membawa mode proses ini
+        // ("local"/"online") — dasbor & human.log membedakan jalur OFFLINE/ONLINE.
+        HumanLog.setMode(Config.mode());
+        if ("local".equals(Config.mode()) && offlineNote != null) {
+            HumanLog.evTech("💾", "Config OFFLINE manual siap — " + offlineNote, null);
         }
         StatusStore.configure(Config.debugPort(), Config.gamePort(), Config.mode(),
                 root.getAbsolutePath(), c.getPackageName());
@@ -322,10 +317,14 @@ public final class Starter {
             }
             String modeDetail;
             if ("local".equals(Config.mode())) {
+                // 0.5.4 — teks boot LOCAL jujur sesuai 0.5.3/0.5.4: paket manual apa
+                // adanya (tanpa tulis-ulang runtime) + status upstream relay Play.
+                String up = LoginData.gameUpstream();
                 modeDetail = "LOCAL — konten game: mirror www/ · login & akun: LOKAL :"
-                        + Config.loginPort() + " (config ditulis-ulang otomatis)"
-                        + " · daftar server: snapshot asli bawaan APK"
-                        + " · gameplay: SERVER GAME ASLI (progres tersimpan di sana)";
+                        + Config.loginPort() + " · config: paket MANUAL config-offline/ (apa adanya"
+                        + " — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal)"
+                        + " · Play → socket game :" + Config.gamePort() + " → upstream "
+                        + (up.length() > 0 ? up : "BELUM DIISI (isi config/game-upstream.txt)");
             } else {
                 // 0.5.1 — ONLINE: config login tetap menulis-ulang ke server lokal
                 // (SEMUA mode); server lokal meneruskan utuh ke server asli.
@@ -380,22 +379,24 @@ public final class Starter {
         monitor.runOnce();
         StatusStore.persist();
 
-        // ---------- 6b) probe SERVER GAME dari daftar (0.5.0 — Tahap A) ----------
-        // Klien menyambung LANGSUNG ke url serverList setelah pemain memilih —
-        // kegagalan di sana tidak terlihat log mana pun. Diuji di thread belakang
-        // (maks 5 × 5 dtk) agar boot & tombol melayang tidak tertunda.
-        try {
-            Thread pg = new Thread(new Runnable() {
-                public void run() {
-                    try {
-                        Monitor.probeGameServers(5);
-                    } catch (Throwable ignored) {
+        // ---------- 6b) probe SERVER GAME upstream (0.5.4 — LOCAL saja) ----------
+        // 0.5.4: probe = UPSTREAM relay (server game asli tujuan Play) — di mode
+        // ONLINE tidak relevan (gameplay langsung ke server asli, dulu malah
+        // probe 127.0.0.1:8080 sendiri = positif palsu).
+        if ("local".equals(Config.mode())) {
+            try {
+                Thread pg = new Thread(new Runnable() {
+                    public void run() {
+                        try {
+                            Monitor.probeGameServers(5);
+                        } catch (Throwable ignored) {
+                        }
                     }
-                }
-            }, "dblsf-probe-game");
-            pg.setDaemon(true);
-            pg.start();
-        } catch (Throwable ignored) {
+                }, "dblsf-probe-game");
+                pg.setDaemon(true);
+                pg.start();
+            } catch (Throwable ignored) {
+            }
         }
 
         // ---------- 7) tombol melayang switch mode (BISA DIGESER) ----------

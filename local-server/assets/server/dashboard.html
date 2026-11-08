@@ -46,15 +46,44 @@
   .pill.up{background:#064e3b33; color:var(--ok)}
   main{flex:1; padding:10px 14px 18px; max-width:960px; width:100%; margin:0 auto}
 
-  /* ---- satu baris status + satu baris jalur config (config akar) ---- */
+  /* ---- SATU baris jalur config + seksi CONFIG (show/hide — 0.5.4) ---- */
   #strip{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px; color:var(--mut); padding:6px 2px 2px}
   #strip b{color:var(--tx); font-weight:600}
   #cfgline{
-    margin:6px 0 10px; font-size:12.5px; color:var(--mut); line-height:1.55;
+    margin:6px 0 8px; font-size:12.5px; color:var(--mut); line-height:1.55;
     background:var(--card); border:1px solid var(--line); border-radius:9px; padding:7px 11px;
   }
   #cfgline b{color:var(--ok); font-weight:700}
   #cfgline .asli{color:var(--warn)}
+
+  /* seksi CONFIG: isi config penuh (bedah field-per-field + teks) — SHOW/HIDE,
+     KELUAR DARI FEED LOG (koreksi owner 0.5.4: "kalau isi config besar ya bisa show hide") */
+  #cfgsec{margin:0 0 10px; border:1px solid var(--line); border-radius:10px; overflow:hidden}
+  #cfgsec .cfghead{
+    display:flex; gap:8px; align-items:center; padding:8px 12px; cursor:pointer;
+    background:var(--card); font-weight:700; font-size:13px; user-select:none;
+  }
+  #cfgsec .cfghead .cnt{color:var(--mut); font-weight:400; font-size:12px; flex:1; text-align:right}
+  #cfgsec .cfghead .arr{color:var(--mut)}
+  #cfgsec .cfgbody{display:none; border-top:1px solid var(--line); background:var(--code)}
+  #cfgsec.open .cfgbody{display:block}
+  #cfgsec.open .cfghead .arr::before{content:"▾"}
+  #cfgsec .cfghead .arr::before{content:"▸"}
+  .cfitem{border-bottom:1px solid var(--line)}
+  .cfitem:last-child{border-bottom:none}
+  .cfhead{display:flex; gap:8px; align-items:baseline; padding:8px 12px; cursor:pointer; user-select:none}
+  .cfhead:active{background:rgba(128,128,128,.08)}
+  .cftitle{font-weight:700; font-size:12.5px}
+  .cfsub{flex:1; min-width:0; color:var(--mut); font-size:11px; text-align:right;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .cfarr{color:var(--mut); flex:none}
+  .cfarr::before{content:"▸"}
+  .cfitem.open .cfarr::before{content:"▾"}
+  .cfbody{display:none; padding:2px 12px 10px; color:var(--det);
+    font:11.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere}
+  .cfitem.open .cfbody{display:block}
+  .cfempty{padding:10px 12px; color:var(--mut); font-size:12px}
 
   /* ---- toolbar & SATU kolom log kronologis ---- */
   .toolbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin:4px 0 8px}
@@ -150,6 +179,16 @@
   <!-- ===== SATU baris jalur config (config akar — selalu terlihat) ===== -->
   <div id="cfgline">memuat jalur config…</div>
 
+  <!-- ===== seksi CONFIG: isi penuh show/hide (0.5.4 — keluar dari feed log) ===== -->
+  <div id="cfgsec">
+    <div class="cfghead" id="cfghead">
+      <span>📦 CONFIG — isi penuh (show/hide)</span>
+      <span class="cnt" id="cfgcnt"></span>
+      <span class="arr"></span>
+    </div>
+    <div class="cfgbody" id="cfgbody"><div class="cfempty">memuat…</div></div>
+  </div>
+
   <!-- ===== SATU kolom log kronologis (alur penuh, tidak dipecah) ===== -->
   <div class="toolbar">
     <button class="chip on" id="f-all">Semua</button>
@@ -158,6 +197,7 @@
     <button class="act" id="copylog">Copy</button>
     <button class="act" id="copyfull">Copy penuh</button>
     <button class="act" id="clearlog">Bersihkan</button>
+    <button class="act" id="probegame">Tes game</button>
   </div>
   <div id="logbox">(memuat log…)</div>
 
@@ -166,10 +206,10 @@
   <div id="groups"></div>
 </main>
 <footer>
-  Alur = 🚀 siap · 👤 pemain · 🔑 sesi · 📡 koneksi · 🔌 putus sesi (normal) · ✅ sukses ·
-  ⚠️ masalah · ❌ terhenti · 📋 daftar server · 📦 config akar · 💾 data · ℹ️ info ·
-  rincian tiap baris tampil penuh (├─/└─) · batch = grup Σ lipat ·
-  OFFLINE = config manual config-offline/ · ONLINE = passthrough server asli ·
+  OFFLINE = config manual config-offline/ · ONLINE = passthrough server asli (log gaya HttpCanary) ·
+  ikon: 🌐 ⇄ trafik asli · 📄 serve lokal · 🎮 socket game (Play) · 📦 config (isi penuh di seksi CONFIG) ·
+  🚀 siap · 👤 pemain · 🔑 sesi · 📡 koneksi · 🔌 putus (normal) · ✅ sukses · ⚠️ masalah · ❌ terhenti ·
+  📋 daftar server · 💾 data · ℹ️ info · rincian baris penting tampil penuh (├─/└─) · aset/teknis = RINCI ·
   log penuh di <b>logs/human.log</b>
 </footer>
 
@@ -230,14 +270,62 @@
     // OFFLINE = paket manual config-offline/ (bukan turunan online);
     // ONLINE  = config dari server asli (passthrough), jalur login lewat lokal.
     $("cfgline").innerHTML = offline
-      ? "<b>OFFLINE — CONFIG MANUAL</b> (paket <b>config-offline/</b>: setting.json + bin XOR + "
-        + "serversetting + servers.json) · loginServer 127.0.0.1:" + (sv.loginPort || "?")
+      ? "<b>OFFLINE — CONFIG MANUAL</b> (paket <b>config-offline/</b> — apa adanya, tanpa tulis-ulang) · "
+        + "loginServer 127.0.0.1:" + (sv.loginPort || "?")
         + " · daftar server 1 entri \"Server Lokal\" → url 127.0.0.1:" + (sv.gamePort || "?")
-        + " (klik Play masuk server game lokal) · TIDAK ada unduhan dari server asli"
-      : "ONLINE — config dari <span class='asli'>SERVER ASLI</span> (passthrough) · jalur login ditulis-ulang "
-        + "ke server lokal :" + (sv.loginPort || "?") + " lalu diteruskan utuh ke login.popoh5.com:610 · "
+        + " → Play masuk <b>server game lokal</b> → relay ke upstream (isi: config/game-upstream.txt"
+        + " — lihat seksi CONFIG) · TIDAK ada unduhan dari server asli"
+      : "ONLINE — config dari <span class='asli'>SERVER ASLI</span> (passthrough — log gaya HttpCanary) · "
+        + "jalur login ditulis-ulang ke server lokal :" + (sv.loginPort || "?")
+        + " lalu diteruskan utuh ke login.popoh5.com:610 · "
         + "daftar server &amp; token dari server asli (progres pemain di sana)";
     $("t-tech").classList.toggle("on", !!sv.logTech);
+  }
+
+  // ---------- seksi CONFIG (isi penuh, show/hide — 0.5.4) ----------
+  var cfgOpen = false;
+  function renderConfig(j){
+    var list = (j && j.entries) ? j.entries : [];
+    var box = $("cfgbody");
+    $("cfgcnt").textContent = list.length ? (list.length + " berkas") : "(belum ada config disajikan)";
+    if(!list.length){
+      box.innerHTML = "<div class='cfempty'>belum ada config yang disajikan proses ini — "
+        + "entri muncul otomatis saat game mengambil setting bin / serversetting / daftar server.</div>";
+      return;
+    }
+    // render ulang hanya bila daftar berubah (sig = id + panjang body)
+    var sig = list.map(function(e){ return e.id + ":" + (e.body||"").length; }).join("|");
+    if(box.dataset.sig === sig) return;
+    box.dataset.sig = sig;
+    box.innerHTML = list.map(function(e){
+      var open = e._open ? " open" : "";
+      return "<div class='cfitem' data-c='" + esc(e.id) + "'>"
+        + "<div class='cfhead'><span class='cfarr'></span>"
+        + "<span class='cftitle'>" + esc(e.title) + "</span>"
+        + "<span class='cfsub'>" + esc(e.sub) + "</span></div>"
+        + "<div class='cfbody'>" + esc(e.body || "(kosong)") + "</div></div>";
+    }).join("");
+    // pertahankan status buka per id
+    Array.prototype.forEach.call(box.querySelectorAll(".cfitem"), function(n){
+      if(cfgItemOpen[n.dataset.c]) n.classList.add("open");
+    });
+  }
+  var cfgItemOpen = {};
+  $("cfghead").addEventListener("click", function(){
+    cfgOpen = !cfgOpen;
+    $("cfgsec").classList.toggle("open", cfgOpen);
+    pollConfig();
+  });
+  $("cfgbody").addEventListener("click", function(ev){
+    var h = ev.target.closest(".cfhead");
+    if(!h) return;
+    var it = h.parentElement;
+    var id = it.dataset.c;
+    cfgItemOpen[id] = !cfgItemOpen[id];
+    it.classList.toggle("open", cfgItemOpen[id]);
+  });
+  function pollConfig(){
+    fetch("/api/config").then(function(r){ return r.json(); }).then(renderConfig).catch(function(){});
   }
 
   function pollStatus(){
@@ -456,13 +544,24 @@
       grpLast = null;
     }).catch(function(){});
   });
+  // 0.5.4 — Tes game: uji upstream server game (LOCAL) — hasilnya muncul di
+  // feed log (📡/⚠️ dari Monitor.probeGameServers)
+  $("probegame").addEventListener("click", function(){
+    var b = $("probegame");
+    b.textContent = "menguji…";
+    fetch("/api/probe/game").then(function(r){ return r.json(); }).then(function(j){
+      b.textContent = "Tes game";
+    }).catch(function(){ b.textContent = "Tes game"; });
+  });
 
   pollStatus();
   pollLog();
   pollGroups();
+  pollConfig();
   setInterval(pollStatus, 3000);
   setInterval(pollLog, 2000);
   setInterval(pollGroups, 3000);
+  setInterval(pollConfig, 5000);
 })();
 </script>
 </body>

@@ -256,7 +256,7 @@ public final class LoginServer extends NanoHTTPD {
      * Client game asli mengirim text/plain, tetapi dengan baca langsung server
      * ini tahan SEMUA Content-Type (curl, debugger, WebView varian apa pun).
      */
-    private static String readBody(IHTTPSession session) throws Exception {
+    static String readBody(IHTTPSession session) throws Exception {
         String cl = session.getHeaders().get("content-length");
         int n = 0;
         if (cl != null) {
@@ -376,6 +376,21 @@ public final class LoginServer extends NanoHTTPD {
             long t0 = System.currentTimeMillis();
             data = LoginData.serverListData();
             long ms = System.currentTimeMillis() - t0;
+            // 0.5.4 — isi paket manual (servers.json) masuk seksi CONFIG dasbor.
+            try {
+                String up = LoginData.gameUpstream();
+                ConfigView.put("servers", "servers.json (daftar server)",
+                        "OFFLINE · paket manual config-offline/ · " + HumanLog.fmtBytes(data.length())
+                                + " · " + HumanLog.fmtMs(ms)
+                                + (up.length() > 0 ? " · upstream relay: " + up
+                                        : " · upstream relay: BELUM DIISI"),
+                        data + "\n\n— catatan —\n"
+                                + "url entri = tujuan io.connect klien saat klik Play (127.0.0.1:"
+                                + Config.gamePort() + " = server game lokal).\n"
+                                + "Field \"upstream\" = server game ASLI tujuan relay :8080.\n"
+                                + "Isi di perangkat: config/game-upstream.txt (1 baris URL, tanpa build ulang)");
+            } catch (Throwable ignored) {
+            }
             // 0.4.9 — MILESTONE TUNGGAL + RINCIAN PENUH (permintaan owner:
             // "kurang rinci" + "gak boleh disingkat"):
             //  1) daftar = bawaan APK yang DISAJIKAN server lokal (bukan diambil
@@ -388,11 +403,16 @@ public final class LoginServer extends NanoHTTPD {
             boolean dup = (nowMs - lastServerListLogAt) < 600000L;
             lastServerListLogAt = nowMs;
             if (!dup) {
+                String up = LoginData.gameUpstream();
                 HumanLog.ev("📋", "Daftar server terkirim — " + LoginData.serverCount() + " server (paket MANUAL)",
                         "Sumber   : config-offline/servers.json — paket CONFIG OFFLINE MANUAL bawaan APK\n"
                                 + "           (bukan snapshot online — owner: online cuma jejak arah, bukan config asli offline)\n"
                                 + "Tujuan   : url tiap entri = 127.0.0.1:" + Config.gamePort()
                                 + " — klik Play masuk SERVER GAME LOKAL\n"
+                                + "Upstream : " + (up.length() > 0
+                                        ? up + " — socket game :8080 diteruskan ke sini (relay)"
+                                        : "BELUM DIISI — isi config/game-upstream.txt (1 baris URL server game asli)"
+                                                + " atau field \"upstream\" di config-offline/servers.json") + "\n"
                                 + "Ukuran   : " + HumanLog.fmtBytes(data.length()) + " · " + HumanLog.fmtMs(ms)
                                 + " · pemain sekarang di layar pilih server");
             }
@@ -444,12 +464,14 @@ public final class LoginServer extends NanoHTTPD {
         long age = now - s.createdAt;
         String act = s.lastAction;
         if (byClient) {
+            String up = LoginData.gameUpstream();
             HumanLog.ev("🔌", "Klien menutup sesi login — normal setelah pilih server (pindah ke server game)",
                     "Sesi     : " + s.sid.substring(0, 6) + "… · hidup " + HumanLog.fmtMs(age) + "\n"
                             + "Terakhir : " + (act == null ? "(belum ada aksi — hanya handshake)" : act) + "\n"
                             + "Lanjutan : klien io.connect ke url entri daftar server — di OFFLINE = "
-                            + "http://127.0.0.1:" + Config.gamePort()
-                            + " (server game lokal; alur lanjutan terlihat di log port game)");
+                            + "http://127.0.0.1:" + Config.gamePort() + " (server game lokal"
+                            + (up.length() > 0 ? " → relay ke " + up + ")" : " — upstream BELUM DIISI") + ");"
+                            + " alur lanjutan terlihat di log port game");
         } else {
             HumanLog.evTech("🔌", "Sesi login kedaluwarsa (90 dtk tanpa aktivitas) — klien sudah pergi",
                     "Sesi     : " + s.sid.substring(0, 6) + "… · terakhir " + (act == null ? "-" : act));
@@ -465,7 +487,7 @@ public final class LoginServer extends NanoHTTPD {
     private static final int PROXY_TIMEOUT_POST_MS = 30000;
 
     /** Jawaban upstream yang diteruskan — byte utuh + status + content-type. */
-    private static final class UpResp {
+    static final class UpResp {
         final int status;
         final String contentType;
         final byte[] body;
@@ -666,8 +688,9 @@ public final class LoginServer extends NanoHTTPD {
     /**
      * Kirim satu permintaan HTTP(S) ke upstream login — GET (long-poll) atau
      * POST (flush paket). Jawaban dibaca UTUH lalu diteruskan (byte-per-byte).
+     * 0.5.4: package-visible — dipakai juga relay socket game :8080 (GameServer).
      */
-    private static UpResp forwardLogin(String target, String body, boolean post, int timeoutMs) throws Exception {
+    static UpResp forwardLogin(String target, String body, boolean post, int timeoutMs) throws Exception {
         HttpURLConnection c = null;
         try {
             URL u = new URL(target);
@@ -766,7 +789,7 @@ public final class LoginServer extends NanoHTTPD {
     // ---------------- parser JSON mini (cukup untuk pesan game) ----------------
 
     /** Ambil objek pesan dari array JSON event '["handler.process",{pesan}]' — args[1]. */
-    private static String firstArgJson(String jsonArray) {
+    static String firstArgJson(String jsonArray) {
         if (jsonArray == null) {
             return "{}";
         }
@@ -823,7 +846,7 @@ public final class LoginServer extends NanoHTTPD {
     }
 
     /** Nilai string level atas dari objek JSON — cukup untuk kunci pesan game. */
-    private static String strField(String obj, String key) {
+    static String strField(String obj, String key) {
         if (obj == null || key == null) {
             return null;
         }

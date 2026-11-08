@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.5.3 — DUA JALUR: CONFIG OFFLINE MANUAL / ONLINE PASSTHROUGH
+# Build APK-LSF 0.5.4 — LOG DUA JALUR (HttpCanary ONLINE / LOCAL apa adanya) + RELAY GAME
 #
 # Dasar: releases/APK-LSF-0.5.2.apk (LFS — memuat AKAR CONFIG 0.5.2 + mirror
 # www/ lengkap dgn base.zip/all.zip + QHinfo 127.0.0.1:8610).
@@ -201,6 +201,35 @@
 # tools/snapshot.sh). TOOLS memuat android.jar + r8.jar (+ sqlite-jdbc.jar
 # opsional untuk harness; TIDAK dipakai d8).
 # =============================================================
+# Baru 0.5.4 (laporan owner: "log campur adukk, padahal di posisi original
+# online tapi lognya local malah ikut .. log isi config di ikutkan ngapain di
+# pisah, kalau isi config besar ya bisa show hide .. kalau sedang local log ya
+# isinya local sesuai lah .. kalai log Online ya log aslinya seperti httpcanary
+# .. udah log gak jelas, sekarang cuma loading muter2 gk ada kejelasan di log"):
+#   a) LOG DUA JALUR + TAG MODE (HumanLog "m"): baris log membawa mode proses;
+#      boot log yang bukan mode aktif DIHAPUS dari jalur emit — 💾 "Config
+#      OFFLINE manual siap" hanya di LOCAL (dulu muncul juga di ONLINE),
+#      REKAM [📼] DIHAPUS TOTAL (Capture no-op — CONFIG bukan rekam jejak).
+#   b) ONLINE = gaya HttpCanary: 🌐 "⇄ GET <host><path> → HTTP 200 · 412 KB ·
+#      340 ms" per request (config/protokol/galat PENTING, aset TEKNIS);
+#      SDK passthrough ⇄ POST qsdk… juga satu baris. LOCAL = gaya lokal:
+#      📄 "GET /bs/… · mirror www/ · 412 KB · 12 ms".
+#   c) ISI CONFIG KELUAR DARI FEED (ConfigView baru + seksi CONFIG dasbor
+#      show/hide): bedah field-per-field ConfigAkar + teks config disajikan
+#      di sana; feed hanya SATU baris 📦 padat per file (dedupe 10 mnt — dulu
+#      AKAR CONFIG belasan baris × 4 ulang banjir).
+#   d) RELAY SOCKET GAME :8080 (penutup "loading muter2 gk ada kejelasan"):
+#      klik Play → io.connect(127.0.0.1:8080) kini diteruskan UTUH ke SERVER
+#      GAME ASLI (upstream — mesin relay sama dgn passthrough login 0.5.1).
+#      Upstream = field "upstream" di config-offline/servers.json ATAU satu
+#      baris config/game-upstream.txt (tanpa build ulang). Upstream kosong =
+#      baris ❌ yang menjelaskan PERSIS cara mengisi (bukan loading diam).
+#      Probe boot = upstream (dulu probe 127.0.0.1:8080 sendiri = positif
+#      palsu; di ONLINE probe dilewati — tidak relevan).
+#   e) servers.json manual + field "upstream" (sha256 manifest diperbarui);
+#      dasbor: seksi CONFIG show/hide + tombol "Tes game" (/api/probe/game)
+#      + /api/config; endpoint /api/rekam* DIHAPUS; StatusStore 0.5.4.
+# =============================================================
 set -euo pipefail
 
 REPO="${REPO:-/home/z/db-apk}"
@@ -210,13 +239,13 @@ ECJ="${ECJ:-$REPO/tools/ecj-3.33.0.jar}"               # compiler Java 8 (sandbo
 KS="${KS:-$REPO/keystore/lsf.keystore}"
 KS_ALIAS="${KS_ALIAS:-lsf}"
 KS_PASS="${KS_PASS:-lsf-local-2025}"
-BASE="${BASE:-$REPO/releases/APK-LSF-0.5.2.apk}"         # APK dasar (rilis 0.5.2 — AKAR CONFIG)
+BASE="${BASE:-$REPO/releases/APK-LSF-0.5.3.apk}"         # APK dasar (rilis 0.5.3 — DUA JALUR)
 LOGIN_PORT_QH="${LOGIN_PORT_QH:-8610}"                    # port server SDK lokal (QHinfo)
 SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.5.3.apk"
+OUT="$REPO/releases/APK-LSF-0.5.4.apk"
 MIN_API="${MIN_API:-21}"
 
 # Baru 0.5.2 (tegasan owner: "pakai config online murni untuk server lokal,

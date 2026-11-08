@@ -316,7 +316,12 @@ public final class SdkApi {
         long t0 = System.currentTimeMillis();
         try {
             byte[] out = http("http://qsdk.t4game.com" + uri, body == null ? "" : body, 8000);
-            logTech("ℹ️", "Permintaan SDK diteruskan ke server asli qsdk.t4game.com" + uri, null);
+            long ms = System.currentTimeMillis() - t0;
+            // 0.5.4 — baris gaya HttpCanary (owner: "log online ya log aslinya
+            // seperti httpcanary"): satu baris padat per panggilan SDK asli.
+            HumanLog.ev("🌐", "⇄ POST qsdk.t4game.com" + uri + " → 200 · "
+                    + HumanLog.fmtBytes(out.length) + " · " + HumanLog.fmtMs(ms)
+                    + " (passthrough — isi tak disentuh)", null);
             try {
                 // 0.5.0 REKAM — mode ONLINE: jawaban ASLI server qsdk ikut terekam
                 // (config asli — pembanding langsung untuk versi lokal)
@@ -329,7 +334,7 @@ public final class SdkApi {
             }
             return json(NanoHTTPD.Response.Status.OK, new String(out, "UTF-8"));
         } catch (Throwable t) {
-            log("⚠️", "Penerusan ke qsdk.t4game.com gagal — " + t, null);
+            log("⚠️", "⇄ POST qsdk.t4game.com" + uri + " → GAGAL — " + t, null);
             return err("(proxy) " + uri, 20000, "Connection failed, please check your network.");
         }
     }
