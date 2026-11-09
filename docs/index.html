@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DB LOCAL · Contoh nyata log dasbor :4000</title>
+<!--
+  Halaman GitHub Pages — CONTOH NYATA log dasbor port 4000 (build 0.5.4).
+  Sumber log: logs/human.log dari perangkat, 2026-11-09 19:33:53–19:37:04
+  (log mentah utuh di log-0.5.4-2026-11-09.txt — tidak diubah, tidak ditambah).
+  Gaya direplika dari local-server/assets/server/dashboard.html (dasbor asli APK).
+-->
+<style>
+  :root{
+    --bg:#0c0a09; --card:#1c1917; --line:#292524; --tx:#fafaf9; --mut:#a8a29e;
+    --det:#d6d3d1;
+    --ok:#34d399; --warn:#fbbf24; --err:#f87171; --acc:#10b981;
+    --code:#111111;
+    --leak:#f87171;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--tx);
+    font:15px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh; display:flex; flex-direction:column;
+  }
+  header{
+    padding:12px 14px 10px; border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    position:sticky; top:0; background:var(--bg); z-index:20;
+  }
+  header h1{font-size:16px; margin:0; font-weight:700}
+  .badge{
+    font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px;
+    border:1px solid var(--line); background:var(--card); color:var(--mut); letter-spacing:.4px;
+  }
+  .badge.mode-local{color:var(--ok); border-color:var(--ok)}
+  .badge.mode-online{color:var(--warn); border-color:var(--warn)}
+  .pill{
+    margin-left:auto; font-size:12px; font-weight:800; padding:4px 12px; border-radius:999px;
+    background:#064e3b33; color:var(--ok); border:1px solid var(--line);
+  }
+  main{flex:1; padding:10px 14px 18px; max-width:960px; width:100%; margin:0 auto}
+
+  /* ---- baris keterangan contoh ---- */
+  #ket{
+    font-size:12.5px; color:var(--mut); line-height:1.6;
+    background:var(--card); border:1px solid var(--line); border-radius:9px;
+    padding:8px 11px; margin:6px 0 10px;
+  }
+  #ket b{color:var(--tx); font-weight:600}
+
+  /* ---- toolbar: filter mode + salin ---- */
+  .toolbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin:4px 0 8px}
+  .chip{
+    min-height:38px; padding:6px 12px; border-radius:999px; border:1px solid var(--line);
+    background:var(--card); color:var(--mut); font-weight:600; font-size:12.5px; cursor:pointer;
+  }
+  .chip.on{color:var(--tx); border-color:var(--ok)}
+  .chip.c-online.on{color:var(--warn); border-color:var(--warn)}
+  #stat{margin-left:auto; font-size:11.5px; color:var(--mut)}
+  #stat b{color:var(--err); font-weight:700}
+  button.act{
+    min-height:38px; padding:6px 12px; border-radius:9px; border:1px solid var(--line);
+    background:var(--card); color:var(--tx); font-weight:600; font-size:12.5px; cursor:pointer;
+  }
+  button.act:active{transform:translateY(1px)}
+
+  /* ---- SATU kolom log kronologis (gaya dasbor asli) ---- */
+  #logbox{
+    background:var(--code); border:1px solid var(--ok); border-radius:10px;
+    font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    max-height:72vh; overflow-y:auto; word-break:break-word;
+    -webkit-overflow-scrolling:touch;
+  }
+  .logrow{display:flex; gap:8px; padding:4px 10px; border-bottom:1px solid var(--line); align-items:baseline}
+  .logrow:last-child{border-bottom:none}
+  .logrow:hover{background:rgba(128,128,128,.08)}
+  .logrow.tech{opacity:.62}
+  .logrow.err .logtext{color:var(--err)}
+  .logrow.boot .logtext{color:var(--ok); font-weight:600}
+  .logrow.switch .logtext{color:var(--warn); font-weight:700}
+  .logtime{color:var(--mut); flex:none; font-size:11px}
+  .logic{flex:none; width:24px; text-align:center; font-size:14px}
+  .logtext{flex:1; min-width:0}
+  .logdetail{display:block; color:var(--det); font-size:11.5px; line-height:1.55;
+    white-space:pre-wrap; word-break:break-word; margin-top:2px; overflow-wrap:anywhere}
+  .logempty{padding:12px 10px; color:var(--mut)}
+
+  /* ---- penanda BARIS SALAH JALUR (bocor antar mode) ---- */
+  .logrow.leak{
+    box-shadow:inset 3px 0 0 var(--leak);
+    background:rgba(248,113,113,.055);
+  }
+  .leaktag{
+    display:inline-block; margin-left:6px; padding:0 6px; border-radius:5px;
+    font-size:10px; font-weight:800; letter-spacing:.4px;
+    color:var(--leak); border:1px solid var(--leak); background:rgba(248,113,113,.08);
+    vertical-align:1px;
+  }
+  #legend{margin:8px 2px 0; font-size:11.5px; color:var(--mut); line-height:1.7}
+  #legend .sw{display:inline-block; width:10px; height:10px; border-radius:2px;
+    box-shadow:inset 3px 0 0 var(--leak); background:rgba(248,113,113,.15); margin-right:5px;
+    vertical-align:-1px}
+
+  footer{
+    margin-top:auto; padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line); color:var(--mut); font-size:12px; text-align:center;
+  }
+  footer a{color:var(--ok); text-decoration:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>DB LOCAL</h1>
+  <span class="badge">dasbor :4000</span>
+  <span class="badge" id="modebadge">…</span>
+  <span class="pill">contoh log nyata</span>
+</header>
+<main>
+  <div id="ket">
+    Contoh <b>log nyata</b> dasbor port 4000 — <b>logs/human.log</b> build 0.5.4, direkam dari
+    perangkat <b>2026-11-09 19:33:53 → 19:37:04</b> (satu sesi: ONLINE lalu switch ke LOCAL).
+    Isi log ditampilkan <b>apa adanya, tidak diedit</b> — log mentah utuh ada di
+    <b>log-0.5.4-2026-11-09.txt</b> di folder yang sama. Baris berlatang merah =
+    <b>baris yang jalurnya tidak cocok dengan mode yang sedang berjalan</b> (keluhan
+    “log campur aduk”).
+  </div>
+  <div class="toolbar">
+    <button class="chip on" id="f-all">Semua</button>
+    <button class="chip c-online" id="f-online">ONLINE</button>
+    <button class="chip" id="f-local">LOCAL</button>
+    <button class="act" id="copylog">Salin log</button>
+    <span id="stat"></span>
+  </div>
+  <div id="logbox"><div class="logempty">memuat log…</div></div>
+  <div id="legend">
+    <span class="sw"></span>baris salah jalur (bocor antar mode) ·
+    🚀 hijau = boot penuh · kuning = switch mode ·
+    baris pudar = teknis (📄 request, 🌐 passthrough, Σ ringkasan)
+  </div>
+</main>
+<footer>
+  sumber: <b>logs/human.log</b> · build 0.5.4 · 2026-11-09 — replika gaya
+  <i>assets/server/dashboard.html</i> · <a href="https://github.com/anztdree/db-apk" target="_blank" rel="noopener">github.com/anztdree/db-apk</a>
+</footer>
+
+<script>
+(function(){
+  var RAW_FILE = "log-0.5.4-2026-11-09.txt";
+  var RE_HEAD = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) \[([^\]]+)\] ?(.*)$/;
+  var RE_DET  = /^\s+(?:[├└]─\s?)(.*)$/;
+
+  var entries = [];   // {time, icon, text, detail, mode, kind}
+  var runningMode = "online";
+
+  function detectKind(icon, text){
+    if (text.indexOf("SWITCH MODE") === 0) return "switch";
+    if (icon.indexOf("🚀") === 0) return "boot";
+    if (icon.indexOf("❌") === 0 || icon.indexOf("⚠️") === 0) return "err";
+    if (icon.indexOf("📄") === 0 || icon.indexOf("🌐") === 0 || icon.indexOf("Σ") === 0) return "tech";
+    return "info";
+  }
+  function isLeak(mode, icon, text){
+    // LOCAL tapi bicara server ASLI (probe Monitor) — keluhan "kalau sedang local log ya isinya local"
+    if (mode === "local" && icon.indexOf("📡") === 0 && text.indexOf("Server asli ") === 0) return true;
+    // ONLINE tapi log config OFFLINE/manual — keluhan "di posisi original online tapi lognya local malah ikut"
+    if (mode === "online" && text.indexOf("Config OFFLINE manual") !== -1) return true;
+    return false;
+  }
+
+  function parse(raw){
+    var lines = raw.split(/\r?\n/);
+    for (var i=0;i<lines.length;i++){
+      var L = lines[i];
+      if (!L.trim()) continue;
+      var m = RE_HEAD.exec(L);
+      if (m){
+        var text = m[4];
+        // mode berjalan: tegaskan dari baris 🚀 "Server lokal siap — mode X"
+        var mm = /Server lokal siap — mode (ONLINE|LOCAL)/.exec(text);
+        if (mm) runningMode = mm[1] === "ONLINE" ? "online" : "local";
+        var mode = runningMode;
+        var kind = detectKind(m[3], text);
+        var e = {time:m[1]+" "+m[2], icon:m[3], text:text, detail:"", mode:mode, kind:kind, leak:false};
+        if (kind === "switch") e.mode = "switch";
+        e.leak = isLeak(mode, m[3], text);
+        entries.push(e);
+      } else {
+        var d = RE_DET.exec(L);
+        if (d && entries.length){
+          entries[entries.length-1].detail += (entries[entries.length-1].detail ? "\n" : "") + d[1];
+        }
+      }
+    }
+  }
+
+  var cur = "all";
+  function esc(s){
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  function render(){
+    var box = document.getElementById("logbox");
+    var html = [];
+    var shown = 0, leaks = 0;
+    for (var i=0;i<entries.length;i++){
+      var e = entries[i];
+      if (cur === "online"  && e.mode !== "online" && e.mode !== "switch") continue;
+      if (cur === "local"   && e.mode !== "local"  && e.mode !== "switch") continue;
+      if (e.leak) leaks++;
+      shown++;
+      var cls = "logrow";
+      if (e.kind === "tech") cls += " tech";
+      if (e.kind === "err")  cls += " err";
+      if (e.kind === "boot") cls += " boot";
+      if (e.kind === "switch") cls += " switch";
+      if (e.leak) cls += " leak";
+      var tag = e.leak ? '<span class="leaktag">SALAH JALUR</span>' : "";
+      var h = '<div class="'+cls+'">'
+            + '<span class="logtime">'+esc(e.time.slice(11))+'</span>'
+            + '<span class="logic">'+esc(e.icon)+'</span>'
+            + '<span class="logtext">'+esc(e.text)+tag
+            + (e.detail ? '<span class="logdetail">'+esc(e.detail)+'</span>' : "")
+            + '</span></div>';
+      html.push(h);
+    }
+    box.innerHTML = html.length ? html.join("") : '<div class="logempty">tidak ada baris</div>';
+    document.getElementById("stat").innerHTML =
+      shown + " baris · <b>"+leaks+"</b> salah jalur";
+    var nBoot = 0, nSwitch = 0;
+    for (var j=0;j<entries.length;j++){
+      if (entries[j].kind === "boot") nBoot++;
+      if (entries[j].kind === "switch") nSwitch++;
+    }
+    document.getElementById("modebadge").textContent =
+      "1 sesi · boot 🚀 "+nBoot+"× · switch "+nSwitch+"×";
+  }
+
+  function setChip(id){
+    ["f-all","f-online","f-local"].forEach(function(x){
+      document.getElementById(x).classList.toggle("on", x === id);
+    });
+  }
+  document.getElementById("f-all").onclick    = function(){ cur="all";    setChip("f-all");    render(); };
+  document.getElementById("f-online").onclick = function(){ cur="online"; setChip("f-online"); render(); };
+  document.getElementById("f-local").onclick  = function(){ cur="local";  setChip("f-local");  render(); };
+  document.getElementById("copylog").onclick  = function(){
+    var txt = entries.map(function(e){
+      var s = e.time + " [" + e.icon + "] " + e.text + (e.leak ? "   << SALAH JALUR (mode " + e.mode + ")" : "");
+      if (e.detail) s += "\n" + e.detail.split("\n").map(function(l,i,a){
+        return "    " + (i < a.length-1 ? "├─ " : "└─ ") + l;
+      }).join("\n");
+      return s;
+    }).join("\n");
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt);
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch(x){}
+      document.body.removeChild(ta);
+    }
+  };
+
+  fetch(RAW_FILE).then(function(r){
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.text();
+  }).then(function(t){
+    parse(t);
+    render();
+  }).catch(function(err){
+    document.getElementById("logbox").innerHTML =
+      '<div class="logempty">Gagal memuat '+RAW_FILE+' ('+err+') — buka lewat GitHub Pages, bukan file://</div>';
+  });
+})();
+</script>
+</body>
+</html>

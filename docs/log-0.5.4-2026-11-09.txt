@@ -1,0 +1,215 @@
+2026-11-09 19:33:53 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
+    └─ SQLite (android.database.sqlite) · /storage/emulated/0/Android/data/com.db.local/server/config/dragonball.db
+2026-11-09 19:33:53 [🧹] Mirror server asli diekstrak OTOMATIS dari APK → www/
+    ├─ Isi      : 28 file · 55,5 MB (setting bin, H5 Egret, js, resource, upgrade)
+    ├─ Cara     : sekali saat boot pertama — tanpa langkah manual
+    └─ Catatan  : sumber: assets/server/www · versi mirror 4
+2026-11-09 19:33:53 [ℹ️·] Dasbor dimuat dari APK (assets/server/dashboard.html · 25,0 KB)
+2026-11-09 19:33:53 [🚀] Server lokal siap — mode ONLINE
+    ├─ Port    : game :8080 · login :8610 · dasbor :4000
+    ├─ Mode    : ONLINE — config login (bin + serversetting) TETAP ditulis-ulang ke server lokal · file game & seluruh tahap login diteruskan LEWAT server lokal ke server asli (passthrough utuh) — token & progres tetap dari/ke server asli
+    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
+    └─ Pemain  : guest77086212 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
+2026-11-09 19:33:55 [📡·] Server asli dragon.sjmobilegame.com:82 bisa dihubungi · 1,3 dtk
+    └─ DNS dragon.sjmobilegame.com → 212.64.58.211
+2026-11-09 19:33:58 [📡·] Server asli configus.sjmobilegame.com:443 bisa dihubungi · 3,2 dtk
+    └─ DNS configus.sjmobilegame.com → 43.168.8.62
+2026-11-09 19:33:58 [🌐] ⇄ GET configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.732705 → HTTP 200 · 684 B · 3,9 dtk · login + url H5 ditulis-ulang ke server lokal
+2026-11-09 19:33:59 [📡·] Server asli dragonh5cdn.popoh5.com:443 bisa dihubungi · 708 ms
+    └─ DNS dragonh5cdn.popoh5.com → 43.168.35.165
+2026-11-09 19:33:59 [🌐] ⇄ GET configus.sjmobilegame.com/bs/db/android/com_db_local.bin?rnd=0.454674 → HTTP 404 · 452 B · 607 ms
+2026-11-09 19:33:59 [🌐] ⇄ GET configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.743135 → HTTP 200 · 684 B · 223 ms · login + url H5 ditulis-ulang ke server lokal
+2026-11-09 19:33:59 [📡·] Server asli qsdk.t4game.com:443 bisa dihubungi · 862 ms
+    └─ DNS qsdk.t4game.com → 47.88.88.118
+2026-11-09 19:34:00 [🌐] ⇄ GET configus.sjmobilegame.com/bs/db/android/com_db_local.bin?rnd=0.409107 → HTTP 404 · 452 B · 217 ms
+2026-11-09 19:34:01 [📡·] Server asli login.popoh5.com:610 bisa dihubungi · 1,7 dtk
+    └─ DNS login.popoh5.com → 47.89.242.44
+2026-11-09 19:34:01 [🌐] ⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/base.version?rnd=0.339359 → HTTP 200 · 4 B · 621 ms
+2026-11-09 19:34:02 [🌐] ⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/resource.version?rnd=0.785283 → HTTP 200 · 5 B · 194 ms
+2026-11-09 19:34:02 [🌐] ⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/upgrade.json?rnd=0.360388 → HTTP 200 · 130 B · 744 ms
+2026-11-09 19:34:02 [🌐] ⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/size.json?rnd=0.166370 → HTTP 200 · 105 B · 197 ms
+2026-11-09 19:34:03 [🌐·] ⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/all.zip?v=11011390 → HTTP 200 · 18,5 MB · 205 ms
+2026-11-09 19:34:19 [ℹ️·] Tombol melayang tampil — GESER pindah · TEKAN ganti mode
+2026-11-09 19:34:20 [🌐] ⇄ POST qsdk.t4game.com/v1/system/init → 200 · 765 B · 483 ms (passthrough — isi tak disentuh)
+2026-11-09 19:34:21 [🌐] ⇄ POST qsdk.t4game.com/v1/system/getNotice → 200 · 55 B · 255 ms (passthrough — isi tak disentuh)
+2026-11-09 19:34:59 [Σ] Passthrough ONLINE: 9 request OK · 18,5 MB (4,1 dtk) — rincian di dasbor
+2026-11-09 19:35:49 [ℹ️] SWITCH MODE dari tombol melayang: ONLINE → LOCAL — aplikasi direstart
+    ├─ Mode     : ONLINE → LOCAL (tersimpan di server.json)
+    └─ Efek     : config endpoint ditulis-ulang sesuai mode + restart otomatis aplikasi
+2026-11-09 19:35:50 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
+    └─ SQLite (android.database.sqlite) · /storage/emulated/0/Android/data/com.db.local/server/config/dragonball.db
+2026-11-09 19:35:50 [🧹·] Mirror www/ sudah terpasang (28 file · 0 B) — tidak ada yang perlu diulang
+    └─ penanda cocok (versi 4, 28 file utuh)
+2026-11-09 19:35:50 [💾·] Config OFFLINE manual siap — config-offline/ (5 file · 3 KB) — paket MANUAL (setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)
+2026-11-09 19:35:50 [ℹ️·] Dasbor dimuat dari APK (assets/server/dashboard.html · 25,0 KB)
+2026-11-09 19:35:51 [🚀] Server lokal siap — mode LOCAL
+    ├─ Port    : game :8080 · login :8610 · dasbor :4000
+    ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610 · config: paket MANUAL config-offline/ (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal) · Play → socket game :8080 → upstream BELUM DIISI (isi config/game-upstream.txt)
+    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
+    └─ Pemain  : guest77086212 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
+2026-11-09 19:35:53 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
+    └─ SQLite (android.database.sqlite) · /storage/emulated/0/Android/data/com.db.local/server/config/dragonball.db
+2026-11-09 19:35:53 [🧹·] Mirror www/ sudah terpasang (28 file · 0 B) — tidak ada yang perlu diulang
+    └─ penanda cocok (versi 4, 28 file utuh)
+2026-11-09 19:35:53 [💾·] Config OFFLINE manual siap — config-offline/ (5 file · 3 KB) — paket MANUAL (setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)
+2026-11-09 19:35:53 [ℹ️·] Dasbor dimuat dari APK (assets/server/dashboard.html · 25,0 KB)
+2026-11-09 19:35:53 [📦] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 1 ms
+    ├─ Isi penuh (bedah field-per-field): seksi CONFIG di dasbor — show/hide
+    └─ Menunjuk : 127.0.0.1 (game :8080 · login :8610) — sejak disiapkan manual
+2026-11-09 19:35:53 [📦] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 0 ms
+    ├─ Isi penuh (bedah field-per-field): seksi CONFIG di dasbor — show/hide
+    └─ Menunjuk : 127.0.0.1 (game :8080 · login :8610) — sejak disiapkan manual
+2026-11-09 19:35:53 [🚀] Server lokal siap — mode LOCAL
+    ├─ Port    : game :8080 · login :8610 · dasbor :4000
+    ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610 · config: paket MANUAL config-offline/ (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal) · Play → socket game :8080 → upstream BELUM DIISI (isi config/game-upstream.txt)
+    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
+    └─ Pemain  : guest77086212 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
+2026-11-09 19:35:53 [📄·] GET /bs/upgrade/base.version · mirror www/ · 4 B · 0 ms
+2026-11-09 19:35:53 [📄·] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 1 ms
+2026-11-09 19:35:54 [ℹ️·] Server SDK lokal siap — layar login SDK ASLI dilayani di sini (init dari perangkat 8655A9EB39…)
+2026-11-09 19:35:55 [📄·] GET /bs/upgrade/base.version · mirror www/ · 4 B · 1 ms
+2026-11-09 19:35:55 [📄·] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 0 ms
+2026-11-09 19:35:55 [📡·] Server asli dragon.sjmobilegame.com:82 bisa dihubungi · 1,6 dtk
+    └─ DNS dragon.sjmobilegame.com → 212.64.58.211
+2026-11-09 19:35:55 [📡·] Server asli configus.sjmobilegame.com:443 bisa dihubungi · 53 ms
+    └─ DNS configus.sjmobilegame.com → 43.168.14.49
+2026-11-09 19:35:55 [📡·] Server asli dragonh5cdn.popoh5.com:443 bisa dihubungi · 50 ms
+    └─ DNS dragonh5cdn.popoh5.com → 43.168.35.165
+2026-11-09 19:35:55 [📡·] Server asli qsdk.t4game.com:443 bisa dihubungi · 215 ms
+    └─ DNS qsdk.t4game.com → 47.88.88.118
+2026-11-09 19:35:55 [📡·] Server asli login.popoh5.com:610 bisa dihubungi · 214 ms
+    └─ DNS login.popoh5.com → 47.89.242.44
+2026-11-09 19:35:56 [👤] Layar SDK — masuk sebagai tamu guest77086212
+    ├─ Perangkat  : 8655A9EB39…
+    ├─ Cara masuk : registerVisitor — tamu pertama server lokal: identitas tamu lama pemilik dipertahankan
+    └─ Identitas  : tamu guest77086212 — tersimpan dragonball.db (tahan reboot)
+2026-11-09 19:36:33 [ℹ️·] Tombol melayang tampil — GESER pindah · TEKAN ganti mode
+2026-11-09 19:36:33 [🔑] Sesi tamu guest77086212 disahkan — game lanjut boot
+    ├─ Uid      : guest77086212 · mode tamu
+    ├─ Hasil    : code 0 (skema respons asli login.popoh5.com:510) — shell melanjutkan boot ke H5
+    └─ Sesi     : disimpan ke dragonball.db (sdk_sessions) — url game memakai userid ini
+2026-11-09 19:36:34 [📄·] GET /bs/index-native.html · mirror www/ · 10,5 KB · 0 ms
+2026-11-09 19:36:34 [📄·] GET /bs/manifest.json · mirror www/ · 533 B · 0 ms
+2026-11-09 19:36:36 [ℹ️·] Rute SDK tak dikenal /v1/auth/getUserInfo — dijawab sukses kosong
+2026-11-09 19:36:39 [📄·] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
+2026-11-09 19:36:39 [📦] CONFIG serversetting.json disajikan — paket manual config-offline/ · 66 B · 0 ms
+    ├─ Isi penuh: seksi CONFIG di dasbor — show/hide
+    └─ Menunjuk : loginserver 127.0.0.1:8610 — sejak disiapkan manual
+2026-11-09 19:36:41 [📄·] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
+2026-11-09 19:36:41 [📡] Klien game tersambung ke server login lokal
+    ├─ Sesi     : Ri42hJ… (engine.io v3 · polling, tanpa websocket)
+    ├─ Tujuan   : 127.0.0.1:8610 (loginServer hasil rewrite setting bin)
+    └─ Lanjutan : menunggu loginGame + GetServerList dari klien H5
+2026-11-09 19:36:41 [📋] Daftar server terkirim — 1 server (paket MANUAL)
+    ├─ Sumber   : config-offline/servers.json — paket CONFIG OFFLINE MANUAL bawaan APK
+    ├─            (bukan snapshot online — owner: online cuma jejak arah, bukan config asli offline)
+    ├─ Tujuan   : url tiap entri = 127.0.0.1:8080 — klik Play masuk SERVER GAME LOKAL
+    ├─ Upstream : BELUM DIISI — isi config/game-upstream.txt (1 baris URL server game asli) atau field "upstream" di config-offline/servers.json
+    └─ Ukuran   : 359 B · 0 ms · pemain sekarang di layar pilih server
+2026-11-09 19:36:41 [❌] Play berhenti — server game lokal :8080 belum punya UPSTREAM (tujuan relay)
+    ├─ Kejadian : klien io.connect ke http://127.0.0.1:8080 (url entri daftar server manual)
+    ├─ Sebab    : field "upstream" kosong — relay tidak tahu harus meneruskan ke mana
+    ├─ Solusi   : isi SATU baris URL server game asli di config/game-upstream.txt (cth: https://s2109-bs.popoh5.com:8061) — tanpa build ulang, lalu klik Play lagi
+    └─            atau isi field "upstream" entri di config-offline/servers.json
+2026-11-09 19:36:41 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
+    └─ SQLite (android.database.sqlite) · /storage/emulated/0/Android/data/com.db.local/server/config/dragonball.db
+2026-11-09 19:36:41 [🧹·] Mirror www/ sudah terpasang (28 file · 0 B) — tidak ada yang perlu diulang
+    └─ penanda cocok (versi 4, 28 file utuh)
+2026-11-09 19:36:41 [💾·] Config OFFLINE manual siap — config-offline/ (5 file · 3 KB) — paket MANUAL (setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)
+2026-11-09 19:36:41 [ℹ️·] Dasbor dimuat dari APK (assets/server/dashboard.html · 25,0 KB)
+2026-11-09 19:36:42 [🚀] Server lokal siap — mode LOCAL
+    ├─ Port    : game :8080 · login :8610 · dasbor :4000
+    ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610 · config: paket MANUAL config-offline/ (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal) · Play → socket game :8080 → upstream BELUM DIISI (isi config/game-upstream.txt)
+    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
+    └─ Pemain  : guest77086212 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
+2026-11-09 19:36:44 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
+    └─ SQLite (android.database.sqlite) · /storage/emulated/0/Android/data/com.db.local/server/config/dragonball.db
+2026-11-09 19:36:44 [🧹·] Mirror www/ sudah terpasang (28 file · 0 B) — tidak ada yang perlu diulang
+    └─ penanda cocok (versi 4, 28 file utuh)
+2026-11-09 19:36:44 [💾·] Config OFFLINE manual siap — config-offline/ (5 file · 3 KB) — paket MANUAL (setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)
+2026-11-09 19:36:44 [ℹ️·] Dasbor dimuat dari APK (assets/server/dashboard.html · 25,0 KB)
+2026-11-09 19:36:44 [📦] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 0 ms
+    ├─ Isi penuh (bedah field-per-field): seksi CONFIG di dasbor — show/hide
+    └─ Menunjuk : 127.0.0.1 (game :8080 · login :8610) — sejak disiapkan manual
+2026-11-09 19:36:44 [📦] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 0 ms
+    ├─ Isi penuh (bedah field-per-field): seksi CONFIG di dasbor — show/hide
+    └─ Menunjuk : 127.0.0.1 (game :8080 · login :8610) — sejak disiapkan manual
+2026-11-09 19:36:44 [🚀] Server lokal siap — mode LOCAL
+    ├─ Port    : game :8080 · login :8610 · dasbor :4000
+    ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610 · config: paket MANUAL config-offline/ (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal) · Play → socket game :8080 → upstream BELUM DIISI (isi config/game-upstream.txt)
+    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
+    └─ Pemain  : guest77086212 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
+2026-11-09 19:36:44 [📄·] GET /bs/upgrade/base.version · mirror www/ · 4 B · 0 ms
+2026-11-09 19:36:44 [📄·] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 1 ms
+2026-11-09 19:36:45 [📡·] Server asli dragon.sjmobilegame.com:82 bisa dihubungi · 494 ms
+    └─ DNS dragon.sjmobilegame.com → 212.64.58.211
+2026-11-09 19:36:45 [ℹ️·] Server SDK lokal siap — layar login SDK ASLI dilayani di sini (init dari perangkat 8655A9EB39…)
+2026-11-09 19:36:45 [📡·] Server asli configus.sjmobilegame.com:443 bisa dihubungi · 101 ms
+    └─ DNS configus.sjmobilegame.com → 43.168.14.49
+2026-11-09 19:36:45 [📡·] Server asli dragonh5cdn.popoh5.com:443 bisa dihubungi · 196 ms
+    └─ DNS dragonh5cdn.popoh5.com → 43.168.35.165
+2026-11-09 19:36:45 [📡·] Server asli qsdk.t4game.com:443 bisa dihubungi · 219 ms
+    └─ DNS qsdk.t4game.com → 47.88.88.118
+2026-11-09 19:36:45 [📡·] Server asli login.popoh5.com:610 bisa dihubungi · 303 ms
+    └─ DNS login.popoh5.com → 47.89.242.44
+2026-11-09 19:36:48 [👤] Layar SDK — masuk sebagai tamu guest77086212
+    ├─ Perangkat  : 8655A9EB39…
+    ├─ Cara masuk : autoLogin — sesi tersimpan masih valid (token dikenal)
+    └─ Identitas  : tamu guest77086212 — tersimpan dragonball.db (tahan reboot)
+2026-11-09 19:36:50 [🔑] Sesi tamu guest77086212 disahkan — game lanjut boot
+    ├─ Uid      : guest77086212 · mode tamu
+    ├─ Hasil    : code 0 (skema respons asli login.popoh5.com:510) — shell melanjutkan boot ke H5
+    └─ Sesi     : disimpan ke dragonball.db (sdk_sessions) — url game memakai userid ini
+2026-11-09 19:36:50 [📄·] GET /bs/index-native.html · mirror www/ · 10,5 KB · 1 ms
+2026-11-09 19:36:50 [ℹ️·] Tombol melayang tampil — GESER pindah · TEKAN ganti mode
+2026-11-09 19:36:50 [📄·] GET /bs/manifest.json · mirror www/ · 533 B · 1 ms
+2026-11-09 19:36:54 [📄·] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
+2026-11-09 19:36:54 [📦] CONFIG serversetting.json disajikan — paket manual config-offline/ · 66 B · 0 ms
+    ├─ Isi penuh: seksi CONFIG di dasbor — show/hide
+    └─ Menunjuk : loginserver 127.0.0.1:8610 — sejak disiapkan manual
+2026-11-09 19:36:55 [📄·] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
+2026-11-09 19:36:55 [📡] Klien game tersambung ke server login lokal
+    ├─ Sesi     : jRCCEK… (engine.io v3 · polling, tanpa websocket)
+    ├─ Tujuan   : 127.0.0.1:8610 (loginServer hasil rewrite setting bin)
+    └─ Lanjutan : menunggu loginGame + GetServerList dari klien H5
+2026-11-09 19:36:55 [📋] Daftar server terkirim — 1 server (paket MANUAL)
+    ├─ Sumber   : config-offline/servers.json — paket CONFIG OFFLINE MANUAL bawaan APK
+    ├─            (bukan snapshot online — owner: online cuma jejak arah, bukan config asli offline)
+    ├─ Tujuan   : url tiap entri = 127.0.0.1:8080 — klik Play masuk SERVER GAME LOKAL
+    ├─ Upstream : BELUM DIISI — isi config/game-upstream.txt (1 baris URL server game asli) atau field "upstream" di config-offline/servers.json
+    └─ Ukuran   : 359 B · 0 ms · pemain sekarang di layar pilih server
+2026-11-09 19:36:56 [❌] Play berhenti — server game lokal :8080 belum punya UPSTREAM (tujuan relay)
+    ├─ Kejadian : klien io.connect ke http://127.0.0.1:8080 (url entri daftar server manual)
+    ├─ Sebab    : field "upstream" kosong — relay tidak tahu harus meneruskan ke mana
+    ├─ Solusi   : isi SATU baris URL server game asli di config/game-upstream.txt (cth: https://s2109-bs.popoh5.com:8061) — tanpa build ulang, lalu klik Play lagi
+    └─            atau isi field "upstream" entri di config-offline/servers.json
+2026-11-09 19:37:03 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
+    └─ SQLite (android.database.sqlite) · /storage/emulated/0/Android/data/com.db.local/server/config/dragonball.db
+2026-11-09 19:37:03 [🧹·] Mirror www/ sudah terpasang (28 file · 0 B) — tidak ada yang perlu diulang
+    └─ penanda cocok (versi 4, 28 file utuh)
+2026-11-09 19:37:03 [💾·] Config OFFLINE manual siap — config-offline/ (5 file · 3 KB) — paket MANUAL (setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)
+2026-11-09 19:37:03 [ℹ️·] Dasbor dimuat dari APK (assets/server/dashboard.html · 25,0 KB)
+2026-11-09 19:37:03 [📦] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 0 ms
+    ├─ Isi penuh (bedah field-per-field): seksi CONFIG di dasbor — show/hide
+    └─ Menunjuk : 127.0.0.1 (game :8080 · login :8610) — sejak disiapkan manual
+2026-11-09 19:37:03 [📦] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 0 ms
+    ├─ Isi penuh (bedah field-per-field): seksi CONFIG di dasbor — show/hide
+    └─ Menunjuk : 127.0.0.1 (game :8080 · login :8610) — sejak disiapkan manual
+2026-11-09 19:37:03 [🚀] Server lokal siap — mode LOCAL
+    ├─ Port    : game :8080 · login :8610 · dasbor :4000
+    ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610 · config: paket MANUAL config-offline/ (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal) · Play → socket game :8080 → upstream BELUM DIISI (isi config/game-upstream.txt)
+    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
+    └─ Pemain  : guest77086212 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
+2026-11-09 19:37:03 [📄·] GET /bs/upgrade/base.version · mirror www/ · 4 B · 0 ms
+2026-11-09 19:37:03 [📄·] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 0 ms
+2026-11-09 19:37:04 [📡·] Server asli dragon.sjmobilegame.com:82 bisa dihubungi · 363 ms
+    └─ DNS dragon.sjmobilegame.com → 212.64.58.211
+2026-11-09 19:37:04 [📡·] Server asli configus.sjmobilegame.com:443 bisa dihubungi · 37 ms
+    └─ DNS configus.sjmobilegame.com → 43.168.14.49
+2026-11-09 19:37:04 [📡·] Server asli dragonh5cdn.popoh5.com:443 bisa dihubungi · 13 ms
+    └─ DNS dragonh5cdn.popoh5.com → 43.168.35.165
+2026-11-09 19:37:04 [ℹ️·] Server SDK lokal siap — layar login SDK ASLI dilayani di sini (init dari perangkat 8655A9EB39…)
+2026-11-09 19:37:04 [📡·] Server asli qsdk.t4game.com:443 bisa dihubungi · 220 ms
+    └─ DNS qsdk.t4game.com → 47.88.88.118
+2026-11-09 19:37:04 [📡·] Server asli login.popoh5.com:610 bisa dihubungi · 208 ms
+    └─ DNS login.popoh5.com → 47.89.242.44
