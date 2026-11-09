@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DB LOCAL · Contoh versi ONLINE — alur APK penuh</title>
+<!--
+  Halaman GitHub Pages — CONTOH NYATA VERSI ONLINE log dasbor :4000.
+  BAGIAN A = capture ASLI build 0.5.4 (dibaca langsung dari log-0.5.4-2026-11-09.txt,
+             19:33:53 → 19:35:49 — tidak disunting, tidak ditambah).
+  BAGIAN B = lanjutan yang wajib tercatat bila sesi online diteruskan — teks baris
+             diambil PERSIS dari kode 0.5.4 (SdkApi.proxyV1/proxyLoginCheckNative,
+             LoginServer.logOnlineResponse/logOnlinePacket, GameServer.socketIo/passthrough),
+             bukan karangan. Baris 👆 KLIK = aktivitas pemain yang 0.5.4 BELUM catat.
+  Log online = ALAT VERIFIKASI agar local tidak salah arah + alat bantu menyempurnakan local.
+-->
+<style>
+  :root{
+    --bg:#0c0a09; --card:#1c1917; --line:#292524; --tx:#fafaf9; --mut:#a8a29e;
+    --det:#d6d3d1;
+    --ok:#34d399; --warn:#fbbf24; --err:#f87171; --acc:#10b981;
+    --code:#111111;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--tx);
+    font:15px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh; display:flex; flex-direction:column;
+  }
+  header{
+    padding:12px 14px 10px; border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    position:sticky; top:0; background:var(--bg); z-index:20;
+  }
+  header h1{font-size:16px; margin:0; font-weight:700}
+  .badge{
+    font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px;
+    border:1px solid var(--line); background:var(--card); color:var(--mut); letter-spacing:.4px;
+  }
+  .badge.mode-online{color:var(--warn); border-color:var(--warn)}
+  .pill{
+    margin-left:auto; font-size:12px; font-weight:800; padding:4px 12px; border-radius:999px;
+    background:#064e3b33; color:var(--ok); border:1px solid var(--line);
+  }
+  main{flex:1; padding:10px 14px 18px; max-width:960px; width:100%; margin:0 auto}
+
+  #ket{
+    font-size:12.5px; color:var(--mut); line-height:1.6;
+    background:var(--card); border:1px solid var(--line); border-radius:9px;
+    padding:8px 11px; margin:6px 0 10px;
+  }
+  #ket b{color:var(--tx); font-weight:600}
+  #ket a{color:var(--ok); text-decoration:none; font-weight:700}
+
+  /* ---- strip ALUR APK (bukan tab — hanya peta urutan, klik = lompat ke baris) ---- */
+  #alur{display:flex; gap:6px; overflow-x:auto; padding:2px 0 8px; -webkit-overflow-scrolling:touch}
+  .fase{
+    flex:none; border:1px solid var(--line); background:var(--card); border-radius:8px;
+    padding:5px 9px; font-size:11px; font-weight:700; color:var(--mut); cursor:pointer;
+    min-height:34px; display:flex; align-items:center; gap:6px; white-space:nowrap;
+  }
+  .fase b{color:var(--warn); font-size:10px}
+  .fase:active{transform:translateY(1px)}
+
+  .toolbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin:2px 0 8px}
+  #stat{margin-left:auto; font-size:11.5px; color:var(--mut)}
+  #stat b{color:var(--warn); font-weight:700}
+  button.act{
+    min-height:38px; padding:6px 12px; border-radius:9px; border:1px solid var(--line);
+    background:var(--card); color:var(--tx); font-weight:600; font-size:12.5px; cursor:pointer;
+  }
+  button.act:active{transform:translateY(1px)}
+
+  /* ---- SATU kolom log kronologis (gaya dasbor asli) ---- */
+  #logbox{
+    background:var(--code); border:1px solid var(--warn); border-radius:10px;
+    font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    max-height:72vh; overflow-y:auto; word-break:break-word;
+    -webkit-overflow-scrolling:touch;
+  }
+  .logrow{display:flex; gap:8px; padding:4px 10px; border-bottom:1px solid var(--line); align-items:baseline}
+  .logrow:last-child{border-bottom:none}
+  .logrow:hover{background:rgba(128,128,128,.08)}
+  .logrow.tech{opacity:.62}
+  .logrow.boot .logtext{color:var(--ok); font-weight:600}
+  .logrow.switch .logtext{color:var(--warn); font-weight:700}
+  .logtime{color:var(--mut); flex:none; font-size:11px; min-width:58px}
+  .logic{flex:none; width:24px; text-align:center; font-size:14px}
+  .logtext{flex:1; min-width:0}
+  .logdetail{display:block; color:var(--det); font-size:11.5px; line-height:1.55;
+    white-space:pre-wrap; word-break:break-word; margin-top:2px; overflow-wrap:anywhere}
+  .logempty{padding:12px 10px; color:var(--mut)}
+
+  /* ---- pemisah FASE (bukan tab — penanda posisi di satu alur) ---- */
+  .fasediv{
+    padding:6px 10px; text-align:center; color:var(--warn);
+    font-weight:800; font-size:10.5px; letter-spacing:1px;
+    background:rgba(251,191,36,.07); border-bottom:1px solid var(--line);
+  }
+
+  /* ---- tag sumber baris: ASLI / KODE / KLIK ---- */
+  .tag{display:inline-block; margin-left:6px; padding:0 6px; border-radius:5px;
+    font-size:10px; font-weight:800; letter-spacing:.4px; vertical-align:1px}
+  .tag-asli{color:var(--ok);  border:1px solid var(--ok);  background:rgba(52,211,153,.08)}
+  .tag-kode{color:var(--warn);border:1px solid var(--warn);background:rgba(251,191,36,.08)}
+  .tag-klik{color:var(--err); border:1px solid var(--err); background:rgba(248,113,113,.08)}
+  .logrow.asli{box-shadow:inset 3px 0 0 var(--ok)}
+  .logrow.kode{box-shadow:inset 3px 0 0 var(--warn)}
+  .logrow.klik{box-shadow:inset 3px 0 0 var(--err); background:rgba(248,113,113,.05)}
+
+  /* ---- baris CELAH: capture asli berhenti / bagian yang kosong ---- */
+  .gapdiv{
+    padding:8px 10px; color:var(--err); font-weight:700; font-size:12px; line-height:1.6;
+    background:rgba(248,113,113,.07); border-bottom:1px solid var(--line);
+    white-space:pre-wrap;
+  }
+
+  #legend{margin:8px 2px 0; font-size:11.5px; color:var(--mut); line-height:1.7}
+
+  /* ---- checklist penyempurnaan (alat bantu local — bukan tab) ---- */
+  #check{
+    margin:12px 0 4px; background:var(--card); border:1px solid var(--line); border-radius:9px;
+    padding:9px 12px; font-size:12.5px; color:var(--mut); line-height:1.7;
+  }
+  #check h2{margin:0 0 5px; font-size:12.5px; color:var(--tx); font-weight:800; letter-spacing:.3px}
+  #check ol{margin:4px 0 0; padding-left:20px}
+  #check b{color:var(--tx)}
+  #check .wajib{color:var(--err); font-weight:700}
+
+  footer{
+    margin-top:auto; padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line); color:var(--mut); font-size:12px; text-align:center;
+  }
+  footer a{color:var(--ok); text-decoration:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>DB LOCAL</h1>
+  <span class="badge">dasbor :4000</span>
+  <span class="badge mode-online">CONTOH VERSI ONLINE</span>
+  <span class="pill">alur APK penuh — tidak dipangkas</span>
+</header>
+<main>
+  <div id="ket">
+    Contoh nyata <b>versi ONLINE</b> dari dasbor port 4000. <b>BAGIAN A</b> = capture asli build 0.5.4
+    (dibaca langsung dari <b>log-0.5.4-2026-11-09.txt</b>, 19:33:53 → 19:35:49 — tidak disunting).
+    <b>BAGIAN B</b> = lanjutan yang wajib tercatat bila sesi online diteruskan — teks barisnya diambil
+    <b>persis dari kode 0.5.4</b> (SdkApi · LoginServer · GameServer), bukan karangan.
+    <br><b>Posisi log online:</b> cuma <b>ALAT VERIFIKASI</b> agar local tidak salah arah —
+    dan <b>alat bantu menyempurnakan local</b>. Bukan fitur paralel.
+    Log asli campur (ONLINE+LOCAL) ada di <a href="index.html">index.html</a>.
+  </div>
+
+  <div id="alur">
+    <div class="fase" data-f="f1"><b>1</b> BOOT</div>
+    <div class="fase" data-f="f2"><b>2</b> VERIFIKASI ASLI</div>
+    <div class="fase" data-f="f3"><b>3</b> CONFIG LOGIN</div>
+    <div class="fase" data-f="f4"><b>4</b> FILE GAME</div>
+    <div class="fase" data-f="f5"><b>5</b> SDK + KLIK TAMU</div>
+    <div class="fase" data-f="f6"><b>6</b> LOGIN GAME</div>
+    <div class="fase" data-f="f7"><b>7</b> DAFTAR + PILIH</div>
+    <div class="fase" data-f="f8"><b>8</b> PLAY → GAME</div>
+  </div>
+
+  <div class="toolbar">
+    <button class="act" id="copylog">Salin log</button>
+    <span id="stat"></span>
+  </div>
+
+  <div id="logbox"><div class="logempty">memuat log…</div></div>
+
+  <div id="legend">
+    <span class="tag tag-asli">ASLI</span> baris persis dari log perangkat 0.5.4 ·
+    <span class="tag tag-kode">KODE 0.5.4</span> teks persis yang keluar dari kode 0.5.4 bila sesi diteruskan ·
+    <span class="tag tag-klik">KLIK · BELUM ADA</span> aktivitas pemain yang 0.5.4 belum catat — wajib ditambah ·
+    baris pudar = teknis (📄 request, 🌐 passthrough, Σ ringkasan)
+  </div>
+
+  <div id="check">
+    <h2>CHECKLIST PENYEMPURNAAN LOG — hasil perbandingan A vs B (usulan, menunggu keputusan owner)</h2>
+    <ol>
+      <li><b>Aktivitas klik tidak dicatat sama sekali</b> <span class="wajib">(0.5.4: nol baris klik)</span> —
+        wajib ada di SEMUA mode: tap MASUK TAMU, pilih server, Play, TEKAN/GESER tombol melayang, buka dasbor.</li>
+      <li><b>Isi config/SDK online hanya ukuran+waktu</b> (“passthrough — isi tak disentuh”) —
+        saat LOCAL config dibedah field-per-field (📦); bedah jawaban ASLI perlu setara, jadi local punya pembanding nilai.</li>
+      <li><b>Play ONLINE tidak terlihat</b> — gameplay langsung ke server asli (port :8080 tidak dilewati);
+        perlu baris konfirmasi Play + verifikasi Monitor menuju host game terpilih.</li>
+    </ol>
+  </div>
+</main>
+<footer>
+  log online = alat verifikasi untuk local · build 0.5.4 · 2026-11-09 —
+  <a href="index.html">log asli campur</a> ·
+  <a href="https://github.com/anztdree/db-apk" target="_blank" rel="noopener">github.com/anztdree/db-apk</a>
+</footer>
+
+<script>
+(function(){
+  var RAW_FILE = "log-0.5.4-2026-11-09.txt";
+  var RE_HEAD = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) \[([^\]]+)\] ?(.*)$/;
+  var RE_DET  = /^\s+(?:[├└]─\s?)(.*)$/;
+
+  /* ---------- BAGIAN B — teks baris PERSIS dari kode 0.5.4 ----------
+     sumber teks:
+     - SdkApi.proxyV1            → baris 🌐 ⇄ POST qsdk… "(passthrough — isi tak disentuh)"
+     - SdkApi.proxyLoginCheckNative → baris 🔑 "Sesi disahkan via SERVER ASLI…"
+     - LoginServer.logOnlineResponse → baris 📡 handshake passthrough, 📋 daftar server ASLI
+     - LoginServer.logOnlinePacket   → baris ✅ "Login game diteruskan ke server ASLI", 🔌 tutup sesi
+     - GameServer.socketIo           → 404 ONLINE: "gameplay LANGSUNG ke server game asli"
+     nilai dengan ~ = ilustrasi (bytes/ms isi jawaban tidak dibedah di 0.5.4). */
+  var B = [
+    {div:"f5", head:"FASE 5 (LANJUTAN) · SDK ASLI — AUTH TAMU · waktu relatif dari capture (+dtk)"},
+    {t:"+0", i:"👆", tag:"klik",
+     x:"KLIK — pemain tap MASUK TAMU di layar SDK asli",
+     d:"Aktivitas pemain — wajib termonitor di semua mode.\nKenapa merah: 0.5.4 belum mencatat SATU baris klik pun (celah yang dikeluhkan “log masih banyak disingkat”)."},
+    {t:"+1", i:"🌐", tag:"kode", tech:true,
+     x:"⇄ POST qsdk.t4game.com/v1/user/registerVisitor → 200 · ~0,3 dtk (passthrough — isi tak disentuh)",
+     d:"Format persis SdkApi.proxyV1 (0.5.4) — hanya ukuran + waktu.\nCelah: ISI jawaban asli tidak dibedah (harusnya setara 📦 bedah config saat LOCAL) — inilah pembanding nilai untuk local."},
+    {t:"+1", i:"🔑", tag:"kode",
+     x:"Sesi disahkan via SERVER ASLI (passthrough) — game lanjut boot",
+     d:"Uid      : guest77086212\nHasil    : code 0 dari login.popoh5.com:510 — diteruskan utuh lewat server login lokal (127.0.0.1:8610)\nSumber   : SERVER ASLI — token & identitas dikeluarkan di sana (progres pemain tetap tersimpan di server asli)"},
+    {div:"f6", head:"FASE 6 · BOOT H5 + LOGIN GAME — SOCKET DITERUSKAN UTUH KE ASLI"},
+    {t:"+2", i:"🌐", tag:"kode", tech:true,
+     x:"⇄ GET dragonh5cdn.popoh5.com/bs/index-native.html → HTTP 200 · 10,5 KB",
+     d:"Peta passthrough /bs/* → dragonh5cdn (GameServer.upstreamBase).\nurl H5 hasil tulis-ulang setting bin menunjuk server lokal :8080 → diteruskan ke CDN asli."},
+    {t:"+2", i:"🌐", tag:"kode", tech:true,
+     x:"⇄ GET dragonh5cdn.popoh5.com/bs/manifest.json → HTTP 200 · 533 B", d:""},
+    {t:"+5", i:"🌐", tag:"kode", tech:true,
+     x:"⇄ GET dragonh5cdn.popoh5.com/bs/resource/properties/clientversion.json → HTTP 200 · 38 B", d:""},
+    {t:"+5", i:"🌐", tag:"kode", tech:true,
+     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/serversetting.json → HTTP 200 · 66 B · loginserver ditulis-ulang ke server lokal",
+     d:"Catatan tulis-ulang persis GameServer 0.5.4 — HANYA jalur login yang diarahkan ke lokal; sisanya asli."},
+    {t:"+6", i:"📡", tag:"kode",
+     x:"Klien game tersambung ke server login lokal — diteruskan ke SERVER ASLI",
+     d:"Sesi     : sid dari server asli (passthrough utuh)\nTujuan   : 127.0.0.1:8610 → login.popoh5.com:610 (HTTPS, TLS 1.2)\nConfig   : setting bin + serversetting.json menunjuk server lokal (semua mode) — server ini yang meneruskan\nLanjutan : loginGame + GetServerList dijawab SERVER ASLI (progres tetap di sana)"},
+    {t:"+7", i:"✅", tag:"kode",
+     x:"Login game diteruskan ke server ASLI (passthrough)",
+     d:"Akun     : guest77086212\nSandi    : 32 karakter — diteruskan UTUH\nProses   : permintaan klien diteruskan utuh ke login.popoh5.com:610\nSumber   : SERVER ASLI — token & identitas dikeluarkan di sana (progres pemain tetap tersimpan di server asli)"},
+    {div:"f7", head:"FASE 7 · DAFTAR SERVER ASLI + PEMAIN MEMILIH"},
+    {t:"+7", i:"📋", tag:"kode",
+     x:"Daftar server ASLI terkirim — ~N server (passthrough)",
+     d:"Sumber   : SERVER ASLI login.popoh5.com:610 — diteruskan utuh lewat server lokal (bukan snapshot; daftar hidup dari server)\nGerbang  : https://sXXXX-bs.popoh5.com:PORT … (url pertama & terakhir dibaca dari jawaban — GameServer AKAR)\nUkuran   : ~1–2 KB · pemain sekarang di layar pilih server\nLanjutan : pemain pilih server → gameplay LANGSUNG ke server game asli pilihan pemain (progres tersimpan di sana)"},
+    {t:"+20", i:"👆", tag:"klik",
+     x:"KLIK — pemain memilih server di daftar ASLI",
+     d:"Aktivitas pemain — wajib termonitor.\n0.5.4 belum mencatatnya: pilihan pemain hanya terlihat dari efeknya (baris 🔌 di bawah)."},
+    {t:"+21", i:"🔌", tag:"kode",
+     x:"Klien menutup sesi login — normal setelah pilih server (pindah ke server game)",
+     d:"Pindah dari server login ke server game = perilaku bawaan klien H5 (socket.io v2.1)."},
+    {div:"f8", head:"FASE 8 · PLAY → GAME — LANGSUNG KE SERVER ASLI (TIDAK LEWAT LOKAL)"},
+    {t:"+21", i:"👆", tag:"klik",
+     x:"KLIK — pemain tap tombol MAIN (Play)",
+     d:"Klik terakhir sebelum masuk game — wajib termonitor.\n0.5.4: saat ONLINE, klik ini tidak meninggalkan satu baris pun."},
+    {t:"+22", i:"ℹ️", tag:"kode",
+     x:"Play ONLINE: klien io.connect LANGSUNG ke url ASLI server game pilihan (https://sXXXX-bs.popoh5.com:PORT) — bukan lewat server lokal",
+     d:"Alasan (GameServer.socketIo): /socket.io/ di port game :8080 mode ONLINE dijawab 404 —\n“Mode ONLINE: gameplay LANGSUNG ke server game asli pilihan pemain (url daftar server ASLI) — bukan lewat port ini.”\nCelah: gameplay tidak melewati server lokal → 0.5.4 tidak bisa melihatnya; baris konfirmasi Play + verifikasi Monitor menuju host terpilih wajib ditambah."},
+    {t:"+23", i:"🎮", tag:"kode",
+     x:"Gameplay berjalan di SERVER ASLI — token & progres tetap milik server asli",
+     d:"Konsisten janji mode ONLINE (baris 🚀): passthrough utuh — token & progres dari/ke server asli.\nPembanding LOCAL: Play → relay :8080 → upstream (config/game-upstream.txt)."},
+    {t:"+55", i:"Σ", tag:"kode", tech:true,
+     x:"Passthrough ONLINE: … request OK · … (denyut Σ tiap periode diam — LogGroups)", d:""},
+    {t:"—", i:"👆", tag:"klik",
+     x:"KLIK lain yang wajib termonitor di SEMUA mode",
+     d:"TEKAN tombol melayang (ganti mode) · GESER (pindah posisi) · buka dasbor :4000 · salin log · toggle RINCI/BERSIH.\nAturan owner: semua mode wajib termonitor — alur komunikasi DAN aktivitas saat di klik."}
+  ];
+
+  /* ---------- state ---------- */
+  var rows = [];          // {t,i,x,d,tag,cls,divId,divHead,gap}
+  var runningMode = "online";
+
+  function parseA(raw){
+    var lines = raw.split(/\r?\n/);
+    var cur = null;
+    for (var i=0;i<lines.length;i++){
+      var L = lines[i];
+      if (!L.trim()) continue;
+      var m = RE_HEAD.exec(L);
+      if (m){
+        if (cur) rows.push(cur);
+        cur = {t:m[2], i:m[3].replace(/·$/,""), x:m[4], d:"", tag:"asli", tech:false,
+               cls:"", fromFile:true};
+        if (m[4].indexOf("Server lokal siap — mode ONLINE") === 0) cur.cls = "boot";
+        if (m[4].indexOf("SWITCH MODE") === 0) cur.cls = "switch";
+        if (m[3].indexOf("🌐") === 0 || m[4].indexOf("[Σ]") === 0) cur.tech = true;
+      } else {
+        var d = RE_DET.exec(L);
+        if (d && cur) cur.d += (cur.d ? "\n" : "") + d[1];
+      }
+    }
+    if (cur) rows.push(cur);
+
+    // sisipkan pemisah FASE utk Bagian A (urutan pasti sesuai capture)
+    var f1=false,f2=false,f3=false,f4=false,f5=false, switched=false;
+    for (var j=0;j<rows.length;j++){
+      var r = rows[j];
+      if (!f1 && r.cls==="boot"){ f1=true; rows.splice(j,0,{divId:"f1",divHead:"FASE 1 · BOOT SERVER LOKAL — MODE ONLINE (PASSTHROUGH UTUH)"}); j++; continue; }
+      if (!f2 && r.i.indexOf("📡")===0 && r.x.indexOf("Server asli")===0){ f2=true; rows.splice(j,0,{divId:"f2",divHead:"FASE 2 · VERIFIKASI SERVER ASLI — MONITOR 5 HOST (SAAT ONLINE: INI JALURNYA)"}); j++; continue; }
+      if (!f3 && r.x.indexOf("setting_BS_Android.bin")!==-1){ f3=true; rows.splice(j,0,{divId:"f3",divHead:"FASE 3 · CONFIG LOGIN DARI SERVER ASLI — JALUR LOGIN DITULIS-ULANG"}); j++; continue; }
+      if (!f4 && r.x.indexOf("dragonh5cdn")!==-1){ f4=true; rows.splice(j,0,{divId:"f4",divHead:"FASE 4 · FILE GAME — CDN ASLI (PASSTHROUGH)"}); j++; continue; }
+      if (!f5 && r.x.indexOf("qsdk.t4game.com")!==-1){ f5=true; rows.splice(j,0,{divId:"f5",divHead:"FASE 5 · SDK ASLI — INIT + NOTICE (PASSTHROUGH)"}); j++; continue; }
+      if (r.cls==="switch"){
+        // CELAH + penutup Bagian A
+        rows.splice(j,0,{gap:true,
+          x:"TITIK INI CAPTURE ASLI BERHENTI — antara init SDK (19:34:21) dan Σ (19:34:59) TIDAK ADA SATU BARIS PUN:\ntidak ada aktivitas klik, tidak ada lanjutan login, tidak ada isi config dibedah.\nDi bawah (BAGIAN B): yang HARUSNYA tercatat bila sesi online diteruskan — pemain malah pindah mode ke LOCAL di 19:35:49."});
+        j++;
+        rows.splice(j+1); // buang sisa baris setelah switch (boot LOCAL dst)
+        rows.push(r); r.divId=null;
+        break;
+      }
+    }
+  }
+
+  function appendB(){
+    // penutup A
+    rows.push({divHead:"BAGIAN B · LANJUTAN YANG WAJIB TERCATAT — REKONSTRUKSI PERSIS DARI KODE 0.5.4 (BUKAN KARANGAN)"});
+    for (var k=0;k<B.length;k++){
+      var b = B[k];
+      if (b.div){ rows.push({divId:b.div, divHead:b.head}); continue; }
+      rows.push({t:b.t, i:b.i, x:b.x, d:b.d, tag:b.tag, tech:!!b.tech, cls:""});
+    }
+  }
+
+  function esc(s){
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  function render(){
+    var box = document.getElementById("logbox");
+    var html = [];
+    var nA=0,nKode=0,nKlik=0,nTech=0;
+    for (var i=0;i<rows.length;i++){
+      var r = rows[i];
+      if (r.divId || r.divHead){
+        html.push('<div class="fasediv"'+(r.divId?' id="'+r.divId+'"':'')+'>— '+esc(r.divHead)+' —</div>');
+        continue;
+      }
+      if (r.gap){
+        html.push('<div class="gapdiv">⚠️ '+esc(r.x)+'</div>');
+        continue;
+      }
+      if (r.fromFile) nA++; else if (r.tag==="klik") nKlik++; else nKode++;
+      if (r.tech) nTech++;
+      var cls = "logrow "+(r.tag||"");
+      if (r.cls) cls += " "+r.cls;
+      if (r.tech) cls += " tech";
+      var tag = r.tag==="asli" ? '<span class="tag tag-asli">ASLI</span>'
+              : r.tag==="klik" ? '<span class="tag tag-klik">KLIK · BELUM ADA</span>'
+              : '<span class="tag tag-kode">KODE 0.5.4</span>';
+      html.push('<div class="'+cls+'">'
+        + '<span class="logtime">'+esc(r.t)+'</span>'
+        + '<span class="logic">'+esc(r.i)+'</span>'
+        + '<span class="logtext">'+esc(r.x)+tag
+        + (r.d ? '<span class="logdetail">'+esc(r.d)+'</span>' : "")
+        + '</span></div>');
+    }
+    box.innerHTML = html.join("");
+    document.getElementById("stat").innerHTML =
+      "A: <b>"+nA+"</b> baris ASLI · B: "+nKode+" dari kode + "+nKlik+" klik wajib · total "+rows.length+" · 0 baris dipangkas";
+    var counts = {};
+    for (var j2=0;j2<rows.length;j2++){
+      if (rows[j2].divId){ counts[rows[j2].divId] = 0; }
+    }
+    var curF = null;
+    for (var j3=0;j3<rows.length;j3++){
+      if (rows[j3].divId){ curF = rows[j3].divId; continue; }
+      if (curF && counts[curF] !== undefined && !rows[j3].gap) counts[curF]++;
+    }
+    var chips = document.querySelectorAll(".fase");
+    for (var c=0;c<chips.length;c++){
+      var f = chips[c].getAttribute("data-f");
+      chips[c].innerHTML += counts[f] !== undefined ? ' <span style="color:var(--tx)">'+counts[f]+'</span>' : "";
+      (function(fid){
+        chips[c].onclick = function(){
+          var el = document.getElementById(fid);
+          if (el) el.scrollIntoView({behavior:"smooth", block:"start"});
+        };
+      })(f);
+    }
+  }
+
+  document.getElementById("copylog").onclick = function(){
+    var txt = rows.map(function(r){
+      if (r.divId || r.divHead) return "──── " + (r.divHead||"") + " ────";
+      if (r.gap) return "⚠️ " + r.x;
+      var s = (r.t||"") + " [" + (r.i||"") + "] " + (r.x||"");
+      if (r.tag==="klik") s += "   << KLIK (belum ada di 0.5.4)";
+      if (r.d) s += "\n" + r.d.split("\n").map(function(l,i,a){
+        return "    " + (i < a.length-1 ? "├─ " : "└─ ") + l;
+      }).join("\n");
+      return s;
+    }).join("\n");
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt);
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch(x){}
+      document.body.removeChild(ta);
+    }
+  };
+
+  fetch(RAW_FILE).then(function(r){
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.text();
+  }).then(function(t){
+    parseA(t);
+    appendB();
+    render();
+  }).catch(function(err){
+    document.getElementById("logbox").innerHTML =
+      '<div class="logempty">Gagal memuat '+RAW_FILE+' ('+err+') — buka lewat GitHub Pages, bukan file://</div>';
+  });
+})();
+</script>
+</body>
+</html>
