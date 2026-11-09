@@ -303,9 +303,8 @@
         // CELAH + penutup Bagian A
         rows.splice(j,0,{gap:true,
           x:"TITIK INI CAPTURE ASLI BERHENTI — antara init SDK (19:34:21) dan Σ (19:34:59) TIDAK ADA SATU BARIS PUN:\ntidak ada aktivitas klik, tidak ada lanjutan login, tidak ada isi config dibedah.\nDi bawah (BAGIAN B): yang HARUSNYA tercatat bila sesi online diteruskan — pemain malah pindah mode ke LOCAL di 19:35:49."});
-        j++;
-        rows.splice(j+1); // buang sisa baris setelah switch (boot LOCAL dst)
-        rows.push(r); r.divId=null;
+        j++;               // j kini menunjuk baris switch
+        rows.splice(j+1); // buang SEMUA baris setelah switch (boot LOCAL dst) — switch tetap satu
         break;
       }
     }
