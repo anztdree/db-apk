@@ -3,17 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DB LOCAL · Contoh versi ONLINE — alur APK murni</title>
+<title>DB LOCAL · Contoh versi ONLINE — satu sesi, dari APK dibuka</title>
 <!--
-  Halaman GitHub Pages — CONTOH VERSI ONLINE, MURNI alur online (gaya HttpCanary).
-  TANPA satu baris lokal: tanpa "Server lokal siap", tanpa db/mirror/dasbor/switch.
-  - Baris ✔ ASLI  : disalin persis dari log-0.5.4-2026-11-09.txt (19:33:53→19:34:59).
-  - Baris ○ KODE  : teks baris dari kode 0.5.4 (SdkApi · LoginServer · GameServer),
-                    waktu 19:35:01+ = ilustrasi urutan.
-  - Baris 👆 KLIK : aktivitas pemain — 0.5.4 belum mencatat, wajib ditambah.
-  - Isi JSON      : blok show/hide (klik ▸) — isi nyata dari file bawaan APK bila ada,
-                    bentuk protokol bila runtime (ditandai di dalam blok).
-  Log online = ALAT VERIFIKASI agar local tidak salah arah + alat bantu menyempurnakan local.
+  Halaman GitHub Pages — CONTOH VERSI ONLINE: SATU sesi utuh, dari APK dibuka sampai gameplay.
+
+  ATURAN (dari owner):
+  - MURNI komunikasi APK ⇄ SERVER ASLI. TANPA baris sesi lokal: tanpa boot server lokal,
+    tanpa db/mirror/dasbor, tanpa probe Monitor (📡 "bisa dihubungi"), tanpa Σ rekap,
+    tanpa narasi "ditulis-ulang / passthrough" di baris komunikasi.
+  - KOMUNIKASI dan ISI KOMUNIKASI TIDAK DIPISAHKAN: setiap ⇄ membawa isinya
+    (config, jawaban server, payload) dalam blok show/hide — klik ▸ untuk isi penuh.
+  - Baris ASLI : komunikasi persis dari log-0.5.4-2026-11-09.txt (19:33:58 → 19:34:21).
+  - Baris KODE : teks baris dari kode 0.5.4 (waktu 19:35:01+ = ilustrasi urutan).
+  - Baris KLIK : aktivitas pemain — 0.5.4 belum mencatat, wajib ditambah.
 -->
 <style>
   :root{
@@ -108,7 +110,7 @@
   .logrow.kode{box-shadow:inset 3px 0 0 var(--warn)}
   .logrow.klik{box-shadow:inset 3px 0 0 var(--err); background:rgba(248,113,113,.05)}
 
-  /* ---- blok JSON show/hide (isi penuh, rapi — klik ▸ untuk buka) ---- */
+  /* ---- blok ISI KOMUNIKASI show/hide (klik ▸ untuk buka isinya) ---- */
   details.jsonbox{margin-top:3px; border:1px solid var(--line); border-radius:7px;
     background:#0a0f0c; overflow:hidden}
   details.jsonbox summary{cursor:pointer; padding:3px 8px; font-size:10.5px; font-weight:800;
@@ -124,7 +126,7 @@
 
   #legend{margin:8px 2px 0; font-size:11.5px; color:var(--mut); line-height:1.7}
 
-  /* ---- checklist penyempurnaan (alat bantu local — bukan tab) ---- */
+  /* ---- checklist penyempurnaan (usulan — bukan tab) ---- */
   #check{
     margin:12px 0 4px; background:var(--card); border:1px solid var(--line); border-radius:9px;
     padding:9px 12px; font-size:12.5px; color:var(--mut); line-height:1.7;
@@ -146,28 +148,26 @@
   <h1>DB LOCAL</h1>
   <span class="badge">dasbor :4000</span>
   <span class="badge mode-online">VERSI ONLINE</span>
-  <span class="pill">murni alur online · JSON show/hide</span>
+  <span class="pill">dari APK dibuka → gameplay · komunikasi + isi utuh</span>
 </header>
 <main>
   <div id="ket">
-    Contoh versi <b>ONLINE</b> — <b>MURNI alur online</b> (gaya HttpCanary: APK ⇄ SERVER ASLI).
-    <b>Tanpa satu baris lokal</b> — tanpa “server lokal siap”, tanpa db/mirror/dasbor/switch.
-    Baris <b>ASLI</b> disalin persis dari log perangkat 0.5.4 (19:33:53 → 19:34:59);
-    lanjutan 19:35:01+ = teks baris dari <b>kode 0.5.4</b> (waktu = ilustrasi urutan).
-    Isi JSON/config tampil sebagai <b>blok show/hide</b> — klik ▸ untuk membuka isinya:
-    <b>isinya tampil penuh, tampilan tetap rapi</b>.
+    Contoh versi <b>ONLINE</b> — <b>SATU sesi utuh</b>, dari <b>APK dibuka</b> sampai gameplay
+    (gaya HttpCanary: APK ⇄ SERVER ASLI). Setiap komunikasi ⇄ tampil <b>bersama isi komunikasinya</b>
+    (blok show/hide — klik ▸): <b>komunikasi dan isi komunikasi tidak dipisahkan</b>.
+    Baris <b>ASLI</b> = komunikasi persis dari log perangkat 0.5.4 (19:33:58 → 19:34:21);
+    lanjutan 19:35:01+ = teks baris dari <b>kode 0.5.4</b> (waktu = ilustrasi urutan);
+    <b>KLIK</b> = aktivitas pemain yang wajib tercatat.
     Log asli campur ada di <a href="index.html">index.html</a>.
   </div>
 
   <div id="alur">
-    <div class="fase" data-f="f1"><b>1</b> MULAI</div>
-    <div class="fase" data-f="f2"><b>2</b> VERIFIKASI ASLI</div>
-    <div class="fase" data-f="f3"><b>3</b> CONFIG LOGIN</div>
-    <div class="fase" data-f="f4"><b>4</b> FILE GAME</div>
-    <div class="fase" data-f="f5"><b>5</b> SDK + MASUK TAMU</div>
-    <div class="fase" data-f="f6"><b>6</b> LOGIN GAME</div>
-    <div class="fase" data-f="f7"><b>7</b> DAFTAR + PILIH</div>
-    <div class="fase" data-f="f8"><b>8</b> PLAY → GAME</div>
+    <div class="fase" data-f="f1"><b>1</b> APK DIBUKA</div>
+    <div class="fase" data-f="f2"><b>2</b> FILE GAME</div>
+    <div class="fase" data-f="f3"><b>3</b> SDK + MASUK TAMU</div>
+    <div class="fase" data-f="f4"><b>4</b> LOGIN GAME</div>
+    <div class="fase" data-f="f5"><b>5</b> DAFTAR + PILIH</div>
+    <div class="fase" data-f="f6"><b>6</b> MAIN → GAME</div>
   </div>
 
   <div class="toolbar">
@@ -181,64 +181,41 @@
     <span class="tag tag-asli">ASLI</span> persis dari log perangkat 0.5.4 ·
     <span class="tag tag-kode">KODE 0.5.4</span> teks baris dari kode 0.5.4 (waktu ilustrasi) ·
     <span class="tag tag-klik">KLIK · BELUM ADA</span> aktivitas pemain yang 0.5.4 belum catat — wajib ditambah ·
-    <b>▸ JSON = show/hide</b> — klik untuk buka isi penuh ·
-    baris pudar = teknis (🌐 passthrough, Σ ringkasan)
+    <b>▸ = isi komunikasi show/hide</b> — klik untuk buka isi penuh ·
+    baris pudar = trafik teknis
   </div>
 
   <div id="check">
-    <h2>CHECKLIST PENYEMPURNAAN LOG — dari contoh ini (usulan, menunggu keputusan owner)</h2>
+    <h2>CHECKLIST — penyempurnaan logging berikutnya (usulan, menunggu keputusan owner)</h2>
     <ol>
       <li><b>Aktivitas klik wajib tercatat</b> <span class="wajib">(0.5.4: nol baris klik)</span> —
-        semua mode: tap MASUK TAMU, pilih server, Play, TEKAN/GESER tombol melayang, buka dasbor.</li>
-      <li><b>Isi JSON wajib ada — blok show/hide</b>: baris 🌐 jangan berhenti di
-        “passthrough — isi tak disentuh”; isi (config, SDK, serverList) dibedah dan ditampilkan
-        show/hide seperti halaman ini — itulah pembanding nilai untuk local.</li>
-      <li><b>Play ONLINE perlu baris konfirmasi</b> — gameplay langsung ke server asli
-        (port :8080 tidak dilewati): konfirmasi Play + verifikasi Monitor ke host game terpilih.</li>
+        semua mode: tap MASUK TAMU, pilih server, MAIN, TEKAN/GESER tombol melayang, buka dasbor.</li>
+      <li><b>Setiap komunikasi wajib tampil dengan ISI komunikasinya</b> (show/hide seperti halaman ini)
+        — bukan cuma ukuran/waktu; nilai config, SDK, dan serverList jadi pembanding nilai.</li>
+      <li><b>MAIN perlu baris konfirmasi</b> — io.connect ke url ASLI server terpilih
+        + verifikasi host game saat gameplay berjalan.</li>
     </ol>
   </div>
 </main>
 <footer>
-  log online = alat verifikasi untuk local · build 0.5.4 · 2026-11-09 —
+  satu sesi online utuh — dari APK dibuka sampai gameplay · build 0.5.4 · 2026-11-09 —
   <a href="index.html">log asli campur</a> ·
   <a href="https://github.com/anztdree/db-apk" target="_blank" rel="noopener">github.com/anztdree/db-apk</a>
 </footer>
 
 <script>
 (function(){
-  /* ================= DATA SATU SESI ONLINE (murni, tanpa baris lokal) =================
-     f   : fase (f1..f8) — pemisah fase disisipkan otomatis sebelum baris fase pertama
+  /* ================= DATA — SATU SESI ONLINE (murni komunikasi APK ⇄ SERVER ASLI) =================
+     f   : fase (f1..f6) — pemisah fase disisipkan otomatis sebelum baris fase pertama
      tag : asli | kode | klik
-     json: {label, body} → blok show/hide (isi penuh)                                    */
-  var NOTE_REAL = "<span class='note'>// isi NYATA dari file bawaan APK (mirror www/)</span>";
+     json: {label, body} → blok show/hide — ISI komunikasi menempel di baris komunikasinya      */
   var rows = [
-    /* ---------- FASE 1 · MULAI ---------- */
-    {f:"f1", t:"19:33:53", i:"🚀", tag:"kode",
-     x:"Sesi ONLINE dimulai — config · file game · SDK · login · gameplay = SERVER ASLI (passthrough utuh)",
-     d:"Semua baris di bawah = alur online murni (gaya HttpCanary): APK ⇄ server asli.\nBaris lokal (db, mirror, dasbor, boot server) TIDAK ditampilkan di mode ONLINE."},
-    /* ---------- FASE 2 · VERIFIKASI SERVER ASLI ---------- */
-    {f:"f2", t:"19:33:55", i:"📡", tag:"asli",
-     x:"Server asli dragon.sjmobilegame.com:82 bisa dihubungi · 1,3 dtk",
-     d:"DNS dragon.sjmobilegame.com → 212.64.58.211"},
-    {f:"f2", t:"19:33:58", i:"📡", tag:"asli",
-     x:"Server asli configus.sjmobilegame.com:443 bisa dihubungi · 3,2 dtk",
-     d:"DNS configus.sjmobilegame.com → 43.168.8.62"},
-    {f:"f2", t:"19:33:59", i:"📡", tag:"asli",
-     x:"Server asli dragonh5cdn.popoh5.com:443 bisa dihubungi · 708 ms",
-     d:"DNS dragonh5cdn.popoh5.com → 43.168.35.165"},
-    {f:"f2", t:"19:33:59", i:"📡", tag:"asli",
-     x:"Server asli qsdk.t4game.com:443 bisa dihubungi · 862 ms",
-     d:"DNS qsdk.t4game.com → 47.88.88.118"},
-    {f:"f2", t:"19:34:01", i:"📡", tag:"asli",
-     x:"Server asli login.popoh5.com:610 bisa dihubungi · 1,7 dtk",
-     d:"DNS login.popoh5.com → 47.89.242.44"},
-    /* ---------- FASE 3 · CONFIG LOGIN ---------- */
-    {f:"f3", t:"19:33:58", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.732705 → HTTP 200 · 684 B · 3,9 dtk · login + url H5 ditulis-ulang ke server lokal",
-     json:{label:"ISI setting bin · 684 B — field asli, host = SERVER ASLI", body:
-"// struktur field = struktur asli · nilai host = server asli\n" +
-"// 0.5.4 menulis-ulang url H5 + login ke jalur lokal SEBELUM disajikan\n" +
-"// (itu sebabnya baris di atas bilang “login + url H5 ditulis-ulang”)\n" +
+    /* ---------- FASE 1 · APK DIBUKA → CONFIG ---------- */
+    {f:"f1", t:"19:33:58", i:"🌐", tag:"asli", tech:true,
+     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.732705 → HTTP 200 · 684 B · 3,9 dtk",
+     d:"Config pertama yang diminta APK begitu dibuka — bin terenkripsi, isi didekode di bawah.",
+     json:{label:"ISI setting bin · 684 B — didekode dari bin", body:
+"// isi persis dari SERVER ASLI (dekode bin terenkripsi)\n" +
 "{\n" +
 "  \"testMode\": 0,\n" +
 "  \"url\":            \"https://dragonh5cdn.popoh5.com/bs/index-native.html\",\n" +
@@ -259,55 +236,54 @@
 "    \"showCurChannel\": \"toFacebook\"\n" +
 "  }\n" +
 "}"}},
-    {f:"f3", t:"19:33:59", i:"🌐", tag:"asli", tech:true,
+    {f:"f1", t:"19:33:59", i:"🌐", tag:"asli", tech:true,
      x:"⇄ GET configus.sjmobilegame.com/bs/db/android/com_db_local.bin?rnd=0.454674 → HTTP 404 · 452 B · 607 ms",
-     d:"File khusus paket lokal memang tidak ada di server asli — 404 wajar, boot lanjut."},
-    {f:"f3", t:"19:33:59", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.743135 → HTTP 200 · 684 B · 223 ms · login + url H5 ditulis-ulang ke server lokal", d:""},
-    {f:"f3", t:"19:34:00", i:"🌐", tag:"asli", tech:true,
+     d:"Server asli tidak menyimpan config khusus nama paket ini — 404, boot lanjut."},
+    {f:"f1", t:"19:33:59", i:"🌐", tag:"asli", tech:true,
+     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.743135 → HTTP 200 · 684 B · 223 ms", d:""},
+    {f:"f1", t:"19:34:00", i:"🌐", tag:"asli", tech:true,
      x:"⇄ GET configus.sjmobilegame.com/bs/db/android/com_db_local.bin?rnd=0.409107 → HTTP 404 · 452 B · 217 ms", d:""},
-    /* ---------- FASE 4 · FILE GAME (CDN ASLI) ---------- */
-    {f:"f4", t:"19:34:01", i:"🌐", tag:"asli", tech:true,
+    /* ---------- FASE 2 · FILE GAME (CDN ASLI) ---------- */
+    {f:"f2", t:"19:34:01", i:"🌐", tag:"asli", tech:true,
      x:"⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/base.version?rnd=0.339359 → HTTP 200 · 4 B · 621 ms · isi: 110", d:""},
-    {f:"f4", t:"19:34:02", i:"🌐", tag:"asli", tech:true,
+    {f:"f2", t:"19:34:02", i:"🌐", tag:"asli", tech:true,
      x:"⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/resource.version?rnd=0.785283 → HTTP 200 · 5 B · 194 ms · isi: 11390", d:""},
-    {f:"f4", t:"19:34:02", i:"🌐", tag:"asli", tech:true,
+    {f:"f2", t:"19:34:02", i:"🌐", tag:"asli", tech:true,
      x:"⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/upgrade.json?rnd=0.360388 → HTTP 200 · 130 B · 744 ms",
-     json:{label:"ISI upgrade.json · 130 B — NYATA (bawaan APK)", body:
-upgradeJson()}},
-    {f:"f4", t:"19:34:02", i:"🌐", tag:"asli", tech:true,
+     json:{label:"ISI upgrade.json · 130 B — NYATA", body:upgradeJson()}},
+    {f:"f2", t:"19:34:02", i:"🌐", tag:"asli", tech:true,
      x:"⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/size.json?rnd=0.166370 → HTTP 200 · 105 B · 197 ms",
-     json:{label:"ISI size.json · 105 B — NYATA (bawaan APK)", body:
-sizeJson()}},
-    {f:"f4", t:"19:34:03", i:"🌐", tag:"asli", tech:true,
+     json:{label:"ISI size.json · 105 B — NYATA", body:sizeJson()}},
+    {f:"f2", t:"19:34:03", i:"🌐", tag:"asli", tech:true,
      x:"⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/all.zip?v=11011390 → HTTP 200 · 18,5 MB · 205 ms",
-     d:"Paket H5 penuh (versi 11011390) — sesudah ini klien punya semua file game dari CDN asli."},
-    /* ---------- FASE 5 · SDK + MASUK TAMU ---------- */
-    {f:"f5", t:"19:34:20", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ POST qsdk.t4game.com/v1/system/init → 200 · 765 B · 483 ms (passthrough — isi tak disentuh)",
-     json:{label:"ISI jawaban init (bentuk) — passthrough utuh", body:
-"// bentuk jawaban SDK asli (0.5.4 belum membedah isinya — wajib show/hide spt ini)\n" +
+     d:"Paket H5 penuh (versi 11011390) — sesudah ini klien punya semua file game."},
+    {f:"f2", t:"19:34:19", i:"ℹ️", tag:"kode",
+     x:"Tombol melayang tampil — GESER pindah · TEKAN ganti mode",
+     d:"Aktivitas tombol melayang wajib tercatat — lihat aturan KLIK."},
+    /* ---------- FASE 3 · SDK ASLI + MASUK TAMU ---------- */
+    {f:"f3", t:"19:34:20", i:"🌐", tag:"asli", tech:true,
+     x:"⇄ POST qsdk.t4game.com/v1/system/init → 200 · 765 B · 483 ms",
+     json:{label:"ISI jawaban init · 765 B (bentuk)", body:
+"// bentuk jawaban SDK asli — isi device, config layar login, dll\n" +
 "{\n" +
 "  \"result\": true,\n" +
 "  \"data\": [ …isi SDK asli: device, config layar login, dll — utuh dari qsdk… ]\n" +
 "}"}},
-    {f:"f5", t:"19:34:21", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ POST qsdk.t4game.com/v1/system/getNotice → 200 · 55 B · 255 ms (passthrough — isi tak disentuh)",
-     json:{label:"ISI jawaban getNotice (bentuk) — 55 B", body:
+    {f:"f3", t:"19:34:21", i:"🌐", tag:"asli", tech:true,
+     x:"⇄ POST qsdk.t4game.com/v1/system/getNotice → 200 · 55 B · 255 ms",
+     json:{label:"ISI jawaban getNotice · 55 B (bentuk)", body:
 "// 55 B = jawaban mungil — daftar pengumuman kosong/singkat\n" +
 "{\n" +
 "  \"result\": true,\n" +
 "  \"data\": [ ]\n" +
 "}"}},
-    {f:"f5", t:"19:34:59", i:"Σ", tag:"asli", tech:true,
-     x:"Passthrough ONLINE: 9 request OK · 18,5 MB (4,1 dtk) — rincian di dasbor", d:""},
-    {f:"f5", t:"19:35:01", i:"👆", tag:"klik",
-     x:"KLIK — pemain tap MASUK TAMU di layar SDK asli",
-     d:"Aktivitas pemain — wajib termonitor (0.5.4 belum mencatat satu baris klik pun)."},
-    {f:"f5", t:"19:35:02", i:"🌐", tag:"kode", tech:true,
-     x:"⇄ POST qsdk.t4game.com/v1/user/registerVisitor → 200 · ~0,3 dtk (passthrough — isi tak disentuh)",
+    {f:"f3", t:"19:35:01", i:"👆", tag:"klik",
+     x:"KLIK — pemain tap MASUK TAMU di layar SDK",
+     d:"Aktivitas pemain — wajib tercatat (0.5.4 belum mencatat satu baris klik pun)."},
+    {f:"f3", t:"19:35:02", i:"🌐", tag:"kode", tech:true,
+     x:"⇄ POST qsdk.t4game.com/v1/user/registerVisitor → 200 · ~0,3 dtk",
      json:{label:"ISI jawaban registerVisitor (bentuk)", body:
-"// identitas tamu dikeluarkan SERVER ASLI (passthrough utuh)\n" +
+"// identitas tamu dikeluarkan SERVER ASLI\n" +
 "{\n" +
 "  \"result\": true,\n" +
 "  \"data\": [\n" +
@@ -317,45 +293,43 @@ sizeJson()}},
 "    }\n" +
 "  ]\n" +
 "}"}},
-    {f:"f5", t:"19:35:02", i:"🔑", tag:"kode",
-     x:"Sesi disahkan via SERVER ASLI (passthrough) — game lanjut boot",
-     d:"Uid      : guest77086212\nHasil    : code 0 dari login.popoh5.com:510 — diteruskan utuh (passthrough)\nSumber   : SERVER ASLI — token & identitas dikeluarkan di sana (progres pemain tetap tersimpan di server asli)"},
-    /* ---------- FASE 6 · LOGIN GAME ---------- */
-    {f:"f6", t:"19:35:04", i:"🌐", tag:"kode", tech:true,
+    {f:"f3", t:"19:35:02", i:"🔑", tag:"kode",
+     x:"Sesi tamu terbentuk — identitas dikeluarkan SERVER ASLI",
+     d:"Uid      : guest77086212\nHasil    : code 0 dari login.popoh5.com:510\nSumber   : SERVER ASLI — token & identitas dikeluarkan di sana (progres pemain tersimpan di server asli)"},
+    /* ---------- FASE 4 · BOOT H5 + LOGIN GAME ---------- */
+    {f:"f4", t:"19:35:04", i:"🌐", tag:"kode", tech:true,
      x:"⇄ GET dragonh5cdn.popoh5.com/bs/index-native.html → HTTP 200 · 10,5 KB",
-     d:"url H5 dari setting bin — file game dilayani CDN asli (passthrough)."},
-    {f:"f6", t:"19:35:04", i:"🌐", tag:"kode", tech:true,
+     d:"File boot H5 — url dari isi setting bin (fase 1)."},
+    {f:"f4", t:"19:35:04", i:"🌐", tag:"kode", tech:true,
      x:"⇄ GET dragonh5cdn.popoh5.com/bs/manifest.json → HTTP 200 · 533 B",
-     json:{label:"ISI manifest.json · 533 B — NYATA (bawaan APK)", body:
-manifestJson()}},
-    {f:"f6", t:"19:35:07", i:"🌐", tag:"kode", tech:true,
+     json:{label:"ISI manifest.json · 533 B — NYATA (bawaan APK)", body:manifestJson()}},
+    {f:"f4", t:"19:35:07", i:"🌐", tag:"kode", tech:true,
      x:"⇄ GET dragonh5cdn.popoh5.com/bs/resource/properties/clientversion.json → HTTP 200 · 38 B",
-     json:{label:"ISI clientversion.json · 38 B — NYATA (bawaan APK)", body:
+     json:{label:"ISI clientversion.json · 38 B — NYATA", body:
 "{\n  \"clientVersion\": \"20260929_180158-EN\"\n}"}},
-    {f:"f6", t:"19:35:07", i:"🌐", tag:"kode", tech:true,
-     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/serversetting.json → HTTP 200 · 66 B · loginserver ditulis-ulang ke server lokal",
-     json:{label:"ISI serversetting.json · 66 B (asli → ditulis-ulang)", body:
-"// nilai ASLI dari server (di bawah) — 0.5.4 menulis-ulang loginserver\n" +
-"// ke jalur lokal sebelum disajikan ke klien (di SEMUA mode)\n" +
+    {f:"f4", t:"19:35:07", i:"🌐", tag:"kode", tech:true,
+     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/serversetting.json → HTTP 200 · 66 B",
+     json:{label:"ISI serversetting.json · 66 B — NYATA", body:
+"// isi persis dari SERVER ASLI\n" +
 "{\n  \"loginServer\": \"https://login.popoh5.com:610\"\n}"}},
-    {f:"f6", t:"19:35:08", i:"📡", tag:"kode",
-     x:"Klien game tersambung ke jalur login — diteruskan UTUH ke SERVER ASLI",
-     d:"Sesi     : sid dari server asli (passthrough utuh)\nTujuan   : login.popoh5.com:610 (HTTPS, TLS 1.2) · engine.io v3 · polling, tanpa websocket\nLanjutan : loginGame + GetServerList dijawab SERVER ASLI (progres tetap di sana)"},
-    {f:"f6", t:"19:35:09", i:"✅", tag:"kode",
-     x:"Login game diteruskan ke server ASLI (passthrough)",
-     d:"Akun     : guest77086212\nSandi    : 32 karakter — diteruskan UTUH\nProses   : permintaan klien diteruskan utuh ke login.popoh5.com:610\nSumber   : SERVER ASLI — token & identitas dikeluarkan di sana (progres pemain tetap tersimpan di server asli)",
-     json:{label:"ISI jawaban loginGame (bentuk protokol asli)", body:
+    {f:"f4", t:"19:35:08", i:"📡", tag:"kode",
+     x:"Klien game tersambung ke login.popoh5.com:610 — engine.io v3 (polling)",
+     d:"Sesi     : sid dari SERVER ASLI\nProtokol : HTTPS TLS 1.2 · engine.io v3 · polling, tanpa websocket\nLanjutan : loginGame + GetServerList dijawab SERVER ASLI"},
+    {f:"f4", t:"19:35:09", i:"✅", tag:"kode",
+     x:"Login game sukses — token & uid dikeluarkan SERVER ASLI",
+     d:"Akun     : guest77086212\nSandi    : 32 karakter\nProtokol : jawaban dibungkus ret + data (LZString) — isi di bawah",
+     json:{label:"ISI jawaban loginGame (bentuk protokol)", body:
 "// protokol login (README §2.10): jawaban dibungkus ret + data LZString\n" +
 "{\n" +
 "  \"ret\": 0,\n" +
 "  \"compress\": true,\n" +
 "  \"data\": \"⟨LZString UTF-16 — didekompres klien → token, uid, dll⟩\"\n" +
 "}"}},
-    /* ---------- FASE 7 · DAFTAR SERVER + PILIH ---------- */
-    {f:"f7", t:"19:35:10", i:"📋", tag:"kode",
-     x:"Daftar server ASLI terkirim — passthrough",
-     d:"Sumber   : SERVER ASLI login.popoh5.com:610 — diteruskan utuh (bukan snapshot; daftar hidup dari server)\nGerbang  : url pertama & terakhir dibaca dari jawaban (GameServer AKAR)\nUkuran   : ~1–2 KB · pemain sekarang di layar pilih server\nLanjutan : pemain pilih server → gameplay LANGSUNG ke server game asli pilihan pemain",
-     json:{label:"ISI jawaban GetServerList (bentuk protokol asli)", body:
+    /* ---------- FASE 5 · DAFTAR SERVER ASLI + PEMAIN MEMILIH ---------- */
+    {f:"f5", t:"19:35:10", i:"📋", tag:"kode",
+     x:"Daftar server diterima dari SERVER ASLI — pemain di layar pilih server",
+     d:"Sumber   : SERVER ASLI login.popoh5.com:610 — daftar hidup (jumlah & nama sesuai aslinya)\nGerbang  : url tiap entri = tujuan gameplay saat pemain MAIN\nUkuran   : ~1–2 KB",
+     json:{label:"ISI jawaban GetServerList (bentuk protokol)", body:
 "// bentuk protokol = sama persis dgn struktur servers.json;\n" +
 "// isi daftar = hidup dari SERVER ASLI (jumlah & nama sesuai aslinya)\n" +
 "{\n" +
@@ -378,26 +352,20 @@ manifestJson()}},
 "  ],\n" +
 "  \"history\": [ … ]\n" +
 "}"}},
-    {f:"f7", t:"19:35:25", i:"👆", tag:"klik",
-     x:"KLIK — pemain memilih server di daftar ASLI",
-     d:"Aktivitas pemain — wajib termonitor.\n0.5.4 belum mencatatnya: pilihan pemain hanya terlihat dari efeknya (baris 🔌 di bawah)."},
-    {f:"f7", t:"19:35:25", i:"🔌", tag:"kode",
-     x:"Klien menutup sesi login — normal setelah pilih server (pindah ke server game)", d:""},
-    /* ---------- FASE 8 · PLAY → GAME ---------- */
-    {f:"f8", t:"19:35:26", i:"👆", tag:"klik",
+    {f:"f5", t:"19:35:25", i:"👆", tag:"klik",
+     x:"KLIK — pemain memilih server di daftar",
+     d:"Aktivitas pemain — wajib tercatat. Efeknya: sesi login ditutup (baris 🔌 di bawah)."},
+    {f:"f5", t:"19:35:25", i:"🔌", tag:"kode",
+     x:"Sesi login ditutup — normal setelah pilih server (pindah ke server game)", d:""},
+    /* ---------- FASE 6 · MAIN → GAME ---------- */
+    {f:"f6", t:"19:35:26", i:"👆", tag:"klik",
      x:"KLIK — pemain tap tombol MAIN (Play)",
-     d:"Klik terakhir sebelum masuk game — wajib termonitor.\n0.5.4: saat ONLINE, klik ini tidak meninggalkan satu baris pun."},
-    {f:"f8", t:"19:35:27", i:"ℹ️", tag:"kode",
-     x:"Play ONLINE: klien io.connect LANGSUNG ke url ASLI server game pilihan (https://sXXXX-bs.popoh5.com:PORT) — bukan lewat server lokal",
-     d:"Alasan (GameServer.socketIo): /socket.io/ di port game :8080 mode ONLINE dijawab 404 —\n“Mode ONLINE: gameplay LANGSUNG ke server game asli pilihan pemain (url daftar server ASLI) — bukan lewat port ini.”\nCelah: gameplay tidak melewati server lokal → 0.5.4 tidak bisa melihatnya; baris konfirmasi Play + verifikasi Monitor menuju host terpilih wajib ditambah."},
-    {f:"f8", t:"19:35:27", i:"🎮", tag:"kode",
-     x:"Gameplay berjalan di SERVER ASLI — token & progres tetap milik server asli",
-     d:"Konsisten janji mode ONLINE: passthrough utuh — token & progres dari/ke server asli."},
-    {f:"f8", t:"19:35:55", i:"Σ", tag:"kode", tech:true,
-     x:"Passthrough ONLINE: … request OK · … (denyut Σ tiap periode diam — LogGroups)", d:""},
-    {f:"f8", t:"—", i:"👆", tag:"klik",
-     x:"KLIK lain yang wajib termonitor di SEMUA mode",
-     d:"TEKAN tombol melayang (ganti mode) · GESER (pindah posisi) · buka dasbor :4000 · salin log · toggle RINCI/BERSIH.\nAturan owner: semua mode wajib termonitor — alur komunikasi DAN aktivitas saat di klik."}
+     d:"Klik terakhir sebelum masuk game — wajib tercatat."},
+    {f:"f6", t:"19:35:27", i:"ℹ️", tag:"kode",
+     x:"Gameplay: klien io.connect LANGSUNG ke url ASLI server game pilihan (https://sXXXX-bs.popoh5.com:PORT)",
+     d:"engine.io v3 — url persis dari entri serverList yang dipilih pemain (baris 📋)."},
+    {f:"f6", t:"19:35:27", i:"🎮", tag:"kode",
+     x:"Gameplay berjalan di SERVER ASLI pilihan pemain — token & progres tersimpan di server asli", d:""}
   ];
 
   /* isi JSON NYATA (disalin persis dari file bawaan APK — mirror www/) */
@@ -446,14 +414,12 @@ manifestJson()}},
 
   /* ================= RENDER ================= */
   var FASE_HEAD = {
-    f1:"FASE 1 · MULAI — MODE ONLINE (PASSTHROUGH UTUH)",
-    f2:"FASE 2 · VERIFIKASI SERVER ASLI — 5 HOST",
-    f3:"FASE 3 · CONFIG LOGIN DARI SERVER ASLI — (probe di fase 2 berjalan PARALEL, jam nyata saling silang)",
-    f4:"FASE 4 · FILE GAME — CDN ASLI",
-    f5:"FASE 5 · SDK ASLI + MASUK TAMU",
-    f6:"FASE 6 · BOOT H5 + LOGIN GAME",
-    f7:"FASE 7 · DAFTAR SERVER ASLI + PEMAIN MEMILIH",
-    f8:"FASE 8 · PLAY → GAME (LANGSUNG KE SERVER ASLI)"
+    f1:"FASE 1 · APK DIBUKA — CONFIG DARI SERVER ASLI",
+    f2:"FASE 2 · FILE GAME — CDN ASLI",
+    f3:"FASE 3 · SDK ASLI + MASUK TAMU",
+    f4:"FASE 4 · BOOT H5 + LOGIN GAME",
+    f5:"FASE 5 · DAFTAR SERVER ASLI + PEMAIN MEMILIH",
+    f6:"FASE 6 · MAIN → GAMEPLAY DI SERVER ASLI"
   };
 
   function esc(s){
@@ -463,7 +429,7 @@ manifestJson()}},
   function render(){
     var box = document.getElementById("logbox");
     var html = [];
-    var nAsli=0,nKode=0,nKlik=0,nJson=0;
+    var nAsli=0,nKode=0,nKlik=0,nJson=0,nHttp=0;
     var seen = {};
     for (var i=0;i<rows.length;i++){
       var r = rows[i];
@@ -473,6 +439,7 @@ manifestJson()}},
       }
       if (r.tag==="asli") nAsli++; else if (r.tag==="klik") nKlik++; else nKode++;
       if (r.json) nJson++;
+      if (r.i==="🌐") nHttp++;
       var cls = "logrow "+r.tag+(r.tech?" tech":"");
       var tag = r.tag==="asli" ? '<span class="tag tag-asli">ASLI</span>'
               : r.tag==="klik" ? '<span class="tag tag-klik">KLIK · BELUM ADA</span>'
@@ -487,8 +454,8 @@ manifestJson()}},
     }
     box.innerHTML = html.join("");
     document.getElementById("stat").innerHTML =
-      rows.length+" baris · "+nAsli+" ASLI · "+nKode+" kode · "+nKlik+" klik wajib · "
-      + "<b>"+nJson+" blok JSON show/hide</b> · 0 baris lokal";
+      rows.length+" baris · "+nHttp+" komunikasi ⇄ · "+nKlik+" klik wajib · "
+      + "<b>"+nJson+" blok isi show/hide</b>";
 
     var chips = document.querySelectorAll(".fase");
     var counts = {};
@@ -510,7 +477,7 @@ manifestJson()}},
       var s = r.t + " [" + r.i + "] " + r.x
         + (r.tag==="klik" ? "   << KLIK (belum ada di 0.5.4)" : "");
       if (r.d) s += "\n" + r.d.split("\n").map(function(l){ return "    " + l; }).join("\n");
-      if (r.json) s += "\n    └─ [JSON show/hide] " + r.json.label + "\n"
+      if (r.json) s += "\n    └─ [ISI show/hide] " + r.json.label + "\n"
         + r.json.body.replace(/<[^>]+>/g,"").split("\n").map(function(l){ return "       " + l; }).join("\n");
       return s;
     }).join("\n");
