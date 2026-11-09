@@ -178,11 +178,17 @@
       var m = RE_HEAD.exec(L);
       if (m){
         var text = m[4];
-        // mode berjalan: tegaskan dari baris 🚀 "Server lokal siap — mode X"
+        var kind = detectKind(m[3], text);
+        // mode berjalan berubah SEJAK baris SWITCH (boot berikutnya sudah mode baru),
+        // bukan menunggu baris 🚀 — kalau tidak, baris boot pertama mode baru
+        // keliru ditandai SALAH JALUR.
+        if (kind === "switch"){
+          var sm = /:\s*(ONLINE|LOCAL)\s*→\s*(ONLINE|LOCAL)/.exec(text);
+          if (sm) runningMode = sm[2] === "ONLINE" ? "online" : "local";
+        }
         var mm = /Server lokal siap — mode (ONLINE|LOCAL)/.exec(text);
         if (mm) runningMode = mm[1] === "ONLINE" ? "online" : "local";
         var mode = runningMode;
-        var kind = detectKind(m[3], text);
         var e = {time:m[1]+" "+m[2], icon:m[3], text:text, detail:"", mode:mode, kind:kind, leak:false};
         if (kind === "switch") e.mode = "switch";
         e.leak = isLeak(mode, m[3], text);
