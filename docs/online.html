@@ -356,13 +356,15 @@
     document.getElementById("stat").innerHTML =
       "A: <b>"+nA+"</b> baris ASLI · B: "+nKode+" dari kode + "+nKlik+" klik wajib · total "+rows.length+" · 0 baris dipangkas";
     var counts = {};
-    for (var j2=0;j2<rows.length;j2++){
-      if (rows[j2].divId){ counts[rows[j2].divId] = 0; }
-    }
     var curF = null;
     for (var j3=0;j3<rows.length;j3++){
-      if (rows[j3].divId){ curF = rows[j3].divId; continue; }
-      if (curF && counts[curF] !== undefined && !rows[j3].gap) counts[curF]++;
+      if (rows[j3].divId){
+        curF = rows[j3].divId;
+        if (counts[curF] === undefined) counts[curF] = 0; // fase 5 muncul 2× (A+B) — jumlah digabung, bukan direset
+        continue;
+      }
+      if (rows[j3].divHead || rows[j3].gap) continue; // pemisah & baris celah tidak dihitung
+      if (curF && counts[curF] !== undefined) counts[curF]++;
     }
     var chips = document.querySelectorAll(".fase");
     for (var c=0;c<chips.length;c++){
