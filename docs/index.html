@@ -88,6 +88,13 @@
     white-space:pre-wrap; word-break:break-word; margin-top:2px; overflow-wrap:anywhere}
   .logempty{padding:12px 10px; color:var(--mut)}
 
+  /* ---- pemisah CURRENT STATE (bukan tab — satu alur, mode berubah di sini) ---- */
+  .statediv{
+    padding:6px 10px; text-align:center; color:var(--warn);
+    font-weight:800; font-size:10.5px; letter-spacing:1px;
+    background:rgba(251,191,36,.07); border-bottom:1px solid var(--line);
+  }
+
   /* ---- penanda BARIS SALAH JALUR (bocor antar mode) ---- */
   .logrow.leak{
     box-shadow:inset 3px 0 0 var(--leak);
@@ -121,23 +128,21 @@
 <main>
   <div id="ket">
     Contoh <b>log nyata</b> dasbor port 4000 — <b>logs/human.log</b> build 0.5.4, direkam dari
-    perangkat <b>2026-11-09 19:33:53 → 19:37:04</b> (satu sesi: ONLINE lalu switch ke LOCAL).
+    perangkat <b>2026-11-09 19:33:53 → 19:37:04</b>. <b>SATU alur kronologis tanpa tab/filter</b>
+    — mode terbaca dari current state langsung di feed (baris switch kuning = pergantian state).
     Isi log ditampilkan <b>apa adanya, tidak diedit</b> — log mentah utuh ada di
     <b>log-0.5.4-2026-11-09.txt</b> di folder yang sama. Baris berlatang merah =
     <b>baris yang jalurnya tidak cocok dengan mode yang sedang berjalan</b> (keluhan
     “log campur aduk”).
   </div>
   <div class="toolbar">
-    <button class="chip on" id="f-all">Semua</button>
-    <button class="chip c-online" id="f-online">ONLINE</button>
-    <button class="chip" id="f-local">LOCAL</button>
     <button class="act" id="copylog">Salin log</button>
     <span id="stat"></span>
   </div>
   <div id="logbox"><div class="logempty">memuat log…</div></div>
   <div id="legend">
     <span class="sw"></span>baris salah jalur (bocor antar mode) ·
-    🚀 hijau = boot penuh · kuning = switch mode ·
+    🚀 hijau = boot penuh · garis “CURRENT STATE” = pergantian mode di alur yang sama ·
     baris pudar = teknis (📄 request, 🌐 passthrough, Σ ringkasan)
   </div>
 </main>
@@ -190,7 +195,10 @@
         if (mm) runningMode = mm[1] === "ONLINE" ? "online" : "local";
         var mode = runningMode;
         var e = {time:m[1]+" "+m[2], icon:m[3], text:text, detail:"", mode:mode, kind:kind, leak:false};
-        if (kind === "switch") e.mode = "switch";
+        if (kind === "switch"){
+          e.mode = "switch";
+          e.newMode = mode;   // current state setelah baris ini
+        }
         e.leak = isLeak(mode, m[3], text);
         entries.push(e);
       } else {
@@ -202,20 +210,22 @@
     }
   }
 
-  var cur = "all";
   function esc(s){
     return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
   function render(){
     var box = document.getElementById("logbox");
     var html = [];
-    var shown = 0, leaks = 0;
+    var leaks = 0;
     for (var i=0;i<entries.length;i++){
       var e = entries[i];
-      if (cur === "online"  && e.mode !== "online" && e.mode !== "switch") continue;
-      if (cur === "local"   && e.mode !== "local"  && e.mode !== "switch") continue;
+      // pemisah CURRENT STATE: mode berjalan berubah — tetap SATU alur, tanpa tab
+      if (e.kind === "switch"){
+        html.push('<div class="statediv">— CURRENT STATE: '
+          + (e.newMode === "local" ? "LOCAL" : "ONLINE")
+          + ' (mode berjalan berubah — alur log lanjut di sini, bukan tab terpisah) —</div>');
+      }
       if (e.leak) leaks++;
-      shown++;
       var cls = "logrow";
       if (e.kind === "tech") cls += " tech";
       if (e.kind === "err")  cls += " err";
@@ -233,7 +243,7 @@
     }
     box.innerHTML = html.length ? html.join("") : '<div class="logempty">tidak ada baris</div>';
     document.getElementById("stat").innerHTML =
-      shown + " baris · <b>"+leaks+"</b> salah jalur";
+      entries.length + " baris · <b>"+leaks+"</b> salah jalur";
     var nBoot = 0, nSwitch = 0;
     for (var j=0;j<entries.length;j++){
       if (entries[j].kind === "boot") nBoot++;
@@ -243,14 +253,6 @@
       "1 sesi · boot 🚀 "+nBoot+"× · switch "+nSwitch+"×";
   }
 
-  function setChip(id){
-    ["f-all","f-online","f-local"].forEach(function(x){
-      document.getElementById(x).classList.toggle("on", x === id);
-    });
-  }
-  document.getElementById("f-all").onclick    = function(){ cur="all";    setChip("f-all");    render(); };
-  document.getElementById("f-online").onclick = function(){ cur="online"; setChip("f-online"); render(); };
-  document.getElementById("f-local").onclick  = function(){ cur="local";  setChip("f-local");  render(); };
   document.getElementById("copylog").onclick  = function(){
     var txt = entries.map(function(e){
       var s = e.time + " [" + e.icon + "] " + e.text + (e.leak ? "   << SALAH JALUR (mode " + e.mode + ")" : "");
