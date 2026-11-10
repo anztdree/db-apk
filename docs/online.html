@@ -3,26 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DB LOCAL · Contoh versi ONLINE — satu alur, dari APK dibuka</title>
+<title>DB LOCAL · Capture ONLINE — 0.5.4</title>
 <!--
-  Halaman GitHub Pages — CONTOH VERSI ONLINE: SATU alur kronologis, dari APK dibuka sampai gameplay.
+  Halaman GitHub Pages — CAPTURE versi ONLINE, gaya HttpCanary.
 
-  ATURAN (dari owner):
-  - TANPA tab, TANPA strip fase, TANPA pemisah fase — murni satu kolom urutan asli.
-  - MURNI komunikasi APK ⇄ SERVER ASLI. TANPA baris sesi lokal: tanpa boot server lokal,
-    tanpa db/mirror/dasbor, tanpa probe Monitor (📡 "bisa dihubungi"), tanpa Σ rekap.
-  - SEMUA komunikasi membawa ISI komunikasinya (blok show/hide — klik ▸):
-    isi NYATA dari file bawaan APK bila ada (mirror www/ + dekode bin),
-    bentuk protokol bila runtime (ditandai di dalam blok). Ukuran/waktu saja TIDAK cukup.
-  - Baris ASLI : komunikasi persis dari log-0.5.4-2026-11-09.txt (19:33:58 → 19:34:21).
-  - Baris KODE : teks baris dari kode 0.5.4 (waktu 19:35:01+ = ilustrasi urutan).
-  - Baris KLIK : aktivitas pemain — 0.5.4 belum mencatat, wajib ditambah.
+  ATURAN (dari owner): jangan pakai asumsi.
+  - HANYA entri yang benar-benar terekam di log perangkat 0.5.4 (2026-11-09, 19:33:58 → 19:34:21).
+  - Setiap entri = komunikasi terekam; klik ▸ untuk ISI.
+  - ISI = byte persis dari file bawaan APK (mirror www/) bila filenya ada;
+    bila isi jawaban tidak terekam di log, ditandai "tidak terekam" — TIDAK direkonstruksi.
+  - Tanpa tag, tanpa legend, tanpa fase, tanpa baris buatan.
 -->
 <style>
   :root{
     --bg:#0c0a09; --card:#1c1917; --line:#292524; --tx:#fafaf9; --mut:#a8a29e;
     --det:#d6d3d1;
-    --ok:#34d399; --warn:#fbbf24; --err:#f87171; --acc:#10b981;
+    --ok:#34d399; --warn:#fbbf24; --err:#f87171;
     --code:#111111;
   }
   *{box-sizing:border-box}
@@ -43,10 +39,6 @@
     border:1px solid var(--line); background:var(--card); color:var(--mut); letter-spacing:.4px;
   }
   .badge.mode-online{color:var(--warn); border-color:var(--warn)}
-  .pill{
-    margin-left:auto; font-size:12px; font-weight:800; padding:4px 12px; border-radius:999px;
-    background:#064e3b33; color:var(--ok); border:1px solid var(--line);
-  }
   main{flex:1; padding:10px 14px 18px; max-width:960px; width:100%; margin:0 auto}
 
   #ket{
@@ -55,47 +47,42 @@
     padding:8px 11px; margin:6px 0 10px;
   }
   #ket b{color:var(--tx); font-weight:600}
-  #ket a{color:var(--ok); text-decoration:none; font-weight:700}
 
   .toolbar{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin:2px 0 8px}
   #stat{margin-left:auto; font-size:11.5px; color:var(--mut)}
-  #stat b{color:var(--warn); font-weight:700}
   button.act{
     min-height:38px; padding:6px 12px; border-radius:9px; border:1px solid var(--line);
     background:var(--card); color:var(--tx); font-weight:600; font-size:12.5px; cursor:pointer;
   }
   button.act:active{transform:translateY(1px)}
 
-  /* ---- SATU kolom log kronologis murni (tanpa tab, tanpa pemisah) ---- */
+  /* ---- daftar capture (gaya HttpCanary) ---- */
   #logbox{
     background:var(--code); border:1px solid var(--warn); border-radius:10px;
     font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     max-height:72vh; overflow-y:auto; word-break:break-word;
     -webkit-overflow-scrolling:touch;
   }
-  .logrow{display:flex; gap:8px; padding:4px 10px; border-bottom:1px solid var(--line); align-items:baseline}
-  .logrow:last-child{border-bottom:none}
-  .logrow:hover{background:rgba(128,128,128,.08)}
-  .logrow.tech{opacity:.62}
-  .logtime{color:var(--mut); flex:none; font-size:11px; min-width:58px}
-  .logic{flex:none; width:24px; text-align:center; font-size:14px}
-  .logtext{flex:1; min-width:0}
-  .logdetail{display:block; color:var(--det); font-size:11.5px; line-height:1.55;
-    white-space:pre-wrap; word-break:break-word; margin-top:2px; overflow-wrap:anywhere}
-  .logempty{padding:12px 10px; color:var(--mut)}
+  .cap{padding:7px 10px; border-bottom:1px solid var(--line)}
+  .cap:last-child{border-bottom:none}
+  .cap:hover{background:rgba(128,128,128,.08)}
+  .caphead{display:flex; gap:7px; align-items:baseline}
+  .method{
+    flex:none; font-size:10px; font-weight:800; letter-spacing:.5px;
+    padding:1px 6px; border-radius:5px; color:var(--ok);
+    border:1px solid var(--ok); background:rgba(52,211,153,.08);
+  }
+  .method.post{color:var(--warn); border-color:var(--warn); background:rgba(251,191,36,.08)}
+  .path{flex:1; min-width:0; overflow-wrap:anywhere}
+  .capmeta{margin-top:2px; font-size:11px; color:var(--mut)}
+  .capmeta .st-ok{color:var(--ok); font-weight:700}
+  .capmeta .st-404{color:var(--err); font-weight:700}
+  .capmeta .jam{color:var(--mut)}
+  .ev{display:flex; gap:7px; align-items:baseline}
+  .ev .jam{color:var(--mut); font-size:11px; flex:none}
 
-  /* ---- tag sumber baris: ASLI / KODE / KLIK ---- */
-  .tag{display:inline-block; margin-left:6px; padding:0 6px; border-radius:5px;
-    font-size:10px; font-weight:800; letter-spacing:.4px; vertical-align:1px}
-  .tag-asli{color:var(--ok);  border:1px solid var(--ok);  background:rgba(52,211,153,.08)}
-  .tag-kode{color:var(--warn);border:1px solid var(--warn);background:rgba(251,191,36,.08)}
-  .tag-klik{color:var(--err); border:1px solid var(--err); background:rgba(248,113,113,.08)}
-  .logrow.asli{box-shadow:inset 3px 0 0 var(--ok)}
-  .logrow.kode{box-shadow:inset 3px 0 0 var(--warn)}
-  .logrow.klik{box-shadow:inset 3px 0 0 var(--err); background:rgba(248,113,113,.05)}
-
-  /* ---- blok ISI KOMUNIKASI show/hide (klik ▸ untuk buka isinya) ---- */
-  details.jsonbox{margin-top:3px; border:1px solid var(--line); border-radius:7px;
+  /* ---- blok ISI (klik ▸) ---- */
+  details.jsonbox{margin-top:4px; border:1px solid var(--line); border-radius:7px;
     background:#0a0f0c; overflow:hidden}
   details.jsonbox summary{cursor:pointer; padding:3px 8px; font-size:10.5px; font-weight:800;
     color:var(--ok); letter-spacing:.4px; user-select:none; list-style:none; min-height:26px;
@@ -104,21 +91,8 @@
   details.jsonbox summary::before{content:"▸"; margin-right:6px; color:var(--ok)}
   details.jsonbox[open] summary::before{content:"▾"}
   details.jsonbox pre{margin:0; padding:6px 9px; font-size:11px; line-height:1.55;
-    color:var(--det); max-height:250px; overflow:auto; white-space:pre;
+    color:var(--det); max-height:250px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere;
     border-top:1px dashed var(--line)}
-  details.jsonbox pre .note{color:var(--mut)}
-
-  #legend{margin:8px 2px 0; font-size:11.5px; color:var(--mut); line-height:1.7}
-
-  /* ---- checklist penyempurnaan (usulan — bukan tab) ---- */
-  #check{
-    margin:12px 0 4px; background:var(--card); border:1px solid var(--line); border-radius:9px;
-    padding:9px 12px; font-size:12.5px; color:var(--mut); line-height:1.7;
-  }
-  #check h2{margin:0 0 5px; font-size:12.5px; color:var(--tx); font-weight:800; letter-spacing:.3px}
-  #check ol{margin:4px 0 0; padding-left:20px}
-  #check b{color:var(--tx)}
-  #check .wajib{color:var(--err); font-weight:700}
 
   footer{
     margin-top:auto; padding:12px 14px calc(12px + env(safe-area-inset-bottom));
@@ -131,287 +105,78 @@
 <header>
   <h1>DB LOCAL</h1>
   <span class="badge">dasbor :4000</span>
-  <span class="badge mode-online">VERSI ONLINE</span>
-  <span class="pill">satu alur · dari APK dibuka → gameplay · semua isi tampil</span>
+  <span class="badge mode-online">CAPTURE ONLINE · 0.5.4 · 2026-11-09</span>
 </header>
 <main>
   <div id="ket">
-    Contoh versi <b>ONLINE</b> — <b>SATU alur kronologis</b> dari <b>APK dibuka</b> sampai gameplay
-    (gaya HttpCanary: APK ⇄ SERVER ASLI). <b>Tanpa tab, tanpa pemisah fase</b> — urutan asli saja.
-    <b>Semua komunikasi ⇄ membawa ISI komunikasinya</b> (blok show/hide — klik ▸):
-    isi <b>NYATA</b> dari file bawaan APK bila ada, bentuk protokol bila runtime (ditandai di dalam blok).
-    Baris <b>ASLI</b> = komunikasi persis dari log perangkat 0.5.4 (19:33:58 → 19:34:21);
-    lanjutan 19:35:01+ = teks baris dari <b>kode 0.5.4</b> (waktu = ilustrasi urutan);
-    <b>KLIK</b> = aktivitas pemain yang wajib tercatat.
-    Log asli campur ada di <a href="index.html">index.html</a>.
+    Capture sesi <b>ONLINE</b> dari log perangkat 0.5.4 — <b>19:33:58 → 19:34:21</b> — gaya HttpCanary:
+    setiap entri = komunikasi yang benar-benar terekam, klik ▸ untuk isi.
+    Isi file = <b>byte persis</b> bawaan APK (mirror www/); isi jawaban yang tidak terekam
+    di log diberi tanda <b>"tidak terekam"</b> — tidak direkonstruksi.
   </div>
 
   <div class="toolbar">
-    <button class="act" id="copylog">Salin log</button>
+    <button class="act" id="copylog">Salin</button>
     <span id="stat"></span>
   </div>
 
-  <div id="logbox"><div class="logempty">memuat…</div></div>
-
-  <div id="legend">
-    <span class="tag tag-asli">ASLI</span> persis dari log perangkat 0.5.4 ·
-    <span class="tag tag-kode">KODE 0.5.4</span> teks baris dari kode 0.5.4 (waktu ilustrasi) ·
-    <span class="tag tag-klik">KLIK · BELUM ADA</span> aktivitas pemain yang 0.5.4 belum catat — wajib ditambah ·
-    <b>▸ = ISI komunikasi (show/hide)</b> — klik untuk buka isi penuh ·
-    baris pudar = trafik teknis
-  </div>
-
-  <div id="check">
-    <h2>CHECKLIST — penyempurnaan logging berikutnya (usulan, menunggu keputusan owner)</h2>
-    <ol>
-      <li><b>Aktivitas klik wajib tercatat</b> <span class="wajib">(0.5.4: nol baris klik)</span> —
-        semua mode: tap MASUK TAMU, pilih server, MAIN, TEKAN/GESER tombol melayang, buka dasbor.</li>
-      <li><b>Isi jawaban wajib direkam utuh</b> — 0.5.4 baru mencatat ukuran/waktu
-        (cth: isi jawaban 404 · 452 B belum terekam); setelah ini setiap ⇄ tampil dengan isi nyatanya
-        seperti halaman ini.</li>
-      <li><b>MAIN perlu baris konfirmasi</b> — io.connect ke url ASLI server terpilih
-        + verifikasi host game saat gameplay berjalan.</li>
-    </ol>
-  </div>
+  <div id="logbox"><div class="cap">memuat…</div></div>
 </main>
 <footer>
-  satu alur online utuh — dari APK dibuka sampai gameplay · build 0.5.4 · 2026-11-09 —
   <a href="index.html">log asli campur</a> ·
   <a href="https://github.com/anztdree/db-apk" target="_blank" rel="noopener">github.com/anztdree/db-apk</a>
 </footer>
 
 <script>
 (function(){
-  /* ================= DATA — SATU ALUR ONLINE (murni komunikasi APK ⇄ SERVER ASLI) =================
-     tag : asli | kode | klik
-     json: {label, body} → blok ISI komunikasi show/hide — menempel di baris komunikasinya       */
-  var SETTING_ISI =
-"// isi persis dari SERVER ASLI (dekode bin terenkripsi) — NYATA\n" +
-"{\n" +
-"  \"testMode\": 0,\n" +
-"  \"url\":            \"https://dragonh5cdn.popoh5.com/bs/index-native.html\",\n" +
-"  \"tsUrl\":          \"https://dragonh5cdn.popoh5.com/bs/index-native.html\",\n" +
-"  \"update\":         \"https://dragonh5cdn.popoh5.com/bs/upgrade\",\n" +
-"  \"checkTime\":      300,\n" +
-"  \"loginServer\":    \"https://login.popoh5.com\",\n" +
-"  \"tsLoginServer\":  \"https://login.popoh5.com:610\",\n" +
-"  \"loginPort\":      610,\n" +
-"  \"loginWebPort\":   610,\n" +
-"  \"clientParams\": {\n" +
-"    \"hideList\": [\"1.99\", \"2.99\", \"14.99\", \"59.99\", \"89.99\"],\n" +
-"    \"supportLang\": [\n" +
-"      {\"languageName\": \"English\",   \"lang\": \"en\"},\n" +
-"      {\"languageName\": \"Français\",  \"lang\": \"fr\"},\n" +
-"      {\"languageName\": \"한국인\",     \"lang\": \"kr\"}\n" +
-"    ],\n" +
-"    \"showCurChannel\": \"toFacebook\"\n" +
-"  }\n" +
-"}";
-
+  /* ====== CAPTURE — persis dari log-0.5.4-2026-11-09.txt (19:33:58 → 19:34:21) ======
+     isi: byte persis dari mirror www/ bila ada; null = isi jawaban tidak terekam di log */
   var rows = [
-    {t:"19:33:58", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.732705 → HTTP 200 · 684 B · 3,9 dtk",
-     d:"Config pertama yang diminta APK begitu dibuka — bin terenkripsi, isi didekode di bawah.",
-     json:{label:"ISI · 684 B — setting bin didekode (NYATA)", body:SETTING_ISI}},
-    {t:"19:33:59", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/com_db_local.bin?rnd=0.454674 → HTTP 404 · 452 B · 607 ms",
-     d:"Server asli tidak menyimpan config khusus nama paket ini — 404, boot lanjut.",
-     json:{label:"ISI jawaban 404 · 452 B", body:
-"// jawaban 404 dari SERVER ASLI · 452 B\n" +
-"// isi persis belum terekam di 0.5.4 (ukuran terekam, isi belum) — wajib direkam setelah ini\n" +
-"⟨452 B — isi jawaban 404⟩"}},
-    {t:"19:33:59", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.743135 → HTTP 200 · 684 B · 223 ms",
-     json:{label:"ISI · 684 B — setting bin (sama dgn di atas)", body:
-"// isi sama persis dgn jawaban setting bin pertama\n" + SETTING_ISI}},
-    {t:"19:34:00", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/com_db_local.bin?rnd=0.409107 → HTTP 404 · 452 B · 217 ms",
-     json:{label:"ISI jawaban 404 · 452 B (sama dgn di atas)", body:
-"// isi sama persis dgn jawaban 404 pertama\n" +
-"⟨452 B — isi jawaban 404⟩"}},
-    {t:"19:34:01", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/base.version?rnd=0.339359 → HTTP 200 · 4 B · 621 ms",
-     json:{label:"ISI · 4 B — base.version (NYATA)", body:"110"}},
-    {t:"19:34:02", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/resource.version?rnd=0.785283 → HTTP 200 · 5 B · 194 ms",
-     json:{label:"ISI · 5 B — resource.version (NYATA)", body:"11390"}},
-    {t:"19:34:02", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/upgrade.json?rnd=0.360388 → HTTP 200 · 130 B · 744 ms",
-     json:{label:"ISI · 130 B — upgrade.json (NYATA)", body:
-'{\n' +
-'  "11389": "11389_11390.zip",\n' +
-'  "11388": "11388_11390.zip",\n' +
-'  "11387": "11387_11390.zip",\n' +
-'  "11386": "11386_11390.zip",\n' +
-'  "all":   "all.zip"\n' +
-'}'}},
-    {t:"19:34:02", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/size.json?rnd=0.166370 → HTTP 200 · 105 B · 197 ms",
-     json:{label:"ISI · 105 B — size.json (NYATA)", body:
-'{\n' +
-'  "base":  "31015076",\n' +
-'  "11389": 252562,\n' +
-'  "11388": 252562,\n' +
-'  "11387": 252562,\n' +
-'  "11386": 252562,\n' +
-'  "all":   19385098\n' +
-'}'}},
-    {t:"19:34:03", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ GET dragonh5cdn.popoh5.com/bs/upgrade/all.zip?v=11011390 → HTTP 200 · 18,5 MB · 205 ms",
-     d:"Sesudah ini klien punya semua file game.",
-     json:{label:"ISI · 18,5 MB — all.zip (paket H5 penuh)", body:
-"// arsip paket H5 penuh versi 11011390 · 18,5 MB\n" +
-"// terurai menjadi file game: index-native.html · manifest.json · js/ · resource/\n" +
-"// isi satuan file = mirror www/ bawaan APK (28 file · 55,5 MB)"}},
-    {t:"19:34:19", i:"ℹ️", tag:"kode",
-     x:"Tombol melayang tampil — GESER pindah · TEKAN ganti mode",
-     d:"Aktivitas tombol melayang wajib tercatat — lihat aturan KLIK."},
-    {t:"19:34:20", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ POST qsdk.t4game.com/v1/system/init → 200 · 765 B · 483 ms",
-     json:{label:"ISI jawaban init · 765 B (bentuk runtime)", body:
-"// bentuk jawaban SDK asli — isi device, config layar login, dll\n" +
-"{\n" +
-"  \"result\": true,\n" +
-"  \"data\": [ …isi SDK asli: device, config layar login, dll — utuh dari qsdk… ]\n" +
-"}"}},
-    {t:"19:34:21", i:"🌐", tag:"asli", tech:true,
-     x:"⇄ POST qsdk.t4game.com/v1/system/getNotice → 200 · 55 B · 255 ms",
-     json:{label:"ISI jawaban getNotice · 55 B (bentuk runtime)", body:
-"// 55 B = jawaban mungil — daftar pengumuman kosong/singkat\n" +
-"{\n" +
-"  \"result\": true,\n" +
-"  \"data\": [ ]\n" +
-"}"}},
-    {t:"19:35:01", i:"👆", tag:"klik",
-     x:"KLIK — pemain tap MASUK TAMU di layar SDK",
-     d:"Aktivitas pemain — wajib tercatat (0.5.4 belum mencatat satu baris klik pun)."},
-    {t:"19:35:02", i:"🌐", tag:"kode", tech:true,
-     x:"⇄ POST qsdk.t4game.com/v1/user/registerVisitor → 200 · ~0,3 dtk",
-     json:{label:"ISI jawaban registerVisitor (bentuk runtime)", body:
-"// identitas tamu dikeluarkan SERVER ASLI\n" +
-"{\n" +
-"  \"result\": true,\n" +
-"  \"data\": [\n" +
-"    {\n" +
-"      \"uid\":       \"guest77086212\",\n" +
-"      \"authToken\": \"…token dari server asli…\"\n" +
-"    }\n" +
-"  ]\n" +
-"}"}},
-    {t:"19:35:02", i:"🔑", tag:"kode",
-     x:"Sesi tamu terbentuk — identitas dikeluarkan SERVER ASLI",
-     d:"Uid      : guest77086212\nHasil    : code 0 dari login.popoh5.com:510\nSumber   : SERVER ASLI — token & identitas dikeluarkan di sana (progres pemain tersimpan di server asli)"},
-    {t:"19:35:04", i:"🌐", tag:"kode", tech:true,
-     x:"⇄ GET dragonh5cdn.popoh5.com/bs/index-native.html → HTTP 200 · 10,5 KB",
-     d:"File boot H5 — url dari isi setting bin.",
-     json:{label:"ISI · 10,5 KB — index-native.html (NYATA, awal file)", body:
-'<!DOCTYPE HTML>\n' +
-'<html>\n' +
-'\n' +
-'<head>\n' +
-'    <meta charset="utf-8">\n' +
-'    <title>DragonBall</title>\n' +
-'    <meta name="viewport"\n' +
-'        content="width=device-width,initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no" />\n' +
-'    <meta name="apple-mobile-web-app-capable" content="yes" />\n' +
-'    <meta name="full-screen" content="true" />\n' +
-'    <meta name="screen-orientation" content="portrait" />\n' +
-'    <meta name="x5-fullscreen" content="true" />\n' +
-'    <meta name="360-fullscreen" content="true" />\n' +
-'    <style>\n' +
-'        html,\n' +
-'        body {\n' +
-'            -ms-touch-action: none;\n' +
-'            background: #888888;\n' +
-'// … lanjutan file utuh 10,5 KB (bawaan APK — mirror www/) …'}},
-    {t:"19:35:04", i:"🌐", tag:"kode", tech:true,
-     x:"⇄ GET dragonh5cdn.popoh5.com/bs/manifest.json → HTTP 200 · 533 B",
-     json:{label:"ISI · 533 B — manifest.json (NYATA)", body:
-'{\n' +
-'  "initial": [\n' +
-'    "js/egret.min_d9413192.js",\n' +
-'    "js/egret.web.min_b66ab113.js",\n' +
-'    "js/game.min_16249d0f.js",\n' +
-'    "js/tween.min_6c5a88f9.js",\n' +
-'    "js/assetsmanager.min_2ef412b7.js",\n' +
-'    "js/eui.min_493403ce.js",\n' +
-'    "js/dragonBones.min_6252b9c4.js"\n' +
-'  ],\n' +
-'  "game": [\n' +
-'    "js/md5.min_97e969ef.js",\n' +
-'    "js/lz-string.min_896bee8b.js",\n' +
-'    "js/socket.io.min_57ea9db7.js",\n' +
-'    "js/blockmessage.min_7dc7bcec.js",\n' +
-'    "js/battlelogic.min_d446437e.js",\n' +
-'    "js/ThinkingAnalyticsSDK.min_72d3fad5.js",\n' +
-'    "js/default.thm_4d02a3c6.js",\n' +
-'    "js/main.min_777039fc.js"\n' +
-'  ]\n' +
-'}'}},
-    {t:"19:35:07", i:"🌐", tag:"kode", tech:true,
-     x:"⇄ GET dragonh5cdn.popoh5.com/bs/resource/properties/clientversion.json → HTTP 200 · 38 B",
-     json:{label:"ISI · 38 B — clientversion.json (NYATA)", body:
-'{\n  "clientVersion": "20260929_180158-EN"\n}'}},
-    {t:"19:35:07", i:"🌐", tag:"kode", tech:true,
-     x:"⇄ GET configus.sjmobilegame.com/bs/db/android/serversetting.json → HTTP 200 · 66 B",
-     json:{label:"ISI · 66 B — serversetting.json (NYATA)", body:
-"// isi persis dari SERVER ASLI\n" +
-"{\n  \"loginServer\": \"https://login.popoh5.com:610\"\n}"}},
-    {t:"19:35:08", i:"📡", tag:"kode",
-     x:"Klien game tersambung ke login.popoh5.com:610 — engine.io v3 (polling)",
-     d:"Sesi     : sid dari SERVER ASLI\nProtokol : HTTPS TLS 1.2 · engine.io v3 · polling, tanpa websocket\nLanjutan : loginGame + GetServerList dijawab SERVER ASLI"},
-    {t:"19:35:09", i:"✅", tag:"kode",
-     x:"Login game sukses — token & uid dikeluarkan SERVER ASLI",
-     d:"Akun     : guest77086212\nSandi    : 32 karakter\nProtokol : jawaban dibungkus ret + data (LZString) — isi di bawah",
-     json:{label:"ISI jawaban loginGame (bentuk protokol)", body:
-"// protokol login (README §2.10): jawaban dibungkus ret + data LZString\n" +
-"{\n" +
-"  \"ret\": 0,\n" +
-"  \"compress\": true,\n" +
-"  \"data\": \"⟨LZString UTF-16 — didekompres klien → token, uid, dll⟩\"\n" +
-"}"}},
-    {t:"19:35:10", i:"📋", tag:"kode",
-     x:"Daftar server diterima dari SERVER ASLI — pemain di layar pilih server",
-     d:"Sumber   : SERVER ASLI login.popoh5.com:610 — daftar hidup (jumlah & nama sesuai aslinya)\nGerbang  : url tiap entri = tujuan gameplay saat pemain MAIN\nUkuran   : ~1–2 KB",
-     json:{label:"ISI jawaban GetServerList (bentuk protokol)", body:
-"// bentuk protokol = sama persis dgn struktur servers.json;\n" +
-"// isi daftar = hidup dari SERVER ASLI (jumlah & nama sesuai aslinya)\n" +
-"{\n" +
-"  \"errorCode\": 0,\n" +
-"  \"serverList\": [\n" +
-"    {\n" +
-"      \"serverId\":  \"…\",\n" +
-"      \"name\":      \"…\",\n" +
-"      \"url\":       \"https://sXXXX-bs.popoh5.com:PORT\",\n" +
-"      \"new\":       true,\n" +
-"      \"hot\":       false,\n" +
-"      \"online\":    true,\n" +
-"      \"openDate\":  \"…\",\n" +
-"      \"merge\":     false,\n" +
-"      \"mergeTo\":   \"\",\n" +
-"      \"urlInner\":  \"\",\n" +
-"      \"chatInner\": \"\"\n" +
-"    }\n" +
-"    // … entri berikutnya dari server asli …\n" +
-"  ],\n" +
-"  \"history\": [ … ]\n" +
-"}"}},
-    {t:"19:35:25", i:"👆", tag:"klik",
-     x:"KLIK — pemain memilih server di daftar",
-     d:"Aktivitas pemain — wajib tercatat. Efeknya: sesi login ditutup (baris 🔌 di bawah)."},
-    {t:"19:35:25", i:"🔌", tag:"kode",
-     x:"Sesi login ditutup — normal setelah pilih server (pindah ke server game)", d:""},
-    {t:"19:35:26", i:"👆", tag:"klik",
-     x:"KLIK — pemain tap tombol MAIN (Play)",
-     d:"Klik terakhir sebelum masuk game — wajib tercatat."},
-    {t:"19:35:27", i:"ℹ️", tag:"kode",
-     x:"Gameplay: klien io.connect LANGSUNG ke url ASLI server game pilihan (https://sXXXX-bs.popoh5.com:PORT)",
-     d:"engine.io v3 — url persis dari entri serverList yang dipilih pemain (baris 📋)."},
-    {t:"19:35:27", i:"🎮", tag:"kode",
-     x:"Gameplay berjalan di SERVER ASLI pilihan pemain — token & progres tersimpan di server asli", d:""}
+    {t:"19:33:58", m:"GET",
+     u:"configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.732705",
+     st:"HTTP 200", sz:"684 B", du:"3,9 dtk", isi:null},
+    {t:"19:33:59", m:"GET",
+     u:"configus.sjmobilegame.com/bs/db/android/com_db_local.bin?rnd=0.454674",
+     st:"HTTP 404", sz:"452 B", du:"607 ms", isi:null},
+    {t:"19:33:59", m:"GET",
+     u:"configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.743135",
+     st:"HTTP 200", sz:"684 B", du:"223 ms", isi:null},
+    {t:"19:34:00", m:"GET",
+     u:"configus.sjmobilegame.com/bs/db/android/com_db_local.bin?rnd=0.409107",
+     st:"HTTP 404", sz:"452 B", du:"217 ms", isi:null},
+    {t:"19:34:01", m:"GET",
+     u:"dragonh5cdn.popoh5.com/bs/upgrade/base.version?rnd=0.339359",
+     st:"HTTP 200", sz:"4 B", du:"621 ms",
+     isi:{label:"ISI · 4 B", body:"110\n"}},
+    {t:"19:34:02", m:"GET",
+     u:"dragonh5cdn.popoh5.com/bs/upgrade/resource.version?rnd=0.785283",
+     st:"HTTP 200", sz:"5 B", du:"194 ms",
+     isi:{label:"ISI · 5 B", body:"11390"}},
+    {t:"19:34:02", m:"GET",
+     u:"dragonh5cdn.popoh5.com/bs/upgrade/upgrade.json?rnd=0.360388",
+     st:"HTTP 200", sz:"130 B", du:"744 ms",
+     isi:{label:"ISI · 130 B", body:
+'{"11389": "11389_11390.zip", "11388": "11388_11390.zip", "11387": "11387_11390.zip", "11386": "11386_11390.zip", "all": "all.zip"}'}},
+    {t:"19:34:02", m:"GET",
+     u:"dragonh5cdn.popoh5.com/bs/upgrade/size.json?rnd=0.166370",
+     st:"HTTP 200", sz:"105 B", du:"197 ms",
+     isi:{label:"ISI · 105 B", body:
+'{"base": "31015076", "11389": 252562, "11388": 252562, "11387": 252562, "11386": 252562, "all": 19385098}'}},
+    {t:"19:34:03", m:"GET",
+     u:"dragonh5cdn.popoh5.com/bs/upgrade/all.zip?v=11011390",
+     st:"HTTP 200", sz:"18,5 MB", du:"205 ms",
+     isi:{label:"ISI · 18,5 MB", body:
+"arsip paket H5 penuh versi 11011390.\n" +
+"isi file game = mirror www/ bawaan APK (28 file · 55,5 MB) — diperiksa per file di dasbor."}},
+    {t:"19:34:19", ev:"ℹ️  Tombol melayang tampil — GESER pindah · TEKAN ganti mode"},
+    {t:"19:34:20", m:"POST",
+     u:"qsdk.t4game.com/v1/system/init",
+     st:"200", sz:"765 B", du:"483 ms", isi:null},
+    {t:"19:34:21", m:"POST",
+     u:"qsdk.t4game.com/v1/system/getNotice",
+     st:"200", sz:"55 B", du:"255 ms", isi:null}
   ];
 
-  /* ================= RENDER — satu kolom kronologis murni ================= */
   function esc(s){
     return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
@@ -419,37 +184,32 @@
   function render(){
     var box = document.getElementById("logbox");
     var html = [];
-    var nAsli=0,nKode=0,nKlik=0,nJson=0,nHttp=0;
     for (var i=0;i<rows.length;i++){
       var r = rows[i];
-      if (r.tag==="asli") nAsli++; else if (r.tag==="klik") nKlik++; else nKode++;
-      if (r.json) nJson++;
-      if (r.i==="🌐") nHttp++;
-      var cls = "logrow "+r.tag+(r.tech?" tech":"");
-      var tag = r.tag==="asli" ? '<span class="tag tag-asli">ASLI</span>'
-              : r.tag==="klik" ? '<span class="tag tag-klik">KLIK · BELUM ADA</span>'
-              : '<span class="tag tag-kode">KODE 0.5.4</span>';
-      html.push('<div class="'+cls+'">'
-        + '<span class="logtime">'+esc(r.t)+'</span>'
-        + '<span class="logic">'+esc(r.i)+'</span>'
-        + '<span class="logtext">'+esc(r.x)+tag
-        + (r.d ? '<span class="logdetail">'+esc(r.d)+'</span>' : "")
-        + (r.json ? '<details class="jsonbox"><summary>'+esc(r.json.label)+'</summary><pre>'+esc(r.json.body)+'</pre></details>' : "")
-        + '</span></div>');
+      if (r.ev){
+        html.push('<div class="cap ev"><span class="jam">'+esc(r.t)+'</span><span>'+esc(r.ev)+'</span></div>');
+        continue;
+      }
+      var stCls = r.st.indexOf("404")>=0 ? "st-404" : "st-ok";
+      html.push('<div class="cap">'
+        + '<div class="caphead"><span class="method '+(r.m==="POST"?"post":"")+'">'+esc(r.m)+'</span>'
+        + '<span class="path">'+esc(r.u)+'</span></div>'
+        + '<div class="capmeta"><span class="jam">'+esc(r.t)+'</span> · <span class="'+stCls+'">'+esc(r.st)+'</span> · '+esc(r.sz)+' · '+esc(r.du)+'</div>'
+        + (r.isi
+            ? '<details class="jsonbox"><summary>'+esc(r.isi.label)+'</summary><pre>'+esc(r.isi.body)+'</pre></details>'
+            : '<details class="jsonbox"><summary>ISI · '+esc(r.sz)+' — tidak terekam di log</summary><pre>// isi jawaban tidak terekam di log 0.5.4 — yang terekam: ukuran '+esc(r.sz)+'\n// setelah ini log wajib merekam isi jawaban (seperti HttpCanary)</pre></details>')
+        + '</div>');
     }
     box.innerHTML = html.join("");
-    document.getElementById("stat").innerHTML =
-      rows.length+" baris · "+nHttp+" komunikasi ⇄ · "+nKlik+" klik wajib · "
-      + "<b>"+nJson+" blok isi (semua komunikasi bawa isi)</b>";
+    document.getElementById("stat").innerHTML = rows.length+" entri";
   }
 
   document.getElementById("copylog").onclick = function(){
     var txt = rows.map(function(r){
-      var s = r.t + " [" + r.i + "] " + r.x
-        + (r.tag==="klik" ? "   << KLIK (belum ada di 0.5.4)" : "");
-      if (r.d) s += "\n" + r.d.split("\n").map(function(l){ return "    " + l; }).join("\n");
-      if (r.json) s += "\n    └─ [ISI] " + r.json.label + "\n"
-        + r.json.body.replace(/<[^>]+>/g,"").split("\n").map(function(l){ return "       " + l; }).join("\n");
+      if (r.ev) return r.t + " " + r.ev;
+      var s = r.t + " " + r.m + " " + r.u + " → " + r.st + " · " + r.sz + " · " + r.du;
+      if (r.isi) s += "\n    └─ ISI:\n" + r.isi.body.split("\n").map(function(l){ return "       " + l; }).join("\n");
+      else s += "\n    └─ ISI: tidak terekam di log (" + r.sz + ")";
       return s;
     }).join("\n");
     if (navigator.clipboard && navigator.clipboard.writeText){
