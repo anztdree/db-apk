@@ -7,12 +7,21 @@
 <!--
   Halaman GitHub Pages — CAPTURE versi ONLINE, gaya HttpCanary.
 
-  ATURAN (dari owner): jangan pakai asumsi.
-  - HANYA entri yang benar-benar terekam di log perangkat 0.5.4 (2026-11-09, 19:33:58 → 19:34:21).
-  - Setiap entri = komunikasi terekam; klik ▸ untuk ISI.
-  - ISI = byte persis dari file bawaan APK (mirror www/) bila filenya ada;
-    bila isi jawaban tidak terekam di log, ditandai "tidak terekam" — TIDAK direkonstruksi.
-  - Tanpa tag, tanpa legend, tanpa fase, tanpa baris buatan.
+  ATURAN (dari owner): murni semua traffic aslinya tercapture dengan jelas
+  beserta alur dan isi config aslinya sebagai bahan referensi — tanpa asumsi.
+  - HANYA entri trafik yang benar-benar terekam di log perangkat 0.5.4
+    (2026-11-09, 19:33:58 → 19:34:21) — 11 komunikasi, urut waktu (alur).
+    Baris aplikasi lokal (probe Monitor 📡·, Σ, boot, tombol melayang) TIDAK ikut.
+  - Setiap komunikasi membawa ISI komunikasinya (klik ▸):
+      · isi file      = byte persis mirror www/ bawaan APK (base/resource.version,
+                        upgrade.json, size.json);
+      · isi config    = bedah field-per-field README §2.20 — setting bin ASLI
+                        didekode XOR "DragonBall" (nilai dari server asli);
+      · bentuk jawaban qsdk = hasil probe server ASLI 2026-11-02 (README §2.8)
+                        — ditampilkan apa adanya, termasuk bagian "…" yang memang
+                        tidak direkam;
+      · yang tidak terekam diberi tanda jujur — TIDAK direkonstruksi.
+  - Tanpa tab, tanpa fase, tanpa tag, tanpa legend, tanpa baris buatan.
 -->
 <style>
   :root{
@@ -78,8 +87,6 @@
   .capmeta .st-ok{color:var(--ok); font-weight:700}
   .capmeta .st-404{color:var(--err); font-weight:700}
   .capmeta .jam{color:var(--mut)}
-  .ev{display:flex; gap:7px; align-items:baseline}
-  .ev .jam{color:var(--mut); font-size:11px; flex:none}
 
   /* ---- blok ISI (klik ▸) ---- */
   details.jsonbox{margin-top:4px; border:1px solid var(--line); border-radius:7px;
@@ -109,10 +116,11 @@
 </header>
 <main>
   <div id="ket">
-    Capture sesi <b>ONLINE</b> dari log perangkat 0.5.4 — <b>19:33:58 → 19:34:21</b> — gaya HttpCanary:
-    setiap entri = komunikasi yang benar-benar terekam, klik ▸ untuk isi.
-    Isi file = <b>byte persis</b> bawaan APK (mirror www/); isi jawaban yang tidak terekam
-    di log diberi tanda <b>"tidak terekam"</b> — tidak direkonstruksi.
+    Capture sesi <b>ONLINE</b> dari log perangkat 0.5.4 — <b>19:33:58 → 19:34:21</b> —
+    gaya HttpCanary: <b>11 komunikasi asli urut waktu</b>, masing-masing membawa isi komunikasinya (klik ▸).
+    Isi file = <b>byte persis</b> bawaan APK (mirror www/); isi config asli = <b>bedah field-per-field</b>
+    setting bin didekode XOR "DragonBall" (README §2.20); bentuk jawaban qsdk = hasil probe server asli;
+    isi yang memang tidak terekam diberi tanda <b>"tidak terekam"</b> — tidak direkonstruksi.
   </div>
 
   <div class="toolbar">
@@ -129,21 +137,58 @@
 
 <script>
 (function(){
-  /* ====== CAPTURE — persis dari log-0.5.4-2026-11-09.txt (19:33:58 → 19:34:21) ======
-     isi: byte persis dari mirror www/ bila ada; null = isi jawaban tidak terekam di log */
+  /* ====== CAPTURE — 11 komunikasi, persis dari log-0.5.4-2026-11-09.txt (19:33:58 → 19:34:21) ======
+     ISI per komunikasi:
+       - file mirror  = byte persis local-server/assets/server/www/…
+       - setting bin  = bedah field-per-field ASLI (README §2.20, didekode XOR "DragonBall")
+       - qsdk         = bentuk jawaban server asli hasil probe 2026-11-02 (README §2.8)
+       - null         = isi tidak terekam → catatan jujur, tanpa rekonstruksi            */
+  var ISI_BIN = {
+    label:'ISI · 684 B — setting bin didekode XOR "DragonBall" — nilai ASLI server (README §2.20)',
+    body:
+"testMode      : 1\n" +
+"url           : https://dragonh5cdn.popoh5.com/bs/index-native.html?v=202109150935\n" +
+"tsUrl         : http://dragon.sjmobilegame.com:82/bs103/index-native.html  (varian uji)\n" +
+"update        : https://dragonh5cdn.popoh5.com/bs/upgrade\n" +
+"checkTime     : 300\n" +
+"loginServer   : https://login.popoh5.com\n" +
+"tsLoginServer : http://118.24.68.91:7003\n" +
+"loginPort     : 610\n" +
+"loginWebPort  : 510\n" +
+"clientParams  : hideList 5 harga · supportLang en/fr/kr · showCurChannel toFacebook\n" +
+"// capture ini (passthrough): APK menerima bin 684 B dgn jalur login + url H5 ditulis-ulang\n" +
+"// ke server lokal (catatan baris log) — byte persis yang sampai ke klien tidak terekam"
+  };
+  var ISI_404 = {
+    label:"ISI · 452 B — jawaban 404",
+    body:
+"HTTP 404 — com_db_local.bin memang tidak ada di server asli\n" +
+"(perilaku normal — game melanjutkan boot; catatan log & README 0.3.0)\n" +
+"// isi 452 B tidak terekam di log 0.5.4"
+  };
+  var ISI_INIT = {
+    label:"ISI · 765 B — bentuk jawaban server asli (probe 2026-11-02, README §2.8)",
+    body:
+'envelope : {"result":bool, "data":…, "error":{"id":N,"message":"…"}}\n' +
+'data     : {payTypes:[], version:{…all "empty"},\n' +
+'            productConfig:{useServiceCenter,isShowFloat,showShare,guestShowBind,…},\n' +
+'            loginTypes:["1","13"], nodes:{…}, requestIp, countryCode, first_install}\n' +
+"// passthrough — isi tak disentuh server lokal; byte capture ini tidak terekam di log"
+  };
+
   var rows = [
     {t:"19:33:58", m:"GET",
      u:"configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.732705",
-     st:"HTTP 200", sz:"684 B", du:"3,9 dtk", isi:null},
+     st:"HTTP 200", sz:"684 B", du:"3,9 dtk", isi:ISI_BIN},
     {t:"19:33:59", m:"GET",
      u:"configus.sjmobilegame.com/bs/db/android/com_db_local.bin?rnd=0.454674",
-     st:"HTTP 404", sz:"452 B", du:"607 ms", isi:null},
+     st:"HTTP 404", sz:"452 B", du:"607 ms", isi:ISI_404},
     {t:"19:33:59", m:"GET",
      u:"configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=0.743135",
-     st:"HTTP 200", sz:"684 B", du:"223 ms", isi:null},
+     st:"HTTP 200", sz:"684 B", du:"223 ms", isi:ISI_BIN},
     {t:"19:34:00", m:"GET",
      u:"configus.sjmobilegame.com/bs/db/android/com_db_local.bin?rnd=0.409107",
-     st:"HTTP 404", sz:"452 B", du:"217 ms", isi:null},
+     st:"HTTP 404", sz:"452 B", du:"217 ms", isi:ISI_404},
     {t:"19:34:01", m:"GET",
      u:"dragonh5cdn.popoh5.com/bs/upgrade/base.version?rnd=0.339359",
      st:"HTTP 200", sz:"4 B", du:"621 ms",
@@ -165,16 +210,19 @@
     {t:"19:34:03", m:"GET",
      u:"dragonh5cdn.popoh5.com/bs/upgrade/all.zip?v=11011390",
      st:"HTTP 200", sz:"18,5 MB", du:"205 ms",
-     isi:{label:"ISI · 18,5 MB", body:
-"arsip paket H5 penuh versi 11011390.\n" +
-"isi file game = mirror www/ bawaan APK (28 file · 55,5 MB) — diperiksa per file di dasbor."}},
-    {t:"19:34:19", ev:"ℹ️  Tombol melayang tampil — GESER pindah · TEKAN ganti mode"},
+     isi:{label:"ISI · 18,5 MB (binary)", body:
+"arsip binary — tidak ditampilkan sebagai teks\n" +
+"?v=11011390 = base.version 110 + resource.version 11390\n" +
+"isi file game = mirror www/ bawaan APK (28 file · 55,5 MB)"}},
     {t:"19:34:20", m:"POST",
      u:"qsdk.t4game.com/v1/system/init",
-     st:"200", sz:"765 B", du:"483 ms", isi:null},
+     st:"200", sz:"765 B", du:"483 ms", isi:ISI_INIT},
     {t:"19:34:21", m:"POST",
      u:"qsdk.t4game.com/v1/system/getNotice",
-     st:"200", sz:"55 B", du:"255 ms", isi:null}
+     st:"200", sz:"55 B", du:"255 ms",
+     isi:{label:"ISI · 55 B", body:
+"// passthrough — isi tak disentuh server lokal\n" +
+"// byte tidak terekam di log 0.5.4"}}
   ];
 
   function esc(s){
@@ -186,10 +234,6 @@
     var html = [];
     for (var i=0;i<rows.length;i++){
       var r = rows[i];
-      if (r.ev){
-        html.push('<div class="cap ev"><span class="jam">'+esc(r.t)+'</span><span>'+esc(r.ev)+'</span></div>');
-        continue;
-      }
       var stCls = r.st.indexOf("404")>=0 ? "st-404" : "st-ok";
       html.push('<div class="cap">'
         + '<div class="caphead"><span class="method '+(r.m==="POST"?"post":"")+'">'+esc(r.m)+'</span>'
@@ -197,16 +241,15 @@
         + '<div class="capmeta"><span class="jam">'+esc(r.t)+'</span> · <span class="'+stCls+'">'+esc(r.st)+'</span> · '+esc(r.sz)+' · '+esc(r.du)+'</div>'
         + (r.isi
             ? '<details class="jsonbox"><summary>'+esc(r.isi.label)+'</summary><pre>'+esc(r.isi.body)+'</pre></details>'
-            : '<details class="jsonbox"><summary>ISI · '+esc(r.sz)+' — tidak terekam di log</summary><pre>// isi jawaban tidak terekam di log 0.5.4 — yang terekam: ukuran '+esc(r.sz)+'\n// setelah ini log wajib merekam isi jawaban (seperti HttpCanary)</pre></details>')
+            : '<details class="jsonbox"><summary>ISI · '+esc(r.sz)+' — tidak terekam di log</summary><pre>// isi jawaban tidak terekam di log 0.5.4 — yang terekam: ukuran '+esc(r.sz)+'</pre></details>')
         + '</div>');
     }
     box.innerHTML = html.join("");
-    document.getElementById("stat").innerHTML = rows.length+" entri";
+    document.getElementById("stat").innerHTML = rows.length+" komunikasi · semua membawa isi";
   }
 
   document.getElementById("copylog").onclick = function(){
     var txt = rows.map(function(r){
-      if (r.ev) return r.t + " " + r.ev;
       var s = r.t + " " + r.m + " " + r.u + " → " + r.st + " · " + r.sz + " · " + r.du;
       if (r.isi) s += "\n    └─ ISI:\n" + r.isi.body.split("\n").map(function(l){ return "       " + l; }).join("\n");
       else s += "\n    └─ ISI: tidak terekam di log (" + r.sz + ")";
