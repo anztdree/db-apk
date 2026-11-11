@@ -28,7 +28,7 @@ public final class StatusStore {
     private static int loginPort = 8610;
     private static volatile boolean loginAlive = false;
     private static volatile int wwwFiles = 0;
-    private static String mode = "online";
+    private static String mode = "local"; // 0.5.5 UTAMANYA LOCAL — bawaan; ditimpa Config.mode() saat boot
     private static String packageName = "com.db.local";
     private static String rootPath = "";
     private static String loginUserId = "";

@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.5.4 — LOG DUA JALUR (HttpCanary ONLINE / LOCAL apa adanya) + RELAY GAME
+# Build APK-LSF 0.5.5 — UTAMANYA LOCAL (mode bawaan saat install & buka) + LOG DUA JALUR + RELAY GAME
 #
-# Dasar: releases/APK-LSF-0.5.2.apk (LFS — memuat AKAR CONFIG 0.5.2 + mirror
-# www/ lengkap dgn base.zip/all.zip + QHinfo 127.0.0.1:8610).
+# Dasar: releases/APK-LSF-0.5.4.apk (LSF — memuat LOG DUA JALUR 0.5.4 + relay
+# socket game + mirror www/ lengkap dgn base.zip/all.zip + QHinfo 127.0.0.1:8610).
+#
+# Baru 0.5.5 (arahan owner: "kalau sudah paham implementasi rebuild apk, jika
+# sebelumnya defaultnya saat aplikasi di install dan di buka adalah mode online,
+# sekarang tahap ini saat apk di install dan di buka adalah Utamanya Local"):
+#   a) MODE BAWAAN = LOCAL — Config.java (field bawaan + DEFAULT_JSON server.json
+#      yang ditulis saat boot pertama) + StatusStore.java (fallback). APK baru
+#      di-install & dibuka → server.json belum ada → mode = LOCAL: konten game
+#      mirror www/, login & akun lokal, config paket MANUAL config-offline/
+#      (apa adanya, tanpa tulis-ulang runtime), daftar server paket manual.
+#   b) server.json PEMILIK yang sudah ada TETAP DIHORMATI (mis. pilih ONLINE via
+#      tombol melayang → tidak dipaksa balik LOCAL).
+#   c) Tidak ada perubahan jalur/protokol — hanya nilai bawaan.
 # Patch yang diterapkan (TANPA apktool — dex game & resource tidak disentuh):
 #   1) javac(ECJ) + d8  -> classes2.dex baru (kode server lokal)
 #   2) ganti assets/server/dashboard.html
@@ -239,13 +251,13 @@ ECJ="${ECJ:-$REPO/tools/ecj-3.33.0.jar}"               # compiler Java 8 (sandbo
 KS="${KS:-$REPO/keystore/lsf.keystore}"
 KS_ALIAS="${KS_ALIAS:-lsf}"
 KS_PASS="${KS_PASS:-lsf-local-2025}"
-BASE="${BASE:-$REPO/releases/APK-LSF-0.5.3.apk}"         # APK dasar (rilis 0.5.3 — DUA JALUR)
+BASE="${BASE:-$REPO/releases/APK-LSF-0.5.4.apk}"         # APK dasar (rilis 0.5.4 — LOG DUA JALUR + relay)
 LOGIN_PORT_QH="${LOGIN_PORT_QH:-8610}"                    # port server SDK lokal (QHinfo)
 SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.5.4.apk"
+OUT="$REPO/releases/APK-LSF-0.5.5.apk"
 MIN_API="${MIN_API:-21}"
 
 # Baru 0.5.2 (tegasan owner: "pakai config online murni untuk server lokal,

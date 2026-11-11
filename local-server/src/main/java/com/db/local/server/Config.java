@@ -12,9 +12,11 @@ import java.io.Writer;
  * Config server lokal — <root>/config/server.json, disimpan DI LUAR APK
  * supaya bisa dilihat dan diubah tanpa rebuild.
  *
- * Isi default:
+ * Isi default (0.5.5 — arahan owner: "saat apk di install dan di buka adalah
+ * Utamanya Local" — dulu bawaan ONLINE):
  * {
- *   "mode": "online",     // "online" = teruskan ke server asli; "local" = layani dari www/
+ *   "mode": "local",      // "local" = UTAMANYA LOCAL (bawaan) — layani dari www/;
+ *                         // "online" = teruskan ke server asli (pilihan pemilik via tombol melayang)
  *   "gamePort": 8080,     // port GAME — endpoint di assets client menunjuk ke sini
  *   "debugPort": 4000,    // port dasbor debug developer (game tidak tahu port ini)
  *   "loginPort": 8610,    // port server LOGIN lokal — engine.io v3 + socket.io v2 (0.4.0)
@@ -37,7 +39,10 @@ import java.io.Writer;
 public final class Config {
     private static final Object LOCK = new Object();
     private static volatile File file = null;
-    private static volatile String mode = "online";
+    // 0.5.5 — UTAMANYA LOCAL: bawaan saat APK baru di-install dan dibuka (arahan
+    // owner). server.json belum ada → mode = LOCAL. Pilihan ONLINE tetap dihormati
+    // selama server.json menyimpannya (pemilik pilih lewat tombol melayang).
+    private static volatile String mode = "local";
     private static volatile int gamePort = 8080;
     private static volatile int debugPort = 4000;
     private static volatile int loginPort = 8610;
@@ -50,7 +55,7 @@ public final class Config {
 
     public static final String DEFAULT_JSON =
             "{\n"
-                    + "  \"mode\": \"online\",\n"
+                    + "  \"mode\": \"local\",\n"
                     + "  \"gamePort\": 8080,\n"
                     + "  \"debugPort\": 4000,\n"
                     + "  \"loginPort\": 8610,\n"
@@ -120,7 +125,7 @@ public final class Config {
                     }
                 }
             } catch (Throwable t) {
-                HumanLog.ev("⚠️", "server.json gagal dibaca — memakai nilai bawaan (mode ONLINE, port game 8080, dasbor 4000)",
+                HumanLog.ev("⚠️", "server.json gagal dibaca — memakai nilai bawaan (mode LOCAL, port game 8080, dasbor 4000)",
                         String.valueOf(t));
             }
         }
