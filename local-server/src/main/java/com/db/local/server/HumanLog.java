@@ -103,7 +103,7 @@ public final class HumanLog {
     /** Catat event PENTING — selalu tampil di dasbor (tingkat bawaan).
      *  0.4.9: icon = emoji String (👤 🔑 📡 ✅ ⚠️ ❌ 📋 💾 🧹 🚀 ℹ️). */
     public static void ev(String icon, String sentence, String detail) {
-        evInternal(icon, sentence, detail, false);
+        evInternal(icon, sentence, detail, false, null, null);
     }
 
     /**
@@ -111,7 +111,41 @@ public final class HumanLog {
      * File human.log tetap mencatatnya (aturan: mode bersih tidak menghilangkan bukti).
      */
     public static void evTech(String icon, String sentence, String detail) {
-        evInternal(icon, sentence, detail, true);
+        evInternal(icon, sentence, detail, true, null, null);
+    }
+
+    /**
+     * 0.5.6 — CAPTURE ISI (HttpCanary di dasbor :4000, owner: "capture nya ya di
+     * port 4000"): event PENTING yang membawa ISI komunikasinya — byte/config
+     * persis yang dilayani/diteruskan pada komunikasi itu. Label = ukuran+sumber;
+     * isi yang memang tidak ada diberi catatan jujur (TIDAK direkonstruksi).
+     */
+    public static void evIsi(String icon, String sentence, String detail,
+                             String isiLabel, String isi) {
+        evInternal(icon, sentence, detail, false, isiLabel, isi);
+    }
+
+    /** 0.5.6 — sama dengan evIsi, tingkat TEKNIS (baris aset per-file). */
+    public static void evTechIsi(String icon, String sentence, String detail,
+                                 String isiLabel, String isi) {
+        evInternal(icon, sentence, detail, true, isiLabel, isi);
+    }
+
+    /**
+     * Batas ukuran isi per event (memori dasbor CAP 800 baris): 16 KB.
+     * Lebih dari itu = potongan pertama + catatan JUJUR ukuran asli (bukan
+     * pemangkasan diam-diam) — aturan owner "gak boleh disingkat" tetap terjaga:
+     * yang hilang DISEBUT, bukan disembunyikan.
+     */
+    public static final int ISI_CAP = 16 * 1024;
+
+    public static String capIsi(String isi) {
+        if (isi == null || isi.length() <= ISI_CAP) {
+            return isi;
+        }
+        return isi.substring(0, ISI_CAP) + "\n// … potongan "
+                + fmtBytes(ISI_CAP) + " pertama dari " + fmtBytes(isi.length())
+                + " — sisanya tidak di-capture";
     }
 
     /**
@@ -170,13 +204,15 @@ public final class HumanLog {
         String sentence = "Dasbor " + method + " " + uri + " — dijawab " + status
                 + " · " + fmtMs(ms) + " · " + fmtBytes(bytes);
         String icon = (status >= 500) ? "⚠️" : "ℹ️";
-        evInternal(icon, sentence, query == null || query.length() == 0 ? "-" : query, false);
+        evInternal(icon, sentence, query == null || query.length() == 0 ? "-" : query, false, null, null);
     }
 
-    private static void evInternal(String icon, String sentence, String detail, boolean tech) {
+    private static void evInternal(String icon, String sentence, String detail, boolean tech,
+                                   String isiLabel, String isi) {
         long id;
         String t;
         String jo;
+        isi = capIsi(isi);
         synchronized (LOCK) {
             id = ++seq;
             t = nowStr();
@@ -191,6 +227,11 @@ public final class HumanLog {
             }
             if (modeTag.length() > 0) {
                 sb.append(",\"m\":\"").append(modeTag).append('\"'); // 0.5.4 — tag mode
+            }
+            if (isiLabel != null && isi != null) {
+                // 0.5.6 — ISI komunikasi ikut pada barisnya (capture HttpCanary)
+                sb.append(",\"isiLabel\":\"").append(Json.esc(isiLabel))
+                        .append(",\"isi\":\"").append(Json.esc(isi)).append('"');
             }
             sb.append('}');
             jo = sb.toString();
@@ -212,6 +253,15 @@ public final class HumanLog {
             String treeDetail = tree(detail);
             if (treeDetail != null) {
                 block += "\n" + treeDetail;
+            }
+            // 0.5.6 — ISI komunikasi ikut ke human.log (bukti penuh — aturan 0.4.5
+            // "mode bersih tidak menghilangkan bukti" tetap berlaku):
+            if (isiLabel != null && isi != null) {
+                block += "\n    ▸ ISI · " + isiLabel;
+                String[] isiLines = isi.split("\n");
+                for (int i = 0; i < isiLines.length; i++) {
+                    block += "\n       " + isiLines[i];
+                }
             }
             appendLine(humanFile, block);
             appendLine(jsonlFile, jo);

@@ -118,6 +118,19 @@
     white-space:pre-wrap; word-break:break-word; margin-top:2px; overflow-wrap:anywhere}
   .logempty{padding:12px 10px; color:var(--mut)}
 
+  /* ---- 0.5.6 blok ISI (capture HttpCanary di :4000 — klik ▸ = isi komunikasi) ---- */
+  details.jsonbox{margin-top:4px; border:1px solid var(--line); border-radius:7px;
+    background:#0a0f0c; overflow:hidden; max-width:100%}
+  details.jsonbox summary{cursor:pointer; padding:3px 8px; font-size:10.5px; font-weight:800;
+    color:var(--ok); letter-spacing:.4px; user-select:none; list-style:none; min-height:26px;
+    display:flex; align-items:center}
+  details.jsonbox summary::-webkit-details-marker{display:none}
+  details.jsonbox summary::before{content:"▸"; margin-right:6px; color:var(--ok)}
+  details.jsonbox[open] summary::before{content:"▾"}
+  details.jsonbox pre{margin:0; padding:6px 9px; font-size:11px; line-height:1.55;
+    color:var(--det); max-height:250px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere;
+    border-top:1px dashed var(--line)}
+
   /* ---- grup batch: satu baris judul + statistik; diklik = rincian ---- */
   #grouphdr{
     margin:14px 2px 6px; font-size:11px; text-transform:uppercase; letter-spacing:1px;
@@ -373,6 +386,8 @@
         row.dataset.icon = tech ? "·" : (e.icon || "");
         row.dataset.text = e.text || "";
         row.dataset.detail = e.detail || "";
+        row.dataset.isiLabel = e.isiLabel || ""; // 0.5.6 — capture isi
+        row.dataset.isi = e.isi || "";
         var tm = document.createElement("span"); tm.className = "logtime"; tm.textContent = e.t;
         var ic = document.createElement("span"); ic.className = "logic"; ic.textContent = tech ? "·" : e.icon;
         var tx = document.createElement("span"); tx.className = "logtext"; tx.textContent = e.text;
@@ -380,6 +395,14 @@
           var dt = document.createElement("span"); dt.className = "logdetail";
           dt.textContent = treeify(e.detail);
           tx.appendChild(dt);
+        }
+        // 0.5.6 — capture isi (HttpCanary): isi komunikasi pada barisnya, show/hide
+        if(e.isi){
+          var jb = document.createElement("details"); jb.className = "jsonbox";
+          var sm = document.createElement("summary"); sm.textContent = e.isiLabel || "ISI";
+          var pr = document.createElement("pre"); pr.textContent = e.isi;
+          jb.appendChild(sm); jb.appendChild(pr);
+          tx.appendChild(jb);
         }
         row.appendChild(tm); row.appendChild(ic); row.appendChild(tx);
         frag.appendChild(row);
@@ -507,6 +530,14 @@
       for(var i=0;i<dl.length;i++){
         if(dl[i].length === 0 && i === dl.length-1) continue;
         line += "\n    " + (i < dl.length-1 ? "├─ " : "└─ ") + dl[i];
+      }
+    }
+    // 0.5.6 — capture isi ikut di Copy (bukti penuh, sama dengan human.log)
+    if(n.dataset.isi){
+      line += "\n    ▸ ISI · " + (n.dataset.isiLabel || "");
+      var il = String(n.dataset.isi).split(/\n/);
+      for(var j=0;j<il.length;j++){
+        line += "\n       " + il[j];
       }
     }
     return line;

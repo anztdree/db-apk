@@ -319,13 +319,17 @@ public final class SdkApi {
             long ms = System.currentTimeMillis() - t0;
             // 0.5.4 — baris gaya HttpCanary (owner: "log online ya log aslinya
             // seperti httpcanary"): satu baris padat per panggilan SDK asli.
-            HumanLog.ev("🌐", "⇄ POST qsdk.t4game.com" + uri + " → 200 · "
+            // 0.5.6 — baris MEMBAWA isi jawaban asli qsdk (byte persis yang
+            // diteruskan ke klien) — capture HttpCanary di dasbor :4000.
+            String respStr = new String(out, "UTF-8");
+            HumanLog.evIsi("🌐", "⇄ POST qsdk.t4game.com" + uri + " → 200 · "
                     + HumanLog.fmtBytes(out.length) + " · " + HumanLog.fmtMs(ms)
-                    + " (passthrough — isi tak disentuh)", null);
+                    + " (passthrough utuh)", null,
+                    "ISI · jawaban asli qsdk · " + HumanLog.fmtBytes(out.length),
+                    respStr);
             try {
                 // 0.5.0 REKAM — mode ONLINE: jawaban ASLI server qsdk ikut terekam
                 // (config asli — pembanding langsung untuk versi lokal)
-                String respStr = new String(out, "UTF-8");
                 Capture.sdk("→", uri, "diteruskan ke qsdk.t4game.com (mode ONLINE)",
                         body, body == null ? 0 : body.length(), 0);
                 Capture.sdk("←", uri, "dari server asli qsdk.t4game.com", respStr, out.length,

@@ -16,6 +16,23 @@
 #   b) server.json PEMILIK yang sudah ada TETAP DIHORMATI (mis. pilih ONLINE via
 #      tombol melayang → tidak dipaksa balik LOCAL).
 #   c) Tidak ada perubahan jalur/protokol — hanya nilai bawaan.
+#
+# Baru 0.5.6 (arahan owner: "capture nya ya di port 4000 .. github live preview
+# cuma sebagai contoh tampilan" — capture HttpCanary hidup di DASBOR):
+#   a) ISI PADA BARISNYA (HumanLog.evIsi/evTechIsi + field "isiLabel"/"isi" di
+#      events.jsonl + blok "▸ ISI ·" di human.log + dasbor show/hide ▸): setiap
+#      komunikasi membawa isi komunikasinya persis apa adanya.
+#   b) Sumber isi (semuanya yang MEMANG dimiliki server — tanpa rekonstruksi):
+#      LOCAL: file mirror = byte persis (teks ≤16 KB, potongan diberi catatan
+#      jujur; binary = catatan) · config-offline setting bin = bedah field-per-
+#      field + teks didekode · serversetting = bedah + teks. ONLINE: config
+#      dibuffer (teks ≤512 KB) — setting bin = bedah ASLI → klien + teks yang
+#      diterima klien; file teks = byte yang disajikan; qsdk passthrough =
+#      jawaban asli server; binary/besar = catatan jujur; 404/502 = isi jawaban.
+#   c) Dasbor: tiap baris ber-isi = blok ▸ show/hide (jsonbox); Copy membawa
+#      blok ISI (sama dengan human.log). Tingkat penting/TEKNIS tidak berubah.
+#   d) Catatan build: 0.5.5 & 0.5.6 diambil dari dasar 0.5.4 (tools sandbox
+#      hilang saat 0.5.5 — keduanya tergabung di APK-LSF-0.5.6.apk).
 # Patch yang diterapkan (TANPA apktool — dex game & resource tidak disentuh):
 #   1) javac(ECJ) + d8  -> classes2.dex baru (kode server lokal)
 #   2) ganti assets/server/dashboard.html
@@ -257,7 +274,7 @@ SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.5.5.apk"
+OUT="$REPO/releases/APK-LSF-0.5.6.apk"
 MIN_API="${MIN_API:-21}"
 
 # Baru 0.5.2 (tegasan owner: "pakai config online murni untuk server lokal,

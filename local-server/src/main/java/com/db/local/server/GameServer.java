@@ -383,6 +383,11 @@ public final class GameServer extends NanoHTTPD {
             new java.util.HashMap<String, Long>();
 
     private static void cfgLog(String uri, String sentence, String detail) {
+        cfgLog(uri, sentence, detail, null, null);
+    }
+
+    private static void cfgLog(String uri, String sentence, String detail,
+                               String isiLabel, String isi) {
         long now = System.currentTimeMillis();
         Long prev;
         boolean tampil;
@@ -395,7 +400,7 @@ public final class GameServer extends NanoHTTPD {
             CFG_LOG_SEEN.put(uri, Long.valueOf(now));
         }
         if (tampil) {
-            HumanLog.ev("📦", sentence, detail);
+            HumanLog.evIsi("📦", sentence, detail, isiLabel, isi);
         }
     }
 
@@ -429,17 +434,22 @@ public final class GameServer extends NanoHTTPD {
             }
             // 0.5.4 — feed: SATU baris padat (dedupe 10 mnt); ISI PENUH (bedah
             // field-per-field + teks setting.json) → seksi CONFIG dasbor (show/hide).
+            // 0.5.6 — baris 📦 sekarang MEMBAWA isi komunikasinya (capture HttpCanary
+            // di dasbor :4000): bedah + teks config persis yang dilayani.
             String plain = SettingBin.decryptedPlain(b);
             String breakdown = ConfigAkar.settingBin(plain, plain);
+            String isiConfig = breakdown
+                    + "\n\n— teks config (setting.json dienkripsi XOR “DragonBall”) —\n" + plain;
             ConfigView.put("setting-bin", "setting_BS_Android.bin",
                     "OFFLINE · paket manual config-offline/ · " + HumanLog.fmtBytes(b.length)
                             + " · " + HumanLog.fmtMs(ms) + " · apa adanya (tanpa tulis-ulang)",
-                    breakdown + "\n\n— teks config (setting.json dienkripsi XOR “DragonBall”) —\n" + plain);
+                    isiConfig);
             cfgLog(uri, "CONFIG setting bin disajikan — paket manual config-offline/ · "
                             + HumanLog.fmtBytes(b.length) + " · " + HumanLog.fmtMs(ms),
-                    "Isi penuh (bedah field-per-field): seksi CONFIG di dasbor — show/hide\n"
-                            + "Menunjuk : 127.0.0.1 (game :" + Config.gamePort() + " · login :"
-                            + Config.loginPort() + ") — sejak disiapkan manual");
+                    "Menunjuk : 127.0.0.1 (game :" + Config.gamePort() + " · login :"
+                            + Config.loginPort() + ") — sejak disiapkan manual",
+                    "ISI · bedah field-per-field + teks config · " + HumanLog.fmtBytes(b.length),
+                    isiConfig);
             Response r = newFixedLengthResponse(Response.Status.OK, "application/octet-stream",
                     new ByteArrayInputStream(b), b.length);
             r.addHeader("Cache-Control", "no-store");
@@ -475,14 +485,18 @@ public final class GameServer extends NanoHTTPD {
                     new ByteArrayInputStream(out), out.length);
             r.addHeader("Cache-Control", "no-store");
             // 0.5.4 — feed: SATU baris padat; isi penuh → seksi CONFIG dasbor.
+            // 0.5.6 — baris membawa isi komunikasinya (capture).
+            String isiSrv = ConfigAkar.serversetting(text, text)
+                    + "\n\n— teks config —\n" + text;
             ConfigView.put("serversetting", "serversetting.json",
                     "OFFLINE · paket manual config-offline/ · " + HumanLog.fmtBytes(out.length)
                             + " · " + HumanLog.fmtMs(ms) + " · apa adanya (tanpa tulis-ulang)",
-                    ConfigAkar.serversetting(text, text) + "\n\n— teks config —\n" + text);
+                    isiSrv);
             cfgLog(uri, "CONFIG serversetting.json disajikan — paket manual config-offline/ · "
                             + HumanLog.fmtBytes(out.length) + " · " + HumanLog.fmtMs(ms),
-                    "Isi penuh: seksi CONFIG di dasbor — show/hide\n"
-                            + "Menunjuk : loginserver 127.0.0.1:" + Config.loginPort() + " — sejak disiapkan manual");
+                    "Menunjuk : loginserver 127.0.0.1:" + Config.loginPort() + " — sejak disiapkan manual",
+                    "ISI · bedah + teks config · " + HumanLog.fmtBytes(out.length),
+                    isiSrv);
             LogGroups.item("req", "Request game", "request", true,
                     "GET " + uri + " — " + HumanLog.fmtBytes(out.length) + " · " + HumanLog.fmtMs(ms)
                             + " · paket config-offline/ manual (apa adanya)",
@@ -529,8 +543,12 @@ public final class GameServer extends NanoHTTPD {
             try {
                 // 0.5.4 — baris lokal per file: aset = TEKNIS (feed tetap tenang,
                 // terlihat saat RINCI); LogGroups tetap menghitung statistik Σ.
-                HumanLog.evTech("📄", "GET " + uri + " · mirror www/ · "
-                        + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms), null);
+                // 0.5.6 — baris MEMBAWA isi komunikasinya (capture HttpCanary di
+                // dasbor :4000): teks = byte persis mirror; binary = catatan jujur.
+                HumanLog.evTechIsi("📄", "GET " + uri + " · mirror www/ · "
+                        + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms), null,
+                        "ISI · " + HumanLog.fmtBytes(len) + (isTextExt(uri) ? " (teks)" : " (binary)"),
+                        isiFile(f, uri, len));
             } catch (Throwable ignored) {
             }
             LogGroups.item("req", "Request game", "request", true,
@@ -582,10 +600,13 @@ public final class GameServer extends NanoHTTPD {
     private Response servePassthrough(String uri, String query, long t0) {
         String[] base = upstreamBase(uri); // [0]=utama, [1]=fallback (boleh null)
         if (base == null) {
-            ReqLog.ev("⚠️", "404 " + uri,
+            ReqLog.evIsi("⚠️", "404 " + uri,
                     "GET " + gameUrl(uri) + " → 404 · path tidak dipetakan ke server asli — peta: "
                             + "/bs/db/android, /bs, /lzceshi",
-                    nullSafe(query));
+                    nullSafe(query),
+                    "ISI · jawaban 404",
+                    "Path tidak dipetakan ke server asli: " + uri + " — peta passthrough: bs/db/android, "
+                            + "bs (dragonh5cdn), lzceshi.");
             return textResp(Response.Status.NOT_FOUND,
                     "Path tidak dipetakan ke server asli: " + uri + " — peta passthrough: bs/db/android, "
                             + "bs (dragonh5cdn), lzceshi.");
@@ -606,10 +627,12 @@ public final class GameServer extends NanoHTTPD {
         }
         long ms = System.currentTimeMillis() - t0;
         if (up.status < 0) {
-            ReqLog.ev("⚠️", "502 " + uri,
+            ReqLog.evIsi("⚠️", "502 " + uri,
                     "GET " + gameUrl(uri) + " → 502 · server asli tidak terjangkau · " + HumanLog.fmtMs(ms)
                             + " — coba mode LOCAL bila www/ sudah terisi",
-                    nullSafe(query));
+                    nullSafe(query),
+                    "ISI · jawaban 502",
+                    "Server asli tidak terjangkau untuk " + uri + " — coba mode LOCAL bila www/ sudah terisi.");
             return textResp(Response.Status.lookup(502),
                     "Server asli tidak terjangkau untuk " + uri + " — coba mode LOCAL bila www/ sudah terisi.");
         }
@@ -626,7 +649,12 @@ public final class GameServer extends NanoHTTPD {
         Response r;
         long sentBytes = Math.max(0, up.length);
         String rewriteNote = "";
-        if (up.status == 200 && isConfigExt(uri) && up.length >= 0 && up.length <= 512L * 1024L && up.in != null) {
+        // 0.5.6 — capture isi: config (json/version/txt/bin) dan file teks kecil
+        // dibuffer agar isi persis yang disajikan ikut pada baris ⇄ (HttpCanary
+        // di dasbor :4000); binary/besar diteruskan streaming + catatan jujur.
+        String isiLabel = null;
+        String isiText = null;
+        if (up.status == 200 && isTextExt(uri) && up.length >= 0 && up.length <= 512L * 1024L && up.in != null) {
             // 0.5.4 — config asli dibuffer agar bisa ditulis-ulang (bin/serversetting)
             // lalu disajikan dari memori. Isi penuh → seksi CONFIG dasbor (show/hide);
             // feed hanya baris ⇄ padat.
@@ -654,12 +682,16 @@ public final class GameServer extends NanoHTTPD {
                         rewriteNote = " · login + url H5 ditulis-ulang ke server lokal";
                     }
                     // 0.5.4 — isi penuh (bedah ASLI → klien) ke seksi CONFIG dasbor.
+                    // 0.5.6 — string yang sama = ISI pada baris ⇄ (capture).
+                    String isiCfg = ConfigAkar.settingBin(originalPlain, txt)
+                            + "\n\n— teks config yang diterima klien —\n" + txt;
                     ConfigView.put("setting-bin", "setting_BS_Android.bin",
                             "ONLINE · dari server asli " + hostOf(usedHost) + " · "
                                     + HumanLog.fmtBytes(data.length) + " · " + HumanLog.fmtMs(ms)
                                     + rewriteNote,
-                            ConfigAkar.settingBin(originalPlain, txt)
-                                    + "\n\n— teks config yang diterima klien —\n" + txt);
+                            isiCfg);
+                    isiLabel = "ISI · bedah ASLI → klien + teks config · " + HumanLog.fmtBytes(data.length);
+                    isiText = isiCfg;
                 } else if (uri.endsWith("/serversetting.json")) {
                     String rw = SettingBin.setJsonValue(txt, "loginserver",
                             "http://127.0.0.1:" + Config.loginPort());
@@ -669,12 +701,20 @@ public final class GameServer extends NanoHTTPD {
                         data = rw.getBytes("UTF-8");
                         rewriteNote = " · loginserver ditulis-ulang ke server lokal";
                     }
+                    String isiCfg = ConfigAkar.serversetting(originalText, txt)
+                            + "\n\n— teks config yang diterima klien —\n" + txt;
                     ConfigView.put("serversetting", "serversetting.json",
                             "ONLINE · dari server asli " + hostOf(usedHost) + " · "
                                     + HumanLog.fmtBytes(data.length) + " · " + HumanLog.fmtMs(ms)
                                     + rewriteNote,
-                            ConfigAkar.serversetting(originalText, txt)
-                                    + "\n\n— teks config yang diterima klien —\n" + txt);
+                            isiCfg);
+                    isiLabel = "ISI · bedah + teks config · " + HumanLog.fmtBytes(data.length);
+                    isiText = isiCfg;
+                } else {
+                    // 0.5.6 — file teks biasa: isi persis yang dilayani (≤16 KB,
+                    // potongan lebihnya diberi catatan jujur oleh HumanLog.capIsi).
+                    isiLabel = "ISI · " + HumanLog.fmtBytes(data.length);
+                    isiText = txt;
                 }
                 sentBytes = data.length;
                 r = newFixedLengthResponse(Response.Status.OK, up.contentType,
@@ -691,6 +731,10 @@ public final class GameServer extends NanoHTTPD {
             } else {
                 r = newFixedLengthResponse(Response.Status.lookup(up.status), up.contentType, "");
             }
+            // 0.5.6 — binary/besar: catatan jujur, bukan isi karangan.
+            isiLabel = "ISI · " + (sentBytes > 0 ? HumanLog.fmtBytes(sentBytes) : "?");
+            isiText = "// binary/besar — isi tidak di-capture; diteruskan utuh dari "
+                    + hostOf(usedHost);
         }
         // 0.5.4 — SATU baris gaya HttpCanary per request passthrough (owner:
         // "log online ya log aslinya seperti httpcanary"): config/protokol &
@@ -701,9 +745,9 @@ public final class GameServer extends NanoHTTPD {
                     + (sentBytes > 0 ? " · " + HumanLog.fmtBytes(sentBytes) : "")
                     + " · " + HumanLog.fmtMs(ms) + rewriteNote;
             if (isConfigExt(uri) || up.status >= 400) {
-                HumanLog.ev("🌐", line, null);
+                HumanLog.evIsi("🌐", line, null, isiLabel, isiText);
             } else {
-                HumanLog.evTech("🌐", line, null);
+                HumanLog.evTechIsi("🌐", line, null, isiLabel, isiText);
             }
         } catch (Throwable ignored) {
         }
@@ -764,6 +808,49 @@ public final class GameServer extends NanoHTTPD {
                 || u.endsWith(".cfg") || u.endsWith(".txt") || u.endsWith(".bin");
     }
 
+    /** 0.5.6 — ekstensi teks: isi capture boleh tampil sebagai teks. */
+    private static boolean isTextExt(String uri) {
+        String u = uri.toLowerCase();
+        return isConfigExt(uri) || u.endsWith(".js") || u.endsWith(".css")
+                || u.endsWith(".html") || u.endsWith(".htm") || u.endsWith(".xml")
+                || u.endsWith(".csv") || u.endsWith(".log");
+    }
+
+    /**
+     * 0.5.6 — ISI capture untuk file mirror www/: teks = byte persis (≤ 16 KB —
+     * potongan diberi catatan JUJUR ukuran asli); binary = catatan jujur.
+     * TIDAK ada rekonstruksi — yang tampil adalah byte yang memang dilayani.
+     */
+    private static String isiFile(File f, String uri, long len) {
+        try {
+            if (!isTextExt(uri)) {
+                return "// binary " + HumanLog.fmtBytes(len)
+                        + " — tidak ditampilkan sebagai teks";
+            }
+            int n = (int) Math.min(len, HumanLog.ISI_CAP);
+            java.io.FileInputStream in = new java.io.FileInputStream(f);
+            byte[] buf = new byte[n];
+            int read = 0;
+            while (read < n) {
+                int k = in.read(buf, read, n - read);
+                if (k < 0) {
+                    break;
+                }
+                read += k;
+            }
+            in.close();
+            String s = new String(buf, 0, read, "UTF-8");
+            if (len > HumanLog.ISI_CAP) {
+                s += "\n// … potongan " + HumanLog.fmtBytes(HumanLog.ISI_CAP)
+                        + " pertama dari " + HumanLog.fmtBytes(len)
+                        + " — file lengkap ada di mirror www/";
+            }
+            return s;
+        } catch (Throwable t) {
+            return "// isi tidak bisa dibaca: " + t;
+        }
+    }
+
     /** Peta path → server asli, sesuai EntryPoint (README §2.8) + isi setting bin. */
     private static String[] upstreamBase(String uri) {
         if (uri.startsWith("/bs/db/android")) {
@@ -809,6 +896,12 @@ public final class GameServer extends NanoHTTPD {
 
         /** Baris request PENTING (404 tak terpetakan, 502) — selalu tampil. */
         static void ev(String icon, String key, String sentence, String detail) {
+            evIsi(icon, key, sentence, detail, null, null);
+        }
+
+        /** 0.5.6 — baris request penting yang membawa ISI jawaban (capture). */
+        static void evIsi(String icon, String key, String sentence, String detail,
+                          String isiLabel, String isi) {
             long now = System.currentTimeMillis();
             long[] e;
             boolean suppress;
@@ -833,7 +926,7 @@ public final class GameServer extends NanoHTTPD {
             if (n > 0) {
                 sentence = sentence + " · (+" + n + " request kembar dalam 10 dtk tidak dicatat)";
             }
-            HumanLog.ev(icon, sentence, detail);
+            HumanLog.evIsi(icon, sentence, detail, isiLabel, isi);
         }
     }
 

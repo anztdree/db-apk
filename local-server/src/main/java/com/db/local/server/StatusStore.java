@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class StatusStore {
     private static final Object LOCK = new Object();
-    private static final String VERSION = "0.5.4";
+    private static final String VERSION = "0.5.6";
 
     private static String bind = "127.0.0.1";
     private static int port = 4000;
