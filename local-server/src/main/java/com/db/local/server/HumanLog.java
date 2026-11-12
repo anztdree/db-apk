@@ -237,7 +237,11 @@ public final class HumanLog {
             }
             if (isiLabel != null && isi != null) {
                 // 0.5.6 — ISI komunikasi ikut pada barisnya (capture HttpCanary)
-                sb.append(",\"isiLabel\":\"").append(Json.esc(isiLabel))
+                // 0.5.8 — FIX AKAR "TIDAK ADA 1 pun muncul di dashboard": dulu
+                // kutip penutup nilai isiLabel HILANG → JSON MALFORMED
+                // ("isiLabel":"ISI · teks config,"isi":"…") → r.json() dasbor
+                // gagal → catch diam → feed kosong selamanya. Kini JSON sah.
+                sb.append(",\"isiLabel\":\"").append(Json.esc(isiLabel)).append('"')
                         .append(",\"isi\":\"").append(Json.esc(isi)).append('"');
             }
             sb.append('}');
@@ -275,11 +279,19 @@ public final class HumanLog {
         }
     }
 
-    /** Semua event di memori (sudah tersaring sesuai mode RINCI) dengan id > sinceId. */
+    /**
+     * Semua event di memori (sudah tersaring sesuai mode RINCI) dengan id > sinceId.
+     * 0.5.8 — bentuk {"lastId":seq,"rows":[…]}: lastId = urutan proses HIDUP ini.
+     * Dulu bentuk array polos — dasbor tidak bisa tahu proses restart; klien yang
+     * menyimpan since tinggi (proses lama) menyaring habis SEMUA baris proses baru
+     * (id mulai 1 lagi) → feed terlihat mati padahal log menulis (laporan owner:
+     * "apps running kok gk ada di log dia ngapain aja log diem"). Kini dasbor
+     * melihat lastId mundur = proses baru → muat ulang dari awal.
+     */
     public static String snapshotJson(long sinceId) {
         synchronized (LOCK) {
             StringBuilder sb = new StringBuilder(4096);
-            sb.append('[');
+            sb.append("{\"lastId\":").append(seq).append(",\"rows\":[");
             boolean first = true;
             for (int i = 0; i < mem.size(); i++) {
                 String jo = mem.get(i);
@@ -293,7 +305,7 @@ public final class HumanLog {
                 first = false;
                 sb.append(jo);
             }
-            sb.append(']');
+            sb.append("]}");
             return sb.toString();
         }
     }

@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.5.7 — DASBOR BERSIH + LOG CAPTURE PENUH + PENANGKAP FORCE CLOSE
+# Build APK-LSF 0.5.8 — AKAR FORCE CLOSE DICEGAH + JSON DASBOR SAH + FEED ANTI-BAKU
+#
+# Baru 0.5.8 (uji APK-LSF-0.5.7 di device: "TIDAK ADA 1 pun yg muncul di dashboard
+# !!!! FORCE CLOSED MASIH SAAT MUNCUL SERVER" — bukti crash.log 13:46:54):
+#   1) FORCE CLOSE (akar DIBUKTIKAN harness): klik Play → io.connect :8080 → relay
+#      jawab 502 via Response.Status.lookup(502) → NULL (502 tidak ada di enum
+#      NanoHTTPD) → send() lempar java.lang.Error → thread NanoHTTPD mati → Android
+#      bunuh SELURUH proses = force close persis saat serverlist muncul.
+#      Kini: LoginServer.safeStatus(int) — kode apa pun sah (502 Relay); NanoHTTPD
+#      send() status null → paksa 500 (tidak pernah Error); serve() dijaga
+#      Throwable → jawab 500 + baris ⚠️ (serveCrashListener) — server LANJUT hidup.
+#   2) DASBOR KOSONG (akar DIBUKTIKAN validator JSON ketat): HumanLog isi JSON
+#      "isiLabel":"<nilai> TANPA kutip penutup → /api/logs MALFORMED → r.json()
+#      dasbor gagal → catch diam → TIDAK SATU baris tampil (0.5.6: beku setelah 1
+#      baris = evIsi pertama merusak; 0.5.7: rusak sejak fetch pertama = NOL).
+#      Kini JSON 100% sah (json.loads ketat LULUS, isiLabel+isi multi-baris).
+#   3) FEED ANTI-BAKU: /api/logs kini {"lastId":seq,"rows":[…]} — dasbor melihat
+#      lastId MUNDUR = proses restart → muat ulang dari awal (dulu since tinggi
+#      milik proses lama menyaring habis baris proses baru = "log diem").
+#   4) Baris [📦] setting bin TIDAK LAGI DUA KALI (dedupe kunci kanonik utk kedua
+#      path bin bs/db/android + lzceshi/native_setting).
 #
 # Dasar: releases/APK-LSF-0.5.4.apk (LSF — memuat LOG DUA JALUR 0.5.4 + relay
 # socket game + mirror www/ lengkap dgn base.zip/all.zip + QHinfo 127.0.0.1:8610).
@@ -294,7 +314,7 @@ SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.5.7.apk"
+OUT="$REPO/releases/APK-LSF-0.5.8.apk"
 MIN_API="${MIN_API:-21}"
 
 # Baru 0.5.2 (tegasan owner: "pakai config online murni untuk server lokal,

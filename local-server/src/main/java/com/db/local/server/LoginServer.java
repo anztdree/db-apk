@@ -511,7 +511,7 @@ public final class LoginServer extends NanoHTTPD {
         if ("websocket".equals(transport)) {
             // Klien mencoba upgrade websocket → kita tidak meneruskan → engine.io
             // client akan tetap di polling (perilaku terbukti di device).
-            return text(Response.Status.lookup(400),
+            return text(safeStatus(400),
                     "websocket tidak diteruskan — klien engine.io kembali ke polling");
         }
         long t0 = System.currentTimeMillis();
@@ -537,7 +537,7 @@ public final class LoginServer extends NanoHTTPD {
             }
             HumanLog.ev("⚠️", "Server login ASLI tidak terjangkau lewat passthrough — login online gagal "
                             + "(perilaku sama seperti koneksi langsung)", String.valueOf(t));
-            return text(Response.Status.lookup(502),
+            return text(safeStatus(502),
                     "upstream login.popoh5.com:610 tidak terjangkau — " + t);
         }
         long ms = System.currentTimeMillis() - t0;
@@ -558,7 +558,7 @@ public final class LoginServer extends NanoHTTPD {
         if (Method.GET == m) {
             logOnlineResponse(qs, respText, up.body.length, ms);
         }
-        Response r = newFixedLengthResponse(Response.Status.lookup(up.status == -1 ? 502 : up.status),
+        Response r = newFixedLengthResponse(safeStatus(up.status == -1 ? 502 : up.status),
                 up.contentType, new ByteArrayInputStream(up.body), up.body.length);
         r.addHeader("Cache-Control", "no-store");
         r.addHeader("Access-Control-Allow-Origin", "*");
@@ -928,7 +928,7 @@ public final class LoginServer extends NanoHTTPD {
     }
 
     private Response unknownSession() {
-        return text(Response.Status.lookup(400), "{\"code\":1,\"message\":\"Session ID unknown\"}");
+        return text(safeStatus(400), "{\"code\":1,\"message\":\"Session ID unknown\"}");
     }
 
     private void sweepExpired() {
@@ -954,5 +954,30 @@ public final class LoginServer extends NanoHTTPD {
         r.addHeader("Cache-Control", "no-store");
         r.addHeader("Access-Control-Allow-Origin", "*");
         return r;
+    }
+
+    /**
+     * 0.5.8 — STATUS HTTP AMAN. Response.Status.lookup(int) mengembalikan NULL
+     * untuk kode yang tidak ada di enum NanoHTTPD (502, 203, 302, 504, 511, …).
+     * Dulu Response ber-status null → send() lempar java.lang.Error → thread
+     * NanoHTTPD mati → Android membunuh SELURUH proses (force close persis saat
+     * serverlist muncul — bukti crash.log 2026-11-12 13:46:54). Kini kode apa
+     * pun tetap punya status sah (kode asli dipertahankan — jujur ke klien).
+     */
+    public static Response.IStatus safeStatus(final int code) {
+        Response.IStatus s = Response.Status.lookup(code);
+        if (s != null) {
+            return s;
+        }
+        final int c = (code <= 0 || code > 599) ? 502 : code;
+        return new Response.IStatus() {
+            public int getRequestStatus() {
+                return c;
+            }
+
+            public String getDescription() {
+                return String.valueOf(c) + " Relay";
+            }
+        };
     }
 }

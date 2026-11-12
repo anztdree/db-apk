@@ -163,6 +163,16 @@ public abstract class NanoHTTPD {
     public static volatile CrashListener acceptCrashListener;
 
     /**
+     * 0.5.8 — hook laporan error tak terduga saat memanggil serve()/mengirim
+     * jawaban (dipakai server lokal utk HumanLog). PENTING: error di thread
+     * prosesor permintaan TIDAK lagi dibiarkan naik — dulu java.lang.Error
+     * (mis. "Status can't be null") lolos dari thread NanoHTTPD → Android
+     * mematikan SELURUH proses (force close persis saat serverlist muncul).
+     * Kini dijawab 500 — server dan aplikasi tetap hidup.
+     */
+    public static volatile CrashListener serveCrashListener;
+
+    /**
      * Pluggable strategy for asynchronously executing requests.
      */
     public interface AsyncRunner {
@@ -954,7 +964,22 @@ public abstract class NanoHTTPD {
                 // TODO: long body_size = getBodySize();
                 // TODO: long pos_before_serve = this.inputStream.totalRead()
                 // (requires implementation for totalRead())
-                r = serve(this);
+                // 0.5.8 — serve() dijaga penuh: Throwable apa pun (termasuk Error)
+                // dari handler dijawab 500 — TIDAK PERNAH mematikan thread prosesor
+                // (dulu Error lolos → Android membunuh seluruh aplikasi).
+                try {
+                    r = serve(this);
+                } catch (Throwable sth) {
+                    CrashListener sl = NanoHTTPD.serveCrashListener;
+                    if (sl != null) {
+                        try {
+                            sl.onAcceptLoopCrash("serve " + this.uri, sth);
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                    r = newFixedLengthResponse(Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT,
+                            "SERVER INTERNAL ERROR: " + sth);
+                }
                 // TODO: this.inputStream.skip(body_size -
                 // (this.inputStream.totalRead() - pos_before_serve))
 
@@ -988,7 +1013,10 @@ public abstract class NanoHTTPD {
                 resp.send(this.outputStream);
                 safeClose(this.outputStream);
             } catch (ResponseException re) {
-                Response resp = newFixedLengthResponse(re.getStatus(), NanoHTTPD.MIME_PLAINTEXT, re.getMessage());
+                // 0.5.8 — status ResponseException bisa null (konstruktor liar) —
+                // jangan buat Response ber-status null (dulu → Error saat send).
+                Response.IStatus rst = re.getStatus() != null ? re.getStatus() : Response.Status.INTERNAL_ERROR;
+                Response resp = newFixedLengthResponse(rst, NanoHTTPD.MIME_PLAINTEXT, re.getMessage());
                 resp.send(this.outputStream);
                 safeClose(this.outputStream);
             } finally {
@@ -1602,7 +1630,11 @@ public abstract class NanoHTTPD {
 
             try {
                 if (this.status == null) {
-                    throw new Error("sendResponse(): Status can't be null.");
+                    // 0.5.8 — dulu: throw new Error("sendResponse(): Status can't be
+                    // null.") — Error lolos dari thread NanoHTTPD → Android membunuh
+                    // SELURUH aplikasi (force close persis saat serverlist). Kini
+                    // status null = paksa 500 dan jawab tetap terkirim.
+                    this.status = Response.Status.INTERNAL_ERROR;
                 }
                 PrintWriter pw = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream, new ContentType(this.mimeType).getEncoding())), false);
                 pw.append("HTTP/1.1 ").append(this.status.getDescription()).append(" \r\n");

@@ -366,52 +366,67 @@
     if(c.indexOf("✅") === 0 || c.indexOf("🚀") === 0) return " ok";
     return "";
   }
+  function renderRows(arr){
+    var box = $("logbox");
+    if(!arr.length) return;
+    var atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+    var frag = document.createDocumentFragment();
+    arr.forEach(function(e){
+      logSince = Math.max(logSince, e.id);
+      var tech = e.v === 1;
+      var row = document.createElement("div");
+      row.className = "logrow" + (tech ? " tech" : "") + iconClass(e.icon);
+      row.dataset.warn = (String(e.icon || "").indexOf("⚠") === 0 || String(e.icon || "").indexOf("❌") === 0) ? "1" : "0";
+      // data mentah disimpan di dataset supaya Copy menghasilkan format yang
+      // sama persis dengan human.log: "09:40:34 ✅ Login game sukses…" + blok ├─/└─
+      row.dataset.time = e.t || "";
+      row.dataset.icon = tech ? "·" : (e.icon || "");
+      row.dataset.text = e.text || "";
+      row.dataset.detail = e.detail || "";
+      row.dataset.isiLabel = e.isiLabel || ""; // 0.5.6 — capture isi
+      row.dataset.isi = e.isi || "";
+      var tm = document.createElement("span"); tm.className = "logtime"; tm.textContent = e.t;
+      var ic = document.createElement("span"); ic.className = "logic"; ic.textContent = tech ? "·" : e.icon;
+      var tx = document.createElement("span"); tx.className = "logtext"; tx.textContent = e.text;
+      if(e.detail){
+        var dt = document.createElement("span"); dt.className = "logdetail";
+        dt.textContent = treeify(e.detail);
+        tx.appendChild(dt);
+      }
+      // 0.5.6 — capture isi (HttpCanary): isi komunikasi pada barisnya, show/hide
+      if(e.isi){
+        var jb = document.createElement("details"); jb.className = "jsonbox";
+        var sm = document.createElement("summary"); sm.textContent = e.isiLabel || "ISI";
+        var pr = document.createElement("pre"); pr.textContent = e.isi;
+        jb.appendChild(sm); jb.appendChild(pr);
+        tx.appendChild(jb);
+      }
+      row.appendChild(tm); row.appendChild(ic); row.appendChild(tx);
+      frag.appendChild(row);
+    });
+    box.appendChild(frag);
+    while(box.childNodes.length > 1200) box.removeChild(box.firstChild);
+    if(atEnd) box.scrollTop = box.scrollHeight;
+  }
   function pollLog(){
-    fetch("/api/logs?since=" + logSince).then(function(r){ return r.json(); }).then(function(arr){
+    fetch("/api/logs?since=" + logSince).then(function(r){ return r.json(); }).then(function(j){
       var box = $("logbox");
       if(!logLoaded){
         logLoaded = true;
         box.textContent = "";
       }
-      if(!arr.length) return;
-      var atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
-      var frag = document.createDocumentFragment();
-      arr.forEach(function(e){
-        logSince = Math.max(logSince, e.id);
-        var tech = e.v === 1;
-        var row = document.createElement("div");
-        row.className = "logrow" + (tech ? " tech" : "") + iconClass(e.icon);
-        row.dataset.warn = (String(e.icon || "").indexOf("⚠") === 0 || String(e.icon || "").indexOf("❌") === 0) ? "1" : "0";
-        // data mentah disimpan di dataset supaya Copy menghasilkan format yang
-        // sama persis dengan human.log: "09:40:34 ✅ Login game sukses…" + blok ├─/└─
-        row.dataset.time = e.t || "";
-        row.dataset.icon = tech ? "·" : (e.icon || "");
-        row.dataset.text = e.text || "";
-        row.dataset.detail = e.detail || "";
-        row.dataset.isiLabel = e.isiLabel || ""; // 0.5.6 — capture isi
-        row.dataset.isi = e.isi || "";
-        var tm = document.createElement("span"); tm.className = "logtime"; tm.textContent = e.t;
-        var ic = document.createElement("span"); ic.className = "logic"; ic.textContent = tech ? "·" : e.icon;
-        var tx = document.createElement("span"); tx.className = "logtext"; tx.textContent = e.text;
-        if(e.detail){
-          var dt = document.createElement("span"); dt.className = "logdetail";
-          dt.textContent = treeify(e.detail);
-          tx.appendChild(dt);
-        }
-        // 0.5.6 — capture isi (HttpCanary): isi komunikasi pada barisnya, show/hide
-        if(e.isi){
-          var jb = document.createElement("details"); jb.className = "jsonbox";
-          var sm = document.createElement("summary"); sm.textContent = e.isiLabel || "ISI";
-          var pr = document.createElement("pre"); pr.textContent = e.isi;
-          jb.appendChild(sm); jb.appendChild(pr);
-          tx.appendChild(jb);
-        }
-        row.appendChild(tm); row.appendChild(ic); row.appendChild(tx);
-        frag.appendChild(row);
-      });
-      box.appendChild(frag);
-      while(box.childNodes.length > 1200) box.removeChild(box.firstChild);
-      if(atEnd) box.scrollTop = box.scrollHeight;
+      // 0.5.8 — lastId mundur = proses server RESTART (force close/switch mode):
+      // dulu since tinggi milik proses lama menyaring habis semua baris proses
+      // baru (id mulai 1 lagi) → feed tampak mati ("log diem"). Kini feed
+      // dimuat ulang dari awal proses yang hidup.
+      if(j.lastId < logSince){
+        logSince = 0;
+        box.textContent = "";
+        grpLast = null;
+        pollLog();
+        return;
+      }
+      renderRows(j.rows || []);
     }).catch(function(){
       if(!logLoaded){
         var b = $("logbox"); b.textContent = "";

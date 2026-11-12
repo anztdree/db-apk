@@ -172,6 +172,24 @@ public final class Starter {
             };
         } catch (Throwable ignored) {
         }
+        // ---------- 1a4) PENANGKIS ERROR HANDLER (0.5.8 — akar force close serverlist) ----------
+        // Dulu: java.lang.Error di thread NanoHTTPD (mis. "Status can't be null" saat
+        // Play → relay jawab 502 — kode 502 tidak ada di enum NanoHTTPD → status null)
+        // lolos tak tertangkap → Android membunuh SELURUH proses = force close persis
+        // setelah serverlist muncul. Kini NanoHTTPD menjawab 500 dan panggil hook ini
+        // — kejadian tetap TERLIHAT di log, tapi server & aplikasi LANJUT hidup.
+        try {
+            NanoHTTPD.serveCrashListener = new NanoHTTPD.CrashListener() {
+                public void onAcceptLoopCrash(String where, Throwable t) {
+                    try {
+                        HumanLog.ev("⚠️", "Error di thread permintaan " + where + " — dijawab 500, server LANJUT (tidak mati paksa)",
+                                String.valueOf(t));
+                    } catch (Throwable ignored) {
+                    }
+                }
+            };
+        } catch (Throwable ignored) {
+        }
 
         // ---------- 1a2) DATABASE dragonball.db (SQLite) + migrasi txt warisan ----------
         // Dibuka SEBELUM Cleaner: di boot pertama 0.4.3, file txt 0.4.2

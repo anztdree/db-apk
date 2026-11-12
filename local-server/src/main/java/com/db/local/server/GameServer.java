@@ -219,7 +219,7 @@ public final class GameServer extends NanoHTTPD {
         if ("websocket".equals(transport)) {
             // klien mencoba upgrade websocket → ditolak → engine.io tetap polling
             // (perilaku terbukti di device pada passthrough login 0.5.1).
-            return textResp(Response.Status.lookup(400),
+            return textResp(LoginServer.safeStatus(400),
                     "websocket tidak diteruskan — klien engine.io tetap di polling");
         }
         String up = LoginData.gameUpstream();
@@ -238,7 +238,7 @@ public final class GameServer extends NanoHTTPD {
                                 + " (cth: https://s2109-bs.popoh5.com:8061) — tanpa build ulang, lalu klik Play lagi\n"
                                 + "           atau isi field \"upstream\" entri di config-offline/servers.json");
             }
-            return textResp(Response.Status.lookup(502),
+            return textResp(LoginServer.safeStatus(502),
                     "upstream server game belum diisi — isi config/game-upstream.txt");
         }
         long t0 = System.currentTimeMillis();
@@ -261,7 +261,7 @@ public final class GameServer extends NanoHTTPD {
                     "Upstream : " + up + "\n"
                             + "Sebab    : " + t + "\n"
                             + "Waktu    : " + HumanLog.fmtMs(ms) + " — klien akan mencoba ulang sendiri");
-            return textResp(Response.Status.lookup(502),
+            return textResp(LoginServer.safeStatus(502),
                     "upstream tidak terjangkau — " + t);
         }
         long ms = System.currentTimeMillis() - t0;
@@ -298,7 +298,7 @@ public final class GameServer extends NanoHTTPD {
                         + " · " + HumanLog.fmtMs(ms), null);
             }
         }
-        Response r = newFixedLengthResponse(Response.Status.lookup(u.status == -1 ? 502 : u.status),
+        Response r = newFixedLengthResponse(LoginServer.safeStatus(u.status == -1 ? 502 : u.status),
                 u.contentType, new ByteArrayInputStream(u.body), u.body.length);
         r.addHeader("Cache-Control", "no-store");
         r.addHeader("Access-Control-Allow-Origin", "*");
@@ -444,7 +444,7 @@ public final class GameServer extends NanoHTTPD {
                     "OFFLINE · paket manual config-offline/ · " + HumanLog.fmtBytes(b.length)
                             + " · " + HumanLog.fmtMs(ms) + " · apa adanya (tanpa tulis-ulang)",
                     isiConfig);
-            cfgLog(uri, "CONFIG setting bin disajikan — paket manual config-offline/ · "
+            cfgLog("setting-bin", "CONFIG setting bin disajikan — paket manual config-offline/ · "
                             + HumanLog.fmtBytes(b.length) + " · " + HumanLog.fmtMs(ms),
                     "Menunjuk : 127.0.0.1 (game :" + Config.gamePort() + " · login :"
                             + Config.loginPort() + ") — sejak disiapkan manual",
@@ -492,7 +492,7 @@ public final class GameServer extends NanoHTTPD {
                     "OFFLINE · paket manual config-offline/ · " + HumanLog.fmtBytes(out.length)
                             + " · " + HumanLog.fmtMs(ms) + " · apa adanya (tanpa tulis-ulang)",
                     isiSrv);
-            cfgLog(uri, "CONFIG serversetting.json disajikan — paket manual config-offline/ · "
+            cfgLog("serversetting", "CONFIG serversetting.json disajikan — paket manual config-offline/ · "
                             + HumanLog.fmtBytes(out.length) + " · " + HumanLog.fmtMs(ms),
                     "Menunjuk : loginserver 127.0.0.1:" + Config.loginPort() + " — sejak disiapkan manual",
                     "ISI · bedah + teks config · " + HumanLog.fmtBytes(out.length),
@@ -644,7 +644,7 @@ public final class GameServer extends NanoHTTPD {
                     nullSafe(query),
                     "ISI · jawaban 502",
                     "Server asli tidak terjangkau untuk " + uri + " — coba mode LOCAL bila www/ sudah terisi.");
-            return textResp(Response.Status.lookup(502),
+            return textResp(LoginServer.safeStatus(502),
                     "Server asli tidak terjangkau untuk " + uri + " — coba mode LOCAL bila www/ sudah terisi.");
         }
         // 0.4.6: jawaban server asli = GRUP "Passthrough ONLINE" — 5xx naik ⚠.
@@ -736,11 +736,11 @@ public final class GameServer extends NanoHTTPD {
             }
         } else {
             if (up.length >= 0 && up.in != null) {
-                r = newFixedLengthResponse(Response.Status.lookup(up.status), up.contentType, up.in, up.length);
+                r = newFixedLengthResponse(LoginServer.safeStatus(up.status), up.contentType, up.in, up.length);
             } else if (up.in != null) {
-                r = newChunkedResponse(Response.Status.lookup(up.status), up.contentType, up.in);
+                r = newChunkedResponse(LoginServer.safeStatus(up.status), up.contentType, up.in);
             } else {
-                r = newFixedLengthResponse(Response.Status.lookup(up.status), up.contentType, "");
+                r = newFixedLengthResponse(LoginServer.safeStatus(up.status), up.contentType, "");
             }
             // 0.5.6 — binary/besar: catatan jujur, bukan isi karangan.
             isiLabel = "ISI · " + (sentBytes > 0 ? HumanLog.fmtBytes(sentBytes) : "?");
