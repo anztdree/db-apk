@@ -46,15 +46,20 @@
   .pill.up{background:#064e3b33; color:var(--ok)}
   main{flex:1; padding:10px 14px 18px; max-width:960px; width:100%; margin:0 auto}
 
-  /* ---- SATU baris jalur config + seksi CONFIG (show/hide — 0.5.4) ---- */
-  #strip{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px; color:var(--mut); padding:6px 2px 2px}
-  #strip b{color:var(--tx); font-weight:600}
-  #cfgline{
-    margin:6px 0 8px; font-size:12.5px; color:var(--mut); line-height:1.55;
-    background:var(--card); border:1px solid var(--line); border-radius:9px; padding:7px 11px;
-  }
-  #cfgline b{color:var(--ok); font-weight:700}
-  #cfgline .asli{color:var(--warn)}
+  /* 0.5.7 — LAPORAN owner "banyak teks sampah .. keterangan gak penting di header
+     dan bottom biar apa": STRIP 6 keterangan, CFGLINE paragraf panjang, dan FOOTER
+     legenda ikon DIHAPUS TOTAL — dasbor tinggal LOG capture (HttpCanary) + seksi
+     CONFIG show/hide + grup Σ. Yang tersisa di kepala: judul + mode + status saja. */
+  /* ---- baris upstream relay (di dalam seksi CONFIG — 0.5.7) ---- */
+  .uprow{display:flex; gap:8px; align-items:center; padding:8px 12px;
+    border-bottom:1px solid var(--line); background:var(--card)}
+  .uprow .uplbl{font-size:12.5px; font-weight:700; color:var(--mut); flex:none}
+  .uprow input{flex:1; min-width:0; background:var(--code); color:var(--tx);
+    border:1px solid var(--line); border-radius:7px; padding:6px 9px;
+    font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .uprow input:focus{outline:none; border-color:var(--acc)}
+  .uprow .upstat{font-size:11px; color:var(--mut); flex:none; max-width:32%;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 
   /* seksi CONFIG: isi config penuh (bedah field-per-field + teks) — SHOW/HIDE,
      KELUAR DARI FEED LOG (koreksi owner 0.5.4: "kalau isi config besar ya bisa show hide") */
@@ -166,10 +171,6 @@
   .itrow.bad .ittext{color:var(--err)}
   .grempty{padding:8px 12px; color:var(--mut)}
 
-  footer{
-    margin-top:auto; padding:12px 14px calc(12px + env(safe-area-inset-bottom));
-    border-top:1px solid var(--line); color:var(--mut); font-size:12px; text-align:center;
-  }
 </style>
 </head>
 <body>
@@ -180,24 +181,18 @@
   <span class="pill" id="pill">menyambung…</span>
 </header>
 <main>
-  <!-- ===== satu baris status inti ===== -->
-  <div id="strip">
-    <span>game <b id="s-game">…</b></span>
-    <span>login <b id="s-login">…</b></span>
-    <span>sesi <b id="s-sesi">…</b></span>
-    <span>akun <b id="s-acc">…</b></span>
-    <span>www/ <b id="s-www">…</b></span>
-    <span>uptime <b id="s-up">…</b></span>
-  </div>
-  <!-- ===== SATU baris jalur config (config akar — selalu terlihat) ===== -->
-  <div id="cfgline">memuat jalur config…</div>
-
-  <!-- ===== seksi CONFIG: isi penuh show/hide (0.5.4 — keluar dari feed log) ===== -->
+  <!-- ===== seksi CONFIG: isi penuh show/hide + upstream relay (0.5.7) ===== -->
   <div id="cfgsec">
     <div class="cfghead" id="cfghead">
       <span>📦 CONFIG — isi penuh (show/hide)</span>
       <span class="cnt" id="cfgcnt"></span>
       <span class="arr"></span>
+    </div>
+    <div class="uprow">
+      <span class="uplbl">upstream relay game</span>
+      <input id="upin" type="text" placeholder="https://s2109-bs.popoh5.com:8061" spellcheck="false">
+      <button class="act" id="upsave">Simpan</button>
+      <span class="upstat" id="upstat"></span>
     </div>
     <div class="cfgbody" id="cfgbody"><div class="cfempty">memuat…</div></div>
   </div>
@@ -218,13 +213,7 @@
   <div id="grouphdr">Aktivitas batch — klik untuk rincian per-file</div>
   <div id="groups"></div>
 </main>
-<footer>
-  OFFLINE = config manual config-offline/ · ONLINE = passthrough server asli (log gaya HttpCanary) ·
-  ikon: 🌐 ⇄ trafik asli · 📄 serve lokal · 🎮 socket game (Play) · 📦 config (isi penuh di seksi CONFIG) ·
-  🚀 siap · 👤 pemain · 🔑 sesi · 📡 koneksi · 🔌 putus (normal) · ✅ sukses · ⚠️ masalah · ❌ terhenti ·
-  📋 daftar server · 💾 data · ℹ️ info · rincian baris penting tampil penuh (├─/└─) · aset/teknis = RINCI ·
-  log penuh di <b>logs/human.log</b>
-</footer>
+<!-- 0.5.7 — footer legenda DIHAPUS (teks sampah bottom — laporan owner) -->
 
 <script>
 (function(){
@@ -252,6 +241,8 @@
     if(m > 0) return m + " mnt " + (s%60) + " dtk";
     return s + " dtk";
   }
+  // 0.5.7 — fmtUptime & strip status DIHAPUS (teks sampah — laporan owner);
+  // fungsi fmtBytes tetap dipakai grup Σ & seksi CONFIG.
   function esc(s){
     return String(s).replace(/[&<>"]/g, function(c){
       return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];
@@ -272,26 +263,9 @@
     var lb = $("logbox");
     if(lb) lb.className = offline ? "" : "online";
 
-    $("s-game").textContent = ":" + sv.gamePort + (sv.gameAlive ? " ✓" : " ✗");
-    $("s-login").textContent = ":" + sv.loginPort + (sv.loginAlive ? " ✓" : " ✗");
-    $("s-sesi").textContent = sv.sdkUid || sv.sdkGuest || sv.loginUser || "belum masuk";
-    $("s-acc").textContent = sv.loginAccounts || 0;
-    $("s-www").textContent = (sv.wwwFiles || 0) + " file · " + fmtBytes(sv.wwwBytes || 0);
-    $("s-up").textContent = fmtUptime(sv.uptimeMs);
-
-    // SATU baris config akar — dari mana config datang & ke mana menunjuk:
-    // OFFLINE = paket manual config-offline/ (bukan turunan online);
-    // ONLINE  = config dari server asli (passthrough), jalur login lewat lokal.
-    $("cfgline").innerHTML = offline
-      ? "<b>OFFLINE — CONFIG MANUAL</b> (paket <b>config-offline/</b> — apa adanya, tanpa tulis-ulang) · "
-        + "loginServer 127.0.0.1:" + (sv.loginPort || "?")
-        + " · daftar server 1 entri \"Server Lokal\" → url 127.0.0.1:" + (sv.gamePort || "?")
-        + " → Play masuk <b>server game lokal</b> → relay ke upstream (isi: config/game-upstream.txt"
-        + " — lihat seksi CONFIG) · TIDAK ada unduhan dari server asli"
-      : "ONLINE — config dari <span class='asli'>SERVER ASLI</span> (passthrough — log gaya HttpCanary) · "
-        + "jalur login ditulis-ulang ke server lokal :" + (sv.loginPort || "?")
-        + " lalu diteruskan utuh ke login.popoh5.com:610 · "
-        + "daftar server &amp; token dari server asli (progres pemain di sana)";
+    // 0.5.7 — strip 6 keterangan & cfgline paragraf DIHAPUS (laporan owner:
+    // "keterangan gak penting di header dan bottom biar apa") — status inti
+    // sudah cukup dari pill + badge mode; alur & config ada di log + seksi CONFIG.
     $("t-tech").classList.toggle("on", !!sv.logTech);
   }
 
@@ -340,6 +314,34 @@
   function pollConfig(){
     fetch("/api/config").then(function(r){ return r.json(); }).then(renderConfig).catch(function(){});
   }
+
+  // ---------- 0.5.7 — upstream relay game (di seksi CONFIG) ----------
+  // Force close setelah serverlist (laporan owner) = klik Play → io.connect ke
+  // 127.0.0.1:8080 → relay tanpa upstream. Kini upstream diisi LANGSUNG dari
+  // dasbor — tersimpan ke config/game-upstream.txt, aktif tanpa restart.
+  function pollUpstream(){
+    fetch("/api/upstream").then(function(r){ return r.json(); }).then(function(j){
+      var inp = $("upin");
+      if(document.activeElement !== inp && inp.value === "") inp.value = j.url || "";
+      $("upstat").textContent = j.url ? ("aktif — " + (j.sumber || "")) : (j.sumber || "");
+    }).catch(function(){});
+  }
+  $("upsave").addEventListener("click", function(){
+    var b = $("upsave");
+    b.textContent = "menyimpan…";
+    fetch("/api/upstream", {method:"POST",
+        headers:{"Content-Type":"application/x-www-form-urlencoded"},
+        body:"url=" + encodeURIComponent($("upin").value.trim())})
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        b.textContent = "Simpan";
+        $("upstat").textContent = j.ok ? ("tersimpan — " + j.url) : ("gagal — " + (j.error || "?"));
+        if(j.ok) pollConfig();
+      }).catch(function(){
+        b.textContent = "Simpan";
+        $("upstat").textContent = "gagal — dasbor tidak merespons";
+      });
+  });
 
   function pollStatus(){
     fetch("/api/status").then(function(r){ return r.json(); }).then(renderStatus).catch(function(){
@@ -589,10 +591,12 @@
   pollLog();
   pollGroups();
   pollConfig();
+  pollUpstream();
   setInterval(pollStatus, 3000);
   setInterval(pollLog, 2000);
   setInterval(pollGroups, 3000);
   setInterval(pollConfig, 5000);
+  setInterval(pollUpstream, 5000);
 })();
 </script>
 </body>

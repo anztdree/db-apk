@@ -98,6 +98,7 @@ public final class SdkApi {
         String username = all.get("username");
         String token = all.get("token");
         String usermode = all.get("usermode");
+        long t0 = System.currentTimeMillis();
         try {
             // 0.5.0 REKAM — validasi shell terekam (parameter jelas, token DISEMBUNYIKAN)
             Capture.sdk("→", "/loginchecknative", "uid " + (uid == null ? "-" : uid)
@@ -113,13 +114,33 @@ public final class SdkApi {
                 Capture.sdk("←", "/loginchecknative", "code 500 — validasi GAGAL", errBody, errBody.length(), 0);
             } catch (Throwable ignored) {
             }
+            httpLine("/loginchecknative", errBody.length(), System.currentTimeMillis() - t0, errBody);
             return json(NanoHTTPD.Response.Status.OK, errBody);
         }
         try {
             Capture.sdk("←", "/loginchecknative", "code 0 — sesi disahkan, shell lanjut boot", data, data.length(), 0);
         } catch (Throwable ignored) {
         }
+        httpLine("/loginchecknative", data.length(), System.currentTimeMillis() - t0, data);
         return json(NanoHTTPD.Response.Status.OK, data);
+    }
+
+    /**
+     * 0.5.7 — SATU baris ⇄ gaya HttpCanary untuk jawaban SDK lokal (laporan
+     * owner "loading sampai sdk loading selesai cuma muncul 1 log"): dulu tahap
+     * SDK lokal tidak punya baris ⇄ sama sekali (hanya Capture + kejadian
+     * khusus) — alur SDK tak tercapture di dasbor. Kini PERSIS pola ONLINE
+     * (proxyV1): POST 127.0.0.1:<port><path> → 200 · ukuran · ms + ISI jawaban.
+     */
+    private static void httpLine(String path, long len, long ms, String isi) {
+        try {
+            HumanLog.evIsi("🌐", "⇄ POST 127.0.0.1:" + Config.loginPort() + path
+                            + " → 200 · " + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms)
+                            + " (server SDK lokal)", null,
+                    "ISI · jawaban SDK lokal · " + HumanLog.fmtBytes(len),
+                    isi == null ? "" : isi);
+        } catch (Throwable ignored) {
+        }
     }
 
     /** Gabungkan parameter query + field form body POST (body menang). */
@@ -292,6 +313,8 @@ public final class SdkApi {
                     sb.toString(), sb.length(), System.currentTimeMillis() - t0);
         } catch (Throwable ignored) {
         }
+        // 0.5.7 — baris ⇄ gaya HttpCanary dengan isi jawaban (alur SDK tercapture)
+        httpLine(path, sb.length(), System.currentTimeMillis() - t0, sb.toString());
         return json(NanoHTTPD.Response.Status.OK, sb.toString());
     }
 
@@ -303,6 +326,8 @@ public final class SdkApi {
             Capture.sdk("←", path, "error " + id + " — " + msg, errBody, errBody.length(), 0);
         } catch (Throwable ignored) {
         }
+        // 0.5.7 — jawaban error juga satu baris ⇄ ber-isi (HttpCanary)
+        httpLine(path, errBody.length(), 0, errBody);
         return json(NanoHTTPD.Response.Status.OK, errBody);
     }
 

@@ -72,6 +72,13 @@ public final class HumanLog {
     private HumanLog() {
     }
 
+    /** Folder log aktif (logs/) — dipakai CrashGuard menulis bukti crash. */
+    public static File dir() {
+        synchronized (LOCK) {
+            return logDir;
+        }
+    }
+
     public static void init(File dir) {
         synchronized (LOCK) {
             logDir = dir;

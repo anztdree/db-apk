@@ -48,6 +48,11 @@ public final class Starter {
 
     /** Dipanggil BootProvider.onCreate — cepat, tidak memblok thread utama. */
     public static void boot(Context ctx) {
+        // 0.5.7 — PENANGKAP FORCE CLOSE dipasang PALING AWAL (sebelum apa pun):
+        // setiap crash tak tertangkap di proses ini (game, SDK, server lokal)
+        // meninggalkan bukti di logs/crash.log — sebab force close terlihat
+        // di dasbor saat aplikasi dibuka lagi (tanpa PC/logcat).
+        CrashGuard.install();
         synchronized (BOOTLOCK) {
             if (bootRequested) {
                 return;
@@ -131,6 +136,25 @@ public final class Starter {
         } catch (Throwable ignored) {
         }
         HumanLog.init(logs);
+        // ---------- 1a3) CRASH TERAKHIR (0.5.7) — sebab force close tampil di dasbor ----------
+        // Bila proses sebelumnya mati paksa (uncaught exception), CrashGuard
+        // meninggalkan logs/crash.log. Saat boot ini: bukti dibaca, tampil SATU
+        // baris ⚠️ ber-isi stack penuh, lalu file di-rename .read — tidak berulang.
+        try {
+            File cf = new File(logs, "crash.log");
+            if (!cf.exists()) {
+                cf = new File(Starter.tmpDir(), "crash.log"); // ditulis sebelum logs/ siap
+            }
+            if (cf.exists() && cf.length() > 0) {
+                String isi = CrashGuard.readAll(cf);
+                HumanLog.ev("⚠️", "CRASH terakhir — proses sebelumnya mati paksa (force close). Ini sebabnya:",
+                        isi);
+                File done = new File(cf.getParentFile(), "crash.log.read");
+                done.delete();
+                cf.renameTo(done);
+            }
+        } catch (Throwable ignored) {
+        }
         // ---------- 1a) hook kejadian loop accept (0.4.1) ----------
         // Error tak terduga di loop penerima koneksi NanoHTTPD kini TERCATAT —
         // dulu thread accept bisa mati diam-diam sehingga port “hidup mati”:
@@ -468,3 +492,4 @@ public final class Starter {
     }
 
 }
+

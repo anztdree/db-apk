@@ -541,14 +541,25 @@ public final class GameServer extends NanoHTTPD {
             r.addHeader("Cache-Control", "no-store");
             long ms = System.currentTimeMillis() - t0;
             try {
-                // 0.5.4 — baris lokal per file: aset = TEKNIS (feed tetap tenang,
-                // terlihat saat RINCI); LogGroups tetap menghitung statistik Σ.
-                // 0.5.6 — baris MEMBAWA isi komunikasinya (capture HttpCanary di
-                // dasbor :4000): teks = byte persis mirror; binary = catatan jujur.
-                HumanLog.evTechIsi("📄", "GET " + uri + " · mirror www/ · "
-                        + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms), null,
-                        "ISI · " + HumanLog.fmtBytes(len) + (isTextExt(uri) ? " (teks)" : " (binary)"),
-                        isiFile(f, uri, len));
+                // 0.5.7 — LAPORAN owner "log cacat gak bisa nangkap jelas .. loading
+                // update sampai sdk loading selesai cuma muncul 1 log": alur loading
+                // update (base.version/resource.version/upgrade.json/size.json dst)
+                // dulu TEKNIS → tersembunyi di dasbor bersih. HttpCanary = SEMUA
+                // traffic tercapture — file CONFIG/VERSION/TXT/BIN kini PENTING
+                // (selalu tampil, membawa isi komunikasinya); aset besar (js/zip/
+                // html) tetap TEKNIS + Σ grup agar alur tetap terbaca.
+                String isiLbl = "ISI · " + HumanLog.fmtBytes(len)
+                        + (isTextExt(uri) ? " (teks)" : " (binary)");
+                String isiTxt = isiFile(f, uri, len);
+                if (isConfigExt(uri)) {
+                    HumanLog.evIsi("📄", "GET " + uri + " · mirror www/ · "
+                            + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms), null,
+                            isiLbl, isiTxt);
+                } else {
+                    HumanLog.evTechIsi("📄", "GET " + uri + " · mirror www/ · "
+                            + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms), null,
+                            isiLbl, isiTxt);
+                }
             } catch (Throwable ignored) {
             }
             LogGroups.item("req", "Request game", "request", true,

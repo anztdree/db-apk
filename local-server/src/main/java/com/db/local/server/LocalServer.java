@@ -174,6 +174,25 @@ public final class LocalServer extends NanoHTTPD {
                 StatusStore.persist();
                 return jsonResp(Response.Status.OK, j);
             }
+            // ---------------- 0.5.7 — isi UPSTREAM relay game dari dasbor ----------------
+            // Laporan owner: force close setelah serverlist — akar: klik Play →
+            // io.connect(127.0.0.1:8080) → relay tanpa upstream → klien gagal.
+            // game-upstream.txt di Android/data sulit diakses pemilik — kini bisa
+            // diisi langsung dari seksi CONFIG dasbor (masih: SATU baris URL;
+            // tidak ada sumber lain — URL TIDAK diambil dari config online).
+            if ("/api/upstream".equals(uri) && Method.GET == m) {
+                String[] up = LoginData.gameUpstreamEx();
+                String j = "{\"url\":\"" + Json.esc(up[0]) + "\",\"sumber\":\""
+                        + Json.esc(up[1].length() == 0 ? "(kosong — relay belum punya tujuan)" : up[1]) + "\"}";
+                bytes = j.length();
+                return jsonResp(Response.Status.OK, j);
+            }
+            if ("/api/upstream".equals(uri) && Method.POST == m) {
+                String url = first(session.getParameters().get("url"));
+                String res = saveUpstream(url);
+                bytes = res.length();
+                return jsonResp(Response.Status.OK, res);
+            }
             status = 404;
             return jsonResp(Response.Status.NOT_FOUND,
                     "{\"error\":\"Endpoint tidak dikenal: " + m + " " + Json.esc(uri)
@@ -247,6 +266,52 @@ public final class LocalServer extends NanoHTTPD {
                 count[0]++;
                 total[0] += k.length();
             }
+        }
+    }
+
+    /**
+     * 0.5.7 — simpan URL upstream relay (dari seksi CONFIG dasbor) ke
+     * config/game-upstream.txt. Validasi: wajib http:// atau https://, satu
+     * baris (trim). Berlaku LANGSUNG — LoginData.gameUpstreamEx() membaca
+     * file tiap kali dipanggil (tanpa cache, tanpa restart).
+     */
+    private static String saveUpstream(String url) {
+        try {
+            if (url == null) {
+                url = "";
+            }
+            url = url.trim().replaceAll("[\\r\\n]+", "");
+            if (url.length() == 0) {
+                return "{\"ok\":false,\"error\":\"URL kosong — isi SATU baris URL server game asli (cth https://s2109-bs.popoh5.com:8061)\"}";
+            }
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                return "{\"ok\":false,\"error\":\"URL harus diawali http:// atau https://\"}";
+            }
+            java.io.File root = Starter.serverRoot();
+            if (root == null) {
+                return "{\"ok\":false,\"error\":\"folder server belum siap\"}";
+            }
+            java.io.File conf = new java.io.File(root, "config");
+            if (!conf.exists()) {
+                conf.mkdirs();
+            }
+            java.io.File f = new java.io.File(conf, "game-upstream.txt");
+            java.io.Writer w = new java.io.OutputStreamWriter(
+                    new java.io.FileOutputStream(f, false), "UTF-8");
+            w.write(url);
+            w.close();
+            String[] up = LoginData.gameUpstreamEx();
+            HumanLog.ev("📡", "Upstream relay game disimpan dari dasbor — " + url,
+                    "Ditulis  : config/game-upstream.txt (" + HumanLog.fmtBytes(f.length()) + ")\n"
+                            + "Aktif    : langsung (tanpa restart) — sumber terbaca: "
+                            + ("file".equals(up[1]) ? "file" : "?") + "\n"
+                            + "Lanjutan : klik Play lagi — socket game :"
+                            + Config.gamePort() + " diteruskan ke " + up[0]
+                            + "\n           uji dengan tombol \"Tes game\"");
+            return "{\"ok\":true,\"url\":\"" + Json.esc(up[0]) + "\",\"sumber\":\""
+                    + Json.esc("file") + "\"}";
+        } catch (Throwable t) {
+            return "{\"ok\":false,\"error\":\"" + Json.esc(String.valueOf(t)) + "\"}";
         }
     }
 

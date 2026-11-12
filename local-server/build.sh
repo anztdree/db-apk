@@ -1,9 +1,29 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.5.5 — UTAMANYA LOCAL (mode bawaan saat install & buka) + LOG DUA JALUR + RELAY GAME
+# Build APK-LSF 0.5.7 — DASBOR BERSIH + LOG CAPTURE PENUH + PENANGKAP FORCE CLOSE
 #
 # Dasar: releases/APK-LSF-0.5.4.apk (LSF — memuat LOG DUA JALUR 0.5.4 + relay
 # socket game + mirror www/ lengkap dgn base.zip/all.zip + QHinfo 127.0.0.1:8610).
+#
+# Baru 0.5.7 (laporan owner uji APK-LSF-0.5.6 di perangkat):
+#   1) "banyak teks sampah .. keterangan gak penting di header dan bottom biar apa"
+#      → dasbor: strip 6 keterangan + cfgline paragraf + footer legenda ikon
+#      DIHAPUS TOTAL — kepala tinggal judul + mode + status; log = pusat.
+#   2) "log cacat gak bisa nangkap jelas .. loading update sampai sdk loading
+#      selesai cuma muncul 1 log" → akar: semua baris komunikasi TEKNIS
+#      (tersembunyi di dasbor bersih) + tahap SDK lokal tanpa baris ⇄.
+#      Kini: file CONFIG/VERSION/TXT/BIN mirror = PENTING ber-isi (HttpCanary);
+#      jawaban SDK lokal (init/registerVisitor/autoLogin/loginchecknative/…)
+#      masing-masing SATU baris ⇄ POST 127.0.0.1:8610 ber-isi jawaban.
+#   3) "force close setelah muncul serverlist" → dua langkah:
+#      a) CrashGuard.java — handler uncaught exception menulis bukti stack
+#         ke logs/crash.log lalu delegasi ke handler asli (perilaku force
+#         close standar tidak diubah); boot berikutnya membaca bukti → baris
+#         ⚠️ ber-isi stack di dasbor — sebab crash TERLIHAT tanpa PC/logcat.
+#      b) akar paling mungkin: klik Play → io.connect(127.0.0.1:8080) → relay
+#         tanpa upstream → klien gagal. Upstream kini bisa diisi LANGSUNG dari
+#         seksi CONFIG dasbor (input + Simpan → config/game-upstream.txt,
+#         aktif tanpa restart; /api/upstream GET+POST).
 #
 # Baru 0.5.5 (arahan owner: "kalau sudah paham implementasi rebuild apk, jika
 # sebelumnya defaultnya saat aplikasi di install dan di buka adalah mode online,
@@ -274,7 +294,7 @@ SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.5.6.apk"
+OUT="$REPO/releases/APK-LSF-0.5.7.apk"
 MIN_API="${MIN_API:-21}"
 
 # Baru 0.5.2 (tegasan owner: "pakai config online murni untuk server lokal,
