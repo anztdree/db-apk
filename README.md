@@ -1493,3 +1493,28 @@ artefak build wajib hidup di repo (seperti sekarang), bukan hanya di workspace.
   `.analysis/` (gitignored).
 - Cabang kerja: `main` untuk dokumentasi; implementasi di branch `feat/lsf-custom`.
 - **Batas analisis:** fondasi infrastruktur saja. Analisis mekanik/gameplay dilarang sampai fondasi selesai.
+
+---
+
+## 9. Backup & Transfer (anti reset sandbox)
+
+Kesepakatan: **GitHub = gudang utuh proyek; sandbox = meja kerja sementara.** Sandbox
+di-reset terlalu sering — folder kerja di luar `/home/z/my-project` bisa lenyap kapan pun.
+
+**Aturan:**
+
+1. **Setiap hasil kerja langsung di-push** ke `anztdree/db-apk` — tidak menunggu sesi berakhir.
+2. **Sandbox reset = bukan bencana.** Restore 1 perintah: `bash tools/restore.sh`
+   (token otomatis dari `/home/z/my-project/db-apk-backup/token`, chmod 600, tidak ikut repo).
+3. **Yang dibackup:**
+   - `local-server/**` — semua source + assets (termasuk `dashboard.html` terbit).
+   - `releases/*.apk` — APK terbit (LFS).
+   - `tools/*.jar` — android.jar, r8.jar (9.5.32, Google Maven), ecj-3.33.0.jar
+     (Maven Central), uber-apk-signer.jar, sqlite-jdbc.jar (LFS).
+   - `dist/<versi>/` — bukti build terbit (classes2.dex + SHA256).
+   - `docs/build-scripts/` — snapshot skrip build versi (0.5.7, 0.5.8).
+4. **Yang tidak dibackup (re-downloadable, terdokumentasi):**
+   - jadx 1.5.0 (2024-04-20) — github.com/skylot/jadx/releases/tag/v1.5.0.
+   - base.zip/all.zip mirror — `tools/snapshot.sh` (SHA256 ter-pin, §2.9).
+5. **Bukti verifikasi push** wajib: nama commit + output push + ukuran/HTTP asset di GitHub.
+   Klaim "sudah di-push" tanpa bukti terima = laporan keliru.

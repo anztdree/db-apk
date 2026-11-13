@@ -110,31 +110,40 @@
     -webkit-overflow-scrolling:touch;
   }
   #logbox.online{border-color:var(--warn)}
-  .logrow{display:flex; gap:8px; padding:4px 10px; border-bottom:1px solid var(--line); align-items:baseline}
+
+  /* 0.5.9 — BARIS SERAGAM RAPI (laporan owner: "log dan baris dropdown tidak
+     sinkron tidak rapi"): grid 3 kolom [waktu][ikon][isi] — waktu mono tabular
+     rata kanan, kolom ikon tetap, isi satu kolom mulai selalu di titik yang
+     sama. Detail ├─/└─ (dulu polos selalu terbuka) + blok ISI (dulu jsonbox
+     terpisah) digabung SATU dropdown rbox per baris — sejajar di kolom isi,
+     gaya tampil tidak lagi campur antara teks polos dan kotak berbeda. */
+  .logrow{display:grid; grid-template-columns:58px 26px 1fr; gap:0 8px;
+    padding:4px 10px 5px; border-bottom:1px solid var(--line); align-items:start}
   .logrow:last-child{border-bottom:none}
   .logrow:hover{background:rgba(128,128,128,.08)}
   .logrow.tech{opacity:.62}
+  .logtime{color:var(--mut); font-size:10.5px; line-height:1.8; text-align:right;
+    font-variant-numeric:tabular-nums; letter-spacing:-.2px; white-space:nowrap}
+  .logic{width:26px; text-align:center; font-size:13.5px; line-height:1.65}
+  .logtext{min-width:0; font-size:12.5px; line-height:1.5; overflow-wrap:anywhere}
   .logrow.err .logtext{color:var(--err)}
   .logrow.ok .logtext{color:var(--ok)}
-  .logtime{color:var(--mut); flex:none; font-size:11px}
-  .logic{flex:none; width:22px; text-align:center; font-size:14px}
-  .logtext{flex:1; min-width:0}
-  .logdetail{display:block; color:var(--det); font-size:11.5px; line-height:1.55;
-    white-space:pre-wrap; word-break:break-word; margin-top:2px; overflow-wrap:anywhere}
   .logempty{padding:12px 10px; color:var(--mut)}
 
-  /* ---- 0.5.6 blok ISI (capture HttpCanary di :4000 — klik ▸ = isi komunikasi) ---- */
-  details.jsonbox{margin-top:4px; border:1px solid var(--line); border-radius:7px;
-    background:#0a0f0c; overflow:hidden; max-width:100%}
-  details.jsonbox summary{cursor:pointer; padding:3px 8px; font-size:10.5px; font-weight:800;
-    color:var(--ok); letter-spacing:.4px; user-select:none; list-style:none; min-height:26px;
-    display:flex; align-items:center}
-  details.jsonbox summary::-webkit-details-marker{display:none}
-  details.jsonbox summary::before{content:"▸"; margin-right:6px; color:var(--ok)}
-  details.jsonbox[open] summary::before{content:"▾"}
-  details.jsonbox pre{margin:0; padding:6px 9px; font-size:11px; line-height:1.55;
-    color:var(--det); max-height:250px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere;
-    border-top:1px dashed var(--line)}
+  /* ---- 0.5.9 dropdown RINCIAN tunggal per baris (detail pohon + ISI capture
+     HttpCanary dalam SATU kotak — klik ▸ buka, sejajar kolom isi) ---- */
+  details.rbox{margin-top:3px; border:1px solid var(--line); border-radius:7px;
+    background:#131110; overflow:hidden; max-width:100%}
+  details.rbox summary{cursor:pointer; padding:3px 8px; font-size:10.5px; font-weight:800;
+    color:var(--acc); letter-spacing:.4px; user-select:none; list-style:none; min-height:24px;
+    display:flex; align-items:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  details.rbox summary::-webkit-details-marker{display:none}
+  details.rbox summary::before{content:"▸"; margin-right:6px; color:var(--acc); flex:none}
+  details.rbox[open] summary::before{content:"▾"}
+  details.rbox pre{margin:0; padding:6px 9px; font-size:11px; line-height:1.55;
+    color:var(--det); max-height:260px; overflow:auto; white-space:pre-wrap;
+    overflow-wrap:anywhere; word-break:break-word; border-top:1px dashed var(--line)}
+  .logrow.err details.rbox summary{color:var(--err)}
 
   /* ---- grup batch: satu baris judul + statistik; diklik = rincian ---- */
   #grouphdr{
@@ -388,16 +397,23 @@
       var tm = document.createElement("span"); tm.className = "logtime"; tm.textContent = e.t;
       var ic = document.createElement("span"); ic.className = "logic"; ic.textContent = tech ? "·" : e.icon;
       var tx = document.createElement("span"); tx.className = "logtext"; tx.textContent = e.text;
-      if(e.detail){
-        var dt = document.createElement("span"); dt.className = "logdetail";
-        dt.textContent = treeify(e.detail);
-        tx.appendChild(dt);
-      }
-      // 0.5.6 — capture isi (HttpCanary): isi komunikasi pada barisnya, show/hide
-      if(e.isi){
-        var jb = document.createElement("details"); jb.className = "jsonbox";
-        var sm = document.createElement("summary"); sm.textContent = e.isiLabel || "ISI";
-        var pr = document.createElement("pre"); pr.textContent = e.isi;
+      // 0.5.9 — SATU dropdown rincian per baris: detail pohon ├─/└─ + ISI capture
+      // digabung dalam SATU kotak (dulu detail polos + jsonbox terpisah = baris
+      // dan dropdown tidak sinkron/tidak rapi). Status buka tetap pada node DOM
+      // — baris lama tidak dirender ulang, jadi pilihan ▸ pemain tidak reset.
+      var hasDet = !!(e.detail && String(e.detail).length);
+      var hasIsi = !!(e.isi && String(e.isi).length);
+      if(hasDet || hasIsi){
+        var jb = document.createElement("details"); jb.className = "rbox";
+        var lbl = hasDet ? (hasIsi ? "rincian · ISI" : "rincian") : (e.isiLabel || "ISI");
+        var sm = document.createElement("summary"); sm.textContent = lbl;
+        var pr = document.createElement("pre");
+        var body = hasDet ? treeify(e.detail) : "";
+        if(hasIsi){
+          if(body) body += "\n";
+          body += "▸ " + (e.isiLabel || "ISI") + "\n" + e.isi;
+        }
+        pr.textContent = body;
         jb.appendChild(sm); jb.appendChild(pr);
         tx.appendChild(jb);
       }
@@ -550,8 +566,9 @@
       }
     }
     // 0.5.6 — capture isi ikut di Copy (bukti penuh, sama dengan human.log)
+    // 0.5.9 — "▸ " + label: label sudah berawalan "ISI · …" (dulu dobel "ISI · ISI")
     if(n.dataset.isi){
-      line += "\n    ▸ ISI · " + (n.dataset.isiLabel || "");
+      line += "\n    ▸ " + (n.dataset.isiLabel || "ISI");
       var il = String(n.dataset.isi).split(/\n/);
       for(var j=0;j<il.length;j++){
         line += "\n       " + il[j];
