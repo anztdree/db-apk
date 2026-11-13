@@ -923,6 +923,32 @@ Pesan owner: *"Itu capture asli saat mode online.. sedangkan mode Local kita bar
 3. Bila form masuk/daftar TIDAK muncul di layar SDK saat mode LOCAL → bedah alurnya dari log + dex (syarat tampil form tergantung respons `init` — `loginTypes ["1","13"]` sudah identik dengan asli) → perbaiki server lokal sampai form muncul — bukti tetap = log.
 4. Ketiga fungsi terbukti di log perangkat (kutipan log utuh sebagai bukti) → **BARU** milestone 0.3.0 dinyatakan tercapai.
 
+### 2.30 SDK 0.3.0 TERBUKTI PENUH DI PERANGKAT + DIAGNOSIS "PLAY BERHENTI" (LOCAL) + PEMBERSIHAN REPO (log owner `logs/local/` · sesi 2026-11-14 04:23–04:25; laporan owner: *"Github sudah saya update di bagian local terhenti saat klik play setelah muncul nama server local"*)
+
+**A. MILESTONE 0.3.0 — KETIGA FUNGSI SDK KINI TERBUKTI DI LAYAR SDK LOCAL (bukti: log perangkat owner, kutipan utuh):**
+
+| Fungsi | Jejak di log perangkat (kutipan) | Waktu | Status |
+|---|---|---|---|
+| **DAFTAR** | `⇄ POST 127.0.0.1:8610/v1/user/registerUser → 200 · 1,0 KB · 9 ms (server SDK lokal)` — uid `tes@mail.com`, `isNewUser:1` | 04:23:02 | ✓ perangkat |
+| **AUTO** | `⇄ POST 127.0.0.1:8610/v1/user/autoLogin → 200 · 1,0 KB · 21 ms` — sesi tersimpan masih valid | 04:24:00 · 04:24:18 | ✓ perangkat |
+| **LOGIN salah** | `{"result":false,"data":[],"error":{"id":40101,"message":"akun atau password tidak ada"}}` (88 B) — penolakan = skema ASLI | 04:25:11 · 04:25:13 | ✓ perangkat |
+| **LOGIN sukses** | `⇄ POST 127.0.0.1:8610/v1/user/loginByName → 200 · 1,0 KB · 28 ms` → `Sesi akun tes@mail.com disahkan` → `loginchecknative → 200 · 201 B` `code 0` | 04:25:19–20 | ✓ perangkat |
+| **TAMU** | `registerVisitor → 200 · 1,0 KB` — guest77671203 (log sebelumnya `7d91d09` §2.28) | 20:33:13 | ✓ perangkat |
+
+→ **Isi milestone 0.3.0 ("SDK punya fungsi utuh login / register / guest") = TERPENUHI dengan bukti log perangkat** (§2.29-C langkah 1–2 selesai; butir 4 terpenuhi). Fase berikutnya dalam peta fase §2.29-A: boot H5 lanjutan LOCAL — socket login :8610 → daftar server → **Play** (berhenti — dibedah di B).
+
+**B. DIAGNOSIS "TERHENTI SAAT KLIK PLAY" (LOCAL) — akar masalah + perbaikan 0.6.3 (bukti 3 level):**
+1. **LOG** (kutipan utuh): `❌ Play berhenti — jalur LOCAL belum punya upstream relay · io.connect : http://127.0.0.1:8080 (url entri daftar server lokal) · upstream: (kosong)` — klien H5 MENYAMBUNG ke socket game lokal :8080 (sesi engine.io `zORvHYL2Dfd4hBbJ` terbentuk), tapi relay tidak punya TUJUAN.
+2. **KODE**: `resolveGameUpstream` (GameServer) — mode LOCAL + field `"upstream":""` di paket manual → `null` → relay tanpa target → Play berhenti (bukan hang diam — log memberi solusi persis).
+3. **PERBAIKAN 0.6.3**: paket MANUAL `config-offline/servers.json` — field `"upstream"` kini TERISI DEFAULT `https://s2111-bs.popoh5.com:8141` (entri pertama daftar server ASLI dari jejak capture 2026-11-13 — nilai NYATA dari peta, terbukti jalan di log ONLINE §2.28-A: Play → enterGame → gameplay mengalir; BUKAN karangan). `manifest.txt` sha256 ikut (servers.json 359 → 720 B). Prioritas isian TIDAK berubah: `config/game-upstream.txt` di perangkat SELALU menang di semua mode — ganti tanpa build ulang. Teks boot LOCAL kini menyebut SUMBER upstream (file isian pemilik vs paket manual).
+4. **BUILD 0.6.3 TERBIT (2026-11-14)**: `releases/APK-LSF-0.6.3.apk` — **164.008.060 B · sha256 `a16efc9a02ba4a5796ec7ed87b90d123b5fe625b00f718b9024d4a28614930e8`** · dasar 0.6.2 · sign v1+v2+v3 (keystore tetap) · dex verifikasi: marker 0.6.3 + framing 0.6.2 utuh + CRC `config.properties`/`config_BS.properties`/`classes.dex` game identik dasar · upstream default diverifikasi DI DALAM APK · harness **141 LULUS + 15 GAGAL LINGKUNGAN** (baseline SQLite sandbox — nol regresi) · bukti build `dist/0.6.3/` (classes2.dex sha256 `4e6e4613…` + SHA256.txt).
+
+**C. PEMBERSIHAN REPO (permintaan owner: *"terlalu banyak sampah di github, tidak efisien dan efektif.. docs file berpencar, proyek version berantakan cuma akan bikin bingung"*):**
+1. **Script build lama pindah** ke `docs/build-scripts/` (0.5.7, 0.5.8, 0.6.0, 0.6.1, 0.6.2) — root kini hanya `build-0.6.3.sh` (script terbit AKTIF).
+2. **`dist/` usang dihapus** (0.5.9, 0.6.1 — APK-nya sudah lama dihapus; bukti build kini hanya `dist/0.6.2/`).
+3. **Halaman Pages usang dihapus** (docs/index.html, docs/online.html — demo dasbor log 0.5.4 tahun 2026-11-09; sudah tidak mewakili build kini) + log mentah lama `docs/log-0.5.4-2026-11-09.txt` (log hidup kini di `logs/local/` + `logs/online/`).
+4. **14 tag usang dihapus dari GitHub** (`v0.1.0`–`v0.4.8` — penomoran tabrakan dengan seri build internal; riwayat tetap utuh di commit + README §Riwayat). `git ls-remote --tags` = kosong.
+5. **Struktur repo kini** (rapi, satu makna per folder): `README.md` (satu kebenaran) · `build-0.6.3.sh` (terbit aktif) · `DB-LOCAL.apk` (APK dasar proyek) · `local-server/` (kode + asset + harness) · `docs/build-scripts/` (arsip script terbit) · `dist/<versi>/` (bukti build terbit: classes2.dex + SHA256) · `releases/` (APK terbit terakhir) · `logs/local/` + `logs/online/` (log perangkat) · `tools/` + `keystore/` (toolchain).
 
 ---
 

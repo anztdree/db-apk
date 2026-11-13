@@ -7,8 +7,8 @@ sha256  caaae67fa242785dfab38224a698c99a63f56cb4efd949359ba03fec118fc368
   setting_BS_Android.bin  ·  668 B
 sha256  057710e738589dbaef081374dcf0f85cdc263fa1940af270437928e1be64305e
   serversetting.json  ·  66 B
-sha256  3a36242fd0541bafe779622cc3fa25f4c1ad1cddd421145b65788232d5b83ca3
-  servers.json  ·  359 B
+sha256  98cc87bc44006ab1dc2b6af7ea893c2dc2488a0750d747c9e286016a2ab74d36
+  servers.json  ·  720 B
 
 CATATAN:
 - setting_BS_Android.bin = setting.json dienkripsi XOR kunci 'DragonBall' (protokol shell).
@@ -16,7 +16,9 @@ CATATAN:
   port, file ini HARUS dibuat ulang (sunting setting.json, XOR ulang) - bukan saat runtime.
 - servers.json = entri manual 'Server Lokal' url http://127.0.0.1:8080 (tujuan io.connect
   klien saat klik Play). FIELD "upstream" = server game ASLI tujuan relay :8080 —
-  diisi pemilik (cth: https://s2109-bs.popoh5.com:8061). Tanpa isi field ini, cara
-  tercepat TANPA build ulang: tulis SATU baris URL di config/game-upstream.txt di
-  perangkat (folder config/ tidak pernah ditimpa boot).
+  sekarang TERISI DEFAULT: https://s2111-bs.popoh5.com:8141 (entri pertama daftar server
+  ASLI dari jejak capture 2026-11-13 — terbukti jalan di log ONLINE; nilai nyata dari
+  peta, bukan karangan). Ganti tanpa build ulang: tulis SATU baris URL lain di
+  config/game-upstream.txt di perangkat (folder config/ tidak pernah ditimpa boot) —
+  isian file itu SELALU menang di semua mode.
 - Isi config lengkap (bedah field-per-field) terlihat di dasbor: seksi CONFIG (show/hide).

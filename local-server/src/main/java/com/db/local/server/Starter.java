@@ -361,12 +361,17 @@ public final class Starter {
             if ("local".equals(Config.mode())) {
                 // 0.5.4 — teks boot LOCAL jujur sesuai 0.5.3/0.5.4: paket manual apa
                 // adanya (tanpa tulis-ulang runtime) + status upstream relay Play.
-                String up = LoginData.gameUpstream();
+                String[] upEx = LoginData.gameUpstreamEx();
+                String upTxt = upEx[0].length() > 0
+                        ? upEx[0] + " (sumber: " + ("file".equals(upEx[1])
+                                ? "config/game-upstream.txt — isian pemilik" 
+                                : "paket manual config-offline/servers.json") + ")"
+                        : "BELUM DIISI (isi config/game-upstream.txt — SATU baris URL server game ASLI"
+                                + " — atau field \"upstream\" di config-offline/servers.json)";
                 modeDetail = "LOCAL — konten game: mirror www/ · login & akun: LOKAL :"
                         + Config.loginPort() + " · config: paket MANUAL config-offline/ (apa adanya"
                         + " — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal)"
-                        + " · Play → socket game :" + Config.gamePort() + " → upstream "
-                        + (up.length() > 0 ? up : "BELUM DIISI (isi config/game-upstream.txt)");
+                        + " · Play → socket game :" + Config.gamePort() + " → upstream " + upTxt;
             } else {
                 // 0.5.1 — ONLINE: config login tetap menulis-ulang ke server lokal
                 // (SEMUA mode); server lokal meneruskan utuh ke server asli.
