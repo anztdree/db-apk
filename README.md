@@ -848,6 +848,54 @@ manifest.txt: sha256 keempat file + catatan (port beda di server.json → paket 
 
 `build-0.6.2.sh` → APK-LSF-0.6.2.apk (dasar **0.6.1**, sha256 `7dbe004c…`).
 
+### 2.28 VERIFIKASI LAPANGAN 0.6.2 + AUDIT SDK "FUNGSI UTUH LOGIN / REGISTER / GUEST" (log perangkat owner commit `7d91d09` · sesi 20:32:59–20:35:05; pesan owner: *"Lo github saya update... seharusnya untuk versi 0.3.0 adalah sampai capture ini, SDK punya fungsi utuh login / register / guest"* — dilarang asumsi: semua butir di bawah dibaca langsung dari log yang owner upload, bukan tebakan)
+
+**A. FIX 0.6.2 TERBUKTI DI PERANGKAT — SERVERLIST MUNCUL (jejak ONLINE di log owner):**
+
+| Waktu | Kejadian (kutipan log owner, utuh) | Status |
+|---|---|---|
+| 20:33:17 | `SWITCH MODE: LOCAL → ONLINE — aplikasi direstart` | — |
+| 20:33:20 | setting bin ASLI `684 B` dibedah field-per-field + tulis-ulang login/url H5 → server lokal (`loginPort 610 → 8610`, `loginWebPort 510 → 8610`) | ✓ |
+| 20:33:23–25 | SDK passthrough utuh ke `qsdk.t4game.com`: `init 764 B` · `getNotice 55 B` · `registerVisitor 2,3 KB` — jawaban ASLI: `uid "28513905" · username "mv44314742" · isNewUser 0` (tamu lama perangkat di server asli — nilai asli utuh per field, gaya HttpCanary) | ✓ |
+| 20:33:28 | `Sesi disahkan via SERVER ASLI (passthrough)` — `code 0 · login.popoh5.com:510 · lewat server lokal 127.0.0.1:8610` | ✓ |
+| 20:33:38 | **`📋 Daftar server ASLI terkirim — 2111 server · jalur ONLINE`** — `ASLI 603,5 KB · ke klien 583,1 KB · 1,4 dtk` · `framing engine.io UTUH: prefix panjang dihitung ulang per frame (618016 → 597094)` · **`pemain sekarang di layar pilih server`** | ✓✓ (dulu 0.6.1: prefix tertinggal → parser klien menolak payload → kosong) |
+| 20:34:10 | `Play → socket game lokal :8080 — diteruskan ke SERVER GAME ASLI` — upstream `https://s2111-bs.popoh5.com:8141` (entri pertama daftar) | ✓ |
+| 20:34:12 | `enterGame(user) diteruskan ke server game ASLI · 214 B` → jawaban upstream `13,2 KB` | ✓ |
+| 20:34:15–19 | gameplay mengalir lewat relay: `getBulletinBrief` · `Notify` (battleMedalRefresh `ret:SUCCESS`) · `queryMyRecord(teamDungeonGame)` · `friendServerAction` · `registChat(user)` · `getAll(heroImage)` · `getAttrs(hero)` · `getMsgList(userMsg)` — semua terjawab upstream | ✓ |
+| 20:35:03 | `⚠️ Server game ASLI (upstream) tidak terjangkau` — `java.net.SocketTimeoutException: timeout · 45,0 dtk` pada `https://s2111-bs.popoh5.com:8141` | **jaringan perangkat↔upstream** — relay sudah meneruskan; koneksi keluar yang mati. Bukan cacat relay. Sesi ditutup `Σ Passthrough ONLINE: 27 request OK · 51,7 KB (59,6 dtk)` |
+
+Laporan bug owner sebelumnya (*"SERVERLIST tidak muncul... versi original muncul dengan baik"*) → **terjawab dan terverifikasi oleh log owner sendiri**: parser klien kini MENERIMA paket hasil tulis-ulang (prefix = panjang paket, semantik `substr` UTF-16), daftar 2111 server sampai UI, pemain memilih server, Play masuk, gameplay jalan.
+
+**B. TEMUAN BARU dari log yang sama — pilihan server klien TIDAK terbawa di mode ONLINE (cacat desain, dibuka untuk keputusan owner — tidak diubah diam-diam):**
+- `enterGame` klien mengirim `"serverId":2109` (pilihan di layar), tapi relay SUDAH tersambung ke **entri pertama** `s2111` (baris Play: `serverId 2111 (entri pertama)`).
+- Sebab (dari kode + log): SEMUA url entri ditulis-ulang ke satu host `http://127.0.0.1:8080` → handshake engine.io `EIO=3&transport=polling&t=Q7L7Okv` **tidak membawa serverId** → relay tidak bisa tahu server mana yang dipilih klien → default entri pertama. (Di jalur ASLI, tiap entri punya host beda — `io.connect(serverItem.url)` langsung ke server pilihan.)
+- Dampak: mode ONLINE passthrough — pemain bisa masuk server yang BUKAN pilihannya (di capture ini upstream tetap menerima dan gameplay jalan). Mode LOCAL **tidak terdampak** (1 entri manual).
+- Opsi perbaikan (belum diuji, butuh keputusan owner): (1) tulis-ulang url per entri jadi `http://127.0.0.1:8080/?srv=<serverId>` — socket.io-client klien umumnya mempertahankan query url di handshake, relay baca `srv`; perlu uji perangkat; (2) biarkan (jalur utama = LOCAL). **Belum dieksekusi — menunggu owner.**
+
+**C. AUDIT SDK — syarat milestone owner "SDK punya fungsi utuh login / register / guest" (skema lokal vs skema ASLI, dibedah field-per-field dari capture + probe §2.11):**
+
+| Fungsi | Endpoint | Respons ASLI (jejak asli) | Respons SERVER LOKAL | Status |
+|---|---|---|---|---|
+| **GUEST** | `/v1/user/registerVisitor` | 2,3 KB — `authToken`+`token` blob terenkripsi `@96@154@…@117`, `uid "28513905"`, `username "mv44314742"`, `isGuest:1`, `isNewUser:0`, `mobile:""`, `bindInfo` 12 entri, `checkRealName:0` | 1,0 KB — **skema SAMA** (`authToken`, `userData{uid, username, token, isGuest, isNewUser, mobile, bindInfo 12 entri}`, `checkRealName:0`); identitas `guest77671203` (keputusan owner: **tamu pertama = tamu lama pemilik** — nilai sungguhan, bukan karangan); token = md5 stabil per (uid, perangkat) — tahan reboot | ✓ skema identik |
+| **LOGIN** | `/v1/user/loginByName` | `data` = `userData` sama `isGuest:0`; salah → `{"result":false,"error":{"id":40101,"message":"akun atau password tidak ada"}}` | sama — akun = EMAIL (bedah dex §2.13), sandi MD5, tidak peka huruf besar/kecil; ditolak → **40101 pesan ASLI** | ✓ |
+| **REGISTER** | `/v1/user/registerUser` | envelope sama; nama dobel → 40102 | sama — email `[a-z0-9_.+-@]` 3–64; dobel → **40102** | ✓ |
+| **AUTO** | `/v1/user/autoLogin` | token valid → sesi diperbarui; token asal → `{"id":40005,"message":"Otorisasi gagal"}` | sama | ✓ |
+| init | `/v1/system/init` | 764 B (`loginTypes ["1","13"]`, versi "empty", `countryCode "ID"`) | 763 B — skema identik; beda nilai wajar (`first_install 1` vs `0`, `requestIp 127.0.0.1` vs IP publik) | ✓ |
+| loginchecknative | GET (web port) | `{"code":0,"sdk":"BSNative","nickName":…,"loginToken":"<32hex>","userId":…,"sign":"<md5>","sdkType":"BS","osType":"Android"}` | persis skema asli — di capture: `code 0 · 203 B · guest77671203` | ✓ |
+
+- Beda PANJANG respons guest (2,3 KB vs 1,0 KB) = **bentuk token** (asli: blob terenkripsi panjang; lokal: md5 32-hex stabil) — fungsi sama, bukan cacat. Bila owner ingin bentuk persis `@n@n@…`, bisa dibuat dengan tetap memakai token sesi lokal sungguhan (bukan nilai asal) — **menunggu keputusan owner**.
+- `findPassByEmail` (lupa sandi): server lokal tidak bisa mengirim email → ditolak `20010` dengan pesan jelas — **tidak termasuk** tiga fungsi yang owner sebut (login / register / guest).
+- **Harness dijalankan ulang di sandbox (2026-11-13): 141 LULUS + 15 GAGAL LINGKUNGAN** (SQLite native sandbox — baseline sama persis, nol regresi). Termasuk tes jalur SDK: `loginByName` benar/salah→40101, `registerUser` + dobel→40102, `registerVisitor` (tamu lama + ulang `isNewUser 0`), `autoLogin` token asal→40005, `loginchecknative` code 0 skema BSNative.
+- Yang BELUM terbukti di perangkat: percobaan **MASUK/DAFTAR** di layar SDK LOCAL (log perangkat hanya memperlihatkan jalur TAMU). Layar SDK ASLI (dex tidak disentuh) punya tombolnya; server lokal siap — tinggal owner uji.
+
+**D. FAKTA PENOMORAN untuk sebutan owner "versi 0.3.0" (tanpa asumsi — angka diambil dari repo):**
+1. Owner menyebut milestone **"versi 0.3.0"** dengan batas **"sampai capture ini"** dan syarat **"SDK punya fungsi utuh login / register / guest"**.
+2. Build internal terakhir = **0.6.2** (`StatusStore.VERSION`) — §2.27.
+3. **`versionName` APK = "0.1.0" (versionCode 113) — warisan APK asli**; build script TIDAK pernah mengubah manifest → aplikasi di perangkat menampilkan **0.1.0** (fakta baru dibaca dari `AndroidManifest.xml` APK 2026-11-13).
+4. Tag GitHub `v0.3.0` + build 0.3.0 lama (2026-10-31 — mirror penuh + floating, §Riwayat) sudah terpakai — penomoran ulang menabrak histori.
+5. **Isi milestone (SDK utuh: login / register / guest) SUDAH ADA di kode + harness sejak 0.4.2/0.4.4** — audit C = buktinya. Keputusan yang menunggu owner: nomor build berikutnya — (a) lanjut seri `0.6.3`, atau (b) reset seri sesuai sebutan `0.3.0` (StatusStore dan/atau `versionName` APK dinaikkan supaya perangkat menampilkan versi yang owner sebut). Tidak ada kode yang diubah untuk pilihan ini — murni keputusan penomoran.
+
+
 ---
 
 
