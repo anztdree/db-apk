@@ -645,6 +645,29 @@ public class HarnessSdk {
         check("0.6.0 upstream ONLINE: tabel kosong → null (❌ Play berhenti jelas, bukan loading diam)",
                 pick63 == null);
 
+        // ---------------- TAHAP 20: 0.6.1 — SUB JUDUL JALUR PER BARIS ----------------
+        // (owner: "sub judul pada log (Online / local) gk ada jelas bikin
+        //  bingung" — timeline campur sengaja, tiap baris wajib jelas jalurnya;
+        //  human.log txt kini membawa tag [ICON|LOCAL]/[ICON·|ONLINE])
+        File logDir20 = new File(root, "logs-harness");
+        rmrf(logDir20);
+        HumanLog.init(logDir20);
+        HumanLog.setMode("local");
+        HumanLog.ev("✅", "uji tag jalur local", "Detail: satu baris");
+        HumanLog.setMode("online");
+        HumanLog.evTech("ℹ️", "uji tag jalur online", null);
+        HumanLog.ev("📡", "uji tag jalur online penting", "Jalur    : ONLINE\nSesi     : uji");
+        String txt20 = new String(java.nio.file.Files.readAllBytes(
+                new File(logDir20, "human.log").toPath()), "UTF-8");
+        check("0.6.1 human.log: baris penting bawa tag [✅|LOCAL]",
+                txt20.contains("[✅|LOCAL] uji tag jalur local"));
+        check("0.6.1 human.log: baris teknis bawa tag [ℹ️·|ONLINE]",
+                txt20.contains("[ℹ️·|ONLINE] uji tag jalur online"));
+        check("0.6.1 human.log: rincian ikut utuh setelah tag",
+                txt20.contains("uji tag jalur local") && txt20.contains("Detail: satu baris")
+                        && txt20.contains("├─ Jalur    : ONLINE"));
+        HumanLog.setMode("");
+
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");
         System.exit(fail == 0 ? 0 : 1);

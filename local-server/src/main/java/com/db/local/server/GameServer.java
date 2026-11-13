@@ -295,13 +295,30 @@ public final class GameServer extends NanoHTTPD {
             long now = System.currentTimeMillis();
             if (now - lastGameSessLogAt >= 60000L) {
                 lastGameSessLogAt = now;
-                HumanLog.ev("❌", "Play berhenti — upstream relay belum diisi",
-                        "io.connect : http://127.0.0.1:" + Config.gamePort()
-                                + " (url entri daftar server)\n"
-                                + "upstream    : (kosong)");
+                // 0.6.1 — pesan berbeda per jalur (owner: sub judul harus jelas):
+                // LOCAL = isian manual belum ada; ONLINE = tabel daftar server ASLI
+                // masih kosong (passthrough login belum memberi GetServerList).
+                if ("local".equals(mode)) {
+                    HumanLog.ev("❌", "Play berhenti — jalur LOCAL belum punya upstream relay",
+                            "Jalur     : LOCAL — config manual (paket offline)\n"
+                                    + "io.connect : http://127.0.0.1:" + Config.gamePort()
+                                    + " (url entri daftar server lokal)\n"
+                                    + "upstream   : (kosong)\n"
+                                    + "Solusi     : isi config/game-upstream.txt (SATU baris URL server game "
+                                    + "ASLI) di folder config/ perangkat — atau field \"upstream\" pada "
+                                    + "config-offline/servers.json");
+                } else {
+                    HumanLog.ev("❌", "Play berhenti — jalur ONLINE belum punya url ASLI",
+                            "Jalur     : ONLINE — passthrough ke server asli\n"
+                                    + "io.connect : http://127.0.0.1:" + Config.gamePort() + "\n"
+                                    + "upstream   : (tabel daftar server ASLI masih kosong — passthrough "
+                                    + "login belum memberi daftar GetServerList)");
+                }
             }
             return textResp(LoginServer.safeStatus(502),
-                    "upstream server game belum diisi — isi config/game-upstream.txt");
+                    "local".equals(mode)
+                            ? "upstream server game belum diisi — isi config/game-upstream.txt"
+                            : "tabel daftar server ASLI masih kosong — jalur ONLINE belum bisa relay");
         }
         String up = res[0];
         String src = res[1];
@@ -322,7 +339,10 @@ public final class GameServer extends NanoHTTPD {
         } catch (Throwable t) {
             long ms = System.currentTimeMillis() - t0;
             HumanLog.ev("⚠️", "Server game ASLI (upstream) tidak terjangkau — Play tidak bisa lanjut",
-                    "Upstream : " + up + "\n"
+                    "Jalur    : " + ("local".equals(mode)
+                            ? "LOCAL — relay :8080 → upstream isian manual (bukan daftar server)"
+                            : "ONLINE — relay :8080 → url ASLI dari daftar server") + "\n"
+                            + "Upstream : " + up + "\n"
                             + "Sebab    : " + t + "\n"
                             + "Waktu    : " + HumanLog.fmtMs(ms) + " — klien akan mencoba ulang sendiri");
             return textResp(LoginServer.safeStatus(502),
@@ -339,7 +359,10 @@ public final class GameServer extends NanoHTTPD {
                     lastGameSessLogAt = now;
                     HumanLog.ev("🎮", "Play → socket game lokal :" + Config.gamePort()
                                     + " — diteruskan ke SERVER GAME ASLI",
-                            "Upstream : " + up + " (sumber: " + src + ")\n"
+                            "Jalur    : " + ("local".equals(mode)
+                                    ? "LOCAL — relay :8080 meneruskan ke upstream isian manual"
+                                    : "ONLINE — relay :8080 meneruskan ke url ASLI dari daftar server") + "\n"
+                                    + "Upstream : " + up + " (sumber: " + src + ")\n"
                                     + "Query    : " + (qs.length() > 0 ? qs : "(kosong)") + "\n"
                                     + "Sesi     : sid dari server asli · relay polling");
                 }

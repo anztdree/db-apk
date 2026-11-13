@@ -1,0 +1,2 @@
+5ea0aa3b3530fb7e29d2260748335fcf99279f58d776aadfd769028599e51044  dist/0.6.1/classes2.dex
+7dbe004c28052aae3a62a3c5bebee0515fd9b2ad65ef8c441e873e9c0a6b290f  releases/APK-LSF-0.6.1.apk

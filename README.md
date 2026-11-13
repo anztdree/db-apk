@@ -815,6 +815,23 @@ manifest.txt: sha256 keempat file + catatan (port beda di server.json → paket 
 
 ---
 
+### 2.26 SUB JUDUL JALUR PER BARIS + JEJAK ASLI HTTPCANARY (0.6.1 — laporan owner: *"sub judul pada log (Online / local) gk ada jelas bikin bingung"* + *"Log Emang saya campur Biar jelas current state yg jalan apa .. jelas jelas isi log anda yg ngawur"* + *"bkan masalah rekam aslinya dulu, kalau anda paham konsep httpcanary capturre atau log akan jelas"* + *"log dari online nanti sebagai bahan diskusi .. server local kita gak asal bikin nama : local, alamat; local"*)
+
+**Prinsip owner yang ditegaskan:** timeline log campur ONLINE/LOCAL = **desain owner** (satu layar, current state terlihat) — yang salah adalah ISI barisnya. Log harus seperti HttpCanary: setiap interaksi jelas jalurnya, **nilai asli utuh per field** (contoh owner: `nama : budi, alamat : jakarta`), dan jejak online = bahan diskusi/diagnosis untuk menemukan cacat server local dan tahu harus kemana — server local dilarang mengarang nilai asal (`nama: local`).
+
+**Yang berubah di 0.6.1:**
+1. **Sub judul jalur per baris** — field `"m"` (`local`/`online`) sudah di-stamp HumanLog sejak 0.5.4, tapi `renderRows` dasbor **membuangnya**. Kini: badge **[LOCAL]** (hijau) / **[ONLINE]** (kuning) di depan setiap kalimat (warna = badge kepala), baris **pertama dropdown rincian** = `Jalur : …`, dan hasil Copy ikut format human.log `[ICON|JALUR]`.
+2. **human.log txt membawa tag jalur** — kepala tiap baris kini `[✅|LOCAL]` / `[📡·|ONLINE]` (dulu hanya JSON yang bawa `"m"`; janji komentar 0.5.4 "dasbor & human.log bisa membedakan" baru benar-benar ditepati sekarang).
+3. **Jejak ASLI ditepati (akar "isi log ngawur" 0.6.0)** — dulu: Capture arah ← + blok ISI baris 📋 memakai teks **HASIL tulis-ulang**, padahal komentarnya mengaku "merekam respons ASLI" → nilai asli hilang dari jejak (Gerbang tampil `127.0.0.1:8080` dua kali). Kini: teks ASLI **sebelum** tulis-ulang disimpan khusus (`respAsli`/`asliLen`) — REKAM + blok ISI menampilkan **respons ASLI utuh dari login.popoh5.com:610** (nilai asli apa adanya = bahan diskusi/diagnosis), dan field **Routing** TERPISAH menyatakan apa yang diterima klien (url = relay lokal → diteruskan ke url ASLI per entri) dengan tegasan: **tulis-ulang = routing, BUKAN sumber config**.
+4. **Semua baris relay nyebut jalur** — 📡 tersambung (ONLINE + versi LOCAL kini "— jalur LOCAL", istilah "hasil rewrite setting bin" yang kadaluarsa diganti "paket MANUAL config-offline"), ✅ loginGame, 🔌 tutup sesi, 🎮 Play relay, ⚠️ upstream tidak terjangkau — semuanya membawa field `Jalur :`; ❌ Play berhenti kini beda pesan per jalur (LOCAL = isian manual kosong + Solusi mengisi `config/game-upstream.txt`; ONLINE = tabel daftar server ASLI masih kosong).
+5. **Versi dasbor** naik 0.5.6 → 0.6.1 (`StatusStore.VERSION` — dulu tertinggal tiga versi).
+6. **Audit nilai asal-asalan (paket manual)** — nilai `127.0.0.1` di config-offline = keputusan manual sah (routing, tertulis di `manifest.txt`). Satu nilai masih menunggu telusur jejak: `"name":"Server Lokal"` di `servers.json` — nama asli server harus dibaca dari jejak ASLI (0.6.1 sekarang merekam daftar server ASLI utuh di human.log; begitu jejak terkumpul, nama diisi manual oleh owner — TIDAK dikarang).
+7. **Harness +3 tes TAHAP 20** (tag `[✅|LOCAL]` / `[ℹ️·|ONLINE]` di human.log txt + rincian ikut utuh) — **132 LULUS + 15 GAGAL LINGKUNGAN** (SQLite native sandbox — identik dengan tree 0.6.0 bersih yang diuji ulang 129 LULUS + 15 GAGAL; nol regresi). Sintaks dasbor `node --check` LULUS. Verifikasi dex build kini python byte-count (`strings` memangkas baris ber-em-dash): 7 marker baru ≥1, 4 narasi lama = 0, CRC `config.properties`/`config_BS.properties` identik dasar, sign v1/v2/v3 LULUS (keystore `faf4b71d…`).
+
+`build-0.6.1.sh` → APK-LSF-0.6.1.apk (dasar 0.5.9, sha256 `7dbe004c…`).
+
+---
+
 
 ## 3. Konsep Solusi (v2.2): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded
 

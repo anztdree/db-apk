@@ -176,10 +176,12 @@ public final class LoginServer extends NanoHTTPD {
             long nowMs = System.currentTimeMillis();
             if (nowMs - lastConnectLogAt >= 600000L) {
                 lastConnectLogAt = nowMs;
-                HumanLog.ev("📡", "Klien game tersambung ke server login lokal",
-                        "Sesi     : " + sid + " (engine.io v3 · polling, tanpa websocket)\n"
+                HumanLog.ev("📡", "Klien game tersambung ke server login lokal — jalur LOCAL",
+                        "Jalur    : LOCAL — login & sesi dikelola server ini (dragonball.db)\n"
+                                + "Sesi     : " + sid + " (engine.io v3 · polling, tanpa websocket)\n"
                                 + "Tujuan   : 127.0.0.1:" + Config.loginPort()
-                                + " (loginServer hasil rewrite setting bin)\n"
+                                + " (endpoint login dari paket MANUAL config-offline — "
+                                + "setting bin, dilayani apa adanya)\n"
                                 + "Lanjutan : menunggu loginGame + GetServerList dari klien H5");
             }
         } catch (Throwable ignored) {
@@ -542,10 +544,20 @@ public final class LoginServer extends NanoHTTPD {
         }
         long ms = System.currentTimeMillis() - t0;
         String respText = new String(up.body, StandardCharsets.UTF_8);
+        // 0.6.1 — JEJAK ASLI (HttpCanary): teks respons dari upstream SEBELUM
+        // tulis-ulang disimpan khusus — REKAM + blok ISI menampilkan nilai ASLI
+        // utuh (nama/url apa adanya dari server = bahan diskusi/diagnosis).
+        // Tulis-ulang = ROUTING saja dan dicatat TERPISAH di field Routing.
+        // Dulu 0.6.0: Capture/ISI ikut memakai teks HASIL tulis-ulang → nilai
+        // ASLI hilang dari jejak (komentar 0.6.0 tidak cocok kode — temuan
+        // owner: "isi log anda yg ngawur"; contoh: Gerbang tampil 127.0.0.1).
+        String respAsli = respText;
+        int asliLen = up.body.length;
         // 0.6.0 — GetServerList: tulis-ulang url entri → relay game :8080 + isi
-        // tabel upstream ASLI (supaya Play mode ONLINE tertangkap penuh di log).
-        // Capture di bawah tetap merekam respons ASLI dari upstream (sebelum
-        // rewrite); yang dilayani klien = teks hasil rewrite.
+        // tabel upstream ASLI (ROUTING agar Play mode ONLINE tertangkap penuh
+        // di log — BUKAN sumber config; paket config-offline tetap manual).
+        // Capture di bawah merekam respons ASLI (sebelum tulis-ulang); yang
+        // dilayani klien = teks hasil tulis-ulang (routing).
         int rewrote = 0;
         if (Method.GET == m && respText.indexOf("serverList") >= 0) {
             java.util.ArrayList<String[]> table = parseServerTable(respText);
@@ -560,12 +572,14 @@ public final class LoginServer extends NanoHTTPD {
             }
         }
         try {
-            // REKAM — payload asli dua arah (pembanding utama utk versi lokal):
+            // REKAM — jejak upstream ASLI dua arah (pembanding utama utk versi
+            // lokal; 0.6.1: arah ← = respons ASLI SEBELUM tulis-ulang):
             Capture.login("→", Method.POST == m ? "handler.process (passthrough)" : "polling (passthrough)",
                     "ke login.popoh5.com:610" + (qs.length() > 0 ? " · " + ringkasQuery(qs) : ""),
                     body, body == null ? 0 : body.length(), ms);
             Capture.login("←", "HTTP " + up.status + " (passthrough)",
-                    "dari login.popoh5.com:610", respText, up.body.length, ms);
+                    "dari login.popoh5.com:610 — respons ASLI (sebelum tulis-ulang)",
+                    respAsli, asliLen, ms);
         } catch (Throwable ignored) {
         }
         // ----- log alur (dedupe = persis mode LOCAL) -----
@@ -573,7 +587,9 @@ public final class LoginServer extends NanoHTTPD {
             logOnlineEvents(body);
         }
         if (Method.GET == m) {
-            logOnlineResponse(qs, respText, up.body.length, ms, rewrote);
+            // 0.6.1 — teks ASLI yang dilog (Gerbang + ISI = nilai asli); routing
+            // dilaporkan sebagai field terpisah di dalam logOnlineResponse.
+            logOnlineResponse(qs, respAsli, asliLen, ms, rewrote);
         }
         Response r = newFixedLengthResponse(safeStatus(up.status == -1 ? 502 : up.status),
                 up.contentType, new ByteArrayInputStream(up.body), up.body.length);
@@ -606,7 +622,8 @@ public final class LoginServer extends NanoHTTPD {
                             GameServer.setOnlineChosenId(sidChosen);
                         }
                         HumanLog.ev("✅", "Login game diteruskan ke server ASLI (passthrough)",
-                                "Akun     : " + (userId == null ? "-" : userId) + "\n"
+                                "Jalur    : ONLINE — passthrough utuh ke server asli\n"
+                                        + "Akun     : " + (userId == null ? "-" : userId) + "\n"
                                         + "Sandi    : " + (pwd == null ? "-"
                                                 : pwd.length() + " karakter — diteruskan UTUH") + "\n"
                                         + "Proses   : permintaan klien diteruskan utuh ke login.popoh5.com:610\n"
@@ -641,9 +658,10 @@ public final class LoginServer extends NanoHTTPD {
                 long now = System.currentTimeMillis();
                 if (now - lastConnectLogAt >= 600000L) {
                     lastConnectLogAt = now;
-                    HumanLog.ev("📡", "Klien game tersambung ke server login lokal — diteruskan ke SERVER ASLI",
-                            "Sesi     : sid dari server asli (passthrough utuh)\n"
-                                    + "Tujuan   : 127.0.0.1:" + Config.loginPort() + " → login.popoh5.com:610"
+                    HumanLog.ev("📡", "Klien tersambung — jalur ONLINE: passthrough ke server login ASLI",
+                            "Jalur    : ONLINE — passthrough utuh ke server asli\n"
+                                    + "Sesi     : sid dari server asli (passthrough utuh)\n"
+                                    + "Tujuan   : klien → 127.0.0.1:" + Config.loginPort() + " → login.popoh5.com:610"
                                     + " (HTTPS, TLS 1.2)\n"
                                     + "Config   : setting bin + serversetting.json menunjuk server lokal "
                                     + "(semua mode) — server ini yang meneruskan\n"
@@ -653,27 +671,31 @@ public final class LoginServer extends NanoHTTPD {
             }
             if (respText.indexOf("serverList") >= 0) {
                 int count = countServerIds(respText);
+                // 0.6.1 — gerbang dibaca dari teks ASLI (dulu 0.6.0: teks hasil
+                // tulis-ulang → Gerbang tampil 127.0.0.1:8080 dua kali — nilai
+                // asli hilang; laporan owner: isi log ngawur).
                 String gw = firstAndLastGateway(respText);
-                // 0.6.0 — url per entri SUDAH ditulis-ulang di proxyOnline (tabel
-                // upstream ASLI terisi di sana); teks yang diteruskan ke klien =
-                // hasil rewrite. Bila parse gagal → passthrough UTUH tanpa
-                // rewrite (perilaku lama, tetap aman).
+                // 0.6.1 — ROUTING dicatat terpisah: apa yang diterima klien
+                // (url = relay lokal) vs apa yang dijawab upstream (url ASLI).
+                String routing = rewrote > 0
+                        ? "klien menerima url entri = http://127.0.0.1:" + Config.gamePort()
+                                + " (relay game lokal) — relay meneruskan ke url ASLI per entri"
+                                + " · tulis-ulang = routing, BUKAN sumber config"
+                        : "passthrough utuh — klien menerima respons ASLI apa adanya";
                 long now = System.currentTimeMillis();
                 if (now - lastServerListLogAt >= 600000L) {
                     lastServerListLogAt = now;
-                    HumanLog.evIsi("📋", "Daftar server ASLI terkirim — " + count + " server"
-                                    + (rewrote > 0 ? " (passthrough → relay lokal)" : " (passthrough utuh)"),
-                            "Sumber   : SERVER ASLI login.popoh5.com:610 — lewat server lokal "
-                                    + "(bukan snapshot; daftar hidup dari server)\n"
+                    HumanLog.evIsi("📋", "Daftar server ASLI terkirim — " + count + " server · jalur ONLINE"
+                                    + (rewrote > 0 ? " (klien lewat relay lokal)" : " (passthrough utuh)"),
+                            "Sumber   : SERVER ASLI login.popoh5.com:610 — respons utuh dari upstream"
+                                    + " (jejak capture — nilai asli apa adanya, bahan diskusi/diagnosis)\n"
                                     + "Gerbang  : " + (gw == null
                                             ? "(tidak ada http(s):// terbaca — payload utuh di blok ISI)"
                                             : gw) + "\n"
-                                    + "Rewrite  : " + rewrote + " url entri ditulis-ulang ke "
-                                    + "http://127.0.0.1:" + Config.gamePort()
-                                    + " — relay meneruskan ke url ASLI per entri\n"
+                                    + "Routing  : " + routing + "\n"
                                     + "Ukuran   : " + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms)
                                     + " · pemain sekarang di layar pilih server",
-                            "respons daftar server (utuh — persis yang diterima klien)", respText);
+                            "respons ASLI dari login.popoh5.com:610 (utuh — jejak capture)", respText);
                 }
             }
         } catch (Throwable ignored) {
@@ -780,9 +802,10 @@ public final class LoginServer extends NanoHTTPD {
         }
         lastEndLogAt = now;
         HumanLog.ev("🔌", "Klien menutup sesi login (passthrough)",
-                "Sesi     : passthrough ke login.popoh5.com:610\n"
-                        + "Lanjutan : klien io.connect ke url server pilihan pemain — relay game "
-                        + "lokal meneruskan ke url ASLI entri (0.6.0)");
+                "Jalur    : ONLINE — passthrough ke server asli\n"
+                        + "Sesi     : passthrough ke login.popoh5.com:610\n"
+                        + "Lanjutan : klien io.connect ke url entri — dilayani relay game lokal dan "
+                        + "diteruskan ke url ASLI entri (0.6.1)");
     }
 
     /**

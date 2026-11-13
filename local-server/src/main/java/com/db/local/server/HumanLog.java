@@ -66,6 +66,14 @@ public final class HumanLog {
      * — dasbor & human.log bisa membedakan baris OFFLINE dan ONLINE (owner:
      * "kalau sedang local log ya isinya local sesuai, kalau log online ya log
      * aslinya seperti httpcanary" — log campur aduk antar mode = sampah).
+     *
+     * 0.6.1 — SUB JUDUL JALUR tampil (owner: "sub judul pada log (Online /
+     * local) gk ada jelas bikin bingung" + "timeline campur itu sengaja, isi
+     * log-nya yang ngawur"): dasbor menampilkan badge [LOCAL]/[ONLINE] per
+     * baris dari field "m" (dulu data ada, render dibuang), dan human.log txt
+     * membawa tag yang sama di kepala tiap baris: [✅|LOCAL] / [📡·|ONLINE].
+     * Timeline tetap SATU layar campur (desain owner) — yang berubah: setiap
+     * baris kini jelas lahir dari jalur mana.
      */
     private static volatile String modeTag = "";
 
@@ -253,7 +261,11 @@ public final class HumanLog {
             //   2026-11-04 09:40:34 [✅] Login game sukses — akun lama
             //       ├─ Akun   : guest99599159
             //       └─ Proses : 3 ms · jawaban 1,1 KB (ret 0)
-            String block = dateStr() + " " + t + " [" + icon + (tech ? "·" : "") + "] " + sentence;
+            // 0.6.1 — tag jalur di kepala baris txt: [ICON|LOCAL] / [ICON·|ONLINE]
+            // (kosong sebelum setMode → format lama tanpa |). Tidak dipangkas.
+            String jm = modeTag == null ? "" : modeTag.trim().toUpperCase(Locale.US);
+            String block = dateStr() + " " + t + " [" + icon + (tech ? "·" : "")
+                    + (jm.length() > 0 ? "|" + jm : "") + "] " + sentence;
             String treeDetail = tree(detail);
             if (treeDetail != null) {
                 block += "\n" + treeDetail;

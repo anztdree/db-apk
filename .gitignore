@@ -8,6 +8,7 @@ tools/*
 # dist: hanya bukti build terbit yang dilindungi
 dist/*
 !dist/0.5.9/
+!dist/0.6.1/
 build/
 # zip besar mirror — diambil ulang via tools/snapshot.sh (SHA256 ter-pin, lihat README §2.9)
 local-server/assets/server/www/bs/upgrade/base.zip

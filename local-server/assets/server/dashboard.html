@@ -130,6 +130,19 @@
   .logrow.ok .logtext{color:var(--ok)}
   .logempty{padding:12px 10px; color:var(--mut)}
 
+  /* ---- 0.6.1 — SUB JUDUL JALUR per baris (owner: "sub judul pada log
+     (Online / local) gk ada jelas bikin bingung" — timeline campur tetap
+     SATU layar, kini tiap baris jelas lahir dari jalur mana). Badge kecil
+     di depan kalimat; warna = badge kepala (hijau LOCAL manual, kuning
+     ONLINE passthrough). Data "m" sudah ada di JSON sejak 0.5.4 — dulu
+     renderRows membuangnya. ---- */
+  .jtag{display:inline-block; font-size:9px; font-weight:800; letter-spacing:.6px;
+    border:1px solid var(--line); border-radius:4px; padding:0 5px;
+    margin-right:7px; line-height:1.6; vertical-align:1px; white-space:nowrap;
+    user-select:none}
+  .jtag.local{color:var(--ok); border-color:var(--ok)}
+  .jtag.online{color:var(--warn); border-color:var(--warn)}
+
   /* ---- 0.5.9 dropdown RINCIAN tunggal per baris (detail pohon + ISI capture
      HttpCanary dalam SATU kotak — klik ▸ buka, sejajar kolom isi) ---- */
   details.rbox{margin-top:3px; border:1px solid var(--line); border-radius:7px;
@@ -394,9 +407,20 @@
       row.dataset.detail = e.detail || "";
       row.dataset.isiLabel = e.isiLabel || ""; // 0.5.6 — capture isi
       row.dataset.isi = e.isi || "";
+      row.dataset.m = e.m || ""; // 0.6.1 — tag jalur baris (badge + Jalur di rincian + Copy)
       var tm = document.createElement("span"); tm.className = "logtime"; tm.textContent = e.t;
       var ic = document.createElement("span"); ic.className = "logic"; ic.textContent = tech ? "·" : e.icon;
-      var tx = document.createElement("span"); tx.className = "logtext"; tx.textContent = e.text;
+      var tx = document.createElement("span"); tx.className = "logtext";
+      // 0.6.1 — sub judul jalur per baris: badge [LOCAL]/[ONLINE] di depan kalimat
+      // (field "m" dari server — timeline campur tetap satu layar, jalur kini jelas)
+      var jm = String(e.m || "").toLowerCase();
+      if(jm === "local" || jm === "online"){
+        var jtd = document.createElement("span");
+        jtd.className = "jtag " + jm;
+        jtd.textContent = jm.toUpperCase();
+        tx.appendChild(jtd);
+      }
+      tx.appendChild(document.createTextNode(e.text || ""));
       // 0.5.9 — SATU dropdown rincian per baris: detail pohon ├─/└─ + ISI capture
       // digabung dalam SATU kotak (dulu detail polos + jsonbox terpisah = baris
       // dan dropdown tidak sinkron/tidak rapi). Status buka tetap pada node DOM
@@ -408,7 +432,14 @@
         var lbl = hasDet ? (hasIsi ? "rincian · ISI" : "rincian") : (e.isiLabel || "ISI");
         var sm = document.createElement("summary"); sm.textContent = lbl;
         var pr = document.createElement("pre");
-        var body = hasDet ? treeify(e.detail) : "";
+        // 0.6.1 — baris PERTAMA rincian = jalur baris ini (owner: sub judul harus jelas)
+        var body = "";
+        if(jm === "local" || jm === "online"){
+          body += "Jalur : " + (jm === "local"
+            ? "LOCAL — config manual (paket offline)"
+            : "ONLINE — passthrough ke server asli") + "\n";
+        }
+        if(hasDet) body += treeify(e.detail);
         if(hasIsi){
           if(body) body += "\n";
           body += "▸ " + (e.isiLabel || "ISI") + "\n" + e.isi;
@@ -557,7 +588,12 @@
   //   grup Σ : "09:41:20 Σ Request game — 105 file · 2,4 MB · 0 gagal (3,9 dtk)"
   function copyRow(n){
     if(!n.dataset || n.dataset.text === undefined) return n.textContent || "";
-    var line = [n.dataset.time, n.dataset.icon, n.dataset.text].filter(Boolean).join(" ");
+    // 0.6.1 — Copy ikut format human.log: [ICON|JALUR] (owner: sub judul jalur
+    // jelas — hasil Copy harus sama persis dengan txt di disk)
+    var jm = String(n.dataset.m || "").toUpperCase();
+    if(jm !== "LOCAL" && jm !== "ONLINE") jm = "";
+    var line = n.dataset.time + " [" + (n.dataset.icon || "·") + (jm ? "|" + jm : "") + "] "
+      + (n.dataset.text || "");
     if(n.dataset.detail){
       var dl = String(n.dataset.detail).split(/\n/);
       for(var i=0;i<dl.length;i++){
