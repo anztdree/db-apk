@@ -668,6 +668,76 @@ public class HarnessSdk {
                         && txt20.contains("├─ Jalur    : ONLINE"));
         HumanLog.setMode("");
 
+        // ---------------- TAHAP 21: 0.6.2 — FRAMING ENGINE.IO UTUH ----------------
+        // (laporan owner 2026-11-13: "Aplikasi jelas bermasalah.. SERVERLIST
+        //  tidak muncul dan ini seharusnya gak mgkin terjadi di versi online ..
+        //  saya coba pakai versi originalnya aplikasi serverlist muncul dengan
+        //  baik". Bukti log perangkat 0.6.1: respons ASLI upstream = frame
+        //  "618016:430[...]" (prefix 618016 = panjang paket, selisih 0 di REKAM);
+        //  tulis-ulang 2111 url memangkas paket → 597094 tanpa memperbarui
+        //  prefix → parser klien (decodePayload: "a != s.length → r(w,0,1)")
+        //  menolak seluruh payload → ACK tak sampai ke UI → SERVERLIST kosong.)
+        String pkt1 = "0{\"sid\":\"abc\"}";
+        String pkt2 = "430[{\"ret\":0,\"data\":\"{\\\"serverList\\\":["
+                + "{\\\"serverId\\\":\\\"2111\\\",\\\"url\\\":\\\"https://s2111-bs.popoh5.com:8141\\\"},"
+                + "{\\\"serverId\\\":\\\"1\\\",\\\"url\\\":\\\"https://s1-bs.popoh5.com:8041\\\"}]}\"}]";
+        String pkt3 = "40";
+        String body21 = pkt1.length() + ":" + pkt1 + pkt2.length() + ":" + pkt2
+                + pkt3.length() + ":" + pkt3;
+        String r21 = LoginServer.rewriteServerListFramed(body21);
+        check("0.6.2 framed rewrite: body berubah (url kena, bukan null)",
+                r21 != null && !r21.equals(body21));
+        check("0.6.2 framed rewrite: url ASLI hilang dari paket terlayani",
+                r21 != null && !r21.contains("s2111-bs.popoh5.com") && !r21.contains("s1-bs.popoh5.com")
+                        && r21.contains("http://127.0.0.1:8080"));
+        check("0.6.2 framed rewrite: serverId (bentuk ter-escape di wire) & data ACK tidak tersentuh",
+                r21 != null && r21.contains("\\\"serverId\\\":\\\"2111\\\"")
+                        && r21.contains("\\\"url\\\":\\\"http://127.0.0.1:8080\\\"")
+                        && r21.contains("\"ret\":0"));
+        // parser klien simulasi: tiap frame prefix == panjang paket yang dibaca
+        boolean frame21 = true;
+        int pos21 = 0;
+        int frames21 = 0;
+        while (pos21 < r21.length()) {
+            int c21 = r21.indexOf(':', pos21);
+            if (c21 < 0) { frame21 = false; break; }
+            int l21 = Integer.parseInt(r21.substring(pos21, c21));
+            if (c21 + 1 + l21 > r21.length()) { frame21 = false; break; }
+            pos21 = c21 + 1 + l21;
+            frames21++;
+        }
+        check("0.6.2 framed rewrite: prefix frame == panjang paket (semantik substr parser klien)"
+                        + " — 3 frame utuh",
+                frame21 && frames21 == 3 && pos21 == r21.length());
+        // frame daftar server: prefix HARUS berubah (paket memangkas setelah tulis-ulang)
+        String pkt2Rewritten = LoginServer.rewriteServerListUrls(pkt2);
+        check("0.6.2 framed rewrite: prefix frame daftar server DIHITUNG ULANG ("
+                        + pkt2.length() + " → " + pkt2Rewritten.length() + ", dulu prefix mati)",
+                r21 != null && r21.contains(pkt2Rewritten.length() + ":430[")
+                        && !r21.contains(pkt2.length() + ":430["));
+        // kasus tepi — format tak dikenal & tanpa url = biarkan ASLI (null)
+        check("0.6.2 framed rewrite: framing rusak → null (passthrough ASLI, tetap aman)",
+                LoginServer.rewriteServerListFramed("abc:def") == null
+                        && LoginServer.rewriteServerListFramed("61:430[{\"a\":1}]") == null
+                        && LoginServer.rewriteServerListFramed(null) == null
+                        && LoginServer.rewriteServerListFramed("") == null);
+        check("0.6.2 framed rewrite: frame TERPOTONG (5:40ab — paket 4 < prefix 5) → null"
+                        + " (passthrough ASLI, tetap aman)",
+                LoginServer.rewriteServerListFramed("5:40ab") == null);
+        check("0.6.2 framed rewrite: dua frame utuh tanpa url → null (tidak ada perubahan = ASLI)",
+                LoginServer.rewriteServerListFramed("3:402:xx") == null);
+        // bukti cacat 0.6.1: rewrite LAMA pada frame = prefix mati
+        String pktLama = "430[{\"url\":\"https://s1-bs.popoh5.com:8041\"}]";
+        String frameLama = pktLama.length() + ":" + pktLama;
+        String rwLama = LoginServer.rewriteServerListUrls(frameLama);
+        int prefixLama61 = Integer.parseInt(rwLama.substring(0, rwLama.indexOf(':')));
+        int paketBaru61 = rwLama.length() - rwLama.indexOf(':') - 1;
+        check("0.6.2 bukti cacat 0.6.1: rewrite lama memangkas paket (" + pktLama.length()
+                        + " → " + paketBaru61 + ") tapi prefix tetap " + prefixLama61
+                        + " → parser klien menolak (a != s.length)",
+                rwLama != null && prefixLama61 == pktLama.length() && paketBaru61 < pktLama.length()
+                        && !rwLama.contains("s1-bs.popoh5.com"));
+
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");
         System.exit(fail == 0 ? 0 : 1);

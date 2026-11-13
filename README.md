@@ -832,6 +832,24 @@ manifest.txt: sha256 keempat file + catatan (port beda di server.json → paket 
 
 ---
 
+### 2.27 FIX SERVERLIST KOSONG — FRAMING ENGINE.IO DIHITUNG ULANG (0.6.2 — laporan owner: *"Aplikasi jelas bermasalah.. SERVERLIST tidak muncul dan ini seharusnya gak mgkin terjadi di versi online"* + *"saya coba pakai versi originalnya aplikasi serverlist muncul dengan baik"* — log perangkat dilampirkan ke `logs/`)
+
+**Akar masalah (terbukti 3 level dari log perangkat 0.6.1 — REKAM `events.jsonl` id 33 · 19:33:56):**
+1. **KODE** — `proxyOnline` menulis-ulang url 2111 entri daftar server (`https://sXXXX-bs.popoh5.com:NNNN` → `http://127.0.0.1:8080`) tapi **prefix panjang engine.io TIDAK dihitung ulang**.
+2. **ANGKA** — respons ASLI upstream = satu frame `618016:430[…]` — prefix `618016` = panjang paket, **selisih 0** di REKAM (framing upstream sempurna); paket hasil tulis-ulang = `597094` (−20.922 char). Klien diminta baca 618.016 byte, body hanya 597.094 byte.
+3. **PARSER** — `engine.io decodePayload` di `socket.io.min.js` bawaan game: `s = t.substr(c+1,i); a != s.length → return r(w,0,1)` → **seluruh payload ditolak** → ACK `GetServerList` tidak pernah sampai ke UI game → **SERVERLIST kosong**. Versi original tidak menyentuh payload → daftar muncul. Log berakhir persis di 📋 — konsisten dengan laporan owner.
+
+**Yang berubah di 0.6.2:**
+1. **`rewriteServerListFramed`** — urai body frame-per-frame (logika sama dengan `parseFrames`), tulis-ulang url **di dalam paket**, susun ulang dengan **prefix panjang BARU** (semantik UTF-16 char = `substr`/`length` parser JS). Frame tanpa url byte-identik. Framing rusak / tidak ada perubahan → `null` → passthrough respons ASLI (tetap aman).
+2. **Log jujur (HttpCanary)** — baris 📋 kini menyatakan field `Routing` menambah: *framing engine.io UTUH: prefix panjang dihitung ulang per frame (618016 → 597094)* dan `Ukuran : ASLI 603,7 KB · ke klien 583,3 KB`. Jejak ASLI tetap UTUH di REKAM + blok ISI (tidak berubah dari 0.6.1) — nilai asli di sebelah apa yang klien terima, tanpa kalimat ambigu.
+3. **Harness TAHAP 21** — bukti perilaku: prefix frame == panjang paket (semantik `substr` parser klien, 3 frame utuh), prefix dihitung ulang (61 → 42 pada contoh), kasus tepi (terpotong `5:40ab` / rusak `abc:def` / tanpa url → null), dan **bukti cacat 0.6.1** (rewrite lama memangkas paket tapi prefix 61 tetap → parser klien menolak).
+4. **Versi dasbor** naik 0.6.1 → 0.6.2 (`StatusStore.VERSION`).
+5. **Jalur LOCAL tetap aman** — framing lokal dihitung dari string final (`frame(pkt) = pkt.length() + ":" + pkt`), tidak tersentuh tulis-ulang.
+
+`build-0.6.2.sh` → APK-LSF-0.6.2.apk (dasar **0.6.1**, sha256 `7dbe004c…`).
+
+---
+
 
 ## 3. Konsep Solusi (v2.2): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded
 

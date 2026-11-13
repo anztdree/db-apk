@@ -558,15 +558,31 @@ public final class LoginServer extends NanoHTTPD {
         // di log — BUKAN sumber config; paket config-offline tetap manual).
         // Capture di bawah merekam respons ASLI (sebelum tulis-ulang); yang
         // dilayani klien = teks hasil tulis-ulang (routing).
+        // 0.6.2 — tulis-ulang kini frame-per-frame dgn prefix panjang engine.io
+        // DIHITUNG ULANG (rewriteServerListFramed) — dulu prefix lama tertinggal
+        // → parser klien menolak payload → SERVERLIST kosong.
         int rewrote = 0;
+        int servedLen = asliLen;
+        String framing = null;
         if (Method.GET == m && respText.indexOf("serverList") >= 0) {
             java.util.ArrayList<String[]> table = parseServerTable(respText);
             if (table != null && table.size() > 0) {
-                String r = rewriteServerListUrls(respText);
+                // 0.6.2 — tulis-ulang url dgn framing engine.io DIHITUNG ULANG.
+                // Bukti log perangkat 0.6.1 (2026-11-13 19:33:56): respons ASLI
+                // upstream = frame "618016:430[...]" (REKAM events.jsonl: prefix
+                // 618016 = panjang paket, selisih 0 — framing upstream sempurna);
+                // tulis-ulang 2111 url memangkas paket → 597094, prefix TIDAK
+                // dihitung ulang → parser polling klien (decodePayload: "a !=
+                // s.length → r(w,0,1)") MENOLAK seluruh payload → ACK
+                // GetServerList tak pernah sampai ke UI → SERVERLIST kosong
+                // (versi original tak menyentuh payload → daftar muncul).
+                String r = rewriteServerListFramed(respText);
                 if (r != null) {
+                    framing = firstFramePrefix(respText) + " → " + firstFramePrefix(r);
                     respText = r;
                     rewrote = table.size();
                     up.body = respText.getBytes(StandardCharsets.UTF_8);
+                    servedLen = up.body.length;
                     GameServer.setOnlineUpstreamTable(table);
                 }
             }
@@ -589,7 +605,10 @@ public final class LoginServer extends NanoHTTPD {
         if (Method.GET == m) {
             // 0.6.1 — teks ASLI yang dilog (Gerbang + ISI = nilai asli); routing
             // dilaporkan sebagai field terpisah di dalam logOnlineResponse.
-            logOnlineResponse(qs, respAsli, asliLen, ms, rewrote);
+            // 0.6.2 — ukuran yang diterima klien + prefix framing ikut dinyatakan
+            // (log gaya HttpCanary: nilai ASLI utuh DI SEBELAH apa yang klien
+            // terima — tidak ada kalimat ambigu).
+            logOnlineResponse(qs, respAsli, asliLen, ms, rewrote, servedLen, framing);
         }
         Response r = newFixedLengthResponse(safeStatus(up.status == -1 ? 502 : up.status),
                 up.contentType, new ByteArrayInputStream(up.body), up.body.length);
@@ -651,7 +670,8 @@ public final class LoginServer extends NanoHTTPD {
     }
 
     /** GET passthrough: OPEN handshake / ACK daftar server → baris log alur. */
-    private void logOnlineResponse(String qs, String respText, int len, long ms, int rewrote) {
+    private void logOnlineResponse(String qs, String respText, int len, long ms, int rewrote,
+            int servedLen, String framing) {
         try {
             boolean handshake = (qs == null || qs.indexOf("sid=") < 0);
             if (handshake && respText.indexOf("\"sid\"") >= 0) {
@@ -680,6 +700,9 @@ public final class LoginServer extends NanoHTTPD {
                 String routing = rewrote > 0
                         ? "klien menerima url entri = http://127.0.0.1:" + Config.gamePort()
                                 + " (relay game lokal) — relay meneruskan ke url ASLI per entri"
+                                + " · framing engine.io UTUH: prefix panjang dihitung ulang per frame ("
+                                + framing + ") — parser klien memvalidasi panjang frame; dulu 0.6.1"
+                                + " prefix tertinggal → payload ditolak parser klien → SERVERLIST kosong"
                                 + " · tulis-ulang = routing, BUKAN sumber config"
                         : "passthrough utuh — klien menerima respons ASLI apa adanya";
                 long now = System.currentTimeMillis();
@@ -693,7 +716,9 @@ public final class LoginServer extends NanoHTTPD {
                                             ? "(tidak ada http(s):// terbaca — payload utuh di blok ISI)"
                                             : gw) + "\n"
                                     + "Routing  : " + routing + "\n"
-                                    + "Ukuran   : " + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms)
+                                    + "Ukuran   : ASLI " + HumanLog.fmtBytes(len)
+                                    + (rewrote > 0 ? " · ke klien " + HumanLog.fmtBytes(servedLen) : "")
+                                    + " · " + HumanLog.fmtMs(ms)
                                     + " · pemain sekarang di layar pilih server",
                             "respons ASLI dari login.popoh5.com:610 (utuh — jejak capture)", respText);
                 }
@@ -789,6 +814,78 @@ public final class LoginServer extends NanoHTTPD {
             }
             m.appendTail(sb);
             return sb.toString();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
+     * 0.6.2 — tulis-ulang url daftar server DENGAN framing engine.io utuh.
+     * Body polling = urutan frame "<panjang>:<paket>" — panjang prefix WAJIB
+     * dihitung ulang setelah isi paket berubah.
+     * Bukti 0.6.1 (log perangkat 2026-11-13 19:33:56, REKAM events.jsonl):
+     * respons ASLI upstream = satu frame "618016:430[...]" — prefix 618016 =
+     * panjang paket, selisih 0 (framing upstream sempurna); tulis-ulang 2111
+     * url (https://sXXXX-bs.popoh5.com:NNNN → http://127.0.0.1:8080) memangkas
+     * paket 618016 → 597094 (−20.922 char) TANPA memperbarui prefix → parser
+     * polling klien (engine.io decodePayload di socket.io.min.js bawaan game:
+     * "s = t.substr(c+1,i); a != s.length → return r(w,0,1)") MENOLAK seluruh
+     * payload → ACK GetServerList tidak pernah sampai ke UI game → SERVERLIST
+     * kosong. Versi original tidak menyentuh payload → daftar muncul (laporan
+     * owner). Perbaikan: urai frame-per-frame (logika sama dgn parseFrames),
+     * tulis-ulang di dalam paket, susun ulang dgn prefix BARU. Semantik
+     * panjang = UTF-16 char (Java String.length() == substr/length parser JS).
+     * Frame tanpa url diteruskan byte-identik. Return null bila framing tidak
+     * valid atau tidak ada url berubah → pemanggil memakai respons ASLI.
+     */
+    public static String rewriteServerListFramed(String body) {
+        if (body == null || body.length() == 0) {
+            return null;
+        }
+        StringBuilder out = new StringBuilder(body.length() + 32);
+        int i = 0;
+        final int len = body.length();
+        int changed = 0;
+        while (i < len) {
+            int c = body.indexOf(':', i);
+            if (c < 0) {
+                return null;
+            }
+            int plen;
+            try {
+                plen = Integer.parseInt(body.substring(i, c));
+            } catch (NumberFormatException nfe) {
+                return null;
+            }
+            if (plen < 0 || c + 1 + plen > len) {
+                return null;
+            }
+            String pkt = body.substring(c + 1, c + 1 + plen);
+            String rw = rewriteServerListUrls(pkt);
+            if (rw != null) {
+                pkt = rw;
+                changed++;
+            }
+            out.append(pkt.length()).append(':').append(pkt);
+            i = c + 1 + plen;
+        }
+        if (changed == 0) {
+            return null;
+        }
+        return out.toString();
+    }
+
+    /** 0.6.2 — prefix panjang frame PERTAMA (utk field Framing di log). Null bila tidak terbaca. */
+    public static String firstFramePrefix(String body) {
+        try {
+            if (body == null) {
+                return null;
+            }
+            int c = body.indexOf(':');
+            if (c <= 0) {
+                return null;
+            }
+            return body.substring(0, c);
         } catch (Throwable t) {
             return null;
         }
