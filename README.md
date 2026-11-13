@@ -893,7 +893,35 @@ Laporan bug owner sebelumnya (*"SERVERLIST tidak muncul... versi original muncul
 2. Build internal terakhir = **0.6.2** (`StatusStore.VERSION`) — §2.27.
 3. **`versionName` APK = "0.1.0" (versionCode 113) — warisan APK asli**; build script TIDAK pernah mengubah manifest → aplikasi di perangkat menampilkan **0.1.0** (fakta baru dibaca dari `AndroidManifest.xml` APK 2026-11-13).
 4. Tag GitHub `v0.3.0` + build 0.3.0 lama (2026-10-31 — mirror penuh + floating, §Riwayat) sudah terpakai — penomoran ulang menabrak histori.
-5. **Isi milestone (SDK utuh: login / register / guest) SUDAH ADA di kode + harness sejak 0.4.2/0.4.4** — audit C = buktinya. Keputusan yang menunggu owner: nomor build berikutnya — (a) lanjut seri `0.6.3`, atau (b) reset seri sesuai sebutan `0.3.0` (StatusStore dan/atau `versionName` APK dinaikkan supaya perangkat menampilkan versi yang owner sebut). Tidak ada kode yang diubah untuk pilihan ini — murni keputusan penomoran.
+5. **DIBATALKAN oleh koreksi owner (§2.29):** rumusan sebelumnya — "Isi milestone (SDK utuh: login / register / guest) SUDAH ADA di kode + harness sejak 0.4.2/0.4.4" — **MELESAT**. Kode + harness = bukti SERVER SIAP, bukan bukti "SDK fungsi utuh" di perangkat. Milestone 0.3.0 = **TARGET, BELUM TERPENUHI** (status jujur: mode LOCAL baru sampai fase gerbang loginserver — bukti fase-per-fase di §2.29). Keputusan penomoran (lanjut `0.6.3` / reset `0.3.0` — StatusStore dan/atau `versionName` APK) tetap menunggu owner.
+
+### 2.29 KOREKSI STATUS MILESTONE 0.3.0 — "APANYA YG SELESAI??" (pesan owner 2026-11-13; koreksi diterima tanpa argumen)
+
+Pesan owner: *"Itu capture asli saat mode online.. sedangkan mode Local kita baru sampai di fase gerbang loginserver.. jadi apanya yg selesai.??"* — owner benar, dan koreksi ini dilayani dengan bukti dari log owner sendiri (commit `7d91d09`, sesi 20:32:59–20:33:17), bukan tebakan:
+
+1. **Capture di GitHub = jejak ASLI mode ONLINE** — itu PETA alur server asli (bahan penerjemah + pembanding), BUKAN bukti kemampuan LOCAL. Verifikasi §2.28-A (SERVERLIST 2111 server) membuktikan jalur **ONLINE passthrough** — bukan milestone SDK LOCAL.
+2. **Audit §2.28-C = skema respons server lokal diuji via harness (HTTP probe sandbox)** — itu bukti SERVER SIAP. Bukan bukti SDK jalan utuh di layar perangkat.
+
+**A. PETA FASE — sudah sampai mana mode LOCAL di perangkat (dibaca dari log owner sendiri):**
+
+| Fase | Jejak di log mode LOCAL | Status |
+|---|---|---|
+| Boot server lokal — `dragonball.db` 44,0 KB · mirror 28 file diekstrak · config-offline manual 5 file | 20:32:59 | ✓ |
+| Gerbang loginserver — `init` 763 B · `getNotice` 55 B | 20:33:03 | ✓ |
+| **TAMU** — `registerVisitor` → sesi disahkan → `loginchecknative` code 0 → boot H5 (`index-native.html`, manifest) → tombol melayang tampil | 20:33:13–15 | ✓ **satu-satunya fungsi SDK yang terbukti di perangkat** |
+| **MASUK** (loginByName) di layar SDK LOCAL | — TIDAK ADA di log | ✗ belum terbukti perangkat |
+| **DAFTAR** (registerUser) di layar SDK LOCAL | — TIDAK ADA di log | ✗ belum terbukti perangkat |
+| Boot H5 dilanjutkan di LOCAL (socket login :8610 → daftar server lokal → Play) | — sesi 20:33:17 owner pindah ke ONLINE untuk uji SERVERLIST | ✗ belum terbukti perangkat |
+
+**B. MAKA, STATUS JUJUR: milestone 0.3.0 ("SDK punya fungsi utuh login / register / guest") BELUM TERPENUHI — TIDAK ADA yang selesai.**
+- Dari 3 fungsi SDK yang disyaratkan, baru **1 (TAMU)** terbukti utuh di perangkat. MASUK & DAFTAR baru terbukti di level kode + harness — server siap menunggu, layar SDK ASLI (dex tidak disentuh) punya tombolnya, tapi **tidak ada satu baris log pun** yang memperlihatkan kedua alur itu dijalankan di mode LOCAL.
+- Klaim §2.28-D5 lama ("Isi milestone SUDAH terpenuhi sejak 0.4.2/0.4.4") **DIBATALKAN** — itu menyamakan server siap dengan fungsi utuh.
+
+**C. LANGKAH MENUJU 0.3.0 (urutan — tidak ada jalan pintas):**
+1. Owner uji **MASUK** di layar SDK LOCAL (email/sandi akun terdaftar) → jejak wajib muncul di log: `⇄ POST 127.0.0.1:8610/v1/user/loginByName → 200` + "sesi disahkan".
+2. Owner uji **DAFTAR** di layar SDK LOCAL (buat akun baru) → jejak wajib: `⇄ POST 127.0.0.1:8610/v1/user/registerUser → 200`.
+3. Bila form masuk/daftar TIDAK muncul di layar SDK saat mode LOCAL → bedah alurnya dari log + dex (syarat tampil form tergantung respons `init` — `loginTypes ["1","13"]` sudah identik dengan asli) → perbaiki server lokal sampai form muncul — bukti tetap = log.
+4. Ketiga fungsi terbukti di log perangkat (kutipan log utuh sebagai bukti) → **BARU** milestone 0.3.0 dinyatakan tercapai.
 
 
 ---
