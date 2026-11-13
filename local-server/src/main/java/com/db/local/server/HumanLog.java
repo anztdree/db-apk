@@ -139,20 +139,13 @@ public final class HumanLog {
     }
 
     /**
-     * Batas ukuran isi per event (memori dasbor CAP 800 baris): 16 KB.
-     * Lebih dari itu = potongan pertama + catatan JUJUR ukuran asli (bukan
-     * pemangkasan diam-diam) — aturan owner "gak boleh disingkat" tetap terjaga:
-     * yang hilang DISEBUT, bukan disembunyikan.
+     * 0.6.0 — isi SELALU UTUH (keputusan owner: "log itu nyawa kita — tidak
+     * boleh ada singkatan; kalau log panjang ya wajib tampil dan log txt
+     * harus menyimpan"). Dulu 16 KB pertama + catatan; kini tidak ada
+     * pemangkasan apa pun di jalur isi.
      */
-    public static final int ISI_CAP = 16 * 1024;
-
     public static String capIsi(String isi) {
-        if (isi == null || isi.length() <= ISI_CAP) {
-            return isi;
-        }
-        return isi.substring(0, ISI_CAP) + "\n// … potongan "
-                + fmtBytes(ISI_CAP) + " pertama dari " + fmtBytes(isi.length())
-                + " — sisanya tidak di-capture";
+        return isi;
     }
 
     /**

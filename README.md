@@ -797,6 +797,22 @@ manifest.txt: sha256 keempat file + catatan (port beda di server.json → paket 
 
 **Yang berubah di 0.5.6:** `HumanLog` (+`evIsi`/`evTechIsi`/`capIsi`/`ISI_CAP`, JSON `isiLabel`/`isi`, blok ISI human.log); `GameServer` (isiFile/isTextExt; 📄 & 📦 & ⇄ & 404/502 bawa isi; buffer passthrough diperluas ke teks ≤512 KB); `SdkApi` (⇄ POST qsdk bawa jawaban asli); `dashboard.html` (blok ▸ show/hide + Copy membawa ISI); `StatusStore` 0.5.6; `build.sh` → APK-LSF-0.5.6.apk (0.5.5+0.5.6 tergabung, dasar 0.5.4).
 
+### 2.25 LOG ITU NYAWA — TANPA SINGKATAN + PLAY ONLINE TERTANGKAP (0.6.0 — perintah owner: *"log itu adalah nyawa kita agar tidak tersesat!! dari awal saya tekankan tidak boleh ada singkatan di log. kalau memang log itu panjang ya wajib tampil dan juga log txt harus menyimpan"* + laporan: *"sudah klik play pada mode online dan itu gak muncul — tidak menangkap log dengan jelas"*)
+
+**Akar laporan Play-ONLINE-buta (bukti log device 13:35):** daftar server ASLI passthrough **UTUH** (2110 entri, url = server game asli) → klien `io.connect` **LANGSUNG ke server asli** → server lokal buta (tidak satu baris pun). `config/game-upstream.txt` hanya dipakai mode LOCAL — itu sebabnya isian owner "gak muncul" di log ONLINE. Bukan config salah — blind spot desain.
+
+**Yang berubah di 0.6.0:**
+1. **Isi log SELALU UTUH** — `capIsi` tidak memangkas apa pun (dulu 16 KB + catatan); `isiFile` mirror = byte utuh; sid/sesi/query/url **tanpa elipsis** (`sid.substring(0,6)+"…"`, `shortId`, `ringkasQuery` 80 char, `joinParams` 400 char — semua dihapus); human.log + events.jsonl + dasbor menyimpan penuh.
+2. **Play ONLINE tertangkap** — `LoginServer.rewriteServerListUrls` menulis-ulang url **setiap entri** daftar server ASLI → `http://127.0.0.1:8080` (regex tahan JSON polos & ter-escape — sebab lama "(url tidak terbaca)": pola `"url":"` gagal di respons ber-escape); relay game meneruskan ke **url ASLI per entri** (tabel `parseServerTable` serverId↔url). Parse gagal → passthrough utuh tanpa rewrite (perilaku lama aman).
+3. **Relay :8080 aktif di SEMUA mode** — `resolveGameUpstream`: isian owner menang; mode ONLINE lanjut ke tabel daftar ASLI (serverId pilihan pemain dari paket loginGame/SaveUserEnterInfo/enterGame bila terbaca — bila tidak entri pertama); Monitor probe ikut resolusi sama; `UpResp.body` tidak lagi final.
+4. **[📋] Daftar server = PENTING + ISI UTUH** — gerbang pertama/terakhir URL PENUH, jumlah url di-rewrite, respons persis yang diterima klien di blok ▸ ISI.
+5. **[🎮] Relay game ber-isi utuh** — POST aksi + GET event membawa payload penuh di blok ISI (dulu hanya "Catatan: diteruskan UTUH" tanpa isi).
+6. **Delta 0.5.9 dipulihkan manual ke source** (dari dex terbit + log device): pesan ❌ upstream minimal, probe Monitor/simpan upstream/SWITCH MODE/tombol melayang tanpa narasi, 🔑 passthrough 2 field.
+7. **Harness +12 tes TAHAP 19** (gerbang URL penuh + ter-escape; tabel serverId↔url; rewrite semua entri + field lain utuh; upstream ONLINE pilihan pemain/entri pertama/tabel kosong) — **129 LULUS + 15 GAGAL LINGKUNGAN** (SQLite native sandbox — sama persis sejak 0.5.2, bukan regresi). Sign v1/v2/v3 LULUS; CRC classes.dex game & config endpoint identik dengan dasar.
+8. `android.jar` build diganti platform resmi Google **API 35** (jar lama tanpa simbol API 23/26); `r8.jar` lama ternyata korup (isinya pesan rate-limit) → r8 **9.5.32** resmi Google Maven. Keduanya dibackup LFS di `tools/`.
+
+`build-0.6.0.sh` → APK-LSF-0.6.0.apk (dasar 0.5.9, sha256 `0a8a321d…`).
+
 ---
 
 

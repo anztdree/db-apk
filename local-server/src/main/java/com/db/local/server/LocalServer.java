@@ -301,13 +301,9 @@ public final class LocalServer extends NanoHTTPD {
             w.write(url);
             w.close();
             String[] up = LoginData.gameUpstreamEx();
-            HumanLog.ev("📡", "Upstream relay game disimpan dari dasbor — " + url,
-                    "Ditulis  : config/game-upstream.txt (" + HumanLog.fmtBytes(f.length()) + ")\n"
-                            + "Aktif    : langsung (tanpa restart) — sumber terbaca: "
-                            + ("file".equals(up[1]) ? "file" : "?") + "\n"
-                            + "Lanjutan : klik Play lagi — socket game :"
-                            + Config.gamePort() + " diteruskan ke " + up[0]
-                            + "\n           uji dengan tombol \"Tes game\"");
+            HumanLog.ev("📡", "Upstream relay game disimpan — " + url,
+                    "Ditulis : config/game-upstream.txt (" + HumanLog.fmtBytes(f.length()) + ")\n"
+                            + "Aktif   : langsung — sumber: file");
             return "{\"ok\":true,\"url\":\"" + Json.esc(up[0]) + "\",\"sumber\":\""
                     + Json.esc("file") + "\"}";
         } catch (Throwable t) {
@@ -328,7 +324,7 @@ public final class LocalServer extends NanoHTTPD {
             sb.append(e.getKey()).append("=").append(v == null ? "" : v);
         }
         String s = sb.toString();
-        return s.length() > 400 ? s.substring(0, 400) + "…" : s;
+        return s; // 0.6.0 — tanpa singkatan (aturan owner)
     }
 
     private static Response jsonResp(Response.IStatus st, String json) {

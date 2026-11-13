@@ -200,19 +200,83 @@ public final class GameServer extends NanoHTTPD {
     /** Dedupe baris sesi game (10 mnt — sama dengan 📡/📋 server login). */
     private static volatile long lastGameSessLogAt = 0L;
 
+    // ---------------- 0.6.0 — tabel upstream daftar server ASLI ----------------
+
+    /** Entri {serverId, url ASLI} utuh dari respons GetServerList passthrough. */
+    private static final Object UPTABLELOCK = new Object();
+    private static volatile java.util.ArrayList<String[]> onlineUpstreamTable
+            = new java.util.ArrayList<String[]>();
+    private static volatile String onlineChosenId = null;
+
+    /** Isi tabel dari jalur passthrough login (serverId, url ASLI — utuh). */
+    public static void setOnlineUpstreamTable(java.util.ArrayList<String[]> table) {
+        synchronized (UPTABLELOCK) {
+            onlineUpstreamTable = table;
+        }
+    }
+
+    /** Catat serverId pilihan pemain (dari paket login socket). Null/kosong = hapus pilihan. */
+    public static void setOnlineChosenId(String serverId) {
+        onlineChosenId = (serverId != null && serverId.length() > 0) ? serverId : null;
+    }
+
+    /**
+     * Pilih upstream mode ONLINE: entri dgn serverId terpilih → bila tidak ada,
+     * entri pertama. Return {url, sumber} atau null bila tabel kosong.
+     */
+    private static String[] onlineUpstreamPick() {
+        synchronized (UPTABLELOCK) {
+            if (onlineUpstreamTable.isEmpty()) {
+                return null;
+            }
+            if (onlineChosenId != null) {
+                for (int i = 0; i < onlineUpstreamTable.size(); i++) {
+                    String[] e = onlineUpstreamTable.get(i);
+                    if (onlineChosenId.equals(e[0])) {
+                        return new String[]{e[1],
+                                "daftar server ASLI · serverId " + e[0] + " (pilihan pemain)"};
+                    }
+                }
+            }
+            String[] f = onlineUpstreamTable.get(0);
+            return new String[]{f[1],
+                    "daftar server ASLI · serverId " + f[0] + " (entri pertama)"};
+        }
+    }
+
+    /**
+     * 0.6.0 — resolusi upstream relay game untuk SEMUA mode (dipakai relay +
+     * Monitor probe): isian owner menang; mode ONLINE lanjut ke tabel daftar
+     * server ASLI. Return {url, sumber} atau null.
+     */
+    public static String[] resolveGameUpstream(String mode) {
+        String up = LoginData.gameUpstream();
+        String[] upEx = LoginData.gameUpstreamEx();
+        if (up != null && up.length() > 0) {
+            return new String[]{up, "file".equals(upEx[1]) ? "config/game-upstream.txt"
+                    : "config-offline/servers.json"};
+        }
+        if (!"local".equals(mode)) {
+            return onlineUpstreamPick();
+        }
+        return null;
+    }
+
     /**
      * Klik Play: klien io.connect(url entri daftar). Di LOCAL url itu = port ini
      * → /socket.io/ diteruskan UTUH ke server game ASLI (upstream — mesin relay
      * yang sama dgn passthrough login 0.5.1). Di ONLINE: gameplay LANGSUNG ke
      * server asli — port ini tidak dipakai; dijawab 404 dengan penjelasan.
      */
+    /**
+     * Klik Play: klien io.connect(url entri daftar) → /socket.io/ diteruskan
+     * UTUH ke server game ASLI (upstream — mesin relay sama dgn passthrough
+     * login 0.5.1). 0.6.0: relay AKTIF DI SEMUA MODE — di ONLINE, url daftar
+     * server ASLI ditulis-ulang ke port ini (jalur passthrough login), jadi
+     * Play online pun tertangkap penuh di log; di LOCAL, upstream = isian
+     * owner (config/game-upstream.txt / field "upstream" servers.json).
+     */
     private Response socketIo(IHTTPSession session, Method m, String mode) {
-        if (!"local".equals(mode)) {
-            return textResp(Response.Status.NOT_FOUND,
-                    "Mode ONLINE: gameplay LANGSUNG ke server game asli pilihan pemain "
-                            + "(url daftar server ASLI) — bukan lewat port ini. Port ini melayani "
-                            + "bootstrap game (/bs/*). Socket game lokal hanya aktif di mode LOCAL.");
-        }
         String query = session.getQueryParameterString();
         String qs = (query == null || query.length() == 0) ? "" : query;
         String transport = session.getParms() == null ? null : session.getParms().get("transport");
@@ -222,25 +286,25 @@ public final class GameServer extends NanoHTTPD {
             return textResp(LoginServer.safeStatus(400),
                     "websocket tidak diteruskan — klien engine.io tetap di polling");
         }
-        String up = LoginData.gameUpstream();
-        String[] upEx = LoginData.gameUpstreamEx();
-        if (up.length() == 0) {
-            // PENJELASAN LOUD — dulu loading muter-muter tanpa satu baris pun.
+        // 0.6.0 — upstream semua mode (urutan dilaporkan utuh di log):
+        //  1) isian owner: config/game-upstream.txt / field "upstream" servers.json
+        //  2) mode ONLINE: url ASLI dari daftar server passthrough (serverId
+        //     terpilih bila terbaca dari paket login — bila tidak, entri pertama)
+        String[] res = resolveGameUpstream(mode);
+        if (res == null) {
             long now = System.currentTimeMillis();
             if (now - lastGameSessLogAt >= 60000L) {
                 lastGameSessLogAt = now;
-                HumanLog.ev("❌", "Play berhenti — server game lokal :" + Config.gamePort()
-                                + " belum punya UPSTREAM (tujuan relay)",
-                        "Kejadian : klien io.connect ke http://127.0.0.1:" + Config.gamePort()
-                                + " (url entri daftar server manual)\n"
-                                + "Sebab    : field \"upstream\" kosong — relay tidak tahu harus meneruskan ke mana\n"
-                                + "Solusi   : isi SATU baris URL server game asli di config/game-upstream.txt"
-                                + " (cth: https://s2109-bs.popoh5.com:8061) — tanpa build ulang, lalu klik Play lagi\n"
-                                + "           atau isi field \"upstream\" entri di config-offline/servers.json");
+                HumanLog.ev("❌", "Play berhenti — upstream relay belum diisi",
+                        "io.connect : http://127.0.0.1:" + Config.gamePort()
+                                + " (url entri daftar server)\n"
+                                + "upstream    : (kosong)");
             }
             return textResp(LoginServer.safeStatus(502),
                     "upstream server game belum diisi — isi config/game-upstream.txt");
         }
+        String up = res[0];
+        String src = res[1];
         long t0 = System.currentTimeMillis();
         String body = null;
         if (Method.POST == m) {
@@ -275,24 +339,29 @@ public final class GameServer extends NanoHTTPD {
                     lastGameSessLogAt = now;
                     HumanLog.ev("🎮", "Play → socket game lokal :" + Config.gamePort()
                                     + " — diteruskan ke SERVER GAME ASLI",
-                            "Upstream : " + up + " (sumber: "
-                                    + ("file".equals(upEx[1]) ? "config/game-upstream.txt"
-                                            : "config-offline/servers.json") + ")\n"
-                                    + "Sesi     : sid dari server asli (relay utuh, polling)\n"
-                                    + "Lanjutan : klien login game ke sini — enterGame dijawab SERVER ASLI "
-                                    + "(progres tersimpan di sana)");
+                            "Upstream : " + up + " (sumber: " + src + ")\n"
+                                    + "Query    : " + (qs.length() > 0 ? qs : "(kosong)") + "\n"
+                                    + "Sesi     : sid dari server asli · relay polling");
                 }
             } else if (u.body.length > 0 && ms > 0) {
-                HumanLog.evTech("🎮", "← upstream " + hostOf(up) + " · "
-                        + HumanLog.fmtBytes(u.body.length) + " · " + HumanLog.fmtMs(ms), null);
+                if (respText.indexOf("42[") >= 0) {
+                    // 0.6.0 — jawaban berisi event game → isi UTUH di blok ISI
+                    // (aturan owner: log panjang wajib tampil & txt wajib menyimpan)
+                    HumanLog.evIsi("🎮", "← upstream " + hostOf(up) + " · "
+                                    + HumanLog.fmtBytes(u.body.length) + " · " + HumanLog.fmtMs(ms),
+                            null, "jawaban upstream (utuh)", respText);
+                } else {
+                    HumanLog.evTech("🎮", "← upstream " + hostOf(up) + " · "
+                            + HumanLog.fmtBytes(u.body.length) + " · " + HumanLog.fmtMs(ms), null);
+                }
             }
         } else if (Method.POST == m && body != null && body.length() > 0) {
             String act = ringkasAksi(body);
             if (act != null) {
-                HumanLog.ev("🎮", "→ " + act + " diteruskan ke server game ASLI · "
+                // 0.6.0 — payload POST yang membawa aksi game: isi UTUH di blok ISI
+                HumanLog.evIsi("🎮", "→ " + act + " diteruskan ke server game ASLI · "
                                 + HumanLog.fmtBytes(body.length()) + " · " + HumanLog.fmtMs(ms),
-                        "Upstream : " + up + "\n"
-                                + "Catatan  : payload diteruskan UTUH (byte-per-byte) — isi tidak dibaca diubah");
+                        null, "payload POST (utuh — diteruskan byte-per-byte)", body);
             } else {
                 HumanLog.evTech("🎮", "→ upstream · " + HumanLog.fmtBytes(body.length())
                         + " · " + HumanLog.fmtMs(ms), null);
@@ -828,9 +897,10 @@ public final class GameServer extends NanoHTTPD {
     }
 
     /**
-     * 0.5.6 — ISI capture untuk file mirror www/: teks = byte persis (≤ 16 KB —
-     * potongan diberi catatan JUJUR ukuran asli); binary = catatan jujur.
-     * TIDAK ada rekonstruksi — yang tampil adalah byte yang memang dilayani.
+     * 0.6.0 — ISI capture untuk file mirror www/: teks = byte persis UTUH
+     * (aturan owner: log panjang wajib tampil & txt wajib menyimpan);
+     * binary = catatan jujur. TIDAK ada rekonstruksi — yang tampil adalah
+     * byte yang memang dilayani.
      */
     private static String isiFile(File f, String uri, long len) {
         try {
@@ -838,25 +908,19 @@ public final class GameServer extends NanoHTTPD {
                 return "// binary " + HumanLog.fmtBytes(len)
                         + " — tidak ditampilkan sebagai teks";
             }
-            int n = (int) Math.min(len, HumanLog.ISI_CAP);
+            long n = len;
             java.io.FileInputStream in = new java.io.FileInputStream(f);
-            byte[] buf = new byte[n];
+            byte[] buf = new byte[(int) n];
             int read = 0;
             while (read < n) {
-                int k = in.read(buf, read, n - read);
+                int k = in.read(buf, read, (int) n - read);
                 if (k < 0) {
                     break;
                 }
                 read += k;
             }
             in.close();
-            String s = new String(buf, 0, read, "UTF-8");
-            if (len > HumanLog.ISI_CAP) {
-                s += "\n// … potongan " + HumanLog.fmtBytes(HumanLog.ISI_CAP)
-                        + " pertama dari " + HumanLog.fmtBytes(len)
-                        + " — file lengkap ada di mirror www/";
-            }
-            return s;
+            return new String(buf, 0, read, "UTF-8");
         } catch (Throwable t) {
             return "// isi tidak bisa dibaca: " + t;
         }

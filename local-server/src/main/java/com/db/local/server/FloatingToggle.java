@@ -172,7 +172,7 @@ public final class FloatingToggle {
                 shownOnceLogged = true;
                 // 0.4.7: tombol tampil = TEKNIS (bukan hasil/berita; tiap boot sama).
                 // Yang tetap PENTING: gagal tampil (⚠) & pergantian mode (ℹ).
-                HumanLog.evTech("ℹ️", "Tombol melayang tampil — GESER pindah · TEKAN ganti mode", null);
+                HumanLog.evTech("ℹ️", "Tombol melayang tampil", null);
             }
         } catch (Throwable t) {
             logSilent("Tombol melayang gagal tampil", t);
@@ -380,11 +380,10 @@ public final class FloatingToggle {
                 } catch (Throwable ignored) {
                 }
                 added = false;
-                HumanLog.ev("ℹ️", "SWITCH MODE dari tombol melayang: " + now.toUpperCase() + " → "
+                HumanLog.ev("ℹ️", "SWITCH MODE: " + now.toUpperCase() + " → "
                         + target.toUpperCase() + " — aplikasi direstart",
-                        "Mode     : " + now.toUpperCase() + " → " + target.toUpperCase()
-                                + " (tersimpan di server.json)\n"
-                                + "Efek     : config endpoint ditulis-ulang sesuai mode + restart otomatis aplikasi");
+                        "Mode : " + now.toUpperCase() + " → " + target.toUpperCase()
+                                + " (tersimpan di server.json)");
                 RestartHelper.restart(panel.getContext());
             }
         });

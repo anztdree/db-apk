@@ -167,7 +167,7 @@ public final class LoginServer extends NanoHTTPD {
         try {
             // 0.5.0 REKAM — handshake terekam utuh (bahan bangun protokol):
             Capture.login("→", "handshake", "GET /socket.io/ · engine.io v3 · polling", null, 0, 0);
-            Capture.login("←", "open", "sid " + sid.substring(0, 6) + "… · upgrades [] · ping 25 dtk",
+            Capture.login("←", "open", "sid " + sid + " · upgrades [] · ping 25 dtk",
                     body, body.length(), 0);
             // 0.4.9 — koneksi klien = bagian ALUR yang harus terlihat (owner:
             // "log harus menceritakan sampai serverlist"): handshake naik dari
@@ -177,7 +177,7 @@ public final class LoginServer extends NanoHTTPD {
             if (nowMs - lastConnectLogAt >= 600000L) {
                 lastConnectLogAt = nowMs;
                 HumanLog.ev("📡", "Klien game tersambung ke server login lokal",
-                        "Sesi     : " + sid.substring(0, 6) + "… (engine.io v3 · polling, tanpa websocket)\n"
+                        "Sesi     : " + sid + " (engine.io v3 · polling, tanpa websocket)\n"
                                 + "Tujuan   : 127.0.0.1:" + Config.loginPort()
                                 + " (loginServer hasil rewrite setting bin)\n"
                                 + "Lanjutan : menunggu loginGame + GetServerList dari klien H5");
@@ -300,7 +300,7 @@ public final class LoginServer extends NanoHTTPD {
                 try {
                     // 0.5.0 REKAM — keepalive satu entri (dua arah dalam satu kejadian)
                     Capture.login("→", "ping→pong", "keepalive engine.io · interval 25 dtk · sid "
-                            + s.sid.substring(0, 6) + "…", null, 1, 0);
+                            + s.sid, null, 1, 0);
                 } catch (Throwable ignored) {
                 }
                 return;
@@ -350,7 +350,7 @@ public final class LoginServer extends NanoHTTPD {
         try {
             // 0.5.0 REKAM — event masuk TEREKAM UTUH (payload penuh):
             Capture.login("→", action == null ? "handler.process" : action,
-                    "sid " + s.sid.substring(0, 6) + "…"
+                    "sid " + s.sid
                             + (ackId.length() > 0 ? " · ack#" + ackId : ""),
                     msg, msg.length(), 0);
         } catch (Throwable ignored) {
@@ -435,7 +435,7 @@ public final class LoginServer extends NanoHTTPD {
                 // daftar server 520 KB ikut tersimpan file — config asli):
                 Capture.login("←", "ack#" + ackId + " → "
                         + (action == null ? "handler.process" : action),
-                        "sid " + s.sid.substring(0, 6) + "…", resp, resp.length(), ms);
+                        "sid " + s.sid, resp, resp.length(), ms);
             } catch (Throwable ignored) {
             }
             s.out.offer("43" + ackId + "[" + resp + "]");
@@ -453,7 +453,7 @@ public final class LoginServer extends NanoHTTPD {
     private static void onSessionEnded(Sess s, boolean byClient) {
         try {
             Capture.login("→", byClient ? "disconnect" : "expired",
-                    "sid " + s.sid.substring(0, 6) + "…", null, 0, 0);
+                    "sid " + s.sid, null, 0, 0);
         } catch (Throwable ignored) {
         }
         long now = System.currentTimeMillis();
@@ -465,16 +465,14 @@ public final class LoginServer extends NanoHTTPD {
         String act = s.lastAction;
         if (byClient) {
             String up = LoginData.gameUpstream();
-            HumanLog.ev("🔌", "Klien menutup sesi login — normal setelah pilih server (pindah ke server game)",
-                    "Sesi     : " + s.sid.substring(0, 6) + "… · hidup " + HumanLog.fmtMs(age) + "\n"
+            HumanLog.ev("🔌", "Klien menutup sesi login",
+                    "Sesi     : " + s.sid + " · hidup " + HumanLog.fmtMs(age) + "\n"
                             + "Terakhir : " + (act == null ? "(belum ada aksi — hanya handshake)" : act) + "\n"
-                            + "Lanjutan : klien io.connect ke url entri daftar server — di OFFLINE = "
-                            + "http://127.0.0.1:" + Config.gamePort() + " (server game lokal"
-                            + (up.length() > 0 ? " → relay ke " + up + ")" : " — upstream BELUM DIISI") + ");"
-                            + " alur lanjutan terlihat di log port game");
+                            + "Lanjutan : klien io.connect ke url entri daftar server — http://127.0.0.1:"
+                            + Config.gamePort() + " (relay socket game lokal)");
         } else {
             HumanLog.evTech("🔌", "Sesi login kedaluwarsa (90 dtk tanpa aktivitas) — klien sudah pergi",
-                    "Sesi     : " + s.sid.substring(0, 6) + "… · terakhir " + (act == null ? "-" : act));
+                    "Sesi     : " + s.sid + " · terakhir " + (act == null ? "-" : act));
         }
     }
 
@@ -490,7 +488,9 @@ public final class LoginServer extends NanoHTTPD {
     static final class UpResp {
         final int status;
         final String contentType;
-        final byte[] body;
+        /* 0.6.0 — tidak lagi final: respons GetServerList passthrough diganti
+         * dgn versi hasil rewrite url entri (relay game semua mode). */
+        byte[] body;
         UpResp(int status, String contentType, byte[] body) {
             this.status = status;
             this.contentType = (contentType == null || contentType.length() == 0)
@@ -535,13 +535,30 @@ public final class LoginServer extends NanoHTTPD {
                         body == null ? 0 : body.length(), ms);
             } catch (Throwable ignored) {
             }
-            HumanLog.ev("⚠️", "Server login ASLI tidak terjangkau lewat passthrough — login online gagal "
-                            + "(perilaku sama seperti koneksi langsung)", String.valueOf(t));
+            HumanLog.ev("⚠️", "Server login ASLI tidak terjangkau lewat passthrough — login online gagal",
+                    String.valueOf(t));
             return text(safeStatus(502),
                     "upstream login.popoh5.com:610 tidak terjangkau — " + t);
         }
         long ms = System.currentTimeMillis() - t0;
         String respText = new String(up.body, StandardCharsets.UTF_8);
+        // 0.6.0 — GetServerList: tulis-ulang url entri → relay game :8080 + isi
+        // tabel upstream ASLI (supaya Play mode ONLINE tertangkap penuh di log).
+        // Capture di bawah tetap merekam respons ASLI dari upstream (sebelum
+        // rewrite); yang dilayani klien = teks hasil rewrite.
+        int rewrote = 0;
+        if (Method.GET == m && respText.indexOf("serverList") >= 0) {
+            java.util.ArrayList<String[]> table = parseServerTable(respText);
+            if (table != null && table.size() > 0) {
+                String r = rewriteServerListUrls(respText);
+                if (r != null) {
+                    respText = r;
+                    rewrote = table.size();
+                    up.body = respText.getBytes(StandardCharsets.UTF_8);
+                    GameServer.setOnlineUpstreamTable(table);
+                }
+            }
+        }
         try {
             // REKAM — payload asli dua arah (pembanding utama utk versi lokal):
             Capture.login("→", Method.POST == m ? "handler.process (passthrough)" : "polling (passthrough)",
@@ -556,7 +573,7 @@ public final class LoginServer extends NanoHTTPD {
             logOnlineEvents(body);
         }
         if (Method.GET == m) {
-            logOnlineResponse(qs, respText, up.body.length, ms);
+            logOnlineResponse(qs, respText, up.body.length, ms, rewrote);
         }
         Response r = newFixedLengthResponse(safeStatus(up.status == -1 ? 502 : up.status),
                 up.contentType, new ByteArrayInputStream(up.body), up.body.length);
@@ -584,6 +601,10 @@ public final class LoginServer extends NanoHTTPD {
                     if ("loginGame".equals(action)) {
                         String userId = strField(msg, "userId");
                         String pwd = strField(msg, "password");
+                        String sidChosen = strField(msg, "serverId");
+                        if (sidChosen != null && sidChosen.length() > 0) {
+                            GameServer.setOnlineChosenId(sidChosen);
+                        }
                         HumanLog.ev("✅", "Login game diteruskan ke server ASLI (passthrough)",
                                 "Akun     : " + (userId == null ? "-" : userId) + "\n"
                                         + "Sandi    : " + (pwd == null ? "-"
@@ -593,6 +614,17 @@ public final class LoginServer extends NanoHTTPD {
                                         + "(progres pemain tetap tersimpan di server asli)");
                     } else if (action != null && action.length() > 0
                             && !"GetServerList".equals(action)) {
+                        // 0.6.0 — catat serverId pilihan pemain bila terbaca di paket
+                        if ("SaveUserEnterInfo".equals(action) || "enterGame".equals(action)
+                                || "loginGame".equals(action)) {
+                            String sidChosen = strField(msg, "serverId");
+                            if (sidChosen == null || sidChosen.length() == 0) {
+                                sidChosen = strField(msg, "serverid");
+                            }
+                            if (sidChosen != null && sidChosen.length() > 0) {
+                                GameServer.setOnlineChosenId(sidChosen);
+                            }
+                        }
                         HumanLog.evTech("ℹ️", "Aksi login (passthrough): " + action, null);
                     }
                 }
@@ -602,7 +634,7 @@ public final class LoginServer extends NanoHTTPD {
     }
 
     /** GET passthrough: OPEN handshake / ACK daftar server → baris log alur. */
-    private void logOnlineResponse(String qs, String respText, int len, long ms) {
+    private void logOnlineResponse(String qs, String respText, int len, long ms, int rewrote) {
         try {
             boolean handshake = (qs == null || qs.indexOf("sid=") < 0);
             if (handshake && respText.indexOf("\"sid\"") >= 0) {
@@ -621,18 +653,27 @@ public final class LoginServer extends NanoHTTPD {
             }
             if (respText.indexOf("serverList") >= 0) {
                 int count = countServerIds(respText);
+                String gw = firstAndLastGateway(respText);
+                // 0.6.0 — url per entri SUDAH ditulis-ulang di proxyOnline (tabel
+                // upstream ASLI terisi di sana); teks yang diteruskan ke klien =
+                // hasil rewrite. Bila parse gagal → passthrough UTUH tanpa
+                // rewrite (perilaku lama, tetap aman).
                 long now = System.currentTimeMillis();
                 if (now - lastServerListLogAt >= 600000L) {
                     lastServerListLogAt = now;
-                    String gw = firstAndLastGateway(respText);
-                    HumanLog.ev("📋", "Daftar server ASLI terkirim — " + count + " server (passthrough)",
-                            "Sumber   : SERVER ASLI login.popoh5.com:610 — diteruskan utuh lewat server lokal "
+                    HumanLog.evIsi("📋", "Daftar server ASLI terkirim — " + count + " server"
+                                    + (rewrote > 0 ? " (passthrough → relay lokal)" : " (passthrough utuh)"),
+                            "Sumber   : SERVER ASLI login.popoh5.com:610 — lewat server lokal "
                                     + "(bukan snapshot; daftar hidup dari server)\n"
-                                    + "Gerbang  : " + (gw == null ? "(url tidak terbaca dari jawaban)" : gw) + "\n"
+                                    + "Gerbang  : " + (gw == null
+                                            ? "(tidak ada http(s):// terbaca — payload utuh di blok ISI)"
+                                            : gw) + "\n"
+                                    + "Rewrite  : " + rewrote + " url entri ditulis-ulang ke "
+                                    + "http://127.0.0.1:" + Config.gamePort()
+                                    + " — relay meneruskan ke url ASLI per entri\n"
                                     + "Ukuran   : " + HumanLog.fmtBytes(len) + " · " + HumanLog.fmtMs(ms)
-                                    + " · pemain sekarang di layar pilih server\n"
-                                    + "Lanjutan : pemain pilih server → gameplay LANGSUNG ke server game asli pilihan "
-                                    + "pemain (progres tersimpan di sana — wajar log tidak menambah baris)");
+                                    + " · pemain sekarang di layar pilih server",
+                            "respons daftar server (utuh — persis yang diterima klien)", respText);
                 }
             }
         } catch (Throwable ignored) {
@@ -640,33 +681,92 @@ public final class LoginServer extends NanoHTTPD {
     }
 
     /**
-     * 0.5.2 AKAR — gerbang PERTAMA dan TERAKHIR dari daftar server ASLI
-     * ("url":"https://sXXXX-bs.popoh5.com:PORT") — pemain tahu persis ke mana
-     * klien akan lompat saat tombol Play ditekan. Null bila tidak terbaca.
+     * 0.5.2 AKAR — gerbang PERTAMA dan TERAKHIR dari daftar server ASLI.
+     * 0.6.0 — scanner regex: menangani JSON polos maupun bentuk ter-escape di
+     * dalam framing socket.io; url ditampilkan UTUH.
+     * Null bila tidak ada http(s):// yang terbaca.
      */
     public static String firstAndLastGateway(String respText) {
         try {
-            String needle = "\"url\":\"";
-            int a = respText.indexOf(needle);
-            if (a < 0) {
-                return null;
-            }
-            int p = a + needle.length();
-            int e = respText.indexOf('"', p);
-            if (e < 0) {
-                return null;
-            }
-            String first = respText.substring(p, e);
-            int b = respText.lastIndexOf(needle);
-            String last = first;
-            if (b > a) {
-                int q = b + needle.length();
-                int f = respText.indexOf('"', q);
-                if (f > q) {
-                    last = respText.substring(q, f);
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                    .compile("\\\\?\"url\\\\?\"\\\\?:\\\\?\"(https?://[^\"\\\\]+)\\\\?\"")
+                    .matcher(respText);
+            String first = null;
+            String last = null;
+            while (m.find()) {
+                String v = m.group(1);
+                if (first == null) {
+                    first = v;
                 }
+                last = v;
             }
-            return first.equals(last) ? first : first + "  …  " + last + " (pertama … terakhir)";
+            if (first == null) {
+                return null;
+            }
+            return first.equals(last) ? first : "pertama " + first + " · terakhir " + last;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
+     * 0.6.0 — pasangkan (serverId, url ASLI) dari respons daftar server ASLI.
+     * Menangani JSON polos maupun ter-escape. Pasangan disusun berurutan;
+     * bila jumlah serverId ≠ jumlah url (format tak dikenal) → null
+     * (pemanggil memakai passthrough utuh tanpa rewrite — tetap aman).
+     */
+    public static java.util.ArrayList<String[]> parseServerTable(String respText) {
+        try {
+            java.util.ArrayList<String> ids = new java.util.ArrayList<String>();
+            java.util.regex.Matcher mi = java.util.regex.Pattern
+                    .compile("\\\\?\"serverId\\\\?\"\\\\?:\\\\?\"([^\"\\\\]*)\\\\?\"")
+                    .matcher(respText);
+            while (mi.find()) {
+                ids.add(mi.group(1));
+            }
+            java.util.ArrayList<String> urls = new java.util.ArrayList<String>();
+            java.util.regex.Matcher mu = java.util.regex.Pattern
+                    .compile("\\\\?\"url\\\\?\"\\\\?:\\\\?\"(https?://[^\"\\\\]+)\\\\?\"")
+                    .matcher(respText);
+            while (mu.find()) {
+                urls.add(mu.group(1));
+            }
+            if (ids.isEmpty() || ids.size() != urls.size()) {
+                return null;
+            }
+            java.util.ArrayList<String[]> out = new java.util.ArrayList<String[]>();
+            for (int i = 0; i < ids.size(); i++) {
+                out.add(new String[]{ids.get(i), urls.get(i)});
+            }
+            return out;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
+     * 0.6.0 — tulis-ulang url SETIAP entri daftar server ke relay game lokal
+     * (http://127.0.0.1:gamePort). Field lain (urlInner, chatInner, dst.)
+     * dibiarkan apa adanya. Return null bila tidak ada url yang cocok →
+     * pemanggil memakai respons ASLI utuh.
+     */
+    public static String rewriteServerListUrls(String respText) {
+        try {
+            java.util.regex.Pattern p = java.util.regex.Pattern
+                    .compile("(\\\\?\"url\\\\?\"\\\\?:\\\\?\")https?://[^\"\\\\]+(\\\\?\")");
+            java.util.regex.Matcher m = p.matcher(respText);
+            if (!m.find()) {
+                return null;
+            }
+            String localUrl = "http://127.0.0.1:" + Config.gamePort();
+            StringBuffer sb = new StringBuffer(respText.length() + 64);
+            m.reset();
+            while (m.find()) {
+                m.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(
+                        m.group(1) + localUrl + m.group(2)));
+            }
+            m.appendTail(sb);
+            return sb.toString();
         } catch (Throwable t) {
             return null;
         }
@@ -679,10 +779,10 @@ public final class LoginServer extends NanoHTTPD {
             return;
         }
         lastEndLogAt = now;
-        HumanLog.ev("🔌", "Klien menutup sesi login — normal setelah pilih server (pindah ke server game)",
+        HumanLog.ev("🔌", "Klien menutup sesi login (passthrough)",
                 "Sesi     : passthrough ke login.popoh5.com:610\n"
-                        + "Lanjutan : klien io.connect LANGSUNG ke url server pilihan pemain "
-                        + "(https://sXXXX-bs.popoh5.com — gameplay di luar server lokal)");
+                        + "Lanjutan : klien io.connect ke url server pilihan pemain — relay game "
+                        + "lokal meneruskan ke url ASLI entri (0.6.0)");
     }
 
     /**
@@ -734,7 +834,7 @@ public final class LoginServer extends NanoHTTPD {
 
     /** Ringkas query utk info Capture (t param bisa panjang). */
     private static String ringkasQuery(String qs) {
-        return qs.length() > 80 ? qs.substring(0, 80) + "…" : qs;
+        return qs; // 0.6.0 — tanpa singkatan (owner: log = nyawa, utuh apa adanya)
     }
 
     // ---------------- util bersama (mode LOCAL + ONLINE) ----------------

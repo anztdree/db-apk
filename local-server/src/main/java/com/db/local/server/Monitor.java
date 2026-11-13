@@ -133,15 +133,12 @@ public final class Monitor {
      */
     public static String probeGameServers(int n) {
         synchronized (GAMEPROBELOCK) {
-            if (!"local".equals(Config.mode())) {
-                return "(mode ONLINE — gameplay langsung ke server game asli; probe relay lokal tidak relevan)";
+            String[] res = GameServer.resolveGameUpstream(Config.mode());
+            if (res == null) {
+                return "(upstream belum diisi)";
             }
-            String up = LoginData.gameUpstream();
-            String[] upEx = LoginData.gameUpstreamEx();
-            if (up == null || up.length() == 0) {
-                return "(upstream server game belum diisi — isi config/game-upstream.txt"
-                        + " atau field \"upstream\" di config-offline/servers.json)";
-            }
+            String up = res[0];
+            String src = res[1];
             String host;
             int port;
             try {
@@ -183,10 +180,7 @@ public final class Monitor {
             boolean first = !gameSeen.contains(tgt);
             gameSeen.add(tgt);
             if (ok) {
-                String detail = "Upstream : " + up + " (sumber: "
-                        + ("file".equals(upEx[1]) ? "config/game-upstream.txt" : "config-offline/servers.json")
-                        + ")\n" + dnsNote + "\n"
-                        + "Lanjutan : relay socket game :" + Config.gamePort() + " meneruskan Play ke sini";
+                String detail = "Upstream : " + up + " (sumber: " + src + ")\n" + dnsNote;
                 if (first) {
                     HumanLog.ev("📡", "Server game ASLI (upstream) bisa dihubungi — " + tgt
                             + " · " + HumanLog.fmtMs(ms), detail);
@@ -199,9 +193,7 @@ public final class Monitor {
             HumanLog.ev("⚠️", "Server game ASLI (upstream) TIDAK bisa dihubungi — " + tgt + " (" + note + ")",
                     "Upstream   : " + up + "\n"
                             + "Waktu coba : " + HumanLog.fmtMs(ms) + "\n"
-                            + (dnsNote == null ? "" : dnsNote + "\n")
-                            + "Lanjutan   : bila upstream ini terhalang, klik Play akan berhenti di "
-                            + "layar menyambung — baris relay di log akan menunjukkan kegagalannya");
+                            + (dnsNote == null ? "" : dnsNote));
             return "✗ " + tgt + " — " + note;
         }
     }

@@ -12,6 +12,7 @@ import java.util.TreeMap;
 import com.db.local.server.Config;
 import com.db.local.server.ConfigAkar;
 import com.db.local.server.Db;
+import com.db.local.server.GameServer;
 import com.db.local.server.HumanLog;
 import com.db.local.server.LogGroups;
 import com.db.local.server.LoginData;
@@ -524,8 +525,8 @@ public class HarnessSdk {
                 + "{\"serverId\":\"1\",\"url\":\"https://s1-bs.popoh5.com:8001\"},"
                 + "{\"serverId\":\"2\",\"url\":\"https://s2-bs.popoh5.com:8002\"},"
                 + "{\"serverId\":\"2109\",\"url\":\"https://s2109-bs.popoh5.com:8061\"}]}";
-        check("0.5.2 gerbang: pertama = s1 … terakhir = s2109",
-                "https://s1-bs.popoh5.com:8001  …  https://s2109-bs.popoh5.com:8061 (pertama … terakhir)"
+        check("0.6.0 gerbang: pertama/terakhir URL PENUH (format baru — tanpa elipsis)",
+                "pertama https://s1-bs.popoh5.com:8001 · terakhir https://s2109-bs.popoh5.com:8061"
                         .equals(LoginServer.firstAndLastGateway(ackGw)));
         check("0.5.2 gerbang: satu url saja → tanpa tanda …",
                 "https://s1-bs.popoh5.com:8001".equals(
@@ -579,6 +580,70 @@ public class HarnessSdk {
         String akarManual = ConfigAkar.settingBin(templatBin, templatBin);
         check("0.5.3 akar paket manual: bedah tampil, nilai = paket (tanpa tanda →)",
                 akarManual.contains("127.0.0.1") && akarManual.contains("(asli)"));
+
+        // ---------------- TAHAP 19: 0.6.0 — LOG UTUH + RELAY SEMUA MODE ----------------
+        // (owner: "log itu nyawa kita — tidak boleh ada singkatan; kalau panjang
+        //  wajib tampil dan log txt harus menyimpan" + laporan: klik Play mode
+        //  ONLINE gak muncul di log — daftar server ASLI passthrough UTUH membuat
+        //  klien io.connect LANGSUNG ke server asli → server lokal BUTA)
+        // 19a) gerbang: bentuk ter-escape (framing socket.io) tetap terbaca —
+        //      sebab lama "url tidak terbaca": pola \"url\":\" gagal di respons
+        //      ber-escape. Scanner baru menangani keduanya.
+        check("0.6.0 gerbang: satu url → url penuh saja",
+                "https://s1-bs.popoh5.com:8001".equals(
+                        LoginServer.firstAndLastGateway("{\"serverList\":[{\"url\":\"https://s1-bs.popoh5.com:8001\"}]}")));
+        check("0.6.0 gerbang: bentuk ter-escape (framing socket.io) tetap terbaca",
+                "pertama https://s1-bs.popoh5.com:8001 · terakhir https://s2-bs.popoh5.com:8002".equals(
+                        LoginServer.firstAndLastGateway(
+                                "451-[\"handler.process\",{\\\"data\\\":{\\\"serverList\\\":["
+                                        + "{\\\"serverId\\\":\\\"1\\\",\\\"url\\\":\\\"https://s1-bs.popoh5.com:8001\\\"},"
+                                        + "{\\\"serverId\\\":\\\"2\\\",\\\"url\\\":\\\"https://s2-bs.popoh5.com:8002\\\"}]}}]")));
+        check("0.6.0 gerbang: tanpa url = null (tidak meledak)",
+                LoginServer.firstAndLastGateway("{}") == null
+                        && LoginServer.firstAndLastGateway(null) == null);
+        // 19b) parseServerTable — pasangan (serverId, url ASLI) berurutan utuh
+        java.util.ArrayList<String[]> t61 = LoginServer.parseServerTable(ackGw);
+        check("0.6.0 tabel daftar: 3 entri (serverId ↔ url ASLI, urut utuh)",
+                t61 != null && t61.size() == 3
+                        && "1".equals(t61.get(0)[0]) && "https://s1-bs.popoh5.com:8001".equals(t61.get(0)[1])
+                        && "2109".equals(t61.get(2)[0]) && "https://s2109-bs.popoh5.com:8061".equals(t61.get(2)[1]));
+        check("0.6.0 tabel daftar: bentuk ter-escape terbaca",
+                LoginServer.parseServerTable(
+                        "{\\\"serverList\\\":[{\\\"serverId\\\":\\\"1\\\",\\\"url\\\":\\\"https://s1-bs.popoh5.com:8001\\\"}]}")
+                        != null);
+        check("0.6.0 tabel daftar: jumlah tidak cocok → null (passthrough utuh, tetap aman)",
+                LoginServer.parseServerTable(
+                        "{\"serverList\":[{\"serverId\":\"1\",\"url\":\"https://a\"},{\"serverId\":\"2\"}]}") == null);
+        // 19c) rewriteServerListUrls — url entri → relay lokal, field lain UTUH
+        String rw61 = LoginServer.rewriteServerListUrls(ackGw);
+        check("0.6.0 rewrite: SEMUA url entri → http://127.0.0.1:8080, field lain tak tersentuh",
+                rw61 != null && !rw61.contains("s1-bs.popoh5.com") && !rw61.contains("s2109-bs.popoh5.com")
+                        && rw61.contains("\"url\":\"http://127.0.0.1:8080\"")
+                        && rw61.contains("\"serverId\":\"2109\""));
+        check("0.6.0 rewrite: bentuk ter-escape ikut ditulis-ulang",
+                LoginServer.rewriteServerListUrls(
+                        "{\\\"serverList\\\":[{\\\"url\\\":\\\"https://s1-bs.popoh5.com:8001\\\"}]}")
+                        .contains("\\\"url\\\":\\\"http://127.0.0.1:8080\\\""));
+        // 19d) upstream relay semua mode: isian owner menang; ONLINE pakai tabel
+        try {
+            new File(conf, "game-upstream.txt").delete();
+        } catch (Throwable ignored) {
+        }
+        GameServer.setOnlineUpstreamTable(t61);
+        GameServer.setOnlineChosenId("2109");
+        String[] pick61 = GameServer.resolveGameUpstream("online");
+        check("0.6.0 upstream ONLINE: serverId pilihan pemain (2109) → url ASLI penuh",
+                pick61 != null && "https://s2109-bs.popoh5.com:8061".equals(pick61[0])
+                        && pick61[1].contains("pilihan pemain"));
+        GameServer.setOnlineChosenId(null);
+        String[] pick62 = GameServer.resolveGameUpstream("online");
+        check("0.6.0 upstream ONLINE: tanpa pilihan → entri pertama (url ASLI penuh)",
+                pick62 != null && "https://s1-bs.popoh5.com:8001".equals(pick62[0])
+                        && pick62[1].contains("entri pertama"));
+        GameServer.setOnlineUpstreamTable(new java.util.ArrayList<String[]>());
+        String[] pick63 = GameServer.resolveGameUpstream("online");
+        check("0.6.0 upstream ONLINE: tabel kosong → null (❌ Play berhenti jelas, bukan loading diam)",
+                pick63 == null);
 
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");

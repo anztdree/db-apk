@@ -191,7 +191,7 @@ public final class SdkApi {
                 initLogged = true;
                 // 0.4.5: kesiapan server SDK = TEKNIS (bukan berita penting)
                 logTech("ℹ️", "Server SDK lokal siap — layar login SDK ASLI dilayani di sini"
-                        + " (init dari perangkat " + shortId(deviceId) + ")", null);
+                        + " (init dari perangkat " + (deviceId == null ? "-" : deviceId) + ")", null);
             }
         } else if (path.equals("/v1/system/getNotice")) {
             data = "[]";
@@ -216,7 +216,7 @@ public final class SdkApi {
                         + (user == null ? "(tamu)" : user) + " — diterima lokal", null);
             } else if (path.equals("/v1/auth/setGameRoleInfo")) {
                 data = "[]";
-                logTech("ℹ️", "Info peran — uid " + shortId(p.get("uid")) + " server "
+                logTech("ℹ️", "Info peran — uid " + (p.get("uid") == null ? "-" : p.get("uid")) + " server "
                         + p.get("serverId") + " peran " + p.get("roleId"), null);
             } else if (path.equals("/v1/auth/changePassword")) {
                 String user = p.get("username");
@@ -394,12 +394,10 @@ public final class SdkApi {
                     if (!uid.equals(lastCnUid) || now - lastCnLogAt >= 600000L) {
                         lastCnUid = uid;
                         lastCnLogAt = now;
-                        HumanLog.ev("🔑", "Sesi disahkan via SERVER ASLI (passthrough) — game lanjut boot",
+                        HumanLog.ev("🔑", "Sesi disahkan via SERVER ASLI (passthrough)",
                                 "Uid      : " + (uid == null ? "-" : uid) + "\n"
-                                        + "Hasil    : code 0 dari login.popoh5.com:510 — diteruskan utuh lewat "
-                                        + "server login lokal (127.0.0.1:" + Config.loginPort() + ")\n"
-                                        + "Sumber   : SERVER ASLI — token & identitas dikeluarkan di sana "
-                                        + "(progres pemain tetap tersimpan di server asli)");
+                                        + "Hasil  : code 0 · login.popoh5.com:510 · lewat server lokal "
+                                        + "127.0.0.1:" + Config.loginPort());
                     }
                 }
             } catch (Throwable ignored) {
@@ -601,13 +599,6 @@ public final class SdkApi {
             return "?";
         }
         return obj.substring(a + 1, b);
-    }
-
-    private static String shortId(String s) {
-        if (s == null) {
-            return "?";
-        }
-        return s.length() <= 10 ? s : s.substring(0, 10) + "…";
     }
 
     private static String urlEnc(String s) {
