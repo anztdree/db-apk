@@ -58,7 +58,7 @@ public final class SdkServer extends NanoHTTPD {
                 return text(Response.Status.NOT_FOUND,
                         "Server SDK lokal melayani API SDK saja: /v1/* + /loginchecknative.\n"
                                 + "Protokol LOGIN (socket.io) ada di port " + Config.loginPort()
-                                + " — dasbor developer di port " + Config.debugPort() + ".");
+                                + " — dasbor developer di port " + Config.dasborPort() + ".");
             }
             String body = (Method.POST == m) ? readBody(session) : "";
             Response r = SdkApi.handle(m, uri, parms, body);

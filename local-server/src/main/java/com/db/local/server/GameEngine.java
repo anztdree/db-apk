@@ -132,7 +132,7 @@ public final class GameEngine {
             if (nowMs - lastConnectLogAt >= 600000L) {
                 lastConnectLogAt = nowMs;
                 HumanLog.ev("🎮", "Klik Play — klien masuk MESIN GAME LOKAL :"
-                                + Config.gamePort() + " (tanpa relay, tanpa kontak keluar)",
+                                + Config.mainPort() + " (tanpa relay, tanpa kontak keluar)",
                         "Jalur    : LOCAL — protokol game dijawab server ini sendiri (handcraft)\n"
                                 + "Sesi     : " + sid + " (engine.io v3 · polling)\n"
                                 + "Verify   : token sesi game " + token + " — klien membuktikan diri\n"

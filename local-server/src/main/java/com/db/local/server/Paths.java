@@ -7,56 +7,66 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 
 /**
- * PATHS — SUMBER TUNGGAL SEMUA JALUR FOLDER (0.0.3).
+ * PATHS — SUMBER TUNGGAL SEMUA JALUR FOLDER/FILE (0.0.4).
  *
- * Keluhan owner 2026-11-15: "berantakan juga struktur folder pembacaan file
- * di folder server Android/data.. struktur folder local di android/data harus
- * juga jelas". Akar keberantakan (audit 0.0.2 — bukti kode):
- *   1) dragonball.db (DATA PEMAIN) tinggal di config/ — campur dengan config.
- *   2) status.json (state runtime dasbor) + www.stamp (penanda mirror) ikut
- *      menumpuk di config/.
- *   3) config/servers.json (snapshot mati era 0.4.4) masih dilindungi whitelist
- *      padahal TIDAK dibaca lagi sejak 0.5.3 (serverlist kini dari paket manual
- *      config-offline/ — harness 18a membuktikan) — dua servers.json = bingung.
- *   4) capture/ masih di whitelist root padahal REKAM mati total 0.5.4 —
- *      sisa sampah menetap di perangkat (komentar lama: "dihapus manual oleh
- *      pemilik" = kontradiksi dengan anti-sampah).
- *   5) String path tersebar di 10+ kelas tanpa sumber tunggal.
- *   6) Tidak ada peta folder di perangkat — pemilik buka file manager =
- *      tebak-tebakan.
+ * Arahan owner 2026-11-15 (pes langsung):
+ *   "server json bisa di gantikah jadi .env"
+ *   "lalu SDK-SERVER, LOGIN-SERVER, MAIN-SERVER, CHAT-SERVER,
+ *    DUNGEON-SERVER dan LOG !!  nama nya jelas"
+ *   + kendala sebelumnya: "banyak folder sampah yg gak jelas.. isi root
+ *     folder gak jelas.. PETA.TXT GK PENTING.. TMP GK PENTING".
  *
- * STRUKTUR BARU Android/data/com.db.local/server/ (tiap folder SATU makna):
+ * STRUKTUR BARU Android/data/com.db.local/server/ (root = 3 file + 6 folder,
+ * SEMUA bernama jelas — nama folder = nama layanannya):
  *
  *   server/
- *   ├── PETA.txt          peta folder seluruh isi (dibuat server, dijaga Cleaner)
- *   ├── config/           PENGATURAN — boleh pemilik sunting
- *   │   ├── server.json       mode/port/logTech/rekam/toggle
- *   │   └── game-upstream.txt relay OPSIONAL (kosong = lokal murni)
- *   ├── db/               DATA PEMAIN — dragonball.db — JANGAN DIHAPUS
- *   ├── state/            keadaan runtime — dibuat ulang otomatis
- *   │   ├── status.json       snapshot status dasbor :4000
- *   │   └── www.stamp         penanda versi mirror www/
- *   ├── www/              MIRROR STATIS GAME (dilayani :8080) — jangan disunting
- *   ├── config-offline/   PAKET MANUAL klien — ditimpa dari APK tiap boot
- *   ├── logs/             human.log · events.jsonl · crash.log (nyawa)
- *   └── tmp/              kerja sementara
+ *   ├── .env              PENGATURAN — SEMUA seting server SATU file
+ *   │                     (pengganti config/server.json + game-upstream.txt)
+ *   ├── dragonball.db     DATA PEMAIN (SQLite + jurnal) — JANGAN DIHAPUS
+ *   ├── status.json       keadaan server saat ini (dibuat ulang otomatis)
+ *   ├── SDK-SERVER/       milik SDK :8610 (HTTP /v1/* + loginchecknative — QHinfo)
+ *   ├── LOGIN-SERVER/     milik LOGIN :8611 (engine.io v3 + socket.io v2)
+ *   ├── MAIN-SERVER/      milik MAIN :8080 — SEMUA yang dilayani ke klien:
+ *   │   ├── bs/               mirror statis game (path = URL server asli)
+ *   │   ├── config-offline/   paket MANUAL config klien (ditimpa dari APK tiap boot)
+ *   │   └── www.stamp         penanda versi mirror (bookkeeping MAIN)
+ *   ├── CHAT-SERVER/      milik CHAT :8612 (service discovery registChat — siap)
+ *   ├── DUNGEON-SERVER/   milik DUNGEON :8613 (myTeamServerSocketUrl — siap)
+ *   └── LOG/              LOG — nyawa (human.log · events.jsonl · crash.log)
  *
- * MIGRASI LAYOUT LAMA → BARU (otomatis tiap boot SEBELUM Cleaner, terekam log;
- * perangkat 0.0.2 ke bawah pindah tanpa kehilangan data):
- *   config/dragonball.db (+-journal/-wal/-shm/.corrupt) → db/
- *   config/status.json   → state/
- *   config/www.stamp     → state/
- *   config/servers.json (mati) + capture/ (mati) → DIHAPUS Cleaner (log jelas).
+ * Yang DIHAPUS dari struktur lama 0.0.3 (kendala owner):
+ *   PETA.txt (tidak penting), tmp/ (tidak penting), folder config/ + db/ +
+ *   state/ + www/ + config-offline/ + logs/ di root (isi pindah ke folder
+ *   layanan masing-masing — dulu 8 entri root tidak semua jelas).
+ *
+ * MIGRASI otomatis perangkat 0.0.3 ke bawah (SEBELUM Db.boot &amp; Cleaner,
+ * terekam log; TIDAK PERNAH menimpa target yang sudah ada — data baru menang):
+ *   db/dragonball.db* (+jurnal)      → dragonball.db* (root)
+ *   config/dragonball.db* (0.0.2)    → dragonball.db* (root)
+ *   state/status.json · config/status.json → status.json (root)
+ *   state/www.stamp                  → MAIN-SERVER/www.stamp
+ *   www/bs/**                        → MAIN-SERVER/bs/**
+ *   config-offline/**                → MAIN-SERVER/config-offline/**
+ *   logs/**                          → LOG/**
+ *   config/server.json + game-upstream.txt → NILAINYA diambil ke .env
+ *       (Config.migrateLegacyValues — nilai tidak hilang; file lama disapu
+ *        Cleaner dengan nama+ukuran di log).
  *
  * SEMUA kelas WAJIB lewat Paths.* — dilarang membuat jalur sendiri
- * (new File(root, "config") tersebar = akar keberantakan, tidak diulang).
+ * (new File(root, "…") tersebar = akar keberantakan, tidak diulang).
  * Harness juga memanggil Paths.init(root) agar perilaku identik dengan device.
  */
 public final class Paths {
-    /** Versi PETA.txt — naikkan bila struktur berubah (PETA ditulis ulang). */
-    public static final String PETA_VERSION = "1";
-    /** Nama file peta folder di root server. */
-    public static final String PETA_NAME = "PETA.txt";
+    /** Nama file pengaturan di root server (format .env — KEY=VALUE). */
+    public static final String ENV_NAME = ".env";
+    /** Nama folder LOG (nyawa server). */
+    public static final String LOG_DIR = "LOG";
+    /** Nama folder layanan (nama = layanannya — arahan owner). */
+    public static final String SDK_DIR = "SDK-SERVER";
+    public static final String LOGIN_DIR = "LOGIN-SERVER";
+    public static final String MAIN_DIR = "MAIN-SERVER";
+    public static final String CHAT_DIR = "CHAT-SERVER";
+    public static final String DUNGEON_DIR = "DUNGEON-SERVER";
 
     private static final Object LOCK = new Object();
     private static volatile File root = null;
@@ -87,86 +97,81 @@ public final class Paths {
         return root != null;
     }
 
-    // ---------------- folder (SATU makna per folder) ----------------
+    // ---------------- folder layanan (nama = layanannya) ----------------
 
-    /** config/ — PENGATURAN server, boleh pemilik sunting (server.json, game-upstream.txt). */
-    public static File config() {
-        return child("config");
+    /** SDK-SERVER/ — milik SDK :8610 (HTTP murni /v1/* + loginchecknative). */
+    public static File sdkServer() {
+        return child(SDK_DIR);
     }
 
-    /** db/ — DATA PEMAIN (dragonball.db + jurnal SQLite) — jangan dihapus. */
-    public static File db() {
-        return child("db");
+    /** LOGIN-SERVER/ — milik LOGIN :8611 (engine.io v3 + socket.io v2 murni). */
+    public static File loginServer() {
+        return child(LOGIN_DIR);
     }
 
-    /** state/ — keadaan runtime yang dibuat server (status.json, www.stamp) — dibuat ulang otomatis. */
-    public static File state() {
-        return child("state");
+    /** MAIN-SERVER/ — milik MAIN :8080 (mirror bs/ + paket config-offline/ + stamp). */
+    public static File mainServer() {
+        return child(MAIN_DIR);
     }
 
-    /** www/ — MIRROR statis game (dilayani :8080) — jangan disunting. */
-    public static File www() {
-        return child("www");
+    /** CHAT-SERVER/ — milik CHAT :8612 (service discovery registChat — siap). */
+    public static File chatServer() {
+        return child(CHAT_DIR);
     }
 
-    /** config-offline/ — PAKET MANUAL config klien (kanonik, ditimpa dari APK tiap boot). */
-    public static File offline() {
-        return child("config-offline");
+    /** DUNGEON-SERVER/ — milik DUNGEON :8613 (service discovery team — siap). */
+    public static File dungeonServer() {
+        return child(DUNGEON_DIR);
     }
 
-    /** logs/ — log bahasa manusia + mesin + crash (nyawa — tidak boleh dipangkas). */
+    /** LOG/ — log bahasa manusia + mesin + crash (nyawa — tidak boleh dipangkas). */
     public static File logs() {
-        return child("logs");
+        return child(LOG_DIR);
     }
 
-    /** tmp/ — kerja sementara (boleh dihapus kapan saja). */
-    public static File tmp() {
-        return child("tmp");
+    /** MAIN-SERVER/bs/ — mirror statis game (path = URL server asli). */
+    public static File mirror() {
+        return new File(mainServer(), "bs");
+    }
+
+    /** MAIN-SERVER/config-offline/ — PAKET MANUAL config klien (kanonik, ditimpa tiap boot). */
+    public static File offline() {
+        return new File(mainServer(), "config-offline");
     }
 
     // ---------------- file penting (satu tempat mendefinisikan) ----------------
 
-    /** config/server.json — mode + port + pilihan dasbor. */
-    public static File serverJson() {
-        return new File(config(), "server.json");
+    /** .env — SEMUA pengaturan server SATU file (pengganti config/server.json + game-upstream.txt). */
+    public static File envFile() {
+        return new File(child(""), ENV_NAME);
     }
 
-    /** config/game-upstream.txt — relay OPSIONAL isian pemilik (1 baris URL; kosong = lokal murni). */
-    public static File gameUpstream() {
-        return new File(config(), "game-upstream.txt");
-    }
-
-    /** db/dragonball.db — DATABASE pemain (akun/tamu/sesi/data game). */
+    /** dragonball.db — DATABASE pemain di root (akun/tamu/sesi/data game). */
     public static File dbFile() {
-        return new File(db(), "dragonball.db");
+        return new File(child(""), "dragonball.db");
     }
 
-    /** state/status.json — snapshot status untuk dasbor. */
+    /** status.json — keadaan server saat ini (root — sekali lihat langsung jelas). */
     public static File statusJson() {
-        return new File(state(), "status.json");
+        return new File(child(""), "status.json");
     }
 
-    /** state/www.stamp — penanda versi mirror www/ (bukan di dalam www/). */
+    /** MAIN-SERVER/www.stamp — penanda versi mirror (bookkeeping MAIN). */
     public static File wwwStamp() {
-        return new File(state(), "www.stamp");
+        return new File(mainServer(), "www.stamp");
     }
 
-    /** PETA.txt — peta folder di root server (dibuat/diperbarui server saat boot). */
-    public static File petaTxt() {
-        return new File(child(""), PETA_NAME);
-    }
-
-    /** logs/human.log. */
+    /** LOG/human.log. */
     public static File humanLog() {
         return new File(logs(), "human.log");
     }
 
-    /** logs/events.jsonl. */
+    /** LOG/events.jsonl. */
     public static File eventsJsonl() {
         return new File(logs(), "events.jsonl");
     }
 
-    /** logs/crash.log — bukti force close (dibaca saat boot lalu di-rename .read). */
+    /** LOG/crash.log — bukti force close (dibaca saat boot lalu di-rename .read). */
     public static File crashLog() {
         return new File(logs(), "crash.log");
     }
@@ -175,7 +180,8 @@ public final class Paths {
 
     /** Pastikan SEMUA folder standar ada (idempoten). Gagal per folder tidak melempar. */
     public static void ensureDirs() {
-        File[] all = {config(), db(), state(), www(), offline(), logs(), tmp()};
+        File[] all = {sdkServer(), loginServer(), mainServer(), chatServer(),
+                dungeonServer(), logs()};
         for (int i = 0; i < all.length; i++) {
             try {
                 if (!all[i].exists()) {
@@ -186,48 +192,105 @@ public final class Paths {
         }
     }
 
-    // ---------------- migrasi layout lama → baru (0.0.3) ----------------
+    // ---------------- migrasi layout lama → layanan (0.0.4) ----------------
 
     /**
-     * Pindahkan isi config/ era 0.0.2 ke bawah ke tempat yang benar (SEBELUM
+     * Pindahkan isi layout 0.0.3 ke bawah ke folder layanan yang benar (SEBELUM
      * Cleaner &amp; SEBELUM Db.boot). Hanya memindah bila sumber ada DAN target
      * belum ada (tidak pernah menimpa data baru dengan lama). Return teks
      * ringkasan untuk baris log ("" bila tidak ada yang pindah).
+     *
+     * Nilai config (config/server.json + config/game-upstream.txt) TIDAK dipindah
+     * di sini — nilainya diambil ke .env oleh Config.migrateLegacyValues(root)
+     * (dipanggil Starter sebelum Cleaner menyapu folder config/).
      */
-    public static String migrateFromLegacyLayout() {
+    public static String migrateToServiceLayout() {
         StringBuilder r = new StringBuilder();
-        // 1) DATABASE pemain: config/dragonball.db* → db/
+        // 1) DATABASE pemain: db/dragonball.db* (0.0.3) + config/dragonball.db*
+        //    (0.0.2 ke bawah) → ROOT (dragonball.db* — satu file jelas di root)
         String[] dbFiles = {"dragonball.db", "dragonball.db-journal", "dragonball.db-wal",
                 "dragonball.db-shm", "dragonball.db.corrupt"};
         for (int i = 0; i < dbFiles.length; i++) {
-            File src = new File(config(), dbFiles[i]);
-            File dst = new File(db(), dbFiles[i]);
-            if (moveOne(src, dst)) {
-                if (r.length() > 0) {
-                    r.append("\n");
-                }
-                r.append("config/").append(dbFiles[i]).append(" → db/").append(dbFiles[i]);
+            File dst = new File(child(""), dbFiles[i]);
+            if (moveOne(new File(child("db"), dbFiles[i]), dst)) {
+                add(r, "db/" + dbFiles[i] + " → " + dbFiles[i]);
+            }
+            if (moveOne(new File(child("config"), dbFiles[i]), dst)) {
+                add(r, "config/" + dbFiles[i] + " → " + dbFiles[i]);
             }
         }
-        // 2) state runtime: config/status.json + config/www.stamp → state/
-        String[] stateFiles = {"status.json", "www.stamp"};
-        for (int i = 0; i < stateFiles.length; i++) {
-            File src = new File(config(), stateFiles[i]);
-            File dst = new File(state(), stateFiles[i]);
-            if (moveOne(src, dst)) {
-                if (r.length() > 0) {
-                    r.append("\n");
+        // 2) status.json: state/status.json (0.0.3) + config/status.json (0.0.2) → ROOT
+        File dstStatus = statusJson();
+        if (moveOne(new File(child("state"), "status.json"), dstStatus)) {
+            add(r, "state/status.json → status.json");
+        }
+        if (moveOne(new File(child("config"), "status.json"), dstStatus)) {
+            add(r, "config/status.json → status.json");
+        }
+        // 3) penanda mirror: state/www.stamp (0.0.3) + config/www.stamp (0.0.2)
+        //    → MAIN-SERVER/www.stamp (bookkeeping milik MAIN)
+        File dstStamp = wwwStamp();
+        if (moveOne(new File(child("state"), "www.stamp"), dstStamp)) {
+            add(r, "state/www.stamp → MAIN-SERVER/www.stamp");
+        }
+        if (moveOne(new File(child("config"), "www.stamp"), dstStamp)) {
+            add(r, "config/www.stamp → MAIN-SERVER/www.stamp");
+        }
+        // 4) mirror game: www/bs → MAIN-SERVER/bs (www/ hanya berisi bs/ —
+        //    bukti assets/server/www/). Anak www/ lain ikut dipindah apa adanya.
+        File www = child("www");
+        File[] wwwKids = www.listFiles();
+        if (wwwKids != null) {
+            for (int i = 0; i < wwwKids.length; i++) {
+                File dst = new File(mainServer(), wwwKids[i].getName());
+                if (moveOne(wwwKids[i], dst)) {
+                    add(r, "www/" + wwwKids[i].getName() + " → MAIN-SERVER/" + wwwKids[i].getName());
                 }
-                r.append("config/").append(stateFiles[i]).append(" → state/").append(stateFiles[i]);
+            }
+        }
+        // 5) paket manual klien: config-offline/** → MAIN-SERVER/config-offline/**
+        File off = child("config-offline");
+        File[] offKids = off.listFiles();
+        if (offKids != null) {
+            File dstDir = offline();
+            if (!dstDir.exists()) {
+                dstDir.mkdirs();
+            }
+            for (int i = 0; i < offKids.length; i++) {
+                if (moveOne(offKids[i], new File(dstDir, offKids[i].getName()))) {
+                    add(r, "config-offline/" + offKids[i].getName()
+                            + " → MAIN-SERVER/config-offline/" + offKids[i].getName());
+                }
+            }
+        }
+        // 6) LOG: logs/** → LOG/** (nyawa TIDAK hilang saat naik versi)
+        File lg = child("logs");
+        File[] lgKids = lg.listFiles();
+        if (lgKids != null) {
+            File dstDir = logs();
+            if (!dstDir.exists()) {
+                dstDir.mkdirs();
+            }
+            for (int i = 0; i < lgKids.length; i++) {
+                if (moveOne(lgKids[i], new File(dstDir, lgKids[i].getName()))) {
+                    add(r, "logs/" + lgKids[i].getName() + " → LOG/" + lgKids[i].getName());
+                }
             }
         }
         return r.toString();
     }
 
-    /** Pindah satu file bila sumber ada dan target belum ada; return true bila pindah. */
+    private static void add(StringBuilder r, String line) {
+        if (r.length() > 0) {
+            r.append("\n");
+        }
+        r.append(line);
+    }
+
+    /** Pindah satu file/folder bila sumber ada dan target belum ada; return true bila pindah. */
     private static boolean moveOne(File src, File dst) {
         try {
-            if (!src.exists() || !src.isFile()) {
+            if (!src.exists()) {
                 return false;
             }
             if (dst.exists()) {
@@ -243,9 +306,24 @@ public final class Paths {
         }
     }
 
-    /** Fallback pindah antar-volume: salin byte-per-byte lalu hapus sumber. */
+    /** Fallback pindah antar-volume: salin rekursif lalu hapus sumber. */
     private static boolean copyMove(File src, File dst) {
         try {
+            if (src.isDirectory()) {
+                File[] kids = src.listFiles();
+                if (kids != null) {
+                    if (!dst.exists() && !dst.mkdirs()) {
+                        return false;
+                    }
+                    boolean all = true;
+                    for (int i = 0; i < kids.length; i++) {
+                        all = copyMove(kids[i], new File(dst, kids[i].getName())) && all;
+                    }
+                    deleteRc(src);
+                    return all;
+                }
+                return src.delete();
+            }
             FileInputStream in = new FileInputStream(src);
             FileOutputStream out = new FileOutputStream(dst);
             byte[] buf = new byte[65536];
@@ -261,98 +339,16 @@ public final class Paths {
         }
     }
 
-    // ---------------- PETA.txt ----------------
-
-    /**
-     * Isi PETA.txt — handcraft, SATU makna per folder, tanpa singkatan.
-     * Ditulis di root server saat boot (bila hilang / versi peta berubah) —
-     * pemilik buka file manager langsung paham apa isi tiap folder.
-     */
-    public static String petaText() {
-        return "============================================================\n"
-                + "PETA FOLDER — SERVER LOKAL DB (com.db.local)\n"
-                + "Peta versi " + PETA_VERSION + " (APK 0.0.3)\n"
-                + "Folder ini : /storage/emulated/0/Android/data/com.db.local/server/\n"
-                + "Ditulis otomatis oleh server saat boot.\n"
-                + "Entri lain di luar peta ini DIHAPUS otomatis (anti-sampah).\n"
-                + "============================================================\n"
-                + "\n"
-                + "config/             PENGATURAN SERVER — boleh disunting pemilik\n"
-                + "  server.json         mode (local/online), port game 8080, sdk 8610,\n"
-                + "                      login 8611, dasbor 4000, logTech, rekam, toggleX/Y\n"
-                + "  game-upstream.txt   relay OPSIONAL ke server game asli (satu baris URL).\n"
-                + "                      Tidak ada / kosong = lokal murni (nol kontak keluar).\n"
-                + "\n"
-                + "db/                 DATA PEMAIN — JANGAN DIHAPUS (tahan reboot)\n"
-                + "  dragonball.db       akun, tamu, sesi SDK, data game (SQLite)\n"
-                + "                      (+ -journal/-wal/-shm muncul saat SQLite aktif)\n"
-                + "\n"
-                + "state/              KEADAAN SERVER — dibuat ulang otomatis, aman dihapus\n"
-                + "  status.json         snapshot status untuk dasbor port 4000\n"
-                + "  www.stamp           penanda versi mirror www/ (bukan di dalam www/)\n"
-                + "\n"
-                + "www/                MIRROR STATIS GAME — dilayani port 8080 — JANGAN DISUNTING\n"
-                + "  bs/                 H5 Egret: index-native.html, manifest.json, js/,\n"
-                + "                      resource/, upgrade/ (version + zip incremental)\n"
-                + "                      Diekstrak otomatis dari APK; hilang = terisi ulang.\n"
-                + "\n"
-                + "config-offline/     PAKET CONFIG MANUAL KLIEN — ditimpa dari APK tiap boot\n"
-                + "  setting.json        config login terbaca (sumber setting_BS_Android.bin)\n"
-                + "  setting_BS_Android.bin  bin XOR DragonBall (protokol shell asli)\n"
-                + "  servers.json        satu entri \"Server Lokal\" (hanya field kontrak klien)\n"
-                + "  serversetting.json  loginserver http://127.0.0.1:8611\n"
-                + "  manifest.txt        kunci sha256 seluruh isi paket (tak bisa geser diam)\n"
-                + "\n"
-                + "logs/               LOG — NYAWA (timeline tunggal, tidak dipangkas)\n"
-                + "  human.log           log bahasa manusia (rotasi 4 MB -> human.log.1)\n"
-                + "  events.jsonl        log mesin (satu JSON per baris)\n"
-                + "  crash.log           bukti force close (dibaca saat boot lalu .read)\n"
-                + "\n"
-                + "tmp/                KERJA SEMENTARA — boleh dihapus kapan saja\n"
-                + "============================================================\n"
-                + "Sumber kebenaran: README.md — repo github.com/anztdree/db-apk\n"
-                + "============================================================\n";
-    }
-
-    /**
-     * Tulis PETA.txt bila hilang atau versi peta berubah (idempoten — tidak
-     * menulis-ulang tiap boot bila tetap). Return "ditulis"/"sudah"/"gagal: …".
-     */
-    public static String writePetaIfStale() {
+    private static void deleteRc(File f) {
         try {
-            File f = petaTxt();
-            if (f.exists() && f.isFile()) {
-                String cur = readText(f);
-                if (cur.contains("Peta versi " + PETA_VERSION + " ")) {
-                    return "sudah";
+            File[] kids = f.listFiles();
+            if (kids != null) {
+                for (int i = 0; i < kids.length; i++) {
+                    deleteRc(kids[i]);
                 }
             }
-            File parent = f.getParentFile();
-            if (parent != null && !parent.exists()) {
-                parent.mkdirs();
-            }
-            Writer w = new OutputStreamWriter(new FileOutputStream(f, false), "UTF-8");
-            w.write(petaText());
-            w.close();
-            return "ditulis";
-        } catch (Throwable t) {
-            return "gagal: " + t;
-        }
-    }
-
-    private static String readText(File f) {
-        try {
-            FileInputStream in = new FileInputStream(f);
-            StringBuilder sb = new StringBuilder(2048);
-            byte[] buf = new byte[1024];
-            int n;
-            while ((n = in.read(buf)) > 0) {
-                sb.append(new String(buf, 0, n, "UTF-8"));
-            }
-            in.close();
-            return sb.toString();
-        } catch (Throwable t) {
-            return "";
+            f.delete();
+        } catch (Throwable ignored) {
         }
     }
 

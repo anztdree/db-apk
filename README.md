@@ -1,6 +1,6 @@
 # db-apk — Dokumentasi Rencana: Standalone Local Server
 
-> **Status dokumen:** Fondasi & Implementasi (**PEMISAHAN PORT SDK/LOGIN — §2.34, terbitan 0.0.2 terkini**: pola 5-server asli — owner: *"pola server aslinya punya 5 server utama.. SDK, login, main, chat, dungeon, terpisah dengan berbagai port"* + *"SDK dan loginserver harus matang sempurna rapi"* — **SdkServer :8610 HTTP murni** (/v1/* + loginchecknative; QHinfo) **· LoginServer :8611 socket murni** (engine.io v3 + socket.io v2) **· Game :8080 · dasbor :4000**; satu port satu peran; paket config-offline handcraft diperbarui (loginPort 8611 + loginWebPort 8610, servers.json HANYA field kontrak klien — upstream/urlInner/chatInner dihapus, 0 referensi di JS); migrasi server.json legacy aman (SDK pertahankan 8610, login digeser 8611, terekam log); harness **179 LULUS + 15 GAGAL LINGKUNGAN** (nol regresi, +14 tes). Di bawahnya: **MESIN GAME LOKAL — §2.33, terbitan 0.0.1**: klik Play di LOCAL DIJAWAB SERVER SENDIRI — GameEngine (verify XXTEA kunci "verification" dari kode klien → enterGame model pemain dari dragonball.db → aksi lanjutan → Notify) — handcraft murni, NOL nilai dari online (kontrak = kode klien milik proyek; capture = peta urutan saja). Di bawahnya: **KOREKSI KESALAHAN FATAL config mentah (§2.32)**: paket manual bebas host server asli; relay = isian pemilik saja. Sebelumnya: **v4.7 — build 0.4.7** — **LOG BAHASA MANUSIA: BOOT 3 BARIS + PEMETAAN ARAH KONEKSI** (laporan owner *"login server muncul .. saya rasa isi config loginserver anda masih mengarah ke server aslinya.. log ini pun tidak membantu kurang efektif kurang jelas"*, §2.15): **BOOT 3 BARIS** — `✔ Server lokal siap` → `ℹ Mode LOCAL — <peta arah koneksi>` → `ℹ Pemain: …` (dulu 5-6 baris siap bertumpuk tanpa cerita); dugaan "config loginserver masih ke server asli" DIJAWAB DENGAN BUKTI (login **LOKAL** — sesi 8610; daftar server = snapshot asli **sengaja**; gameplay = server game asli — progres di sana, §2.15); peta arah koneksi tampil permanen di dasbor (modemap + kartu lipat); dedupe `loginchecknative OK` diperlebar 10 dtk → 10 menit. Di bawahnya (v4.6): **MODEL FINAL LOG: ALUR LINEAR + GRUP BATCH** (kesepakatan owner *"group itu kalau terdeteksi emang config/resource yg banyak. kalau alur ya gk usah di group"*, §2.14): **ALUR** (boot → SDK → login → masuk game) = baris linear yang tidak pernah dikelompokkan; **AKTIVITAS BATCH** (mirror CDN per-file, request game, 404 fallback, passthrough ONLINE) = **GRUP lipat** di dasbor — satu baris judul dengan **statistik hidup** (`▸ Mirror CDN 470 file · 84,2 MB · 0 gagal (3 dtk)`), diklik untuk rincian per-file, **kegagalan naik sendiri sebagai ⚠ linear**, grup kosong tak tampil; `logs/human.log` = cerita tempel — grup ditulis **SEKALI sebagai ringkasan Σ satu baris** (`Mirror CDN: 470 file · 84,2 MB · 0 gagal — rincian di dasbor`); dasbor baru: **panel status atas (game/login/sesi) + alur + grup di bawahnya**, bukti teknis dilipat di bawah.
+> **Status dokumen:** Fondasi & Implementasi (**FOLDER LAYANAN + .env — §2.36, terbitan 0.0.4 terkini**: arahan owner *"server json bisa di gantikah jadi .env . lalu SDK-SERVER, LOGIN-SERVER, MAIN-SERVER, CHAT-SERVER, DUNGEON-SERVER dan LOG !!  nama nya jelas"* + kendala *"banyak folder sampah yg gak jelas.. PETA.TXT GK PENTING.. TMP GK PENTING"* — root kini **3 file + 6 folder layanan bernama jelas** (`​.env` semua pengaturan SATU file pengganti server.json+game-upstream.txt · `dragonball.db` data pemain di root · `status.json` keadaan server · `SDK-SERVER/ :8610` · `LOGIN-SERVER/ :8611` · `MAIN-SERVER/ :8080` berisi `bs/`+`config-offline/`+`www.stamp` · `CHAT-SERVER/ :8612` · `DUNGEON-SERVER/ :8613` · `LOG/`); PETA.txt + tmp/ + config/db/state/www/config-offline/logs di root DIHAPUS (isi pindah folder layanannya, nilai config lama ikut ke .env — migrasi otomatis terekam log); port CHAT 8612 + DUNGEON 8613 dideklarasikan .env (folder siap); harness **224 LULUS + 0 GAGAL** (slf4j dilengkapi — SQLite JDBC nyata; baseline 192+15). Di bawahnya: **PEMISAHAN PORT SDK/LOGIN — §2.34, terbitan 0.0.2**: pola 5-server asli — owner: *"pola server aslinya punya 5 server utama.. SDK, login, main, chat, dungeon, terpisah dengan berbagai port"* + *"SDK dan loginserver harus matang sempurna rapi"* — **SdkServer :8610 HTTP murni** (/v1/* + loginchecknative; QHinfo) **· LoginServer :8611 socket murni** (engine.io v3 + socket.io v2) **· Game :8080 · dasbor :4000**; satu port satu peran; paket config-offline handcraft diperbarui (loginPort 8611 + loginWebPort 8610, servers.json HANYA field kontrak klien — upstream/urlInner/chatInner dihapus, 0 referensi di JS); migrasi server.json legacy aman (SDK pertahankan 8610, login digeser 8611, terekam log); harness **179 LULUS + 15 GAGAL LINGKUNGAN** (nol regresi, +14 tes). Di bawahnya: **MESIN GAME LOKAL — §2.33, terbitan 0.0.1**: klik Play di LOCAL DIJAWAB SERVER SENDIRI — GameEngine (verify XXTEA kunci "verification" dari kode klien → enterGame model pemain dari dragonball.db → aksi lanjutan → Notify) — handcraft murni, NOL nilai dari online (kontrak = kode klien milik proyek; capture = peta urutan saja). Di bawahnya: **KOREKSI KESALAHAN FATAL config mentah (§2.32)**: paket manual bebas host server asli; relay = isian pemilik saja. Sebelumnya: **v4.7 — build 0.4.7** — **LOG BAHASA MANUSIA: BOOT 3 BARIS + PEMETAAN ARAH KONEKSI** (laporan owner *"login server muncul .. saya rasa isi config loginserver anda masih mengarah ke server aslinya.. log ini pun tidak membantu kurang efektif kurang jelas"*, §2.15): **BOOT 3 BARIS** — `✔ Server lokal siap` → `ℹ Mode LOCAL — <peta arah koneksi>` → `ℹ Pemain: …` (dulu 5-6 baris siap bertumpuk tanpa cerita); dugaan "config loginserver masih ke server asli" DIJAWAB DENGAN BUKTI (login **LOKAL** — sesi 8610; daftar server = snapshot asli **sengaja**; gameplay = server game asli — progres di sana, §2.15); peta arah koneksi tampil permanen di dasbor (modemap + kartu lipat); dedupe `loginchecknative OK` diperlebar 10 dtk → 10 menit. Di bawahnya (v4.6): **MODEL FINAL LOG: ALUR LINEAR + GRUP BATCH** (kesepakatan owner *"group itu kalau terdeteksi emang config/resource yg banyak. kalau alur ya gk usah di group"*, §2.14): **ALUR** (boot → SDK → login → masuk game) = baris linear yang tidak pernah dikelompokkan; **AKTIVITAS BATCH** (mirror CDN per-file, request game, 404 fallback, passthrough ONLINE) = **GRUP lipat** di dasbor — satu baris judul dengan **statistik hidup** (`▸ Mirror CDN 470 file · 84,2 MB · 0 gagal (3 dtk)`), diklik untuk rincian per-file, **kegagalan naik sendiri sebagai ⚠ linear**, grup kosong tak tampil; `logs/human.log` = cerita tempel — grup ditulis **SEKALI sebagai ringkasan Σ satu baris** (`Mirror CDN: 470 file · 84,2 MB · 0 gagal — rincian di dasbor`); dasbor baru: **panel status atas (game/login/sesi) + alur + grup di bawahnya**, bukti teknis dilipat di bawah.
 > **Temuan 2026-10-31 (probe ulang, mengoreksi catatan lama):** **SERVER ASLI MASIH HIDUP** — `setting_BS_Android.bin` (711 B, terenkripsi XOR kunci **`DragonBall`**) berhasil didekripsi → membongkar host sesungguhnya: **dragonh5cdn.popoh5.com** (H5 game + folder upgrade). Seluruh file fisik server asli berhasil diunduh & menjadi isi mirror (daftar lengkap §2.9). Catatan lama "server asli sudah mati" TERBANTAHKAN — server hanya memindahkan file ke host CDN.
 > **Lingkup:** Fondasi infrastruktur client-server. **Analisis gameplay sengaja dikecualikan.**
 > **Tanggal:** 2026-11-02
@@ -365,9 +365,9 @@ CREATE TABLE kv           (key TEXT PRIMARY KEY, value TEXT);   -- local_user, l
 - **Keunggulan**: transaksi ACID + journal crash-safe + lock + indeks PK + bisa diperiksa `sqlite3 dragonball.db "SELECT * FROM accounts"`
 - **Engine (rantai)**: `DbAndroid` (device) → `DbJdbc` (HANYA harness desktop — SQL sama persis, class TIDAK masuk APK) → `DbMem` (jaring memori — boot tetap jalan apa pun yang terjadi)
 - **MIGRASI OTOMATIS** (boot pertama, SEBELUM Cleaner): `local-user.txt` → `kv local_user` · `accounts.txt` → `accounts` · `sdk-guests.txt` → `sdk_guests` · `sdk-session.txt` → `sdk_sessions` · `sdk-last.txt` → `kv last_uid` → file lama di-rename `*.imported` (nol data hilang; diimpor sekali — tahan dobel)
-- **Cleaner (0.0.3)**: whitelist per-folder — `db/` melindungi `dragonball.db` (+`-journal/-wal/-shm/-corrupt`); `config/` MURNI pengaturan (`server.json`, `game-upstream.txt`); `state/` melindungi `status.json` + `www.stamp`; `PETA.txt` di root dilindungi
+- **Cleaner (0.0.4)**: whitelist per-folder — ROOT melindungi `.env` + `dragonball.db` (+`-journal/-wal/-shm/-corrupt` di root) + `status.json` + 6 folder layanan; `MAIN-SERVER/` melindungi `bs/`, `config-offline/`, `www.stamp`; `LOG/` melindungi log + rotasi + `crash.log.read`; SDK/LOGIN/CHAT/DUNGEON-SERVER dijaga kosong (state layanan hidup di dragonball.db); folder lama `config/ db/ state/ www/ config-offline/ logs/`, `PETA.txt`, `tmp/`, `capture/` DIHAPUS (isi sudah pindah / tidak penting — nama+ukuran di log)
 - **Korupsi?** `DbAndroid` memulihkan hanya untuk korupsi SQLite SUNGUHAN (`SQLiteDatabaseCorruptException`/malformed) — galat lain (lock sesaat, engine tak tersedia) TIDAK menyentuh file (bug awal harness: rename otomatis membuat data "hilang" — sudah difix & diuji)
-- File yang TETAP file (sengaja): `config/server.json` (config aplikasi) · `config-offline/servers.json` (paket manual — sumber daftar server sejak 0.5.3) · `state/status.json` (dasbor) · log
+- File yang TETAP file (sengaja, 0.0.4): `.env` (SEMUA pengaturan — pengganti config/server.json + game-upstream.txt) · `dragonball.db` di root (data pemain) · `status.json` di root (keadaan server) · `MAIN-SERVER/config-offline/servers.json` (paket manual — sumber daftar server sejak 0.5.3) · `LOG/*` (nyawa)
 
 **Verifikasi sandbox (harness 0.4.3 — 50/50 LULUS, `local-server/harness/HarnessSdk.java` di-commit):** engine = SQLite nyata via JDBC; migrasi kelima file warisan (guest pemilik, akun + login_count 7, sesi, last_uid); file lama di-rename `.imported`; **REBOOT** (buka ulang DB) = guest/akun/sesi utuh tanpa impor dobel; autoLogin token warisan; regresi SDK 0.4.2 PENUH (init, registerVisitor migrasi/ulang, registerUser +dobel ditolak, loginByName benar/salah→40101, autoLogin 40005, ckRegVistor, loginchecknative code 0/500, loginGame ikut sesi SDK via socket.io BERFRAMING, handshake+GetServerList); rewrite bin (userid = pilihan layar SDK dari DB).
 
@@ -1085,6 +1085,93 @@ Pesan owner: *"Itu capture asli saat mode online.. sedangkan mode Local kita bar
 
 ---
 
+### 2.36 FOLDER LAYANAN + .env — SATU FILE PENGATURAN, NAMA FOLDER = NAMA LAYANAN (0.0.4; arahan owner 2026-11-15: *"server json bisa di gantikah jadi .env . lalu SDK-SERVER, LOGIN-SERVER, MAIN-SERVER, CHAT-SERVER, DUNGEON-SERVER dan LOG !!  nama nya jelas"* + kendala eksplisit dari 4 usulan yang ditolak: *"bnyak folder sampah yg gak jelas.. isi root folder gak jelas"* + *"PETA.TXT GK PENTING"* + *"TMP GK PENTING"*)
+
+**A. ARAH OWNER DILAKSANAKAN PERSIS (bukan usulan baru — pesan owner dieksekusi):**
+1. **`server.json` DIGANTIKAN `.env`** — SATU file pengaturan di root server
+   (`Android/data/com.db.local/server/.env`), format `KEY=VALUE` + komentar `#` per kunci,
+   bisa disunting di file manager perangkat tanpa build ulang. Isi kunci:
+   `MODE` (local/online) · `SDK_PORT=8610` · `LOGIN_PORT=8611` · `MAIN_PORT=8080` ·
+   `CHAT_PORT=8612` · `DUNGEON_PORT=8613` · `DASBOR_PORT=4000` · `GAME_UPSTREAM=`
+   (relay opsional — pengganti `game-upstream.txt`) · `USE_SDK` · `BIND` · `MONITOR_SEC` ·
+   `TOGGLE_X/Y` (posisi tombol melayang) · `LOG_TECH` · `REKAM`.
+   - Port CHAT + DUNGEON kini dideklarasikan sejak awal (folder layanan siap; layananya
+     menyusul sesuai urutan kerja owner — alur depan → SDK/LOGIN matang → MAIN).
+   - Dasbor seksi CONFIG kini menulis kunci `GAME_UPSTREAM` di `.env`
+     (`Config.setUpstream` — kosong = hapus isian, kembali lokal murni).
+2. **ROOT = 3 file + 6 folder layanan bernama JELAS** (nama folder = nama layanannya):
+   `​.env` · `dragonball.db` · `status.json` · `SDK-SERVER/` · `LOGIN-SERVER/` · `MAIN-SERVER/` ·
+   `CHAT-SERVER/` · `DUNGEON-SERVER/` · `LOG/`.
+   - `MAIN-SERVER/` = SEMUA yang dilayani :8080 — `bs/` (mirror game, path = URL asli) +
+     `config-offline/` (paket MANUAL 5 file) + `www.stamp` (penanda versi mirror).
+   - `LOG/` = human.log · events.jsonl · crash.log (nyawa).
+   - **DIHAPUS dari root (kendala owner): `PETA.txt` (tidak penting), `tmp/` (tidak penting),
+     dan folder `config/ db/ state/ www/ config-offline/ logs/`** — isi pindah ke folder
+     layanannya masing-masing; kerja sementara pindah ke cache INTERNAL aplikasi
+     (`context.getCacheDir()` — di luar folder server, tidak pernah jadi sampah).
+
+**B. EKSEKUSI (semua jalur tetap lewat `Paths.java` — sumber tunggal):**
+1. `Paths.java` dirombak — folder layanan `sdkServer()/loginServer()/mainServer()/
+   chatServer()/dungeonServer()/logs()` + file `envFile()/dbFile()/statusJson()/wwwStamp()/
+   mirror()/offline()/humanLog()/eventsJsonl()/crashLog()`; `ensureDirs()` membuat 6 folder
+   layanan; `migrateToServiceLayout()` memindahkan isi layout lama.
+2. `Config.java` dirombak — baca/tulis `.env` (parser KEY=VALUE, komentar `#`,
+   `parseEnv`); nilai lama dimigrasikan `Config.migrateLegacyValues(root)` — membaca
+   `config/server.json` + `config/game-upstream.txt` perangkat lama, menulis `.env`,
+   pemisahan port 0.0.2 tetap dijaga (SDK pertahankan 8610, login digeser 8611 — terekam log);
+   `setUpstream()` menulis kunci `GAME_UPSTREAM` (kosong = hapus isian); semua penulis config
+   (mode/logTech/rekam/toggle) kini menulis-ulang `.env` dari nilai hidup (komentar ikut).
+3. MIGRASI otomatis perangkat 0.0.3 ke bawah di Starter (SEBELUM Db.boot & Cleaner;
+   terekam log 📂; TIDAK PERNAH menimpa target yang sudah ada): `db/dragonball.db*`
+   (+jurnal; juga `config/dragonball.db*` era 0.0.2) → `dragonball.db*` root ·
+   `state/status.json` → `status.json` root · `state/www.stamp` → `MAIN-SERVER/www.stamp` ·
+   `www/bs` → `MAIN-SERVER/bs` · `config-offline/` → `MAIN-SERVER/config-offline/` ·
+   `logs/` → `LOG/` · NILAI server.json + game-upstream.txt → `.env`.
+4. `Cleaner.java` whitelist 0.0.4 per-folder: ROOT (3 file + 6 folder) · `MAIN-SERVER/`
+   (`bs`, `config-offline`, `www.stamp`) · `MAIN-SERVER/config-offline/` (5 file paket) ·
+   `LOG/` (log + rotasi + crash.log.read) · SDK/LOGIN/CHAT/DUNGEON-SERVER dijaga kosong
+   (state layanan hidup di dragonball.db) — folder lama, PETA.txt, tmp/, capture/ disapu
+   dengan nama+ukuran di log.
+5. `Payload` mengekstrak mirror → `MAIN-SERVER/bs/` (penanda → `MAIN-SERVER/www.stamp`) ·
+   paket manual → `MAIN-SERVER/config-offline/` · `GameServer` melayani `/bs/…` dari
+   `MAIN-SERVER/bs/` · `LocalServer` `/api/www/list` membaca `MAIN-SERVER/bs/` ·
+   `Db.boot(root, config)` — dragonball.db di root · semua teks log yang menyebut
+   `server.json`/`game-upstream.txt`/`www/` diganti `.env`/`GAME_UPSTREAM`/`MAIN-SERVER/`.
+
+**C. BUKTI — harness (224 LULUS + 0 GAGAL; baseline lama 192 LULUS + 15 GAGAL LINGKUNGAN
+— kini slf4j dilengkapi sehingga SQLite JDBC nyata teruji, nol regresi, +32 tes):**
+1. Migrasi folder layanan: `db/dragonball.db`+jurnal → root; `state/status.json` → root;
+   `state/www.stamp` → `MAIN-SERVER/www.stamp`; ringkasan menyebut pindahan; target sudah
+   ada TIDAK ditimpa (data baru menang); 6 folder layanan dibuat.
+2. `.env`: dibuat di root; nilai `server.json` lama IKUT (SDK_PORT 8610, LOGIN_PORT 8611,
+   MAIN_PORT 8080, DASBOR_PORT 4000); CHAT_PORT 8612 + DUNGEON_PORT 8613 terbaca Config;
+   GAME_UPSTREAM ikut dari `game-upstream.txt` (isian pemilik tidak hilang); keterangan
+   per kunci ada; logTech/rekam/mode tahan reboot (baca-ulang `.env` tetap).
+3. Cleaner 0.0.4: folder `config/` lama DIHAPUS UTUH (nilai sudah di .env, txt aman di
+   SQLite); `dragonball.db` root + `.env` + `status.json` + `MAIN-SERVER/bs` +
+   `MAIN-SERVER/config-offline` dilindungi; `capture/`, `PETA.txt`, `tmp/` DIHAPUS;
+   berkas nyasar di MAIN-SERVER + SDK-SERVER disapu (nama di log).
+4. Upstream: tanpa `GAME_UPSTREAM` → LOCAL null (nol kontak keluar); `setUpstream`
+   menolak bukan-URL; kosong = hapus isian; isian pemilik = satu-satunya sumber relay;
+   terekam di file `.env`; paket berisi field `upstream` pun TIDAK dibaca.
+5. Regresi penuh: SDK (init/registerVisitor/registerUser/loginByName/ckRegVistor/
+   loginchecknative) + login socket + mesin game lokal (XXTEA/enterGame/Notify) + paket
+   manual repo (bin XOR exact, manifest sha256) — semuanya tetap LULUS.
+
+**D. TERBITAN 0.0.4:**
+1. **`releases/APK-LSF-0.0.4.apk` — 164.032.636 B · sha256 `65b804e97ef5f88f20c79ef06906b2225faf13298d099529b120df55d3253b71`**
+   · dasar `APK-LSF-0.0.3.apk` (`43c0bd72…`) · sign v1+v2+v3 keystore tetap (CN DB Local LSF, s.d. 2056).
+2. **Verifikasi dalam APK**: marker dex BARU >0 — `0.0.4` / `SDK-SERVER` / `LOGIN-SERVER` /
+   `MAIN-SERVER` / `CHAT-SERVER` / `DUNGEON-SERVER` / `GAME_UPSTREAM` / `migrateToServiceLayout` /
+   `migrateLegacyValues` / `MESIN GAME LOKAL` / `game_player:` · marker LAMA =0 — `grepBool` /
+   `PETA.txt` / `Peta versi ` / `s2111-bs.popoh5.com` / `upstream":"https` / `urlInner` / `chatInner`
+   (nama file `server.json`/`game-upstream.txt` masih SAH — hanya di `Config.migrateLegacyValues`
+   untuk membaca perangkat lama) · QHinfo `http://127.0.0.1:8610` · paket config-offline dalam
+   APK: bebas host asli + tanpa field mati + port 8080/8611/8610 · **CRC classes.dex game identik
+   dasar `281225eb`** (dex game & resource tidak disentuh) · classes2.dex 224.660 B tercatat
+   `dist/0.0.4/` · `dist/0.0.3` dihapus (anti-sampah versi).
+
+---
 
 ## 3. Konsep Solusi (v2.2): APK LSF — Custom dari DB-LOCAL.apk + Server Embedded
 
@@ -1205,37 +1292,51 @@ Aturan penulisan log:
 8. Panel status di atas dashboard juga kalimat manusia, mis.:
    `Server lokal HIDUP sejak 14:30 · sudah menjawab 37 permintaan · 0 gagal · port 4000`.
 
-**Root folder server — STRUKTUR JELAS + ANTI-SAMPAH (0.0.3, aturan keras; keluhan owner: "berantakan juga struktur folder pembacaan file di folder server Android/data.. struktur folder local di android/data harus juga jelas"):**
+**Root folder server — FOLDER LAYANAN + .env (0.0.4, aturan keras; arahan owner: "server json bisa di gantikah jadi .env . lalu SDK-SERVER, LOGIN-SERVER, MAIN-SERVER, CHAT-SERVER, DUNGEON-SERVER dan LOG !!  nama nya jelas" + kendala "banyak folder sampah yg gak jelas.. isi root folder gak jelas.. PETA.TXT GK PENTING.. TMP GK PENTING"):**
 
 ```
-Android/data/com.db.local/server/          ← HANYA entri berikut, tidak boleh lain
-├── PETA.txt                               ← PETA FOLDER — dibuat server, dibuka pemilik dulu
-├── config/                                ← PENGATURAN — boleh pemilik sunting
-│   ├── server.json                        ← mode (local/online), port (game 8080, sdk 8610,
-│   │                                        login 8611, dasbor 4000), logTech, rekam, toggleX/Y
-│   └── game-upstream.txt                  ← relay OPSIONAL isian pemilik (kosong = lokal murni)
-├── db/                                    ← DATA PEMAIN — JANGAN DIHAPUS (tahan reboot)
-│   └── dragonball.db                      ← akun/tamu/sesi/data game (+ -journal/-wal/-shm)
-├── state/                                 ← keadaan runtime — dibuat ulang otomatis
-│   ├── status.json                        ← snapshot status untuk dasbor :4000
-│   └── www.stamp                          ← penanda versi mirror www/
-├── www/                                   ← MIRROR STATIS GAME — dilayani :8080 — jangan disunting
-│   └── bs/                                ← index-native.html · manifest.json · js/ (15 file)
-│                                            resource/properties/ · upgrade/ (version + zip)
-├── config-offline/                        ← PAKET MANUAL KLIEN — ditimpa dari APK tiap boot
-│   ├── setting.json · setting_BS_Android.bin (XOR DragonBall)
-│   └── servers.json (1 entri lokal) · serversetting.json · manifest.txt (sha256)
-├── logs/                                  ← human.log · events.jsonl · crash.log (nyawa)
-└── tmp/                                   ← kerja sementara — boleh dihapus kapan saja
+Android/data/com.db.local/server/          ← HANYA 3 file + 6 folder berikut, tidak boleh lain
+├── .env                                   ← PENGATURAN — SEMUA seting SATU file (boleh pemilik sunting)
+│                                            MODE · SDK_PORT 8610 · LOGIN_PORT 8611 · MAIN_PORT 8080 ·
+│                                            CHAT_PORT 8612 · DUNGEON_PORT 8613 · DASBOR_PORT 4000 ·
+│                                            GAME_UPSTREAM · USE_SDK · BIND · MONITOR_SEC ·
+│                                            TOGGLE_X/Y · LOG_TECH · REKAM (komentar per kunci)
+├── dragonball.db                          ← DATA PEMAIN — JANGAN DIHAPUS (tahan reboot)
+│                                            akun/tamu/sesi/data game (+ -journal/-wal/-shm saat aktif)
+├── status.json                            ← keadaan server saat ini — dibuat ulang otomatis
+├── SDK-SERVER/                            ← milik SDK :8610 (HTTP /v1/* + loginchecknative — QHinfo)
+├── LOGIN-SERVER/                          ← milik LOGIN :8611 (engine.io v3 + socket.io v2)
+├── MAIN-SERVER/                           ← milik MAIN :8080 — SEMUA yang dilayani ke klien
+│   ├── bs/                                ← mirror statis game (path = URL asli): index-native.html ·
+│   │                                        manifest.json · js/ · resource/properties/ · upgrade/
+│   ├── config-offline/                    ← PAKET MANUAL KLIEN — ditimpa dari APK tiap boot:
+│   │                                        setting.json · setting_BS_Android.bin (XOR DragonBall) ·
+│   │                                        servers.json (1 entri lokal) · serversetting.json ·
+│   │                                        manifest.txt (sha256)
+│   └── www.stamp                          ← penanda versi mirror (bookkeeping MAIN)
+├── CHAT-SERVER/                           ← milik CHAT :8612 (service discovery registChat — folder siap)
+├── DUNGEON-SERVER/                        ← milik DUNGEON :8613 (myTeamServerSocketUrl — folder siap)
+└── LOG/                                   ← LOG — nyawa: human.log · events.jsonl · crash.log
 ```
 
-**Sumber tunggal path (`Paths.java`, 0.0.3):** SEMUA jalur folder/file lewat satu kelas — dulu string
-path tersebar di 10+ kelas (`new File(root, "config")` di Starter/Db/Config/Payload/GameServer/
-LoginData/LocalServer/Cleaner) = akar keberantakan yang dikoreksi.
+**PETA.txt dan tmp/ DIHAPUS dari struktur (kendala owner: "PETA.TXT GK PENTING", "TMP GK PENTING")** —
+sisa di perangkat disapu Cleaner otomatis (nama+ukuran di log). Kerja sementara pindah ke cache INTERNAL
+aplikasi (`context.getCacheDir()` — di luar folder server, dikelola Android, tidak pernah jadi sampah).
 
-**Migrasi otomatis perangkat lama (0.0.3, SEBELUM Cleaner — data tidak hilang, terekam log 📂):**
-`config/dragonball.db` (+jurnal) → `db/` · `config/status.json` → `state/` · `config/www.stamp` →
-`state/` — sumber yang sudah ada TIDAK ditimpa (data baru menang).
+**Sumber tunggal path (`Paths.java`, 0.0.3 → dirombak 0.0.4):** SEMUA jalur folder/file lewat satu kelas —
+dulu string path tersebar di 10+ kelas (`new File(root, "config")` di Starter/Db/Config/Payload/
+GameServer/LoginData/LocalServer/Cleaner) = akar keberantakan yang dikoreksi. 0.0.4: folder =
+`sdkServer()/loginServer()/mainServer()/chatServer()/dungeonServer()/logs()` + file =
+`envFile()/dbFile()/statusJson()/wwwStamp()/mirror()/offline()/humanLog()/eventsJsonl()/crashLog()`.
+
+**Migrasi otomatis perangkat 0.0.3 ke bawah (0.0.4, SEBELUM Db.boot & Cleaner — data tidak hilang,
+terekam log 📂; sumber yang sudah ada TIDAK ditimpa — data baru menang):**
+`db/dragonball.db*` (+jurnal, juga `config/dragonball.db*` era 0.0.2) → `dragonball.db*` di root ·
+`state/status.json` (+`config/status.json`) → `status.json` root · `state/www.stamp` → `MAIN-SERVER/www.stamp` ·
+`www/bs` → `MAIN-SERVER/bs` · `config-offline/` → `MAIN-SERVER/config-offline/` · `logs/` → `LOG/` ·
+**NILAI** `config/server.json` + `config/game-upstream.txt` → `.env` (`Config.migrateLegacyValues` —
+mode, port, logTech, rekam, posisi tombol, GAME_UPSTREAM ikut; pemisahan port 0.0.2 tetap dijaga) —
+file lamanya disapu Cleaner dengan nama+ukuran di log.
 
 **Pembersih whitelist (`Cleaner.java`, 0.0.3 — per-folder):** setiap boot, entri di luar daftar di atas
 DIHAPUS otomatis (nama + ukuran tercatat di log). Yang ikut disapu sejak 0.0.3: `config/servers.json`

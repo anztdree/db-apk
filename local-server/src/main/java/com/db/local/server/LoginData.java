@@ -16,18 +16,19 @@ import java.util.Date;
  *   tabel accounts         — akun lokal (username PK · pass_md5 · dibuat ·
  *                            login terakhir · jumlah login) — dipakai BERSAMA
  *                            tahap SDK (daftar/masuk) & tahap game (loginGame)
- *   config-offline/servers.json — 0.5.3: daftar server GetServerList = paket
- *                            MANUAL bawaan APK (1 entri "Server Lokal" url
- *                            127.0.0.1) — BUKAN snapshot online (owner: online
- *                            hanya jejak arah, bukan config asli offline).
- *                            Dilayani apa adanya; bukan data transaksional.
+ *   MAIN-SERVER/config-offline/servers.json — 0.5.3: daftar server
+ *                            GetServerList = paket MANUAL bawaan APK (1 entri
+ *                            "Server Lokal" url 127.0.0.1) — BUKAN snapshot
+ *                            online (owner: online hanya jejak arah, bukan
+ *                            config asli offline). Dilayani apa adanya.
  *
  * Tanpa dependensi — skema respons mengikuti protokol asli (jejak arah).
  */
 public final class LoginData {
     private static final Object LOCK = new Object();
-    private static volatile File confDir = null;
-    /** 0.5.3 — folder paket CONFIG OFFLINE manual (sumber daftar server). */
+    /** 0.5.3 — folder paket CONFIG OFFLINE manual (sumber daftar server).
+     *  0.0.4 — paket kini di MAIN-SERVER/config-offline/ (milik MAIN yang
+     *  dilayani :8080); Paths.offline() = sumber tunggal. */
     private static volatile File offlineDir = null;
     private static volatile String cachedServersJson = null;
     private static volatile int cachedServerCount = -1;
@@ -35,19 +36,12 @@ public final class LoginData {
     private LoginData() {
     }
 
-    /** Folder config (dipanggil Starter setelah root siap). */
-    public static void init(File configDir) {
-        init(configDir, null);
-    }
-
     /**
-     * 0.5.3 — folder config (data transaksional) + folder paket CONFIG OFFLINE
-     * manual (sumber daftar server GetServerList). Dipanggil Starter setelah
-     * root siap; harness memanggil ini dengan dua folder uji.
+     * Folder paket CONFIG OFFLINE manual (sumber daftar server GetServerList).
+     * Dipanggil Starter setelah root siap; harness memanggil ini dengan folder uji.
      */
-    public static void init(File configDir, File offlinePkgDir) {
+    public static void init(File offlinePkgDir) {
         synchronized (LOCK) {
-            confDir = configDir;
             offlineDir = offlinePkgDir;
             cachedServersJson = null;
             cachedServerCount = -1;
@@ -240,8 +234,8 @@ public final class LoginData {
             String raw = null;
             try {
                 // 0.5.3 — SATU-SATUNYA sumber: paket CONFIG OFFLINE manual
-                // (config-offline/servers.json — 1 entri "Server Lokal" url lokal).
-                // Snapshot online TIDAK lagi dibaca di jalur mana pun.
+                // (MAIN-SERVER/config-offline/servers.json — 1 entri "Server Lokal"
+                // url lokal). Snapshot online TIDAK lagi dibaca di jalur mana pun.
                 File f = (offlineDir == null) ? null : new File(offlineDir, "servers.json");
                 if (f != null && f.exists() && f.length() > 2) {
                     raw = readText(f);
@@ -253,11 +247,11 @@ public final class LoginData {
                 // manual dengan url port game aktif supaya Play tetap masuk lokal.
                 // 0.0.2 — field kontrak klien saja (tanpa upstream/urlInner/chatInner).
                 raw = "{\"errorCode\":0,\"serverList\":[{\"serverId\":\"1\","
-                        + "\"url\":\"http://127.0.0.1:" + Config.gamePort() + "\",\"new\":true,\"hot\":true,"
+                        + "\"url\":\"http://127.0.0.1:" + Config.mainPort() + "\",\"new\":true,\"hot\":true,"
                         + "\"name\":\"Server Lokal\",\"online\":true,\"openDate\":\"\","
                         + "\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\"}],\"history\":[]}";
                 try {
-                    HumanLog.ev("⚠️", "config-offline/servers.json tidak ada atau salah format"
+                    HumanLog.ev("⚠️", "MAIN-SERVER/config-offline/servers.json tidak ada atau salah format"
                             + " — memakai daftar darurat 1 server LOKAL (127.0.0.1)",
                             null);
                 } catch (Throwable ignored) {
@@ -286,9 +280,9 @@ public final class LoginData {
      * = 127.0.0.1:8080 → diteruskan ke sini).
      * KOREKSI FATAL 2026-11-14 (owner: "config online itu cuma jejak agar kita
      * gak tersesat.. bukan malah murni di pakai mentah-mentah") — SATU-SATUNYA
-     * sumber: config/game-upstream.txt — SATU baris URL, disunting pemilik DI
-     * PERANGKAT tanpa build ulang (dasbor seksi CONFIG / folder config/ =
-     * transaksional, tidak pernah ditimpa boot).
+     * sumber: ISIAN PEMILIK, kini kunci GAME_UPSTREAM di .env (0.0.4 — pengganti
+     * config/game-upstream.txt; disunting pemilik DI PERANGKAT tanpa build ulang
+     * lewat dasbor seksi CONFIG / file manager).
      * Field "upstream" di paket manual TIDAK DIBACA LAGI sebagai tujuan relay —
      * dulu 0.6.3 mengisinya dengan alamat server game ASLI mentah-mentah dari
      * jejak online (s2111-bs.popoh5.com:8141) = LOCAL diam-diam bergantung ke
@@ -302,24 +296,12 @@ public final class LoginData {
         return r[0];
     }
 
-    /** @return [url, sumber("file"|"")] — publik utk log & dasbor.
-     *  0.0.3 — file = Paths.gameUpstream() (config/game-upstream.txt; sumber
-     *  tunggal), fallback folder init() utk pemanggil tanpa Paths. */
+    /** @return [url, sumber(".env"|"")] — publik utk log & dasbor.
+     *  0.0.4 — nilai = Config.gameUpstream() (kunci GAME_UPSTREAM di .env;
+     *  sumber tunggal — file game-upstream.txt sudah digantikan .env). */
     public static String[] gameUpstreamEx() {
-        synchronized (LOCK) {
-            try {
-                File f = Paths.ready() ? Paths.gameUpstream()
-                        : (confDir != null ? new File(confDir, "game-upstream.txt") : null);
-                if (f != null && f.exists() && f.length() > 6) {
-                    String s = readText(f).trim();
-                    if (s.startsWith("http://") || s.startsWith("https://")) {
-                        return new String[]{s, "file"};
-                    }
-                }
-            } catch (Throwable ignored) {
-            }
-            return new String[]{"", ""};
-        }
+        String up = Config.gameUpstream();
+        return new String[]{up == null ? "" : up, (up != null && up.length() > 0) ? ".env" : ""};
     }
 
     // ---------------- util ----------------

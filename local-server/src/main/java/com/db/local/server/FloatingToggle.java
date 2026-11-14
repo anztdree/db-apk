@@ -25,7 +25,7 @@ import android.widget.TextView;
  *
  * v0.3.0 — koreksi pemilik: "namanya floating kok gak bisa di geser".
  * - BISA DIGESER: ikut jari (drag bebas), dibatasi tetap di dalam layar,
- *   posisi terakhir DISIMPAN ke config/server.json (toggleX/toggleY) dan
+ *   posisi terakhir DISIMPAN ke .env (TOGGLE_X/TOGGLE_Y) dan
  *   dipulihkan saat tampil lagi.
  * - GESER vs TEKAN dibedakan lewat ambang touch-slop: gerakan kecil = tekan
  *   (buka panel mode), gerakan besar = geser posisi.
@@ -209,7 +209,7 @@ public final class FloatingToggle {
         int tx = Config.toggleX();
         int ty = Config.toggleY();
         if (tx >= 0 && ty >= 0) {
-            p.x = tx; // posisi hasil geseran terakhir (tersimpan di server.json)
+            p.x = tx; // posisi hasil geseran terakhir (tersimpan di .env TOGGLE_X/Y)
             p.y = ty;
         } else {
             p.x = dp(10);
@@ -256,7 +256,7 @@ public final class FloatingToggle {
                                 Config.setTogglePos(lp.x, lp.y); // posisi tersimpan permanen
                                 // 0.4.5: geser tombol = TEKNIS (bukan berita penting)
                                 HumanLog.evTech("ℹ️", "Tombol melayang digeser ke (" + lp.x + ", " + lp.y
-                                        + ") — posisi tersimpan di server.json", null);
+                                        + ") — posisi tersimpan di .env", null);
                             } else {
                                 togglePanel(v.getContext()); // gerakan kecil = tekan
                             }
@@ -383,7 +383,7 @@ public final class FloatingToggle {
                 HumanLog.ev("ℹ️", "SWITCH MODE: " + now.toUpperCase() + " → "
                         + target.toUpperCase() + " — aplikasi direstart",
                         "Mode : " + now.toUpperCase() + " → " + target.toUpperCase()
-                                + " (tersimpan di server.json)");
+                                + " (tersimpan di .env)");
                 RestartHelper.restart(panel.getContext());
             }
         });

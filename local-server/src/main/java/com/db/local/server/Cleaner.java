@@ -5,56 +5,71 @@ import java.io.File;
 /**
  * Pembersih folder server (aturan README §2 — folder root WAJIB bersih).
  *
- * 0.0.3 — STRUKTUR FOLDER JELAS (keluhan owner: "berantakan juga struktur
- * folder pembacaan file di folder server Android/data.. struktur folder local
- * di android/data harus juga jelas"). Root Android/data/<paket>/server/ hanya
- * boleh berisi TEPAT entri berikut — masing-masing SATU makna (peta lengkap
- * ada di PETA.txt yang ikut dijaga):
+ * 0.0.4 — STRUKTUR FOLDER LAYANAN (arahan owner 2026-11-15: "server json bisa
+ * di gantikah jadi .env . lalu SDK-SERVER, LOGIN-SERVER, MAIN-SERVER,
+ * CHAT-SERVER, DUNGEON-SERVER dan LOG !!  nama nya jelas" + kendala sebelumnya
+ * "banyak folder sampah yg gak jelas.. PETA.TXT GK PENTING.. TMP GK PENTING").
  *
- *   PETA.txt          peta folder (file — dibuat server)
- *   config/           PENGATURAN (server.json, game-upstream.txt)
- *   db/               DATA PEMAIN (dragonball.db + jurnal SQLite)
- *   state/            keadaan runtime (status.json, www.stamp)
- *   www/              mirror statis game
- *   config-offline/   paket MANUAL config klien
- *   logs/             human.log · events.jsonl · crash.log
- *   tmp/              kerja sementara
+ * Root Android/data/&lt;paket&gt;/server/ hanya boleh berisi TEPAT entri berikut
+ * — 3 file + 6 folder, SEMUA bernama jelas (nama folder = nama layanannya):
  *
- * Yang berubah dari 0.0.2 (bukti audit Paths.java):
- *   - capture/ DIHAPUS dari whitelist — REKAM mati total sejak 0.5.4; sisa
- *     folder capture/ di perangkat kini disapu otomatis (dulu "dihapus manual
- *     oleh pemilik" = kontradiksi anti-sampah, sisa menetap diam-diam).
- *   - config/servers.json (snapshot mati era 0.4.4) DIHAPUS dari whitelist —
- *     serverlist dibaca HANYA dari paket manual config-offline/ sejak 0.5.3
- *     (harness 18a membuktikan snapshot config/ tidak dibaca lagi); dua
- *     servers.json di dua folder = sumber bingung owner.
- *   - dragonball.db TIDAK lagi di config/ — kini db/dragonball.db (migrasi
- *     otomatis Paths.migrateFromLegacyLayout() sebelum pembersih).
- *   - status.json + www.stamp pindah ke state/ (config/ murni pengaturan).
+ *   .env              PENGATURAN (semua seting server satu file)
+ *   dragonball.db     DATA PEMAIN (+ -journal/-wal/-shm/.corrupt saat SQLite aktif)
+ *   status.json       keadaan server saat ini (dibuat ulang otomatis)
+ *   SDK-SERVER/       milik SDK :8610
+ *   LOGIN-SERVER/     milik LOGIN :8611
+ *   MAIN-SERVER/      milik MAIN :8080 (bs/ + config-offline/ + www.stamp)
+ *   CHAT-SERVER/      milik CHAT :8612 (siap — layanan menyusul)
+ *   DUNGEON-SERVER/   milik DUNGEON :8613 (siap — layanan menyusul)
+ *   LOG/              human.log · events.jsonl · crash.log
+ *
+ * Yang berubah dari 0.0.3 (kendala owner + isi pindah ke folder layanan):
+ *   - PETA.txt TIDAK dilindungi lagi (owner: "PETA.TXT GK PENTING") — sisa di
+ *     perangkat disapu otomatis dengan nama+ukuran di log.
+ *   - tmp/ TIDAK ada lagi (owner: "TMP GK PENTING") — kerja sementara pindah ke
+ *     cache internal aplikasi (di luar folder server — tak terlihat, tak sampah).
+ *   - config/ db/ state/ www/ config-offline/ logs/ HILANG dari root — isi
+ *     sudah pindah (Paths.migrateToServiceLayout): config/server.json +
+ *     game-upstream.txt → NILAINYA di .env; db/dragonball.db → root;
+ *     state/status.json → root; www/bs → MAIN-SERVER/bs; config-offline →
+ *     MAIN-SERVER/config-offline; logs → LOG. Folder lama kosong disapu.
+ *   - capture/ tetap DIHAPUS (REKAM mati total 0.5.4).
  *
  * Setiap folder terjaga whitelist-NYA sendiri; apa pun di luar DIHAPUS
  * otomatis tiap boot SEBELUM server menyala (jumlah + ukuran + nama tercatat
- * di log — tidak ada hapus diam-diam).
+ * di log — tidak ada hapus diam-diam). Folder SDK-SERVER/LOGIN-SERVER/
+ * CHAT-SERVER/DUNGEON-SERVER dijaga kosong (layanannya menyimpan state di
+ * dragonball.db; berkas nyasar di sana = sampah, disapu).
  */
 public final class Cleaner {
 
-    /** Entri diizinkan di root folder server (0.0.3 — struktur jelas, +PETA.txt, +db/, +state/; -capture/ mati). */
+    /** Entri diizinkan di root folder server (0.0.4 — 3 file + 6 folder layanan). */
     private static final String[] ROOT_WHITELIST = {
-            Paths.PETA_NAME,
-            "config", "db", "state", "www", "config-offline", "logs", "tmp"
+            Paths.ENV_NAME,
+            "dragonball.db", "dragonball.db-journal", "dragonball.db-wal",
+            "dragonball.db-shm", "dragonball.db.corrupt",
+            "status.json",
+            Paths.SDK_DIR, Paths.LOGIN_DIR, Paths.MAIN_DIR,
+            Paths.CHAT_DIR, Paths.DUNGEON_DIR, Paths.LOG_DIR
     };
 
-    /** File diizinkan di config/ — MURNI pengaturan (0.0.3: dragonball.db/status.json/www.stamp pindah; servers.json mati dihapus). */
-    private static final String[] CONFIG_WHITELIST = {"server.json", "game-upstream.txt"};
+    /** File diizinkan di MAIN-SERVER/ — mirror bs/, paket config-offline/, penanda versi. */
+    private static final String[] MAIN_WHITELIST = {"bs", "config-offline", "www.stamp"};
 
-    /** File diizinkan di db/ — DATA pemain + jurnal SQLite (0.0.3 pindah dari config/). */
-    private static final String[] DB_WHITELIST = {
-            "dragonball.db", "dragonball.db-journal", "dragonball.db-wal", "dragonball.db-shm",
-            "dragonball.db.corrupt"
+    /** File diizinkan di MAIN-SERVER/config-offline/ — paket MANUAL 5 file (kanonik APK). */
+    private static final String[] OFFLINE_WHITELIST = {
+            "setting.json", "setting_BS_Android.bin", "servers.json",
+            "serversetting.json", "manifest.txt"
     };
 
-    /** File diizinkan di state/ — keadaan runtime yang dibuat ulang otomatis. */
-    private static final String[] STATE_WHITELIST = {"status.json", "www.stamp"};
+    /** File diizinkan di LOG/ — nyawa + rotasi + bukti crash yang sudah dibaca. */
+    private static final String[] LOG_WHITELIST = {
+            "human.log", "human.log.1", "events.jsonl", "events.jsonl.1",
+            "crash.log", "crash.log.read"
+    };
+
+    /** Folder layanan tanpa file (SDK/LOGIN/CHAT/DUNGEON — state di dragonball.db). */
+    private static final String[] EMPTY_WHITELIST = {};
 
     private Cleaner() {
     }
@@ -73,10 +88,17 @@ public final class Cleaner {
                 return r;
             }
             sweep(root, ROOT_WHITELIST, "", r);
-            // 0.0.3 — sub-folder yang dijaga whitelist isinya sendiri:
-            sweep(new File(root, "config"), CONFIG_WHITELIST, "config/", r);
-            sweep(new File(root, "db"), DB_WHITELIST, "db/", r);
-            sweep(new File(root, "state"), STATE_WHITELIST, "state/", r);
+            // 0.0.4 — folder layanan dijaga whitelist isinya sendiri:
+            sweep(new File(root, Paths.MAIN_DIR), MAIN_WHITELIST, Paths.MAIN_DIR + "/", r);
+            sweep(new File(new File(root, Paths.MAIN_DIR), "config-offline"), OFFLINE_WHITELIST,
+                    Paths.MAIN_DIR + "/config-offline/", r);
+            sweep(new File(root, Paths.LOG_DIR), LOG_WHITELIST, Paths.LOG_DIR + "/", r);
+            // SDK-SERVER/ LOGIN-SERVER/ CHAT-SERVER/ DUNGEON-SERVER/ — kosong
+            // (state layanan hidup di dragonball.db); berkas nyasar = sampah.
+            sweep(new File(root, Paths.SDK_DIR), EMPTY_WHITELIST, Paths.SDK_DIR + "/", r);
+            sweep(new File(root, Paths.LOGIN_DIR), EMPTY_WHITELIST, Paths.LOGIN_DIR + "/", r);
+            sweep(new File(root, Paths.CHAT_DIR), EMPTY_WHITELIST, Paths.CHAT_DIR + "/", r);
+            sweep(new File(root, Paths.DUNGEON_DIR), EMPTY_WHITELIST, Paths.DUNGEON_DIR + "/", r);
         } catch (Throwable t) {
             try {
                 HumanLog.ev("⚠️", "Pembersih folder server menemui kendala — folder tetap dipakai apa adanya",

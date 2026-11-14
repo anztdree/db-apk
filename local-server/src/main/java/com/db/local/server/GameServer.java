@@ -16,7 +16,7 @@ import fi.iki.elonen.NanoHTTPD;
 /**
  * Server port GAME — inilah yang "berperan sebagai server" bagi client.
  * Endpoint di assets APK menunjuk ke http://127.0.0.1:&lt;gamePort&gt;, jadi semua
- * permintaan bootstrap client lewat sini. Dua mode (config/server.json):
+ * permintaan bootstrap client lewat sini. Dua mode (MODE di .env):
  *
  * - LOCAL : layani file dari &lt;root&gt;/www/ — hasil ekstraksi OTOMATIS mirror
  *           server ASLI yang dibawa APK (assets/server/www/); struktur folder =
@@ -74,7 +74,7 @@ import fi.iki.elonen.NanoHTTPD;
  * klien io.connect KE PORT INI memakai engine.io v3 polling (persis jalur login).
  * Dulu :8080 hanya HTTP statis → klien retry selamanya, log DIAM. Kini
  * /socket.io/ di mode LOCAL diteruskan utuh (byte-per-byte) ke UPSTREAM RELAY =
- * SATU baris di config/game-upstream.txt — LoginData.gameUpstream() — HANYA
+ * kunci GAME_UPSTREAM di .env — LoginData.gameUpstream() — HANYA
  * isian pemilik sendiri (dasbor seksi CONFIG / file di perangkat).
  * KOREKSI FATAL (tegasan owner 2026-11-14: "online itu cuma jejak agar kita gak
  * tersesat.. bukan malah murni dipakai mentah-mentah"): field "upstream" paket
@@ -109,7 +109,7 @@ public final class GameServer extends NanoHTTPD {
     private final File wwwRoot;
     /** 0.5.3 — folder paket CONFIG OFFLINE manual (saudara www/): &lt;root&gt;/config-offline. */
     private final File offlineRoot;
-    /** Dedupe peringatan port bin manual ≠ server.json — cukup sekali. */
+    /** Dedupe peringatan port bin manual ≠ .env — cukup sekali. */
     private static volatile boolean portWarned = false;
 
     public GameServer(Context appCtx, String bind, int port, File wwwRoot) throws java.io.IOException {
@@ -196,11 +196,11 @@ public final class GameServer extends NanoHTTPD {
                 .append("@media(prefers-color-scheme:dark){body{background:#0c0a09;color:#fafaf9}}")
                 .append("</style></head><body>")
                 .append("Server lokal hidup — mode <b>").append(Config.mode().toUpperCase())
-                .append("</b> · port game ").append(Config.gamePort())
+                .append("</b> · port game ").append(Config.mainPort())
                 .append(" · endpoint client menunjuk ke sini.<br>")
                 .append("Login lokal: http://127.0.0.1:").append(Config.loginPort())
                 .append(" (engine.io v3 + socket.io v2) · dasbor developer: http://127.0.0.1:")
-                .append(Config.debugPort())
+                .append(Config.dasborPort())
                 .append(" · ganti mode: tombol melayang di layar game.")
                 .append("</body></html>");
         return htmlResp(sb.toString().getBytes());
@@ -269,8 +269,8 @@ public final class GameServer extends NanoHTTPD {
      */
     public static String[] resolveGameUpstream(String mode) {
         String[] upEx = LoginData.gameUpstreamEx();
-        if ("file".equals(upEx[1]) && upEx[0].length() > 0) {
-            return new String[]{upEx[0], "config/game-upstream.txt — isian pemilik"};
+        if (upEx[0].length() > 0) { // sumber = kunci GAME_UPSTREAM di .env (0.0.4)
+            return new String[]{upEx[0], ".env GAME_UPSTREAM — isian pemilik"};
         }
         if (!"local".equals(mode)) {
             return onlineUpstreamPick();
@@ -290,7 +290,7 @@ public final class GameServer extends NanoHTTPD {
      * login 0.5.1). 0.6.0: relay AKTIF DI SEMUA MODE — di ONLINE, url daftar
      * server ASLI ditulis-ulang ke port ini (jalur passthrough login), jadi
      * Play online pun tertangkap penuh di log; di LOCAL, upstream = ISIAN
-     * PEMILIK saja (config/game-upstream.txt — koreksi fatal 2026-11-14:
+     * PEMILIK saja (GAME_UPSTREAM di .env — koreksi fatal 2026-11-14:
      * field "upstream" paket manual tidak dibaca lagi, paket tidak pernah
      * membawa alamat server asli).
      */
@@ -307,7 +307,7 @@ public final class GameServer extends NanoHTTPD {
         // REBUILD 0.0.1 — MESIN GAME LOKAL (GameEngine): LOCAL tanpa isian
         // upstream = protokol game dijawab SERVER INI SENDIRI (kontrak dari
         // kode klien, nilai dari dragonball.db — NOL kontak keluar). Play LOKAL
-        // HIDUP. Isian pemilik config/game-upstream.txt = relay OPSIONAL yang
+        // HIDUP. Isian pemilik GAME_UPSTREAM di .env = relay OPSIONAL yang
         // tetap dihormati (jalur lama).
         String[] res;
         if ("local".equals(mode)) {
@@ -315,7 +315,7 @@ public final class GameServer extends NanoHTTPD {
             if (!"file".equals(upEx[1]) || upEx[0].length() == 0) {
                 return GameEngine.serve(session, m);
             }
-            res = new String[]{upEx[0], "config/game-upstream.txt — isian pemilik"};
+            res = new String[]{upEx[0], ".env GAME_UPSTREAM — isian pemilik"};
         } else {
             res = resolveGameUpstream(mode);
         }
@@ -329,14 +329,14 @@ public final class GameServer extends NanoHTTPD {
                 if ("local".equals(mode)) {
                     HumanLog.ev("❌", "Play berhenti — jalur LOCAL dengan isian upstream tidak berlaku (pakai mesin game lokal)",
                             "Jalur     : LOCAL — relay :8080 → upstream isian pemilik\n"
-                                    + "io.connect : http://127.0.0.1:" + Config.gamePort() + "\n"
+                                    + "io.connect : http://127.0.0.1:" + Config.mainPort() + "\n"
                                     + "Query     : " + (qs.length() > 0 ? qs : "(kosong)") + "\n"
                                     + "Catatan   : isian upstream hanya berlaku mode ONLINE; di LOCAL\n"
                                     + "             protokol game dijawab mesin lokal (tanpa relay).");
                 } else {
                     HumanLog.ev("❌", "Play berhenti — jalur ONLINE belum punya url ASLI",
                             "Jalur     : ONLINE — passthrough ke server asli\n"
-                                    + "io.connect : http://127.0.0.1:" + Config.gamePort() + "\n"
+                                    + "io.connect : http://127.0.0.1:" + Config.mainPort() + "\n"
                                     + "upstream   : (tabel daftar server ASLI masih kosong — passthrough "
                                     + "login belum memberi daftar GetServerList)");
                 }
@@ -383,12 +383,12 @@ public final class GameServer extends NanoHTTPD {
                 long now = System.currentTimeMillis();
                 if (now - lastGameSessLogAt >= 600000L) {
                     lastGameSessLogAt = now;
-                    HumanLog.ev("🎮", "Play → socket game lokal :" + Config.gamePort()
+                    HumanLog.ev("🎮", "Play → socket game lokal :" + Config.mainPort()
                                     + ("local".equals(mode)
                                             ? " — relay ke upstream isian pemilik"
                                             : " — diteruskan ke SERVER GAME ASLI"),
                             "Jalur    : " + ("local".equals(mode)
-                                    ? "LOCAL — relay :8080 meneruskan ke upstream isian pemilik (config/game-upstream.txt)"
+                                    ? "LOCAL — relay :8080 meneruskan ke upstream isian pemilik (GAME_UPSTREAM di .env)"
                                     : "ONLINE — relay :8080 meneruskan ke url ASLI dari daftar server") + "\n"
                                     + "Upstream : " + up + " (sumber: " + src + ")\n"
                                     + "Query    : " + (qs.length() > 0 ? qs : "(kosong)") + "\n"
@@ -548,13 +548,13 @@ public final class GameServer extends NanoHTTPD {
             long ms = System.currentTimeMillis() - t0;
             // Pengaman konfigurasi (sekali per proses): bin manual memakai port
             // DEFAULT 0.0.2 (game 8080 · login socket 8611 · SDK 8610) — bila
-            // server.json mengubah port, paket manual harus dibuat ulang (bukan
+            // .env mengubah port, paket manual harus dibuat ulang (bukan
             // ditulis-ulang saat runtime — keputusan 0.5.3).
-            if (!portWarned && (Config.gamePort() != 8080 || Config.loginPort() != 8611
+            if (!portWarned && (Config.mainPort() != 8080 || Config.loginPort() != 8611
                     || Config.sdkPort() != 8610)) {
                 portWarned = true;
-                HumanLog.ev("⚠️", "Port server.json beda dari bin manual (8080/8611/8610) — paket config-offline "
-                        + "harus dibuat ulang agar cocok", "gamePort=" + Config.gamePort()
+                HumanLog.ev("⚠️", "Port .env beda dari bin manual (8080/8611/8610) — paket config-offline "
+                        + "harus dibuat ulang agar cocok", "MAIN_PORT=" + Config.mainPort()
                         + " · loginPort=" + Config.loginPort()
                         + " · sdkPort=" + Config.sdkPort());
             }
@@ -572,7 +572,7 @@ public final class GameServer extends NanoHTTPD {
                     isiConfig);
             cfgLog("setting-bin", "CONFIG setting bin disajikan — paket manual config-offline/ · "
                             + HumanLog.fmtBytes(b.length) + " · " + HumanLog.fmtMs(ms),
-                    "Menunjuk : 127.0.0.1 (game :" + Config.gamePort() + " · login :"
+                    "Menunjuk : 127.0.0.1 (game :" + Config.mainPort() + " · login :"
                             + Config.loginPort() + ") — sejak disiapkan manual",
                     "ISI · bedah field-per-field + teks config · " + HumanLog.fmtBytes(b.length),
                     isiConfig);
@@ -810,12 +810,12 @@ public final class GameServer extends NanoHTTPD {
                 // ditulis-ulang SEBELUM disajikan — klien tidak pernah langsung ke
                 // login.popoh5.com; server login lokal yang meneruskan utuh.
                 if (uri.endsWith("setting_BS_Android.bin")) {
-                    byte[] rw = SettingBin.rewrittenOnline(data, Config.gamePort(), Config.loginPort(),
+                    byte[] rw = SettingBin.rewrittenOnline(data, Config.mainPort(), Config.loginPort(),
                             Config.sdkPort());
                     String originalPlain = SettingBin.decryptedPlain(bos.toByteArray());
                     if (rw != data) {
                         data = rw;
-                        String plain = SettingBin.plainOnline(bos.toByteArray(), Config.gamePort(),
+                        String plain = SettingBin.plainOnline(bos.toByteArray(), Config.mainPort(),
                                 Config.loginPort(), Config.sdkPort());
                         txt = (plain == null) ? txt : plain;
                         rewriteNote = " · login + url H5 ditulis-ulang ke server lokal";
@@ -1003,7 +1003,7 @@ public final class GameServer extends NanoHTTPD {
 
     /** URL utuh yang diminta client — dipakai di SEMUA baris log request (koreksi 0.3.1). */
     private static String gameUrl(String uri) {
-        return "http://127.0.0.1:" + Config.gamePort() + uri;
+        return "http://127.0.0.1:" + Config.mainPort() + uri;
     }
 
     private static String hostOf(String base) {

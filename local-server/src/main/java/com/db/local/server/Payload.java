@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * MIRROR SERVER ASLI — dibawa DI DALAM APK (assets/server/www/) dan diekstrak
- * OTOMATIS ke &lt;root&gt;/www/ saat aplikasi hidup (BootProvider), SEBELUM server
+ * OTOMATIS ke MAIN-SERVER/bs/ saat aplikasi hidup (BootProvider), SEBELUM server
  * menyala. TIDAK ADA langkah manual — "semua itu terekstrak ke sana".
  *
  * Isi mirror v4 (resource H5 Egret — CONFIG TIDAK LAGI di sini):
@@ -24,18 +24,17 @@ import java.util.List;
  *
  * 0.5.3 — DUA JALUR 100% TERPISAH (owner: "online tebaca itu cuma jadikan jejak
  * arah bukan untuk dijadikan config asli ke offline"):
- *   - CONFIG OFFLINE = paket MANUAL assets/server/config-offline/ → <root>/config-offline/
+ *   - CONFIG OFFLINE = paket MANUAL assets/server/config-offline/ → MAIN-SERVER/config-offline/
  *     (extractOfflineConfig — SELALU ditimpa: paket kanonik bawaan, bukan cermin online).
  *   - Cermin online (setting bin popoh5, snapshot 2109 server) DIHAPUS dari assets —
  *     jalur ONLINE mengambil langsung dari server asli saat passthrough.
  *
- * - Struktur folder www/ = path URL server asli, sehingga port game lokal
+ * - Struktur folder bs/ = path URL server asli, sehingga port game lokal
  *   menjawab di alamat yang sama seperti server asli.
  * - Ekstraksi ulang otomatis bila: penanda versi berubah, atau ada file mirror
  *   yang hilang (mis. sebagian dihapus / clear data sebagian).
- * - PENANDA disimpan di state/www.stamp (0.0.3 — dulu config/; state/ =
- *   keadaan runtime yang dibuat ulang otomatis) — www/ tetap murni cermin
- *   server, config/ murni pengaturan (aturan folder bersih §2).
+ * - PENANDA disimpan di MAIN-SERVER/www.stamp (bookkeeping milik MAIN —
+ *   0.0.4; dulu config/ lalu state/) — bs/ tetap murni cermin server.
  * - File tambahan di luar mirror TIDAK dihapus (mis. hasil self-seed).
  * - Gagal ekstraksi TIDAK PERNAH menggagalkan boot — game tetap jalan
  *   (fallback 404, terbukti dari analisis dex §2.8).
@@ -60,18 +59,19 @@ public final class Payload {
     }
 
     /**
-     * Pastikan www/ berisi mirror terbaru. Dipanggil Starter SEBELUM server hidup.
-     * Tidak pernah melempar exception — kegagalan dilaporkan lewat note.
+     * Pastikan MAIN-SERVER/bs/ berisi mirror terbaru. Dipanggil Starter SEBELUM
+     * server hidup (parameter = folder MAIN-SERVER). Tidak pernah melempar
+     * exception — kegagalan dilaporkan lewat note.
      */
-    public static Result extract(Context ctx, File wwwRoot) {
+    public static Result extract(Context ctx, File mainServerRoot) {
         Result r = new Result();
         try {
-            if (wwwRoot == null) {
-                r.note = "folder www tidak tersedia";
+            if (mainServerRoot == null) {
+                r.note = "folder MAIN-SERVER tidak tersedia";
                 return r;
             }
-            if (!wwwRoot.exists()) {
-                wwwRoot.mkdirs();
+            if (!mainServerRoot.exists()) {
+                mainServerRoot.mkdirs();
             }
             AssetManager am = ctx.getAssets();
             List<String> rel = new ArrayList<String>();
@@ -81,7 +81,7 @@ public final class Payload {
                 r.note = "mirror kosong di APK (assets/" + ASSET_DIR + " tidak berisi file)";
                 return r;
             }
-            if (!needsExtract(wwwRoot) && allPresent(wwwRoot, rel)) {
+            if (!needsExtract(mainServerRoot) && allPresent(mainServerRoot, rel)) {
                 r.extracted = false;
                 r.note = "penanda cocok (versi " + VERSION + ", " + rel.size() + " file utuh)";
                 return r;
@@ -92,7 +92,7 @@ public final class Payload {
             for (int i = 0; i < rel.size(); i++) {
                 String relPath = rel.get(i);
                 try {
-                    File out = new File(wwwRoot, relPath);
+                    File out = new File(mainServerRoot, relPath);
                     File parent = out.getParentFile();
                     if (parent != null && !parent.exists()) {
                         parent.mkdirs();
@@ -109,7 +109,7 @@ public final class Payload {
             }
             r.files = ok;
             r.bytes = bytes;
-            writeMarker(wwwRoot, ok, bytes);
+            writeMarker(mainServerRoot, ok, bytes);
             r.extracted = true;
             r.note = "sumber: assets/" + ASSET_DIR + " · versi mirror " + VERSION
                     + (gagal.length() > 0 ? " · gagal: " + gagal : "");
@@ -140,9 +140,11 @@ public final class Payload {
             if (root == null) {
                 return null;
             }
-            // 0.0.3 — folder paket = Paths.offline() (sumber tunggal);
-            // fallback root param untuk pemanggil tanpa Paths (uji).
-            File outDir = Paths.ready() ? Paths.offline() : new File(root, "config-offline");
+            // 0.0.4 — folder paket = MAIN-SERVER/config-offline (Paths.offline(),
+            // sumber tunggal); fallback MAIN-SERVER/ di bawah root param utk
+            // pemanggil tanpa Paths (uji).
+            File outDir = Paths.ready() ? Paths.offline()
+                    : new File(new File(root, Paths.MAIN_DIR), "config-offline");
             if (!outDir.exists()) {
                 outDir.mkdirs();
             }
@@ -174,7 +176,8 @@ public final class Payload {
                 }
             }
             return (ok > 0)
-                    ? ("config-offline/ (" + ok + " file · " + fmt(bytes) + ") — paket MANUAL "
+                    ? ("MAIN-SERVER/config-offline/ (" + ok + " file · " + fmt(bytes)
+                            + ") — paket MANUAL "
                             + "(setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)")
                     : null;
         } catch (Throwable t) {
@@ -194,22 +197,19 @@ public final class Payload {
 
     // ---------- internal ----------
 
-    private static File markerFile(File wwwRoot) {
-        // 0.0.3 — penanda pindah ke state/www.stamp (SUMBER TUNGGAL Paths);
-        // www/ tetap murni cermin server, config/ murni pengaturan.
-        File m = Paths.wwwStamp();
+    private static File markerFile(File mainServerRoot) {
+        // 0.0.4 — penanda = MAIN-SERVER/www.stamp (bookkeeping milik MAIN,
+        // SUMBER TUNGGAL Paths); bs/ tetap murni cermin server.
         if (Paths.ready()) {
-            return m;
+            return Paths.wwwStamp();
         }
-        File parent = wwwRoot.getParentFile();
-        File conf = (parent != null) ? new File(parent, "config") : new File("config");
-        return new File(conf, MARKER_NAME);
+        return new File(mainServerRoot, MARKER_NAME);
     }
 
     /** Ekstraksi diperlukan bila penanda tidak ada / versi tidak cocok. */
-    private static boolean needsExtract(File wwwRoot) {
+    private static boolean needsExtract(File mainServerRoot) {
         try {
-            File m = markerFile(wwwRoot);
+            File m = markerFile(mainServerRoot);
             if (!m.exists()) {
                 return true;
             }
@@ -220,10 +220,10 @@ public final class Payload {
         }
     }
 
-    /** true bila SEMUA file mirror sudah ada di www/ (walau versi penanda cocok). */
-    private static boolean allPresent(File wwwRoot, List<String> rel) {
+    /** true bila SEMUA file mirror sudah ada di bs/ (walau versi penanda cocok). */
+    private static boolean allPresent(File mainServerRoot, List<String> rel) {
         for (int i = 0; i < rel.size(); i++) {
-            File f = new File(wwwRoot, rel.get(i));
+            File f = new File(mainServerRoot, rel.get(i));
             if (!f.exists() || !f.isFile()) {
                 return false;
             }
@@ -231,9 +231,9 @@ public final class Payload {
         return true;
     }
 
-    private static void writeMarker(File wwwRoot, int count, long bytes) {
+    private static void writeMarker(File mainServerRoot, int count, long bytes) {
         try {
-            File m = markerFile(wwwRoot);
+            File m = markerFile(mainServerRoot);
             File parent = m.getParentFile();
             if (parent != null && !parent.exists()) {
                 parent.mkdirs();

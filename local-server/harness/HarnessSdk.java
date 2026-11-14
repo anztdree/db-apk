@@ -28,13 +28,17 @@ import com.db.local.server.Xxtea;
 /**
  * HARNESS 0.4.6 — MODEL FINAL LOG (grup batch) + regresi penuh 0.4.2–0.4.5.
  *
- * Baru 0.0.3 — STRUKTUR FOLDER JELAS (keluhan owner: "berantakan juga struktur
- * folder pembacaan file di folder server Android/data.. struktur folder local
- * di android/data harus juga jelas"): TAHAP 1a — Paths sumber tunggal path;
- * migrasi layout lama (config/dragonball.db → db/, status.json + www.stamp →
- * state/) tanpa menimpa; PETA.txt di root (peta folder, idempoten); whitelist
- * Cleaner 0.0.3 per-folder (config/servers.json mati + capture/ mati DIHAPUS,
- * PETA.txt + db/ + state/ dilindungi); StatusStore 0.0.3.
+ * Baru 0.0.4 — STRUKTUR FOLDER LAYANAN + .env (arahan owner 2026-11-15:
+ * "server json bisa di gantikah jadi .env . lalu SDK-SERVER, LOGIN-SERVER,
+ * MAIN-SERVER, CHAT-SERVER, DUNGEON-SERVER dan LOG !!  nama nya jelas" +
+ * kendala "banyak folder sampah yg gak jelas.. PETA.TXT GK PENTING.. TMP GK
+ * PENTING"): TAHAP 1a — migrasi layout 0.0.3 → layanan (db/dragonball.db →
+ * dragonball.db root, state/status.json → status.json root, state/www.stamp →
+ * MAIN-SERVER/www.stamp, www/bs → MAIN-SERVER/bs, config-offline →
+ * MAIN-SERVER/config-offline, logs → LOG) tanpa menimpa; NILAI config/server.json
+ * + game-upstream.txt → .env (MODE/SDK_PORT/LOGIN_PORT/MAIN_PORT/CHAT_PORT/
+ * DUNGEON_PORT/GAME_UPSTREAM/...); PETA.txt + tmp/ + folder lama DIHAPUS
+ * Cleaner; whitelist per-folder layanan; StatusStore 0.0.4.
  *
  * Baru 0.4.6 (kesepakatan owner "group itu kalau terdeteksi emang
  * config/resource yg banyak. kalau alur ya gk usah di group"): LogGroups —
@@ -47,7 +51,7 @@ import com.db.local.server.Xxtea;
  * apalagi UI website banyak informasi yg tidak bermanfaat"): log DUA TINGKAT —
  * PENTING selalu tampil (boot dipadatkan 5 baris, mode, tamu/daftar/masuk,
  * server list, ⚠), TEKNIS (request per-file 200/404/seed, probe DNS, dsb.) hanya
- * saat mode RINCI (toggle dasbor → server.json "logTech"); file human.log TETAP
+ * saat mode RINCI (toggle dasbor → .env "LOG_TECH"); file human.log TETAP
  * lengkap (bukti tidak hilang) + API /api/logs/file (Copy penuh); dasbor dirombak
  * — Log pusat + tab Data/Teknis.
  *
@@ -87,15 +91,16 @@ public class HarnessSdk {
         File conf = new File(root, "config");
         conf.mkdirs();
         // 0.0.2 — server.json SENGaja bentuk LAMA (loginPort 8610, tanpa
-        // "sdkPort") untuk menguji MIGRASI pemisahan port: SDK tetap 8610,
-        // login socket digeser otomatis ke 8611 (lihat TAHAP 3).
+        // "sdkPort") untuk menguji MIGRASI NILAI ke .env: SDK tetap 8610,
+        // login socket digeser otomatis ke 8611 (lihat TAHAP 1a + 3).
         write(new File(conf, "server.json"),
                 "{\"mode\":\"local\",\"gamePort\":8080,\"debugPort\":4000,\"loginPort\":8610,\"useSdk\":false}");
+        write(new File(conf, "game-upstream.txt"), "https://up-uji.example.com:8061\n");
         write(new File(conf, "servers.json"),
                 "{\"errorCode\":0,\"serverList\":[{\"serverId\":\"2109\",\"url\":\"https://s2109-bs.popoh5.com:8061\","
                         + "\"name\":\"S2109\",\"online\":true,\"new\":false,\"hot\":false,\"openDate\":\"\",\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\"}],\"history\":[]}");
 
-        // ---------------- 0.5.3: paket CONFIG OFFLINE MANUAL (folder config-offline/) ----------------
+        // ---------------- 0.5.3: paket CONFIG OFFLINE MANUAL (folder config-offline/ — layout 0.0.3) ----------------
         File off = new File(root, "config-offline");
         off.mkdirs();
         // 0.0.2 — field KONTRAK KLIEN saja (tanpa upstream/urlInner/chatInner)
@@ -103,56 +108,91 @@ public class HarnessSdk {
                 "{\"errorCode\":0,\"serverList\":[{\"serverId\":\"1\",\"url\":\"http://127.0.0.1:8080\","
                         + "\"new\":true,\"hot\":true,\"name\":\"Server Lokal\",\"online\":true,\"openDate\":\"\","
                         + "\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\"}],\"history\":[]}");
+        // layout 0.0.3 lain di root (akan dimigrasi ke folder layanan)
+        write(new File(new File(root, "state"), "status.json"), "{}");
+        write(new File(new File(root, "state"), "www.stamp"), "mirror-version=4\n");
+        write(new File(new File(new File(root, "www"), "bs"), "penanda-mirror.txt"), "MIRROR");
+        write(new File(new File(root, "logs"), "human.log"), "LOG LAMA\n");
 
-        // ---------------- TAHAP 1a: MIGRASI STRUKTUR FOLDER (0.0.3 — keluhan owner
-        // "struktur folder pembacaan file di folder server Android/data.. berantakan",
-        // "struktur folder local di android/data harus juga jelas") ----------------
-        // Simulasi perangkat 0.0.2: dragonball.db + status.json + www.stamp menumpuk
-        // di config/. Paths.migrateFromLegacyLayout() memindahkan ke tempat yang
-        // benar SEBELUM Db.boot & Cleaner — data tidak hilang, tidak menimpa.
+        // ---------------- TAHAP 1a: MIGRASI STRUKTUR LAYANAN (0.0.4 — arahan owner
+        // "server json bisa di gantikah jadi .env . lalu SDK-SERVER, LOGIN-SERVER,
+        // MAIN-SERVER, CHAT-SERVER, DUNGEON-SERVER dan LOG !!  nama nya jelas") ----
+        // 1a-i) SIMULASI perangkat lama di folder terpisah (db/ + config/ 0.0.2):
         File legacySim = new File(root, "legacy-sim");
         File lconf = new File(legacySim, "config");
+        File ldb = new File(legacySim, "db");
         lconf.mkdirs();
+        ldb.mkdirs();
         write(new File(lconf, "dragonball.db"), "FAKE-DB-0.0.2");
         write(new File(lconf, "dragonball.db-journal"), "J");
-        write(new File(lconf, "status.json"), "{}");
-        write(new File(lconf, "www.stamp"), "mirror-version=4\n");
+        write(new File(ldb, "dragonball.db"), "FAKE-DB-0.0.3");
+        write(new File(new File(legacySim, "state"), "status.json"), "{}");
+        write(new File(new File(legacySim, "state"), "www.stamp"), "mirror-version=4\n");
         Paths.init(legacySim); // Paths menunjuk root simulasi
-        String moved = Paths.migrateFromLegacyLayout();
-        check("0.0.3 migrasi: config/dragonball.db → db/ (data pemain terpisah dari config)",
-                new File(legacySim, "db/dragonball.db").exists()
-                        && !new File(lconf, "dragonball.db").exists());
-        check("0.0.3 migrasi: jurnal SQLite ikut pindah ke db/",
-                new File(legacySim, "db/dragonball.db-journal").exists());
-        check("0.0.3 migrasi: config/status.json → state/",
-                new File(legacySim, "state/status.json").exists());
-        check("0.0.3 migrasi: config/www.stamp → state/",
-                new File(legacySim, "state/www.stamp").exists());
-        check("0.0.3 migrasi: ringkasan menyebut SEMUA pindahan (tidak diam-diam)",
-                moved.contains("config/dragonball.db → db/dragonball.db")
-                        && moved.contains("config/status.json → state/status.json")
-                        && moved.contains("config/www.stamp → state/www.stamp"));
-        write(new File(lconf, "status.json"), "LAMA");
-        Paths.migrateFromLegacyLayout();
-        check("0.0.3 migrasi aman: target sudah ada → sumber TIDAK menimpa (data baru menang)",
-                "LAMA".equals(readAll(new java.io.FileInputStream(new File(lconf, "status.json"))))
+        String moved = Paths.migrateToServiceLayout();
+        check("0.0.4 migrasi: db/dragonball.db → ROOT (satu file jelas di root)",
+                new File(legacySim, "dragonball.db").exists()
+                        && !new File(ldb, "dragonball.db").exists());
+        check("0.0.4 migrasi: jurnal SQLite ikut (db/ dulu, target root)",
+                new File(legacySim, "dragonball.db-journal").exists());
+        check("0.0.4 migrasi aman: config/dragonball.db (0.0.2) TIDAK menimpa data baru di root",
+                "FAKE-DB-0.0.2".equals(readAll(new java.io.FileInputStream(
+                        new File(lconf, "dragonball.db"))))
+                        && "FAKE-DB-0.0.3".equals(readAll(new java.io.FileInputStream(
+                                new File(legacySim, "dragonball.db")))));
+        check("0.0.4 migrasi: state/status.json → status.json ROOT",
+                new File(legacySim, "status.json").exists());
+        check("0.0.4 migrasi: state/www.stamp → MAIN-SERVER/www.stamp",
+                new File(new File(legacySim, "MAIN-SERVER"), "www.stamp").exists());
+        check("0.0.4 migrasi: ringkasan menyebut pindahan (tidak diam-diam)",
+                moved.contains("db/dragonball.db → dragonball.db")
+                        && moved.contains("state/status.json → status.json")
+                        && moved.contains("state/www.stamp → MAIN-SERVER/www.stamp"));
+        write(new File(new File(legacySim, "state"), "status.json"), "LAMA");
+        Paths.migrateToServiceLayout();
+        check("0.0.4 migrasi aman: target sudah ada → sumber TIDAK menimpa (data baru menang)",
+                "LAMA".equals(readAll(new java.io.FileInputStream(
+                        new File(new File(legacySim, "state"), "status.json"))))
                         && "{}".equals(readAll(new java.io.FileInputStream(
-                                new File(legacySim, "state/status.json")))));
+                                new File(legacySim, "status.json")))));
         Paths.init(root); // kembali ke root utama harness
 
-        // PETA.txt — peta folder di perangkat (0.0.3: "struktur folder local di
-        // android/data harus juga jelas") — dibuat bila hilang/versi berubah
-        String petaState = Paths.writePetaIfStale();
-        check("0.0.3 PETA.txt ditulis di root server (peta folder untuk pemilik)",
-                "ditulis".equals(petaState) && Paths.petaTxt().exists());
-        String petaTxt = readAll(new java.io.FileInputStream(Paths.petaTxt()));
-        check("0.0.3 PETA.txt menjelaskan SATU makna per folder (config/db/state/www/config-offline/logs/tmp)",
-                petaTxt.contains("config/") && petaTxt.contains("db/") && petaTxt.contains("state/")
-                        && petaTxt.contains("www/") && petaTxt.contains("config-offline/")
-                        && petaTxt.contains("logs/") && petaTxt.contains("tmp/")
-                        && petaTxt.contains("Peta versi 1"));
-        check("0.0.3 PETA.txt idempoten — tidak ditulis-ulang bila tetap",
-                "sudah".equals(Paths.writePetaIfStale()));
+        // 1a-ii) MIGRASI ROOT sungguhan (layout 0.0.3 di atas → folder layanan + .env)
+        String movedRoot = Paths.migrateToServiceLayout();
+        String cfgMoved = Config.migrateLegacyValues(root);
+        Paths.ensureDirs(); // 6 folder layanan dibuat (SDK-SERVER … LOG)
+        check("0.0.4 migrasi root: config-offline → MAIN-SERVER/config-offline",
+                new File(new File(root, "MAIN-SERVER"), "config-offline/servers.json").exists()
+                        && !new File(root, "config-offline/servers.json").exists());
+        check("0.0.4 migrasi root: www/bs → MAIN-SERVER/bs (mirror milik MAIN)",
+                new File(new File(new File(root, "MAIN-SERVER"), "bs"), "penanda-mirror.txt").exists());
+        check("0.0.4 migrasi root: logs → LOG (nyawa tidak hilang)",
+                new File(new File(root, "LOG"), "human.log").exists());
+        check("0.0.4 migrasi root: state/* → status.json root + MAIN-SERVER/www.stamp",
+                new File(root, "status.json").exists()
+                        && new File(new File(root, "MAIN-SERVER"), "www.stamp").exists());
+        check("0.0.4 migrasi root: 6 folder layanan ada (nama = layanannya — owner)",
+                new File(root, "SDK-SERVER").isDirectory()
+                        && new File(root, "LOGIN-SERVER").isDirectory()
+                        && new File(root, "MAIN-SERVER").isDirectory()
+                        && new File(root, "CHAT-SERVER").isDirectory()
+                        && new File(root, "DUNGEON-SERVER").isDirectory()
+                        && new File(root, "LOG").isDirectory());
+        File envFile = new File(root, ".env");
+        check("0.0.4 .env dibuat di root (pengganti config/server.json — owner)",
+                envFile.exists());
+        String envTxt = readAll(new java.io.FileInputStream(envFile));
+        check("0.0.4 .env: nilai server.json lama IKUT (SDK 8610 — QHinfo, LOGIN geser 8611)",
+                envTxt.contains("SDK_PORT=8610") && envTxt.contains("LOGIN_PORT=8611")
+                        && envTxt.contains("MAIN_PORT=8080") && envTxt.contains("DASBOR_PORT=4000"));
+        check("0.0.4 .env: CHAT_PORT 8612 + DUNGEON_PORT 8613 (pola 5-server asli — folder siap)",
+                envTxt.contains("CHAT_PORT=8612") && envTxt.contains("DUNGEON_PORT=8613"));
+        check("0.0.4 .env: GAME_UPSTREAM ikut dari game-upstream.txt (isian pemilik tidak hilang)",
+                envTxt.contains("GAME_UPSTREAM=https://up-uji.example.com:8061"));
+        check("0.0.4 .env: berisi keterangan tiap kunci (pemilik bisa menyunting)",
+                envTxt.contains("# db-apk") && envTxt.contains("MODE=local"));
+        // paket manual kini dibaca dari lokasi BARU
+        off = new File(new File(root, "MAIN-SERVER"), "config-offline");
 
         // ---------------- TAHAP 1: MIGRASI txt lama → dragonball.db ----------------
         write(new File(conf, "local-user.txt"), LEGACY_GUEST + "\n");
@@ -162,9 +202,8 @@ public class HarnessSdk {
         write(new File(conf, "sdk-session.txt"), LEGACY_TOKEN + "\t" + LEGACY_GUEST + "\t1\t2026-11-02 21:31:00\n");
         write(new File(conf, "sdk-last.txt"), LEGACY_GUEST + "\t" + LEGACY_GUEST + "\t2026-11-02 21:31:05\n");
 
-        Db.boot(new File(root, "db"), conf); // 0.0.3 — DB di db/, txt warisan dari config/
-        LoginData.init(conf, off); // 0.5.3 — dua folder: config/ + config-offline/
-        SdkData.init(conf);
+        Db.boot(root, conf); // 0.0.4 — dragonball.db di ROOT, txt warisan dari config/
+        LoginData.init(off); // 0.5.3 + 0.0.4 — paket manual di MAIN-SERVER/config-offline/
 
         check("engine = SQLite sungguhan (JDBC) — SQL beneran diuji", Db.i().sqlite());
         check("migrasi local-user.txt → kv local_user", LEGACY_GUEST.equals(LoginData.localUserId()));
@@ -180,7 +219,7 @@ public class HarnessSdk {
                         && new File(conf, "local-user.txt.imported").exists());
 
         // ---------------- TAHAP 2: REBOOT — buka ulang DB (simulasi mati/hidup) ----------------
-        Db.boot(new File(root, "db"), conf);
+        Db.boot(root, conf);
         check("REBOOT: guest pemilik tetap (dulu txt terhapus Cleaner — bug 0.4.2)",
                 LEGACY_GUEST.equals(LoginData.localUserId()));
         check("REBOOT: akun tetap", LoginData.accountPassword(LEGACY_ACC) != null);
@@ -189,13 +228,17 @@ public class HarnessSdk {
 
         // ---------------- TAHAP 3: server SDK + server login TERPISAH + seluruh
         // jalur SDK (regresi 0.4.2) — 0.0.2 PEMISAHAN PORT ----------------
-        Config.load(root); // server.json LEGACY (loginPort 8610, tanpa sdkPort)
-        // 0.0.2 migrasi: sdkPort==loginPort → SDK mempertahankan 8610 (QHinfo),
-        // login socket digeser 8611 — keputusan terekam log, tanpa asumsi diam.
-        check("0.0.2 migrasi server.json legacy: sdkPort tetap 8610 (QHinfo menunjuk ke sana)",
+        Config.load(root); // .env hasil migrasi (config/server.json legacy loginPort 8610)
+        // 0.0.2 migrasi NILAI: sdkPort==loginPort → SDK mempertahankan 8610
+        // (QHinfo), login socket digeser 8611 — keputusan terekam log, tanpa asumsi diam.
+        check("0.0.4 migrasi server.json → .env: sdkPort tetap 8610 (QHinfo menunjuk ke sana)",
                 Config.sdkPort() == 8610);
-        check("0.0.2 migrasi server.json legacy: loginPort digeser otomatis ke 8611 (tidak bentrok)",
+        check("0.0.4 migrasi server.json → .env: loginPort digeser otomatis ke 8611 (tidak bentrok)",
                 Config.loginPort() == 8611);
+        check("0.0.4 .env: port CHAT 8612 + DUNGEON 8613 terbaca Config (folder layanan siap)",
+                Config.chatPort() == 8612 && Config.dungeonPort() == 8613);
+        check("0.0.4 .env: upstream hasil migrasi terbaca (isian pemilik)",
+                "https://up-uji.example.com:8061".equals(Config.gameUpstream()));
         SdkServer ssx = new SdkServer("127.0.0.1", Config.sdkPort());
         ssx.start(500, false);
         LoginServer ls = new LoginServer("127.0.0.1", Config.loginPort());
@@ -393,54 +436,62 @@ public class HarnessSdk {
         check("loginGame mengikuti sesi SDK (email)", r.contains("budi.new@gmail.com"));
         check("DB: akun email tercatat di tabel accounts (loginGame)",
                 Db.i().account("budi.new@gmail.com") != null);
-        // 12) whitelist Cleaner 0.0.3 — struktur JELAS: config/ murni pengaturan,
-        //     db/ data pemain, state/ keadaan runtime; file mati DIHAPUS dengan
-        //     nama+ukuran di log (bukti audit 0.0.3):
-        //     - config/servers.json (snapshot era 0.4.4) TIDAK dibaca lagi sejak
-        //       0.5.3 (serverlist hanya paket manual — tes 18a) → dihapus;
-        //     - capture/ mati sejak 0.5.4 (REKAM dihapus total) → sisa disapu;
-        //     - PETA.txt + db/dragonball.db + state/* DILINDUNGI.
+        // 12) whitelist Cleaner 0.0.4 — ROOT: .env + dragonball.db + status.json
+        //     + 6 folder layanan (SDK-SERVER/LOGIN-SERVER/MAIN-SERVER/CHAT-SERVER/
+        //     DUNGEON-SERVER/LOG); folder & file LAMA layout 0.0.3 disapu utuh:
+        //     - config/ (server.json + game-upstream.txt sudah dipindah NILAINYA ke
+        //       .env; *.imported aman di SQLite) → folder DIHAPUS;
+        //     - PETA.txt + tmp/ DIHAPUS (owner: "PETA.TXT GK PENTING", "TMP GK PENTING");
+        //     - capture/ mati sejak 0.5.4 → sisa disapu;
+        //     - MAIN-SERVER (bs/, config-offline/, www.stamp) + LOG + .env +
+        //       dragonball.db + status.json DILINDUNGI.
         java.lang.reflect.Method mClean = Class.forName("com.db.local.server.Cleaner")
                 .getDeclaredMethod("clean", File.class);
         Object cr = mClean.invoke(null, root);
         String cleaned = cr.getClass().getField("names").get(cr).toString();
-        check("Cleaner 0.0.3: config/servers.json MATI (snapshot 0.4.4) dihapus — dua servers.json sumber bingung",
-                cleaned.contains("config/servers.json") && !new File(root, "config/servers.json").exists());
-        check("Cleaner 0.0.3: *.imported di config/ disapu (isinya sudah aman di SQLite)",
-                cleaned.contains("config/local-user.txt.imported"));
-        // db/dragonball.db dilindungi — bila engine SQLite sandbox tak membuat file
+        check("Cleaner 0.0.4: config/ lama DIHAPUS UTUH (nilai sudah di .env, txt aman di SQLite)",
+                !new File(root, "config").exists() && cleaned.contains("config"));
+        // dragonball.db dilindungi — bila engine SQLite sandbox tak membuat file
         // (jaring memori), buat penanda sendiri agar uji whitelist deterministik
-        File dbfGuard = new File(new File(root, "db"), "dragonball.db");
+        File dbfGuard = new File(root, "dragonball.db");
         if (!dbfGuard.exists()) {
             write(dbfGuard, "DB");
         }
-        check("Cleaner: dragonball.db tetap dilindungi (kini db/ — data pemain)",
-                !cleaned.contains("db/dragonball.db") && dbfGuard.exists());
-        check("Cleaner: folder config-offline/ TIDAK dihapus (paket MANUAL dilindungi 0.5.3)",
-                new File(root, "config-offline").exists()
-                        && new File(root, "config-offline/servers.json").exists());
-        // sisa capture/ era REKAM (mati 0.5.4) — dulu menetap di perangkat selamanya
+        check("Cleaner 0.0.4: dragonball.db ROOT dilindungi (data pemain)",
+                !cleaned.contains("dragonball.db") && dbfGuard.exists());
+        check("Cleaner 0.0.4: .env + status.json dilindungi (pengaturan + keadaan)",
+                envFile.exists() && new File(root, "status.json").exists());
+        check("Cleaner 0.0.4: MAIN-SERVER/bs + MAIN-SERVER/config-offline dilindungi (mirror + paket MANUAL)",
+                new File(new File(root, "MAIN-SERVER"), "bs/penanda-mirror.txt").exists()
+                        && new File(new File(root, "MAIN-SERVER"), "config-offline/servers.json").exists());
+        // sisa capture/ era REKAM (mati 0.5.4) + PETA.txt + tmp/ (owner: tidak penting)
         File cap = new File(root, "capture");
         cap.mkdirs();
         write(new File(cap, "rekam.jsonl"), "[]");
-        // file state/ juga dibuat utk membuktikan dilindungi
-        File stateDir = new File(root, "state");
-        stateDir.mkdirs();
-        write(new File(stateDir, "status.json"), "{}");
-        write(new File(stateDir, "www.stamp"), "mirror-version=4\n");
+        write(new File(root, "PETA.txt"), "Peta versi 1 (lama)");
+        File tmpDir12 = new File(root, "tmp");
+        tmpDir12.mkdirs();
+        write(new File(tmpDir12, "kerja.txt"), "sementara");
+        File junkMain = new File(new File(root, "MAIN-SERVER"), "file-nyasar.txt");
+        write(junkMain, "sampah");
+        File junkSdk = new File(new File(root, "SDK-SERVER"), "berkas-nyasar.txt");
+        write(junkSdk, "sampah");
         cr = mClean.invoke(null, root);
         cleaned = cr.getClass().getField("names").get(cr).toString();
-        check("Cleaner 0.0.3: capture/ sisa era REKAM DIHAPUS otomatis (dulu menetap diam-diam)",
+        check("Cleaner 0.0.4: capture/ sisa era REKAM DIHAPUS otomatis (dulu menetap diam-diam)",
                 !new File(root, "capture").exists());
-        check("Cleaner 0.0.3: PETA.txt dilindungi (peta folder untuk pemilik)",
-                Paths.petaTxt().exists());
-        check("Cleaner 0.0.3: state/status.json + state/www.stamp dilindungi (keadaan runtime)",
-                new File(root, "state/status.json").exists()
-                        && new File(root, "state/www.stamp").exists());
+        check("Cleaner 0.0.4: PETA.txt DIHAPUS (owner: PETA.TXT GK PENTING)",
+                !new File(root, "PETA.txt").exists());
+        check("Cleaner 0.0.4: tmp/ DIHAPUS (owner: TMP GK PENTING)",
+                !new File(root, "tmp").exists());
+        check("Cleaner 0.0.4: berkas nyasar di MAIN-SERVER + SDK-SERVER disapu (folder layanan terjaga)",
+                !junkMain.exists() && !junkSdk.exists()
+                        && cleaned.contains("MAIN-SERVER/file-nyasar.txt")
+                        && cleaned.contains("SDK-SERVER/berkas-nyasar.txt"));
 
         // 13) LOG BERSIH 0.4.5 — dua tingkat (penting selalu / teknis hanya RINCI);
         //     file human.log TETAP lengkap — mode bersih tidak menghilangkan bukti
-        HumanLog.init(new File(root, "logs"));
+        HumanLog.init(new File(root, "LOG"));
         HumanLog.clearMem();
         HumanLog.setTechEnabled(false);
         HumanLog.ev("✅", "HRNESS penting selalu tampil", null);
@@ -454,7 +505,7 @@ public class HarnessSdk {
         check("log RINCI: event TEKNIS ikut tampil", snap2.contains("teknis tampil saat rinci"));
         check("log RINCI: baris teknis diberi penanda v:1", snap2.contains("\"v\":1"));
         // file tetap lengkap (penting + teknis tertulis semuanya)
-        File hf = new File(new File(root, "logs"), "human.log");
+        File hf = new File(new File(root, "LOG"), "human.log");
         String fileTxt = readAll(new java.io.FileInputStream(hf));
         check("FILE human.log tetap berisi baris teknis (bukti tidak hilang)",
                 fileTxt.contains("teknis tersembunyi"));
@@ -463,13 +514,21 @@ public class HarnessSdk {
                 tail.contains("penting selalu tampil") && tail.contains("teknis tersembunyi"));
         HumanLog.setTechEnabled(false);
 
-        // 14) config logTech — pilihan toggle dasbor tahan reboot (server.json)
+        // 14) config logTech — pilihan toggle dasbor tahan reboot (.env)
         Config.setLogTech(true);
-        Config.load(new File(root, "config"));
-        check("config: logTech=true tersimpan di server.json", Config.logTech());
+        Config.load(root);
+        check("config: logTech=true tersimpan di .env (LOG_TECH)", Config.logTech());
         Config.setLogTech(false);
-        Config.load(new File(root, "config"));
-        check("config: logTech=false batal tersimpan", !Config.logTech());
+        Config.load(root);
+        check("config: logTech=false batal tersimpan di .env", !Config.logTech());
+        Config.setRekam(true);
+        Config.load(root);
+        check("config: REKAM=true tersimpan di .env", Config.rekam());
+        Config.setMode("online");
+        check("config: mode online tersimpan", "online".equals(Config.mode()));
+        Config.load(root);
+        check("config: mode online tetap setelah baca-ulang .env", "online".equals(Config.mode()));
+        Config.setMode("local");
 
         // ---------------- TAHAP 15: GRUP LOG BATCH (0.4.6 — model final owner:
         // "group itu kalau terdeteksi emang config/resource yg banyak") ----------------
@@ -671,13 +730,13 @@ public class HarnessSdk {
         check("0.5.3 daftar server: snapshot online (config/ popoh5) TIDAK dibaca lagi",
                 !daftar.contains("popoh5.com"));
         // 18b) fallback darurat TANPA paket manual tetap LOKAL (tidak pernah popoh5)
-        LoginData.init(conf, null);
+        LoginData.init(null);
         String darurat = LoginData.serverListData();
         check("0.5.3 fallback tanpa paket: tetap 1 entri LOKAL 127.0.0.1", 
                 darurat.contains("http://127.0.0.1:8080") && darurat.contains("Server Lokal"));
         check("0.5.3 fallback tanpa paket: TIDAK PERNAH popoh5 (dulu s2109-bs.popoh5.com)",
                 !darurat.contains("popoh5.com"));
-        LoginData.init(conf, off); // pulihkan sumber manual untuk sisa uji
+        LoginData.init(off); // pulihkan sumber manual untuk sisa uji
         // 18c) templat paket manual: semua alamat lokal, nol popoh5 (kunci isi)
         // 0.0.2 — loginPort 8611 (socket) + loginWebPort 8610 (loginchecknative → SDK)
         String templatBin = "{\"testMode\":1,"
@@ -749,10 +808,7 @@ public class HarnessSdk {
                         "{\\\"serverList\\\":[{\\\"url\\\":\\\"https://s1-bs.popoh5.com:8001\\\"}]}")
                         .contains("\\\"url\\\":\\\"http://127.0.0.1:8080\\\""));
         // 19d) upstream relay semua mode: isian owner menang; ONLINE pakai tabel
-        try {
-            new File(conf, "game-upstream.txt").delete();
-        } catch (Throwable ignored) {
-        }
+        Config.setUpstream(""); // 0.0.4 — hapus isian relay (kembali lokal murni)
         GameServer.setOnlineUpstreamTable(t61);
         GameServer.setOnlineChosenId("2109");
         String[] pick61 = GameServer.resolveGameUpstream("online");
@@ -870,20 +926,27 @@ public class HarnessSdk {
         // 19a) tanpa isian pemilik: LOCAL tidak punya tujuan relay — TIDAK ada
         //      kontak keluar (bukan fallback ke server asli).
         String[] ex19 = LoginData.gameUpstreamEx();
-        check("19 koreksi: tanpa game-upstream.txt → sumber kosong (bukan servers.json)",
+        check("19 koreksi: tanpa GAME_UPSTREAM di .env → sumber kosong (bukan servers.json)",
                 ex19[0].length() == 0 && ex19[1].length() == 0);
         check("19 koreksi: resolveGameUpstream LOCAL tanpa isian = null"
                         + " (TIDAK menyentuh server asli otomatis)",
                 GameServer.resolveGameUpstream("local") == null);
-        // 19b) isian pemilik = SATU-SATUNYA sumber relay (dasbor seksi CONFIG / file).
-        write(new File(conf, "game-upstream.txt"), "https://127.0.0.1:9999\n");
+        // 19b) isian pemilik = SATU-SATUNYA sumber relay (dasbor seksi CONFIG / .env).
+        check("19 koreksi: setUpstream menolak bukan-URL",
+                Config.setUpstream("bukan-url") != null);
+        check("19 koreksi: setUpstream kosong = HAPUS isian (kembali lokal murni)",
+                Config.setUpstream("") == null && Config.gameUpstream().length() == 0);
+        Config.setUpstream("https://127.0.0.1:9999\n");
         String[] ex19b = LoginData.gameUpstreamEx();
-        check("19 koreksi: game-upstream.txt (isian pemilik) = satu-satunya sumber relay",
-                "https://127.0.0.1:9999".equals(ex19b[0]) && "file".equals(ex19b[1]));
-        check("19 koreksi: resolveGameUpstream LOCAL dgn isian pemilik = file pemilik",
+        check("19 koreksi: GAME_UPSTREAM di .env (isian pemilik) = satu-satunya sumber relay",
+                "https://127.0.0.1:9999".equals(ex19b[0]) && ".env".equals(ex19b[1]));
+        check("19 koreksi: resolveGameUpstream LOCAL dgn isian pemilik = .env pemilik",
                 GameServer.resolveGameUpstream("local") != null
                         && "https://127.0.0.1:9999".equals(GameServer.resolveGameUpstream("local")[0]));
-        new File(conf, "game-upstream.txt").delete();
+        check("19 koreksi: GAME_UPSTREAM terekam di file .env (tahan reboot)",
+                readAll(new java.io.FileInputStream(new File(root, ".env")))
+                        .contains("GAME_UPSTREAM=https://127.0.0.1:9999"));
+        Config.setUpstream("");
         // 19c) PAKET berisi upstream pun (simulasi paket pelanggaran 0.6.3) — tetap
         //      TIDAK dibaca: field "upstream" paket manual bukan tujuan relay lagi.
         write(new File(off, "servers.json"),
@@ -1113,8 +1176,8 @@ public class HarnessSdk {
         }
         // 23c) StatusStore membawa versi 0.0.2 + status SDK terpisah
         String stJson = StatusStore.toJson();
-        check("23 StatusStore: version = 0.0.3",
-                stJson.contains("\"version\":\"0.0.3\""));
+        check("23 StatusStore: version = 0.0.4",
+                stJson.contains("\"version\":\"0.0.4\""));
         check("23 StatusStore: sdkPort/sdkAlive + loginPort/loginAlive terpisah",
                 stJson.contains("\"sdkPort\"") && stJson.contains("\"sdkAlive\"")
                         && stJson.contains("\"loginPort\"") && stJson.contains("\"loginAlive\""));

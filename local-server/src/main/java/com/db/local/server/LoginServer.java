@@ -120,7 +120,7 @@ public final class LoginServer extends NanoHTTPD {
                 return text(Response.Status.NOT_FOUND,
                         "Server login lokal melayani /socket.io/ (protokol login) saja — murni socket\n"
                                 + "(0.0.2: API SDK pindah ke port " + Config.sdkPort() + ", dasbor "
-                                + Config.debugPort() + ").");
+                                + Config.dasborPort() + ").");
             }
             // 0.5.1 — mode ONLINE: passthrough utuh ke server login ASLI. Config
             // (bin/serversetting) sudah menulis-ulang jalur login ke server lokal
@@ -385,9 +385,9 @@ public final class LoginServer extends NanoHTTPD {
                                         : " · upstream relay: TIDAK DIISI (paket tidak membawa tujuan — LOCAL tidak menyentuh server asli otomatis)"),
                         data + "\n\n— catatan —\n"
                                 + "url entri = tujuan io.connect klien saat klik Play (127.0.0.1:"
-                                + Config.gamePort() + " = server game lokal).\n"
+                                + Config.mainPort() + " = server game lokal).\n"
                                 + "Field \"upstream\" di paket = keterangan saja (KOSONG) — tujuan relay\n"
-                                + "hanya dari ISIAN PEMILIK: config/game-upstream.txt (dasbor seksi CONFIG,\n"
+                                + "hanya dari ISIAN PEMILIK: .env (kunci GAME_UPSTREAM — dasbor seksi CONFIG,\n"
                                 + "1 baris URL, tanpa build ulang). Paket tidak pernah membawa alamat server asli.");
             } catch (Throwable ignored) {
             }
@@ -405,15 +405,15 @@ public final class LoginServer extends NanoHTTPD {
             if (!dup) {
                 String up = LoginData.gameUpstream();
                 HumanLog.ev("📋", "Daftar server terkirim — " + LoginData.serverCount() + " server (paket MANUAL)",
-                        "Sumber   : config-offline/servers.json — paket CONFIG OFFLINE MANUAL bawaan APK\n"
+                        "Sumber   : MAIN-SERVER/config-offline/servers.json — paket CONFIG OFFLINE MANUAL bawaan APK\n"
                                 + "           (bukan snapshot online — owner: online cuma jejak arah, bukan config asli offline)\n"
-                                + "Tujuan   : url tiap entri = 127.0.0.1:" + Config.gamePort()
+                                + "Tujuan   : url tiap entri = 127.0.0.1:" + Config.mainPort()
                                 + " — klik Play masuk SERVER GAME LOKAL\n"
                                 + "Upstream : " + (up.length() > 0
                                         ? up + " — socket game :8080 diteruskan ke sini (relay isian pemilik)"
                                         : "TIDAK DIISI — paket manual tidak membawa tujuan relay (tegasan owner:"
                                                 + " LOCAL tidak menyentuh server asli otomatis). Isi bila perlu:"
-                                                + " config/game-upstream.txt lewat dasbor seksi CONFIG") + "\n"
+                                                + " .env kunci GAME_UPSTREAM lewat dasbor seksi CONFIG") + "\n"
                                 + "Ukuran   : " + HumanLog.fmtBytes(data.length()) + " · " + HumanLog.fmtMs(ms)
                                 + " · pemain sekarang di layar pilih server");
             }
@@ -470,7 +470,7 @@ public final class LoginServer extends NanoHTTPD {
                     "Sesi     : " + s.sid + " · hidup " + HumanLog.fmtMs(age) + "\n"
                             + "Terakhir : " + (act == null ? "(belum ada aksi — hanya handshake)" : act) + "\n"
                             + "Lanjutan : klien io.connect ke url entri daftar server — http://127.0.0.1:"
-                            + Config.gamePort() + " (relay socket game lokal)");
+                            + Config.mainPort() + " (relay socket game lokal)");
         } else {
             HumanLog.evTech("🔌", "Sesi login kedaluwarsa (90 dtk tanpa aktivitas) — klien sudah pergi",
                     "Sesi     : " + s.sid + " · terakhir " + (act == null ? "-" : act));
@@ -697,7 +697,7 @@ public final class LoginServer extends NanoHTTPD {
                 // 0.6.1 — ROUTING dicatat terpisah: apa yang diterima klien
                 // (url = relay lokal) vs apa yang dijawab upstream (url ASLI).
                 String routing = rewrote > 0
-                        ? "klien menerima url entri = http://127.0.0.1:" + Config.gamePort()
+                        ? "klien menerima url entri = http://127.0.0.1:" + Config.mainPort()
                                 + " (relay game lokal) — relay meneruskan ke url ASLI per entri"
                                 + " · framing engine.io UTUH: prefix panjang dihitung ulang per frame ("
                                 + framing + ") — parser klien memvalidasi panjang frame; dulu 0.6.1"
@@ -804,7 +804,7 @@ public final class LoginServer extends NanoHTTPD {
             if (!m.find()) {
                 return null;
             }
-            String localUrl = "http://127.0.0.1:" + Config.gamePort();
+            String localUrl = "http://127.0.0.1:" + Config.mainPort();
             StringBuffer sb = new StringBuffer(respText.length() + 64);
             m.reset();
             while (m.find()) {

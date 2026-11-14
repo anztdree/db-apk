@@ -217,7 +217,7 @@ public final class SettingBin {
         try {
             byte[] enc = readAll(f);
             String s = new String(xor(enc), "UTF-8");
-            String replaced = s.replace(HOST_ORIGINAL, "http://127.0.0.1:" + Config.gamePort());
+            String replaced = s.replace(HOST_ORIGINAL, "http://127.0.0.1:" + Config.mainPort());
             replaced = replaced.replace(LOGIN_ORIGINAL, "http://127.0.0.1");
             replaced = replaced.replace(TS_LOGIN_ORIGINAL, "http://127.0.0.1:" + Config.loginPort());
             // (0.5.0 — decryptedRewritten tetap gaya LOCAL; mode ONLINE memakai

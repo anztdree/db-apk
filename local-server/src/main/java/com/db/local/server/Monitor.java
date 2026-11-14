@@ -123,7 +123,7 @@ public final class Monitor {
 
     /**
      * 0.5.4 — uji kesehatan tujuan relay game utk mode LOCAL: target = UPSTREAM
-     * ISIAN PEMILIK (config/game-upstream.txt — SATU-SATUNYA sumber; koreksi
+     * ISIAN PEMILIK (GAME_UPSTREAM di .env — SATU-SATUNYA sumber; koreksi
      * fatal 2026-11-14: field "upstream" paket manual tidak dibaca lagi — paket
      * tidak pernah membawa alamat server asli). Dulu probe iterasi url
      * serverList — di 0.5.3 url itu = 127.0.0.1:8080 (NanoHTTPD sendiri) sehingga

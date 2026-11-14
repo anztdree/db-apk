@@ -14,7 +14,7 @@ import android.os.Process;
  * 1) jadwalkan peluncuran LaunchActivity via AlarmManager (~0,9 dtk lagi)
  * 2) matikan proses sendiri
  * Saat proses hidup lagi: BootProvider otomatis menyalakan server lokal,
- * mode dibaca dari server.json, dan game membaca config sesuai mode baru.
+ * mode dibaca dari .env (MODE), dan game membaca config sesuai mode baru.
  */
 public final class RestartHelper {
     private RestartHelper() {

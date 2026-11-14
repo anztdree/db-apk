@@ -15,8 +15,8 @@ import java.io.File;
  *
  * 0.0.3 — DATA PEMAIN KINI DI db/ (bukan config/): keluhan owner "struktur
  * folder pembacaan file di folder server Android/data.. berantakan" — config/
- * murni PENGATURAN (server.json, game-upstream.txt), db/ murni DATA PEMAIN.
- * Perangkat lama dipindah otomatis Paths.migrateFromLegacyLayout() SEBELUM
+ * SATU FILE .env di root (pengaturan; 0.0.4), db = dragonball.db di root.
+ * Perangkat lama dipindah otomatis Paths.migrateToServiceLayout() SEBELUM
  * boot() dipanggil (config/dragonball.db → db/dragonball.db, terekam log) —
  * data tidak hilang.
  *
@@ -53,7 +53,7 @@ import java.io.File;
  *   (Cleaner boleh menghapusnya — isinya sudah pindah).
  *
  * File yang TETAP berupa file (sengaja, bukan data transaksional):
- *   server.json (config aplikasi) · servers.json (snapshot daftar server,
+ *   .env (config aplikasi, 0.0.4) · servers.json (snapshot daftar server,
  *   boleh disunting pemilik) · status.json (dasbor) · log (log, bukan data).
  */
 public final class Db {

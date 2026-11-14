@@ -25,12 +25,12 @@ import fi.iki.elonen.NanoHTTPD;
  *                           Passthrough) 0.4.6 — judul + statistik + rincian item
  *   GET  /api/logs/clear  → bersihkan log di dasbor (file tetap; grup ikut kosong)
  *   GET  /api/logs/file   → EKOR human.log penuh (penting+teknis) — sumber "Copy penuh" 0.4.5
- *   GET  /api/logtech     → mode log RINCI on/off (?on=1|0) — tersimpan di server.json 0.4.5
+ *   GET  /api/logtech     → mode log RINCI on/off (?on=1|0) — tersimpan di .env 0.4.5
  *   GET  /api/config      → 0.5.4 ISI CONFIG utk seksi CONFIG dasbor (show/hide):
  *                           bedah field-per-field + teks config yang disajikan
  *                           (ConfigView — setting bin, serversetting, servers)
  *   GET  /api/probe/game  → 0.5.4 uji kesehatan upstream server game (LOCAL)
- *   GET  /api/www/list    → isi folder www/ (bukti folder bersih & lengkap)
+ *   GET  /api/www/list    → isi MAIN-SERVER/bs/ (bukti mirror bersih & lengkap)
  *   Endpoint /api/rekam* DIHAPUS 0.5.4 — REKAM dihapus total (CONFIG bukan
  *   rekam jejak); kebutuhan tangkapan trafik dipenuhi baris 🌐/📄/🎮 di feed.
  *   POST /api/mode DIHAPUS (koreksi owner 0.3.2 — "website pindah mode itu salah
@@ -131,9 +131,9 @@ public final class LocalServer extends NanoHTTPD {
                 bytes = j.length();
                 return jsonResp(Response.Status.OK, j);
             }
-            // 0.4.5 — mode log RINCI on/off (toggle dasbor; tersimpan di server.json)
+            // 0.4.5 — mode log RINCI on/off (toggle dasbor; tersimpan di .env)
             // 0.4.8: TIDAK lagi jadi baris log — itu umpan balik UI, bukan laporan
-            // server (statusnya sudah terlihat di tombol RINCI + tersimpan server.json;
+            // server (statusnya sudah terlihat di tombol RINCI + tersimpan .env;
             // tiga baris "Mode log dasbor: …" hanya menambah sampah di alur).
             if ("/api/logtech".equals(uri)) {
                 boolean on = parseBool(session.getParameters().get("on"), Config.logTech());
@@ -177,7 +177,7 @@ public final class LocalServer extends NanoHTTPD {
             // ---------------- 0.5.7 — isi UPSTREAM relay game dari dasbor ----------------
             // Laporan owner: force close setelah serverlist — akar: klik Play →
             // io.connect(127.0.0.1:8080) → relay tanpa upstream → klien gagal.
-            // game-upstream.txt di Android/data sulit diakses pemilik — kini bisa
+            // GAME_UPSTREAM di .env — kini bisa diisi langsung dari seksi CONFIG dasbor
             // diisi langsung dari seksi CONFIG dasbor (masih: SATU baris URL;
             // tidak ada sumber lain — URL TIDAK diambil dari config online).
             if ("/api/upstream".equals(uri) && Method.GET == m) {
@@ -196,8 +196,8 @@ public final class LocalServer extends NanoHTTPD {
             status = 404;
             return jsonResp(Response.Status.NOT_FOUND,
                     "{\"error\":\"Endpoint tidak dikenal: " + m + " " + Json.esc(uri)
-                            + " — ini DASBOR debug di port " + Config.debugPort()
-                            + "; port GAME terpisah di port " + Config.gamePort()
+                            + " — ini DASBOR debug di port " + Config.dasborPort()
+                            + "; port MAIN terpisah di port " + Config.mainPort()
                             + " (client menunjuk ke sana)\"}");
         } catch (Throwable t) {
             status = 500;
@@ -228,10 +228,10 @@ public final class LocalServer extends NanoHTTPD {
         }
     }
 
-    /** JSON isi folder www/ — daftar file + ukuran; bukti folder root bersih & lengkap.
-     *  0.0.3 — jalur = Paths.www() (sumber tunggal). */
+    /** JSON isi folder MAIN-SERVER/bs/ — daftar file + ukuran; bukti mirror bersih & lengkap.
+     *  0.0.4 — jalur = Paths.mirror() (sumber tunggal). */
     private String wwwListJson() {
-        File www = Paths.ready() ? Paths.www() : null;
+        File www = Paths.ready() ? Paths.mirror() : null;
         StringBuilder sb = new StringBuilder(8192);
         sb.append("{\"files\":[");
         final int[] count = {0};
@@ -270,45 +270,27 @@ public final class LocalServer extends NanoHTTPD {
     }
 
     /**
-     * 0.5.7 — simpan URL upstream relay (dari seksi CONFIG dasbor) ke
-     * config/game-upstream.txt. Validasi: wajib http:// atau https://, satu
-     * baris (trim). Berlaku LANGSUNG — LoginData.gameUpstreamEx() membaca
-     * file tiap kali dipanggil (tanpa cache, tanpa restart).
+     * 0.5.7 — simpan URL upstream relay (dari seksi CONFIG dasbor).
+     * 0.0.4 — tulis ke .env (kunci GAME_UPSTREAM) — pengganti config/
+     * game-upstream.txt. Validasi di Config.setUpstream: wajib http:// atau
+     * https://, satu baris (trim). Berlaku LANGSUNG — tanpa restart.
      */
     private static String saveUpstream(String url) {
         try {
-            if (url == null) {
-                url = "";
-            }
-            url = url.trim().replaceAll("[\\r\\n]+", "");
-            if (url.length() == 0) {
-                return "{\"ok\":false,\"error\":\"URL kosong — isi SATU baris URL server game asli (cth https://s2109-bs.popoh5.com:8061)\"}";
-            }
-            if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                return "{\"ok\":false,\"error\":\"URL harus diawali http:// atau https://\"}";
-            }
             java.io.File root = Starter.serverRoot();
             if (root == null) {
                 return "{\"ok\":false,\"error\":\"folder server belum siap\"}";
             }
-            java.io.File conf = Paths.ready() ? Paths.config()
-                    : new java.io.File(root, "config");
-            if (!conf.exists()) {
-                conf.mkdirs();
+            String err = Config.setUpstream(url);
+            if (err != null) {
+                return "{\"ok\":false,\"error\":\"" + Json.esc(err) + "\"}";
             }
-            // 0.0.3 — jalur = Paths.gameUpstream() (sumber tunggal)
-            java.io.File f = Paths.ready() ? Paths.gameUpstream()
-                    : new java.io.File(conf, "game-upstream.txt");
-            java.io.Writer w = new java.io.OutputStreamWriter(
-                    new java.io.FileOutputStream(f, false), "UTF-8");
-            w.write(url);
-            w.close();
             String[] up = LoginData.gameUpstreamEx();
-            HumanLog.ev("📡", "Upstream relay game disimpan — " + url,
-                    "Ditulis : config/game-upstream.txt (" + HumanLog.fmtBytes(f.length()) + ")\n"
-                            + "Aktif   : langsung — sumber: file");
+            HumanLog.ev("📡", "Upstream relay game disimpan — " + up[0],
+                    "Ditulis : .env (kunci GAME_UPSTREAM) di root folder server\n"
+                            + "Aktif   : langsung — sumber: .env");
             return "{\"ok\":true,\"url\":\"" + Json.esc(up[0]) + "\",\"sumber\":\""
-                    + Json.esc("file") + "\"}";
+                    + Json.esc(".env") + "\"}";
         } catch (Throwable t) {
             return "{\"ok\":false,\"error\":\"" + Json.esc(String.valueOf(t)) + "\"}";
         }

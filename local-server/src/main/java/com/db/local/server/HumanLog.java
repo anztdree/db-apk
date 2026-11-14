@@ -16,7 +16,7 @@ import java.util.Locale;
  * - TINGKAT PENTING (ev/ok/warn/info) — selalu tampil: boot, mode,
  *   tamu/daftar/masuk/loginchecknative, daftar server, peringatan, galat.
  * - TINGKAT TEKNIS (evTech) — hanya tampil bila mode RINCI dinyalakan
- *   (toggle di dasbor, tersimpan di server.json "logTech"): semua baris
+ *   (toggle di dasbor, tersimpan di .env "LOG_TECH"): semua baris
  *   request per-file (200/404/seed/passthrough), probe DNS, denyut pantauan,
  *   geser tombol, dsb. SANGAT banyak — membanjiri log bila dicampur.
  *

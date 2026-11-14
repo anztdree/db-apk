@@ -10,21 +10,20 @@ import java.io.File;
  * (provider diinisialisasi Android SEBELUM Application.onCreate → jalan duluan).
  *
  * Yang dinyalakan (urutan):
- * 1) DATABASE dragonball.db (SQLite) + migrasi data txt warisan — SEBELUM pembersih
- * 2) PEMBERSIH folder — Android/data/<paket>/server hanya berisi config/www/logs/tmp
- * 3) Folder root Android/data/<paket>/server + mirror www/ diekstrak OTOMATIS dari APK
- *    + default login (config/servers.json — daftar server snapshot asli) bila belum ada
- * 4) Dasbor debug di port 4000 (hanya developer — game tidak tahu port ini)
- * 5) Port GAME di port 8080 — endpoint client menunjuk ke sini (LOCAL/ONLINE)
- * 6) Server SDK lokal di port 8610 — HTTP MURNI: /v1/* + /loginchecknative
- *    (0.0.2 pemisahan port — dulu ditumpangkan di LoginServer; QHinfo shell
- *    menunjuk ke sini; pola 5-server asli: SDK, login, main, chat, dungeon
- *    terpisah port)
- * 6b) Server LOGIN lokal di port 8611 — engine.io v3 + socket.io v2 MURNI
- *    (0.0.2; dulu 8610 diganda dua peran) — loginGame/GetServerList dilayani
- *    dari data lokal — README §2.10
- * 7) Monitor kesehatan server asli (log hanya saat berubah + denyut 10 menit)
- * 8) Tombol melayang switch mode yang BISA DIGESER (drag) — posisi tersimpan
+ * 1) FOLDER LAYANAN + sumber tunggal path (Paths) + MIGRASI layout lama →
+ *    struktur layanan 0.0.4 (SDK-SERVER/LOGIN-SERVER/MAIN-SERVER/CHAT-SERVER/
+ *    DUNGEON-SERVER/LOG + .env + dragonball.db + status.json di root)
+ * 2) DATABASE dragonball.db (SQLite, di ROOT) + migrasi data txt warisan —
+ *    SEBELUM pembersih
+ * 3) PEMBERSIH folder — root hanya berisi .env + dragonball.db + status.json
+ *    + 6 folder layanan bernama jelas
+ * 4) Mirror bs/ diekstrak OTOMATIS dari APK → MAIN-SERVER/bs/ + paket MANUAL
+ *    config-offline/ → MAIN-SERVER/config-offline/
+ * 5) Dasbor debug di port 4000 (hanya developer — game tidak tahu port ini)
+ * 6) MAIN-SERVER di port 8080 — endpoint client menunjuk ke sini (LOCAL/ONLINE)
+ * 7) SDK-SERVER di port 8610 — HTTP MURNI: /v1/* + /loginchecknative (QHinfo)
+ * 8) LOGIN-SERVER di port 8611 — engine.io v3 + socket.io v2 MURNI
+ * 9) Monitor kesehatan server asli + tombol melayang switch mode (bisa digeser)
  *
  * Semua langkah dibungkus try/catch: server lokal TIDAK PERNAH boleh
  * membuat game gagal jalan.
@@ -34,7 +33,7 @@ public final class Starter {
     private static volatile boolean bootRequested = false;
     private static volatile Context appCtx;
     private static volatile File serverRoot;
-    private static volatile File tmpDir;
+    private static volatile File cacheDir;
     private static volatile LocalServer dashboard;
     private static volatile GameServer gameServer;
     private static volatile SdkServer sdkServer;
@@ -89,13 +88,12 @@ public final class Starter {
     }
 
     /**
-     * 1) FOLDER ROOT + SUMBER TUNGGAL PATH (0.0.3).
+     * 1) FOLDER ROOT LAYANAN + SUMBER TUNGGAL PATH (0.0.4).
      * Semua jalur folder/file kini lewat Paths.* — dilarang new File(root, "…")
      * tersebar (akar keberantakan yang dikoreksi 0.0.3). Struktur root
-     * Android/data/<paket>/server/ — tiap folder SATU makna (peta: PETA.txt):
-     *   config/  = pengaturan · db/ = data pemain · state/ = keadaan runtime
-     *   www/     = mirror game · config-offline/ = paket manual klien
-     *   logs/    = log · tmp/ = kerja sementara · PETA.txt = peta folder
+     * Android/data/<paket>/server/ — NAMA FOLDER = NAMA LAYANANNYA (owner):
+     *   .env = pengaturan · dragonball.db = data pemain · status.json = keadaan
+     *   SDK-SERVER/ LOGIN-SERVER/ MAIN-SERVER/ CHAT-SERVER/ DUNGEON-SERVER/ LOG/
      */
     private static void doBoot() {
         Context c = appCtx;
@@ -117,30 +115,14 @@ public final class Starter {
             ext = false;
             root = new File(c.getFilesDir().getParentFile(), "server");
         }
-        Paths.init(root); // 0.0.3 — SUMBER TUNGGAL SEMUA JALUR (Paths.java)
-        File logs = Paths.logs();
-        File conf = Paths.config();
-        File tmp = Paths.tmp();
-        File www = Paths.www();
+        Paths.init(root); // 0.0.4 — SUMBER TUNGGAL SEMUA JALUR (Paths.java)
         try {
-            mk(logs);
-            mk(conf);
-            mk(tmp);
-            mk(www);
-            Paths.ensureDirs(); // + db/ state/ config-offline/ (0.0.3)
+            Paths.ensureDirs(); // SDK-SERVER … DUNGEON-SERVER + LOG (0.0.4)
         } catch (Throwable firstTry) {
             try {
                 ext = false;
                 root = new File(c.getFilesDir(), "server");
                 Paths.init(root);
-                logs = Paths.logs();
-                conf = Paths.config();
-                tmp = Paths.tmp();
-                www = Paths.www();
-                mk(logs);
-                mk(conf);
-                mk(tmp);
-                mk(www);
                 Paths.ensureDirs();
             } catch (Throwable secondTry) {
                 HumanLog.ev("⚠️", "Folder server tidak bisa dibuat — server tetap dicoba hidup tanpa file log di disk",
@@ -148,12 +130,20 @@ public final class Starter {
             }
         }
         serverRoot = root;
-        tmpDir = tmp;
+        // 0.0.4 — tmp/ DIHAPUS (owner: "TMP GK PENTING"): kerja sementara pindah
+        // ke cache INTERNAL aplikasi (di luar folder server — tak terlihat pemilik,
+        // dikelola Android, tidak pernah jadi sampah di Android/data/…/server).
         try {
-            System.setProperty("java.io.tmpdir", tmp.getAbsolutePath());
+            File cd = c.getCacheDir();
+            cacheDir = (cd != null) ? cd : new File(c.getFilesDir(), "cache");
+        } catch (Throwable t) {
+            cacheDir = new File(System.getProperty("java.io.tmpdir", "/tmp"));
+        }
+        try {
+            System.setProperty("java.io.tmpdir", cacheDir.getAbsolutePath());
         } catch (Throwable ignored) {
         }
-        HumanLog.init(logs);
+        HumanLog.init(Paths.logs());
         // ---------- 1a3) CRASH TERAKHIR (0.5.7) — sebab force close tampil di dasbor ----------
         // Bila proses sebelumnya mati paksa (uncaught exception), CrashGuard
         // meninggalkan logs/crash.log. Saat boot ini: bukti dibaca, tampil SATU
@@ -209,47 +199,47 @@ public final class Starter {
         } catch (Throwable ignored) {
         }
 
-        // ---------- 1a5) MIGRASI STRUKTUR FOLDER (0.0.3 — layout lama → jelas) ----------
-        // Perangkat 0.0.2 ke bawah: dragonball.db tinggal di config/ (data campur
-        // config = keluhan owner "berantakan"). Kini dipindah SEBELUM Db.boot &
-        // Cleaner — data TIDAK hilang, keputusan TIDAK diam-diam (terekam log):
-        //   config/dragonball.db (+jurnal) → db/ · config/status.json → state/
-        //   config/www.stamp → state/ · config/servers.json (mati) + capture/
-        //   (mati 0.5.4) → disapu Cleaner dengan nama+ukuran di log.
+        // ---------- 1a5) MIGRASI STRUKTUR LAYANAN (0.0.4 — layout 0.0.3 → layanan) ----------
+        // Arahan owner: "server json bisa di gantikah jadi .env . lalu SDK-SERVER,
+        // LOGIN-SERVER, MAIN-SERVER, CHAT-SERVER, DUNGEON-SERVER dan LOG !!
+        // nama nya jelas". Perangkat 0.0.3 ke bawah pindah TANPA kehilangan data
+        // (SEBELUM Db.boot & Cleaner; TIDAK PERNAH menimpa target yang sudah ada;
+        // setiap pindahan terekam log):
+        //   db/dragonball.db* → dragonball.db* (root) · state/status.json → status.json
+        //   state/www.stamp → MAIN-SERVER/www.stamp · www/bs → MAIN-SERVER/bs
+        //   config-offline/ → MAIN-SERVER/config-offline/ · logs/ → LOG/
+        //   config/server.json + game-upstream.txt → NILAINYA ke .env (Config).
         try {
-            String moved = Paths.migrateFromLegacyLayout();
-            if (moved.length() > 0) {
-                HumanLog.ev("📂", "Struktur folder dirapikan (0.0.3) — data pemain kini di db/, "
-                        + "keadaan runtime di state/, pengaturan murni di config/",
-                        "Pindahan :\n" + moved + "\nPeta     : peta folder lengkap di "
-                                + Paths.petaTxt().getAbsolutePath());
+            String moved = Paths.migrateToServiceLayout();
+            String cfg = Config.migrateLegacyValues(root);
+            if (moved.length() > 0 || cfg.length() > 0) {
+                HumanLog.ev("📂", "Struktur folder dirapikan (0.0.4) — folder layanan bernama jelas: "
+                        + "SDK-SERVER · LOGIN-SERVER · MAIN-SERVER · CHAT-SERVER · DUNGEON-SERVER · LOG; "
+                        + "pengaturan kini SATU file .env di root",
+                        "Pindahan :\n" + moved + (cfg.length() > 0 ? "\n" + cfg : ""));
             }
         } catch (Throwable t) {
             HumanLog.ev("⚠️", "Migrasi struktur folder menemui kendala — layout lama tetap dipakai apa adanya",
                     String.valueOf(t));
         }
 
-        // ---------- 1a2) DATABASE dragonball.db (SQLite) + migrasi txt warisan ----------
-        // Dibuka SEBELUM Cleaner: di boot pertama 0.4.3, file txt 0.4.2
-        // (local-user.txt, accounts.txt, sdk-*.txt) masih ada di config/ — dibaca,
-        // diimpor ke dragonball.db, lalu di-rename *.imported (data tidak hilang).
-        // Dulu txt ini tidak masuk whitelist Cleaner — TERHAPUS tiap boot (bug
-        // tersembunyi: guest/akun tidak tahan reboot); kini DB masuk whitelist.
-        // 0.0.3: DB kini di db/dragonball.db (data pemain TERPISAH dari config) —
-        // jalur lewat Paths.dbFile(), sumber tunggal.
+        // ---------- 1a2) DATABASE dragonball.db (SQLite, ROOT) + migrasi txt warisan ----------
+        // DB pemain kini SATU FILE JELAS di root (dragonball.db — owner: isi root
+        // harus jelas; folder db/ untuk satu file = tempat berantakan). Dibuka
+        // SEBELUM Cleaner: txt warisan 0.4.2 di config/ (perangkat sangat lama)
+        // dibaca, diimpor ke SQLite, lalu di-rename *.imported — data tidak hilang.
         try {
-            Db.boot(Paths.db(), Paths.config());
+            Db.boot(root, new File(root, "config"));
         } catch (Throwable t) {
             HumanLog.ev("⚠️", "dragonball.db gagal dibuka — data dijaga jaring memori (boot tetap jalan)",
                     "Sebab    : " + t + "\nLanjutan : login & akun tetap dilayani dari memori — tahan reboot hilang sementara");
         }
 
-        // ---------- 1b) PEMBERSIH: struktur root JELAS + terjaga whitelist ----------
+        // ---------- 1b) PEMBERSIH: struktur root LAYANAN + terjaga whitelist ----------
         // Aturan folder bersih (README §2): apa pun di luar whitelist — peninggalan
-        // build lama, salinan APK, file analisis, status.json nyasar, sisa capture/
-        // era REKAM (mati 0.5.4), servers.json mati di config/ — DIHAPUS.
-        // 0.0.3: whitelist per-folder (config/db/state masing-masing dijaga) +
-        // PETA.txt dilindungi (peta folder untuk pemilik).
+        // build lama, sisa capture/ era REKAM (mati 0.5.4), PETA.txt (owner: tidak
+        // penting), tmp/ (owner: tidak penting), folder lama config/db/state/www/
+        // config-offline/logs yang sudah kosong setelah migrasi 0.0.4 — DIHAPUS.
         try {
             Cleaner.Result cr = Cleaner.clean(root);
             if (cr.removed > 0) {
@@ -261,73 +251,53 @@ public final class Starter {
                     String.valueOf(t));
         }
 
-        // ---------- 1b2) PETA.TXT — peta folder di perangkat (0.0.3) ----------
-        // Keluhan owner: "struktur folder local di android/data harus juga jelas" —
-        // pemilik buka file manager langsung menemukan PETA.txt berisi makna tiap
-        // folder (siapa boleh disunting, mana data, mana mirror). Dibuat bila
-        // hilang / versi peta berubah; tidak ditulis-ulang tiap boot.
-        try {
-            String petaState = Paths.writePetaIfStale();
-            if ("ditulis".equals(petaState)) {
-                HumanLog.ev("🧹", "PETA.txt dibuat di root server — peta folder lengkap untuk pemilik",
-                        "Isi      : makna tiap folder (config/db/state/www/config-offline/logs/tmp)"
-                                + " + siapa boleh disunting\nAlamat   : " + Paths.petaTxt().getAbsolutePath());
-            } else if (petaState.startsWith("gagal")) {
-                HumanLog.ev("⚠️", "PETA.txt gagal ditulis — peta folder tidak tersedia di perangkat", petaState);
-            }
-        } catch (Throwable t) {
-            HumanLog.ev("⚠️", "PETA.txt gagal ditulis — peta folder tidak tersedia di perangkat",
-                    String.valueOf(t));
-        }
-
-        // ---------- 2) www/ = mirror server ASLI diekstrak OTOMATIS dari APK ----------
-        // Seluruh isi fisik server asli (setting bin, H5 Egret, js, resource
-        // properties, version, upgrade.json, size.json, base.zip, all.zip, zip
-        // incremental) dibawa di assets/server/www/ dan terekstrak sendiri ke
-        // www/ sebelum server menyala — TIDAK ADA langkah manual. Penanda versi
-        // disimpan di config/www.stamp — www/ tetap murni cermin server.
+        // ---------- 2) MAIN-SERVER/bs/ = mirror server ASLI diekstrak OTOMATIS dari APK ----------
+        // Seluruh isi fisik server asli (H5 Egret, js, resource properties, version,
+        // upgrade.json, size.json, base.zip, all.zip, zip incremental) dibawa di
+        // assets/server/www/ dan terekstrak sendiri ke MAIN-SERVER/bs/ sebelum
+        // server menyala — TIDAK ADA langkah manual. Penanda versi disimpan di
+        // MAIN-SERVER/www.stamp — bs/ tetap murni cermin server.
         // 0.4.5: "sudah terpasang" = TEKNIS (tiap boot, bukan berita); ringkasannya
         // masuk baris "Server siap". Ekstraksi pertama tetap ✔ PENTING (sekali saja).
         int wwwFilesN = 0;
         long wwwBytesN = 0;
         try {
-            Payload.Result pr = Payload.extract(appCtx, www);
+            Payload.Result pr = Payload.extract(appCtx, Paths.mainServer());
             wwwFilesN = pr.files;
             wwwBytesN = pr.bytes;
             if (pr.extracted) {
-                HumanLog.ev("🧹", "Mirror server asli diekstrak OTOMATIS dari APK → www/",
+                HumanLog.ev("🧹", "Mirror server asli diekstrak OTOMATIS dari APK → MAIN-SERVER/bs/",
                         "Isi      : " + pr.files + " file · " + HumanLog.fmtBytes(pr.bytes)
-                                + " (setting bin, H5 Egret, js, resource, upgrade)\nCara     : sekali saat boot pertama — tanpa langkah manual"
+                                + " (H5 Egret, js, resource, upgrade)\nCara     : sekali saat boot pertama — tanpa langkah manual"
                                 + (pr.note == null || pr.note.length() == 0 ? "" : "\nCatatan  : " + pr.note));
             } else {
-                HumanLog.evTech("🧹", "Mirror www/ sudah terpasang (" + pr.files
+                HumanLog.evTech("🧹", "Mirror MAIN-SERVER/bs/ sudah terpasang (" + pr.files
                         + " file · " + HumanLog.fmtBytes(pr.bytes) + ") — tidak ada yang perlu diulang", pr.note);
             }
             StatusStore.markWww(pr.files, pr.bytes);
         } catch (Throwable t) {
-            HumanLog.ev("⚠️", "Ekstraksi mirror www/ gagal — mode LOCAL melayani apa yang ada; game tetap boot (fallback 404)",
+            HumanLog.ev("⚠️", "Ekstraksi mirror MAIN-SERVER/bs/ gagal — mode LOCAL melayani apa yang ada; game tetap boot (fallback 404)",
                     String.valueOf(t));
         }
 
         // ---------- 2b) CONFIG OFFLINE MANUAL (0.5.3) + data login lokal ----------
         // Dua jalur 100% terpisah (owner: "online tebaca itu cuma jadikan jejak arah
         // bukan untuk dijadikan config asli ke offline"):
-        //   - config-offline/ = paket MANUAL bawaan APK (setting.json + bin XOR,
-        //     serversetting, servers.json 1 entri lokal) — SELALU ditimpa: kanonik.
-        //   - config/ = data transaksional (dragonball.db, server.json, status.json)
-        //     — snapshot online TIDAK lagi disalin ke sini.
+        //   - MAIN-SERVER/config-offline/ = paket MANUAL bawaan APK (setting.json +
+        //     bin XOR, serversetting, servers.json 1 entri lokal) — SELALU ditimpa:
+        //     kanonik. Paket = milik MAIN (dilayani :8080 apa adanya).
+        //   - .env + dragonball.db = milik pemilik (pengaturan + data transaksional)
+        //     — snapshot online TIDAK pernah menyentuh keduanya.
         String guestNote = "?";
         int serverCountN = 0;
         String offlineNote = null;
         try {
-            File confDir = Paths.config();
             // 0.5.4 — catatan paket manual TIDAK lagi dilog di sini: Config.mode()
-            // belum terbaca (server.json dibaca di langkah 3) — dulu baris 💾
+            // belum terbaca (.env dibaca di langkah 3) — dulu baris 💾
             // "Config OFFLINE manual siap" muncul JUGA di boot ONLINE (log campur
             // aduk). Disimpan, dilog SETELAH mode terbaca — hanya di LOCAL.
             offlineNote = Payload.extractOfflineConfig(appCtx, root);
-            LoginData.init(confDir, Paths.offline());
-            SdkData.init(confDir);
+            LoginData.init(Paths.offline());
             guestNote = LoginData.localUserId();
             serverCountN = LoginData.serverCount();
         } catch (Throwable t) {
@@ -336,9 +306,9 @@ public final class Starter {
         }
         // baris boot inti kini SATU baris berrinci setelah semua port hidup (0.4.9).
 
-        // ---------- 3) config server.json ----------
+        // ---------- 3) pengaturan server (.env) ----------
         Config.load(root);
-        // 0.4.5: mode log RINCI dari boot sebelumnya (tersimpan di server.json)
+        // 0.4.5: mode log RINCI dari boot sebelumnya (tersimpan di .env)
         HumanLog.setTechEnabled(Config.logTech());
         // 0.5.4 — TAG MODE: semua baris log berikutnya membawa mode proses ini
         // ("local"/"online") — dasbor & human.log membedakan jalur OFFLINE/ONLINE.
@@ -346,7 +316,7 @@ public final class Starter {
         if ("local".equals(Config.mode()) && offlineNote != null) {
             HumanLog.evTech("💾", "Config OFFLINE manual siap — " + offlineNote, null);
         }
-        StatusStore.configure(Config.debugPort(), Config.gamePort(), Config.mode(),
+        StatusStore.configure(Config.dasborPort(), Config.mainPort(), Config.mode(),
                 root.getAbsolutePath(), c.getPackageName());
         StatusStore.setSdkPort(Config.sdkPort());
         StatusStore.setLoginPort(Config.loginPort());
@@ -354,8 +324,8 @@ public final class Starter {
             StatusStore.setLoginUser(LoginData.localUserId());
         } catch (Throwable ignored) {
         }
-        // status.json hidup di state/ — keadaan runtime TERPISAH dari config/
-        // pengaturan (0.0.3 — keluhan owner struktur folder berantakan)
+        // status.json hidup di ROOT — keadaan server sekali lihat langsung jelas
+        // (0.0.4 — isi root seminimal & sejelas mungkin, arahan owner)
         StatusStore.setStatusFile(Paths.statusJson());
         // (baris Mode dipindah ke blok 3 baris setelah port hidup — 0.4.7)
 
@@ -364,7 +334,7 @@ public final class Starter {
         // baris "Server lokal hidup" setelah semua port nyala (kegagalan tetap ⚠).
         boolean dashOk = false;
         try {
-            LocalServer ls = new LocalServer(c, "127.0.0.1", Config.debugPort());
+            LocalServer ls = new LocalServer(c, "127.0.0.1", Config.dasborPort());
             ls.loadDashboard();
             ls.start(2000, true);
             dashboard = ls;
@@ -372,26 +342,26 @@ public final class Starter {
             StatusStore.markStarted(System.currentTimeMillis(), true);
         } catch (Throwable t) {
             StatusStore.markStarted(System.currentTimeMillis(), false);
-            HumanLog.ev("⚠️", "Dasbor debug GAGAL hidup di port " + Config.debugPort()
-                    + " — kemungkinan port dipakai proses lain; port game tetap dicoba", String.valueOf(t));
+            HumanLog.ev("⚠️", "Dasbor debug GAGAL hidup di port " + Config.dasborPort()
+                    + " — kemungkinan port dipakai proses lain; port MAIN tetap dicoba", String.valueOf(t));
         }
 
-        // ---------- 5) port GAME (dipakai client) ----------
+        // ---------- 5) MAIN-SERVER (dipakai client) ----------
         boolean gameOk = false;
         try {
-            GameServer gs = new GameServer(c, "127.0.0.1", Config.gamePort(), www);
+            GameServer gs = new GameServer(c, "127.0.0.1", Config.mainPort(), Paths.mirror());
             gs.start(2000, true);
             gameServer = gs;
             StatusStore.markGame(true);
             gameOk = true;
         } catch (Throwable t) {
             StatusStore.markGame(false);
-            HumanLog.ev("❌", "Port game GAGAL hidup di " + Config.gamePort()
+            HumanLog.ev("❌", "MAIN-SERVER GAGAL hidup di port " + Config.mainPort()
                     + " — game tidak akan menemukan server lokal",
-                    "Sebab    : " + t + "\nLanjutan : cek port atau ubah gamePort di server.json — lalu buka ulang aplikasi");
+                    "Sebab    : " + t + "\nLanjutan : cek port atau ubah MAIN_PORT di .env — lalu buka ulang aplikasi");
         }
 
-        // ---------- 5a) server SDK lokal (0.0.2 — PEMISAHAN PORT) ----------
+        // ---------- 5a) SDK-SERVER (0.0.2 — PEMISAHAN PORT) ----------
         // HTTP MURNI di port sdkPort (8610): /v1/* + /loginchecknative — layar
         // login SDK asli (QHinfo shell menunjuk ke sini). Dulu API SDK ditumpang
         // di dalam LoginServer :8610 — satu port dua peran = akar "berantakan";
@@ -405,16 +375,16 @@ public final class Starter {
             sdkOk = true;
         } catch (Throwable t) {
             StatusStore.markSdk(false);
-            HumanLog.ev("❌", "Server SDK lokal GAGAL hidup di port " + Config.sdkPort()
+            HumanLog.ev("❌", "SDK-SERVER GAGAL hidup di port " + Config.sdkPort()
                     + " — layar login SDK & loginchecknative tidak akan berfungsi",
-                    "Sebab    : " + t + "\nLanjutan : cek sdkPort di server.json — lalu buka ulang aplikasi");
+                    "Sebab    : " + t + "\nLanjutan : cek SDK_PORT di .env — lalu buka ulang aplikasi");
         }
 
-        // ---------- 5b) server LOGIN lokal (PR3 0.4.0; 0.0.2 port 8611) ----------
+        // ---------- 5b) LOGIN-SERVER (PR3 0.4.0; 0.0.2 port 8611) ----------
         // Protokol SAMA dengan login.popoh5.com:610 (engine.io v3 + socket.io v2);
         // dipakai game bila mode LOCAL menulis-ulang endpoint login. Hidup selalu
         // (bersebelahan) — mode ONLINE tidak menunjuk ke sini. 0.0.2: MURNI
-        // socket.io — API SDK sudah pindah ke SdkServer di atas.
+        // socket.io — API SDK sudah pindah ke SDK-SERVER di atas.
         boolean loginOk = false;
         try {
             LoginServer ls = new LoginServer("127.0.0.1", Config.loginPort());
@@ -424,9 +394,9 @@ public final class Starter {
             loginOk = true;
         } catch (Throwable t) {
             StatusStore.markLogin(false);
-            HumanLog.ev("❌", "Server login lokal GAGAL hidup di port " + Config.loginPort()
+            HumanLog.ev("❌", "LOGIN-SERVER GAGAL hidup di port " + Config.loginPort()
                     + " — login game (socket.io) tidak akan berfungsi",
-                    "Sebab    : " + t + "\nLanjutan : cek loginPort di server.json — lalu buka ulang aplikasi");
+                    "Sebab    : " + t + "\nLanjutan : cek LOGIN_PORT di .env — lalu buka ulang aplikasi");
         }
         StatusStore.persist();
         // ===== BOOT SATU BARIS BERRINCI (0.4.9 — bentuk disetujui owner: emoji +
@@ -436,8 +406,8 @@ public final class Starter {
             try {
                 File dbf = Paths.dbFile();
                 dbInfo = (dbf.exists() && dbf.length() > 0)
-                        ? "dragonball.db " + HumanLog.fmtBytes(dbf.length()) + " di db/ (tahan reboot)"
-                        : "tersimpan lokal di db/ (tahan reboot)";
+                        ? "dragonball.db " + HumanLog.fmtBytes(dbf.length()) + " di root (tahan reboot)"
+                        : "tersimpan lokal di root (tahan reboot)";
             } catch (Throwable ignored) {
                 dbInfo = "tersimpan lokal (tahan reboot)";
             }
@@ -448,14 +418,14 @@ public final class Starter {
                 // pemilik = opsi relay yang tetap dihormati.
                 String[] upEx = LoginData.gameUpstreamEx();
                 String upTxt = upEx[0].length() > 0
-                        ? upEx[0] + " (relay OPSIONAL — isian pemilik config/game-upstream.txt)"
+                        ? upEx[0] + " (relay OPSIONAL — GAME_UPSTREAM di .env)"
                         : "MESIN GAME LOKAL — Play dijawab server ini sendiri (kontrak protokol "
                                 + "dari kode klien, nilai pemain dari dragonball.db; NOL kontak keluar)";
-                modeDetail = "LOCAL — konten game: mirror www/ · akun SDK: HTTP :"
+                modeDetail = "LOCAL — konten game: mirror MAIN-SERVER/bs/ · akun SDK: HTTP :"
                         + Config.sdkPort() + " · login game: socket :" + Config.loginPort()
-                        + " (pemisahan 0.0.2) · config: paket MANUAL config-offline/ (apa adanya"
-                        + " — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal)"
-                        + " · Play → socket game :" + Config.gamePort() + " → " + upTxt;
+                        + " (pemisahan 0.0.2) · config: paket MANUAL MAIN-SERVER/config-offline/"
+                        + " (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal)"
+                        + " · Play → socket game :" + Config.mainPort() + " → " + upTxt;
             } else {
                 // 0.5.1 — ONLINE: config login tetap menulis-ulang ke server lokal
                 // (SEMUA mode); server lokal meneruskan utuh ke server asli.
@@ -464,14 +434,14 @@ public final class Starter {
                         + " (passthrough utuh) — token & progres tetap dari/ke server asli";
             }
             HumanLog.ev("🚀", "Server lokal siap — mode " + Config.mode().toUpperCase(),
-                    "Port    : game :" + Config.gamePort() + " · sdk :" + Config.sdkPort()
-                            + " · login :" + Config.loginPort()
-                            + " · dasbor :" + Config.debugPort() + "\n"
+                    "Port    : MAIN :" + Config.mainPort() + " · SDK :" + Config.sdkPort()
+                            + " · LOGIN :" + Config.loginPort()
+                            + " · CHAT :" + Config.chatPort() + " · DUNGEON :" + Config.dungeonPort()
+                            + " · dasbor :" + Config.dasborPort() + "\n"
                             + "Mode    : " + modeDetail + "\n"
                             + "Folder  : " + root.getAbsolutePath()
                             + " (" + (ext ? "penyimpanan eksternal" : "penyimpanan internal") + ")\n"
-                            + "Peta    : " + Paths.petaTxt().getName()
-                            + " di root folder — peta lengkap tiap folder (buka ini dulu)\n"
+                            + "Seting  : .env di root folder — semua pengaturan server SATU file (boleh disunting)\n"
                             + "Pemain  : " + guestNote + " — sesi & data di " + dbInfo);
         }
         if (!dashOk && gameServer == null && sdkServer == null) {
@@ -496,7 +466,7 @@ public final class Starter {
                         } catch (InterruptedException ie) {
                             return;
                         }
-                        gameMiss = watchdogProbe(Config.gamePort(), "game", gameMiss);
+                        gameMiss = watchdogProbe(Config.mainPort(), "main", gameMiss);
                         sdkMiss = watchdogProbe(Config.sdkPort(), "sdk", sdkMiss);
                         loginMiss = watchdogProbe(Config.loginPort(), "login", loginMiss);
                     }
@@ -543,7 +513,7 @@ public final class Starter {
     }
 
     static File tmpDir() {
-        File f = tmpDir;
+        File f = cacheDir; // 0.0.4 — cache INTERNAL aplikasi (tmp/ dihapus)
         if (f != null) {
             return f;
         }
@@ -566,7 +536,7 @@ public final class Starter {
      * kegagalan beruntun — 0 berarti port sehat. Laporan log: kegagalan PERTAMA
      * + tiap 12 kegagalan beruntun (±1 menit) + pemulihan.
      */
-    private static int watchdogProbe(int port, String nama, int missCount) {
+    private static int watchdogProbe(int port, String layanan, int missCount) {
         boolean ok;
         java.net.Socket s = new java.net.Socket();
         try {
@@ -583,7 +553,7 @@ public final class Starter {
         if (ok) {
             if (missCount >= 3) {
                 try {
-                    HumanLog.ev("✅", "Port " + nama + " (" + port + ") HIDUP KEMBALI — sebelumnya tidak merespons", null);
+                    HumanLog.ev("✅", "Port " + layanan + " (" + port + ") HIDUP KEMBALI — sebelumnya tidak merespons", null);
                 } catch (Throwable ignored) {
                 }
             }
@@ -592,18 +562,12 @@ public final class Starter {
         int miss = missCount + 1;
         if (miss == 1 || miss % 12 == 0) {
             try {
-                HumanLog.ev("⚠️", "Port " + nama + " (" + port + ") TIDAK merespons (" + (miss * 5)
+                HumanLog.ev("⚠️", "Port " + layanan + " (" + port + ") TIDAK merespons (" + (miss * 5)
                         + " dtk) — game tidak akan bisa menghubungi server lokal bila berlanjut", null);
             } catch (Throwable ignored) {
             }
         }
         return miss;
-    }
-
-    private static void mk(File d) {
-        if (!d.exists()) {
-            d.mkdirs();
-        }
     }
 
 }
