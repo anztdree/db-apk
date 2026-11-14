@@ -212,7 +212,7 @@
     </div>
     <div class="uprow">
       <span class="uplbl">upstream relay game</span>
-      <input id="upin" type="text" placeholder="isian pemilik — satu baris URL (kosong = LOCAL tanpa relay)" spellcheck="false">
+      <input id="upin" type="text" placeholder="isian pemilik — opsional; kosong = MESIN GAME LOKAL (Play dijawab server ini)" spellcheck="false">
       <button class="act" id="upsave">Simpan</button>
       <span class="upstat" id="upstat"></span>
     </div>
@@ -338,11 +338,11 @@
   }
 
   // ---------- 0.5.7 — upstream relay game (di seksi CONFIG) ----------
-  // Force close setelah serverlist (laporan owner) = klik Play → io.connect ke
-  // 127.0.0.1:8080 → relay tanpa upstream. Kini upstream diisi LANGSUNG dari
-  // dasbor — tersimpan ke config/game-upstream.txt, aktif tanpa restart.
-  // Koreksi fatal 2026-11-14: ini SATU-SATUNYA jalur isi relay — paket manual
-  // tidak membawa tujuan (dulu terisi alamat server asli mentah = pelanggaran;
+  // REBUILD 0.0.1: LOCAL punya MESIN GAME LOKAL (GameEngine) — Play dijawab
+  // server ini sendiri (kontrak dari kode klien, nilai dari dragonball.db).
+  // Isian upstream = OPSI relay pilihan pemilik (tersimpan config/
+  // game-upstream.txt, aktif tanpa restart). Paket manual tidak pernah
+  // membawa tujuan (dulu terisi alamat server asli mentah = pelanggaran;
   // owner: online cuma jejak arah, bukan sumber nilai).
   function pollUpstream(){
     fetch("/api/upstream").then(function(r){ return r.json(); }).then(function(j){

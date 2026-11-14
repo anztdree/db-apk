@@ -19,7 +19,12 @@ CATATAN:
   KOSONG bawaan paket. TEGASAN PEMILIK 2026-11-14: dulu field ini pernah diisi
   alamat server game ASLI mentah-mentah dari jejak online — KESALAHAN FATAL yang
   sudah dikoreksi; online cuma JEJAK ARAH, bukan sumber nilai, dan LOCAL tidak
-  menyentuh server asli otomatis. Satu-satunya jalur mengisi relay = isian pemilik
-  sendiri: dasbor seksi CONFIG (tersimpan config/game-upstream.txt, SELALU menang
-  di semua mode) — paket manual TIDAK PERNAH membawa alamat server asli.
+  menyentuh server asli otomatis. Jalur mengisi relay = isian pemilik sendiri:
+  dasbor seksi CONFIG (tersimpan config/game-upstream.txt) — paket manual
+  TIDAK PERNAH membawa alamat server asli.
+- REBUILD 0.0.1 — MESIN GAME LOKAL (GameEngine): klik Play TIDAK membutuhkan
+  relay lagi — protokol game dijawab server lokal sendiri (verify XXTEA kunci
+  "verification" dari kode klien, enterGame, aksi lanjutan, Notify). Nilai
+  pemain dari dragonball.db (kv game_player:). Isian upstream pemilik kini
+  berstatus OPSI relay yang tetap dihormati bila diisi.
 - Isi config lengkap (bedah field-per-field) terlihat di dasbor: seksi CONFIG (show/hide).

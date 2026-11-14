@@ -20,6 +20,7 @@ import com.db.local.server.LoginData;
 import com.db.local.server.LoginServer;
 import com.db.local.server.SdkData;
 import com.db.local.server.SettingBin;
+import com.db.local.server.Xxtea;
 
 /**
  * HARNESS 0.4.6 — MODEL FINAL LOG (grup batch) + regresi penuh 0.4.2–0.4.5.
@@ -802,6 +803,128 @@ public class HarnessSdk {
                         bersih);
             }
         }
+
+        // ---------------- TAHAP 22: MESIN GAME LOKAL (rebuild handcraft —
+        // owner: "local kita ini rebuild bukan hasil jiplak dari online") —
+        // kontrak protokol dari KODE KLIEN SENDIRI (main.min TEA/saveUserData),
+        // nilai dari dragonball.db; Play LOKAL hidup tanpa relay ----------------
+        // 22a) XXTEA — vektor silang: kode TEA klien dieksekusi (bun) →
+        //      implementasi Java wajib cocok DUA ARAH.
+        check("22a XXTEA: dekripsi vektor klien #1 → uuid asli",
+                "b7738641-da52-4493-9107-7739c62d35e9".equals(Xxtea.decrypt(
+                        "0HdvUq3yWlKWp8hnC8piuJ9C9EPlIKTLX0X0c5QFOXBntLSC", "verification")));
+        check("22a XXTEA: enkripsi uuid #1 → persis vektor klien",
+                "0HdvUq3yWlKWp8hnC8piuJ9C9EPlIKTLX0X0c5QFOXBntLSC".equals(Xxtea.encrypt(
+                        "b7738641-da52-4493-9107-7739c62d35e9", "verification")));
+        check("22a XXTEA: dekripsi vektor klien #2 → uuid asli",
+                "0fd1408f-ac6c-474d-8469-9806c0509745".equals(Xxtea.decrypt(
+                        "Dq7lZP0R0qOV0uo1sSVolflGww5jrDlF3/ezf4scdkYsedhl", "verification")));
+        check("22a XXTEA: enkripsi uuid #2 → persis vektor klien",
+                "Dq7lZP0R0qOV0uo1sSVolflGww5jrDlF3/ezf4scdkYsedhl".equals(Xxtea.encrypt(
+                        "0fd1408f-ac6c-474d-8469-9806c0509745", "verification")));
+        // 22b) mesin game via HTTP NYATA — jalur persis klik Play:
+        //      GameServer :8080 LOCAL tanpa isian upstream → GameEngine.
+        File www22 = new File(root, "www");
+        www22.mkdirs();
+        GameServer gs22 = new GameServer(null, "127.0.0.1", 8080, www22);
+        gs22.start(500, false);
+        Thread.sleep(700);
+        String gbase = "http://127.0.0.1:8080";
+        String hs22 = get(gbase + "/socket.io/?EIO=3&transport=polling&t=h1");
+        String sid22 = jsonStr(hs22, "sid");
+        check("22b handshake engine.io v3: sid dibuat server lokal",
+                sid22 != null && sid22.length() > 0);
+        check("22b handshake: open 0 + socket.io CONNECT 40 (framing v3)",
+                hs22.contains("0{\"sid\"") && hs22.contains(":40"));
+        String pollA = get(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22);
+        String markV = "42[\"verify\",\"";
+        int vi = pollA.indexOf(markV);
+        String token22 = vi < 0 ? "" : pollA.substring(vi + markV.length(),
+                pollA.indexOf("\"]", vi));
+        check("22b mesin mengirim event verify dgn token UUID (36)",
+                token22.length() == 36);
+        // klien simulasi: XXTEA(token, "verification") → 421["verify","<enc>"]
+        String enc22 = Xxtea.encrypt(token22, "verification");
+        String pktVerify = "421[\"verify\",\"" + enc22 + "\"]";
+        post(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22,
+                pktVerify.length() + ":" + pktVerify);
+        String pollB = get(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22);
+        check("22b verify sah: ack ret 0 (protokol lokal hidup)",
+                pollB.contains("431[{\"ret\":0}]"));
+        // verify SALAH (token lain) — diteruskan ack ret 1 (jujur, tidak diam)
+        String pktBad = "421[\"verify\",\"" + Xxtea.encrypt(
+                "00000000-0000-0000-0000-000000000000", "verification") + "\"]";
+        post(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22,
+                pktBad.length() + ":" + pktBad);
+        String pollB2 = get(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22);
+        check("22b verify salah: ack ret 1 (bukti dekripsi benar-benar dicocokkan)",
+                pollB2.contains("\"ret\":1"));
+        // enterGame — model pemain dari dragonball.db
+        String pktEg = "422[\"handler.process\",{\"type\":\"user\",\"action\":\"enterGame\","
+                + "\"loginToken\":\"tokenuji123\",\"userId\":\"" + LEGACY_GUEST + "\","
+                + "\"serverId\":1,\"version\":\"1.0\",\"language\":\"en\","
+                + "\"gameVersion\":\"20260929_180158-EN\"}]";
+        post(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22,
+                pktEg.length() + ":" + pktEg);
+        String pollC = get(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22);
+        check("22b enterGame: ack ret 0 + sinkron waktu (serverTime/server0Time)",
+                pollC.contains("\"ret\":0") && pollC.contains("\"serverTime\":")
+                        && pollC.contains("\"server0Time\":"));
+        check("22b enterGame: model wajib klien utuh (currency/user/hangup/summon/"
+                        + "totalProps/superSkill/heros/scheduleInfo/dragonEquiped)",
+                pollC.contains("currency") && pollC.contains("_nickName")
+                        && pollC.contains("hangup") && pollC.contains("summon")
+                        && pollC.contains("totalProps") && pollC.contains("superSkill")
+                        && pollC.contains("\"heros") && pollC.contains("scheduleInfo")
+                        && pollC.contains("dragonEquiped"));
+        check("22b enterGame: Notify battleMedalRefresh push lokal (kontrak klien)",
+                pollC.contains("battleMedalRefresh") && pollC.contains("\"ret\":\"SUCCESS\""));
+        String model22 = Db.i().kv("game_player:" + LEGACY_GUEST);
+        check("22b pemain tersimpan dragonball.db (kv game_player)", model22 != null
+                && jsonStr(model22, "_id") != null && jsonStr(model22, "_id").length() == 36);
+        // aksi lanjutan (peta alur) — SEMUA dijawab lokal ret 0 dgn kontrak masing-masing
+        String[] follow22 = {
+                "423[\"handler.process\",{\"type\":\"teamDungeonGame\",\"action\":\"queryMyRecord\",\"userId\":\"" + LEGACY_GUEST + "\"}]",
+                "424[\"handler.process\",{\"type\":\"friend\",\"action\":\"friendServerAction\",\"relayAction\":\"queryFriends\",\"userId\":\"" + LEGACY_GUEST + "\",\"version\":\"1.0\"}]",
+                "425[\"handler.process\",{\"type\":\"friend\",\"action\":\"friendServerAction\",\"relayAction\":\"queryBlackList\",\"userId\":\"" + LEGACY_GUEST + "\",\"version\":\"1.0\"}]",
+                "426[\"handler.process\",{\"type\":\"user\",\"action\":\"registChat\",\"userId\":\"" + LEGACY_GUEST + "\",\"version\":\"1.0\"}]",
+                "427[\"handler.process\",{\"type\":\"heroImage\",\"action\":\"getAll\",\"userId\":\"" + LEGACY_GUEST + "\",\"version\":\"1.0\"}]",
+                "428[\"handler.process\",{\"type\":\"hero\",\"action\":\"getAttrs\",\"userId\":\"" + LEGACY_GUEST + "\",\"heros\":[],\"version\":\"1.0\"}]",
+                "429[\"handler.process\",{\"type\":\"userMsg\",\"action\":\"getMsgList\",\"userId\":\"" + LEGACY_GUEST + "\",\"version\":\"1.0\"}]"};
+        StringBuilder batch22 = new StringBuilder();
+        for (String pk : follow22) {
+            batch22.append(pk.length()).append(":").append(pk);
+        }
+        post(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22, batch22.toString());
+        String pollD = get(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22);
+        check("22b aksi lanjutan: 7 ack ret 0 dalam satu polling (queryMyRecord/"
+                        + "queryFriends/queryBlackList/registChat/getAll/getAttrs/getMsgList)",
+                pollD.contains("433[") && pollD.contains("434[") && pollD.contains("435[")
+                        && pollD.contains("436[") && pollD.contains("437[") && pollD.contains("438[")
+                        && pollD.contains("439[") && pollD.contains("\"ret\":0"));
+        check("22b kontrak aksi lanjutan: _records/_friends/users/_success/_heros/_attrs/_brief ada",
+                pollD.contains("_records") && pollD.contains("_friends") && pollD.contains("\"users")
+                        && pollD.contains("_success") && pollD.contains("_heros")
+                        && pollD.contains("_attrs") && pollD.contains("_brief"));
+        // aksi belum dihandcraft — ret 0 kosong (game tidak menggantung)
+        String pktUk = "4210[\"handler.process\",{\"type\":\"lain\",\"action\":\"aksiBaru\",\"userId\":\""
+                + LEGACY_GUEST + "\"}]";
+        post(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22,
+                pktUk.length() + ":" + pktUk);
+        String pollE = get(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22);
+        check("22b aksi belum dihandcraft: ret 0 (tidak menggantung)", pollE.contains("\"ret\":0"));
+        // enterGame ulang — _id sesi game STABIL (data tahan reboot)
+        String pktEg2 = "4221" + pktEg.substring(3); // ack id berbeda, isi sama
+        post(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22,
+                pktEg2.length() + ":" + pktEg2);
+        get(gbase + "/socket.io/?EIO=3&transport=polling&sid=" + sid22);
+        String model22b = Db.i().kv("game_player:" + LEGACY_GUEST);
+        check("22b enterGame ulang: _id sesi game tetap (identitas stabil)",
+                jsonStr(model22, "_id").equals(jsonStr(model22b, "_id")));
+        check("22b paket manual tetap bebas server asli sesudah mesin jalan",
+                !pollC.contains("popoh5.com") && !pollD.contains("popoh5.com"));
+        gs22.stop();
+        gs22 = null;
 
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");

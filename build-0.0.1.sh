@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.0.1 — KOREKSI KESALAHAN FATAL (owner 2026-11-14:
+# Build APK-LSF 0.0.1 — TERBITAN PENGGANTI: MESIN GAME LOKAL (rebuild
+# handcraft; owner: "local kita ini rebuild bukan hasil jiplak dari online").
+#
+# ISI TERBITAN INI (di atas terbitan koreksi sebelumnya):
+#   - GameEngine.java — mesin jawaban protokol game di :8080 (verify XXTEA,
+#     enterGame, aksi lanjutan, Notify) — kontrak dari KODE KLIEN SENDIRI,
+#     nilai dari dragonball.db; Play LOKAL hidup TANPA relay & tanpa kontak
+#     keluar. Isian pemilik game-upstream.txt = relay opsional yang tetap
+#     dihormati (paket manual tetap tidak pernah membawa alamat server asli).
+#   - Xxtea.java — klon persis TEA klien (vektor silang: kode klien dieksekusi
+#     bun; cocok dua arah).
+#   - GamePlayer.java — data pemain lokal (kv game_player: tahan reboot).
+#   - Harness TAHAP 22 — 165 LULUS + 15 GAGAL LINGKUNGAN (baseline tetap).
+#
+# RIWAYAT TERBITAN SEBELUMNYA (tetap berlaku):
+#   KOREKSI KESALAHAN FATAL (owner 2026-11-14:
 #   "KESALAHAN FATAL TIDAK BISA DI TOLERANSI! ANDA AMBIL MENTAH CONFIG DARI
 #    SERVER ASLINYA!! .. CONFIG ONLINE ITU CUMA JEJAK AGAR KITA GAK TERSESAT..
 #    BUKAN MALAH MURNI DI PAKAI MENTAH-MENTAH")
@@ -66,11 +81,12 @@ java -jar "$ECJ" -source 8 -target 8 -encoding UTF-8 -nowarn \
 
 echo "[1b] compile + jalankan harness JVM (bukti perilaku, tidak masuk APK) ..."
 java -jar "$ECJ" -source 8 -target 8 -encoding UTF-8 -nowarn \
-  -classpath "$BUILD/classes:$TOOLS/sqlite-jdbc.jar" -d "$BUILD/harness" \
+  -classpath "$BUILD/classes:$TOOLS/sqlite-jdbc.jar:$TOOLS/android.jar" -d "$BUILD/harness" \
   "$REPO/local-server/harness/HarnessSdk.java"
 HR="$BUILD/harness-root-001"
 rm -rf "$HR"
-java -cp "$BUILD/classes:$BUILD/harness:$TOOLS/sqlite-jdbc.jar" HarnessSdk "$HR" "$REPO" | tail -3 || true
+java -cp "$BUILD/classes:$BUILD/harness:$TOOLS/sqlite-jdbc.jar:$TOOLS/android.jar" \
+  HarnessSdk "$HR" "$REPO" | tail -3 || true
 
 echo "[2/8] d8 -> classes2.dex (DbJdbc DISINGKIRKAN — hanya harness desktop) ..."
 mapfile -t CLASS_FILES < <(find "$BUILD/classes" -name '*.class' ! -name 'DbJdbc.class' ! -path '*DbJdbc*')
@@ -155,9 +171,10 @@ python3 - "$BUILD/dex/classes.dex" <<'PYEOF'
 import sys
 data = open(sys.argv[1], 'rb').read()
 baru = [
-    'paket manual TIDAK membawa tujuan relay',
+    'MESIN GAME LOKAL',
+    'battleMedalRefresh',
+    'game_player:',
     'config/game-upstream.txt — isian pemilik',
-    'arahan owner: 100% terpisah',
     'rewriteServerListFramed',
     'framing engine.io UTUH',
 ]

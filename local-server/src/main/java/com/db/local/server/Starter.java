@@ -359,14 +359,14 @@ public final class Starter {
             }
             String modeDetail;
             if ("local".equals(Config.mode())) {
-                // 0.5.4 — teks boot LOCAL jujur sesuai 0.5.3/0.5.4: paket manual apa
-                // adanya (tanpa tulis-ulang runtime) + status upstream relay Play.
+                // REBUILD 0.0.1 — Play LOKAL hidup: mesin game lokal menjawab
+                // protokol game sendiri (GameEngine — handcraft). Isian upstream
+                // pemilik = opsi relay yang tetap dihormati.
                 String[] upEx = LoginData.gameUpstreamEx();
                 String upTxt = upEx[0].length() > 0
-                        ? upEx[0] + " (sumber: config/game-upstream.txt — isian pemilik)"
-                        : "TIDAK DIISI — LOCAL tidak menyentuh server asli otomatis (tegasan owner "
-                                + "2026-11-14: online cuma jejak arah, bukan sumber nilai). Relay hanya "
-                                + "jalan bila pemilik mengisi config/game-upstream.txt — dasbor seksi CONFIG";
+                        ? upEx[0] + " (relay OPSIONAL — isian pemilik config/game-upstream.txt)"
+                        : "MESIN GAME LOKAL — Play dijawab server ini sendiri (kontrak protokol "
+                                + "dari kode klien, nilai pemain dari dragonball.db; NOL kontak keluar)";
                 modeDetail = "LOCAL — konten game: mirror www/ · login & akun: LOKAL :"
                         + Config.loginPort() + " · config: paket MANUAL config-offline/ (apa adanya"
                         + " — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal)"

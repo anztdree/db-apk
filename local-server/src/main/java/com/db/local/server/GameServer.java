@@ -300,14 +300,21 @@ public final class GameServer extends NanoHTTPD {
             return textResp(LoginServer.safeStatus(400),
                     "websocket tidak diteruskan — klien engine.io tetap di polling");
         }
-        // 0.6.0+KOREKSI FATAL 2026-11-14 — upstream relay (urutan dilaporkan utuh):
-        //  1) SATU-SATUNYA sumber di LOCAL: isian pemilik config/game-upstream.txt
-        //     (dasbor seksi CONFIG / file di perangkat) — tujuan PILIHAN pemilik.
-        //  2) Field "upstream" paket manual TIDAK dibaca lagi — paket tidak
-        //     pernah membawa alamat server asli (dulu 0.6.3 mengisi mentah).
-        //  3) mode ONLINE: url ASLI dari daftar server passthrough (serverId
-        //     terpilih bila terbaca dari paket login — bila tidak, entri pertama).
-        String[] res = resolveGameUpstream(mode);
+        // REBUILD 0.0.1 — MESIN GAME LOKAL (GameEngine): LOCAL tanpa isian
+        // upstream = protokol game dijawab SERVER INI SENDIRI (kontrak dari
+        // kode klien, nilai dari dragonball.db — NOL kontak keluar). Play LOKAL
+        // HIDUP. Isian pemilik config/game-upstream.txt = relay OPSIONAL yang
+        // tetap dihormati (jalur lama).
+        String[] res;
+        if ("local".equals(mode)) {
+            String[] upEx = LoginData.gameUpstreamEx();
+            if (!"file".equals(upEx[1]) || upEx[0].length() == 0) {
+                return GameEngine.serve(session, m);
+            }
+            res = new String[]{upEx[0], "config/game-upstream.txt — isian pemilik"};
+        } else {
+            res = resolveGameUpstream(mode);
+        }
         if (res == null) {
             long now = System.currentTimeMillis();
             if (now - lastGameSessLogAt >= 60000L) {
@@ -316,18 +323,12 @@ public final class GameServer extends NanoHTTPD {
                 // LOCAL = isian manual belum ada; ONLINE = tabel daftar server ASLI
                 // masih kosong (passthrough login belum memberi GetServerList).
                 if ("local".equals(mode)) {
-                    HumanLog.ev("❌", "Play berhenti — LOCAL tidak merelay ke server asli (arahan owner: 100% terpisah)",
-                            "Jalur     : LOCAL — config manual (paket offline)\n"
-                                    + "io.connect : http://127.0.0.1:" + Config.gamePort()
-                                    + " (url entri daftar server lokal)\n"
+                    HumanLog.ev("❌", "Play berhenti — jalur LOCAL dengan isian upstream tidak berlaku (pakai mesin game lokal)",
+                            "Jalur     : LOCAL — relay :8080 → upstream isian pemilik\n"
+                                    + "io.connect : http://127.0.0.1:" + Config.gamePort() + "\n"
                                     + "Query     : " + (qs.length() > 0 ? qs : "(kosong)") + "\n"
-                                    + "upstream   : (kosong — paket manual TIDAK membawa tujuan relay)\n"
-                                    + "Tegasan    : owner 2026-11-14 — online cuma jejak arah, bukan sumber nilai;\n"
-                                    + "             LOCAL tidak menyentuh server asli otomatis.\n"
-                                    + "Solusi     : satu-satunya jalur = ISIAN PEMILIK sendiri — dasbor\n"
-                                    + "             seksi CONFIG (tersimpan config/game-upstream.txt, SATU baris\n"
-                                    + "             URL, aktif tanpa restart). Tanpa isian: relay tidak berjalan —\n"
-                                    + "             kebutuhan protokol game dicatat UTUH di log utk handcraft.");
+                                    + "Catatan   : isian upstream hanya berlaku mode ONLINE; di LOCAL\n"
+                                    + "             protokol game dijawab mesin lokal (tanpa relay).");
                 } else {
                     HumanLog.ev("❌", "Play berhenti — jalur ONLINE belum punya url ASLI",
                             "Jalur     : ONLINE — passthrough ke server asli\n"
@@ -338,7 +339,7 @@ public final class GameServer extends NanoHTTPD {
             }
             return textResp(LoginServer.safeStatus(502),
                     "local".equals(mode)
-                            ? "upstream relay belum diisi pemilik — dasbor seksi CONFIG (config/game-upstream.txt)"
+                            ? "relay isian pemilik tidak berlaku di LOCAL — mesin game lokal menangani Play"
                             : "tabel daftar server ASLI masih kosong — jalur ONLINE belum bisa relay");
         }
         String up = res[0];
