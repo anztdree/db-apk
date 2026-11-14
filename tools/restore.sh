@@ -14,7 +14,6 @@
 #   - Clone berisi pointer LFS (cepat). Objek LFS diambil on-demand.
 #   - Perlu APK dasar untuk build? jalankan di dalam repo:
 #       git lfs pull --include "releases/*"
-#   - Versi sebelumnya diselamatkan di docs/build-scripts/ (0.5.7, 0.5.8).
 # =============================================================
 set -euo pipefail
 
@@ -34,5 +33,21 @@ if [ -d "$DEST/.git" ]; then
 fi
 
 GIT_LFS_SKIP_SMUDGE=1 git clone "https://x-access-token:${TOKEN}@github.com/anztdree/db-apk.git" "$DEST"
+
+# git-lfs belum tentu ada di sandbox — pakai salinan di folder backup bila ada
+if ! command -v git-lfs >/dev/null 2>&1; then
+  if [ -x /home/z/my-project/db-apk-backup/git-lfs ]; then
+    cp /home/z/my-project/db-apk-backup/git-lfs /usr/local/bin/git-lfs 2>/dev/null \
+      || cp /home/z/my-project/db-apk-backup/git-lfs "$HOME/.local/bin/git-lfs" 2>/dev/null \
+      || true
+  fi
+fi
+if command -v git-lfs >/dev/null 2>&1; then
+  git -C "$DEST" lfs install --local
+  git -C "$DEST" config --local lfs.url "https://x-access-token:${TOKEN}@github.com/anztdree/db-apk.git/info/lfs"
+  echo " — LFS siap; objek besar bila perlu: cd $DEST && git lfs pull --include 'releases/*'"
+else
+  echo " — PERINGATAN: git-lfs tidak tersedia; commit yang menyentuh file LFS butuh binary"
+  echo "   (salinan ada di /home/z/my-project/db-apk-backup/git-lfs — letakkan di PATH lalu jalankan)"
+fi
 echo "restore selesai: $DEST"
-echo " — pointer LFS saja (cepat); APK dasar bila perlu: git lfs pull --include 'releases/*'"
