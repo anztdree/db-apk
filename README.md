@@ -950,6 +950,24 @@ Pesan owner: *"Itu capture asli saat mode online.. sedangkan mode Local kita bar
 4. **14 tag usang dihapus dari GitHub** (`v0.1.0`–`v0.4.8` — penomoran tabrakan dengan seri build internal; riwayat tetap utuh di commit + README §Riwayat). `git ls-remote --tags` = kosong.
 5. **Struktur repo kini** (rapi, satu makna per folder): `README.md` (satu kebenaran) · `build-0.6.3.sh` (terbit aktif) · `DB-LOCAL.apk` (APK dasar proyek) · `local-server/` (kode + asset + harness) · `docs/build-scripts/` (arsip script terbit) · `dist/<versi>/` (bukti build terbit: classes2.dex + SHA256) · `releases/` (APK terbit terakhir) · `logs/local/` + `logs/online/` (log perangkat) · `tools/` + `keystore/` (toolchain).
 
+### 2.31 RESET PENOMORAN 0.0.1 + DOC TUNGGAL + BERSIH-BERSIH FINAL (keputusan owner 2026-11-14: *"1. terkait versioning.. mulai dari 0.0.1 bukan 0.6.3 !! 2. terlalu banyak docs hanya hanya akan bikin bingung.. pakai doc tunggal readme.md 3. banyak sampah di dalam Repository atau terkait versioning yg menumpuk tidak efektif dan efisien.."*)
+
+**A. PENOMORAN DIRESET — mulai dari 0.0.1 (bukan 0.6.3):**
+1. `StatusStore.VERSION` = **"0.0.1"** — dasbor & log aplikasi kini menampilkan 0.0.1.
+2. **`releases/APK-LSF-0.0.1.apk` TERBIT — 164.008.060 B · sha256 `037369ed509376f25453ea137fc7010c04836ba51413bcc9fd7f51ac3ab08f4d`** · dasar 0.6.2 (isi teknis = build 0.6.3: fix upstream default Play LOCAL — hanya nomor yang berubah) · sign v1+v2+v3 · harness 141 LULUS + 15 GAGAL LINGKUNGAN (baseline) · verifikasi dex: 0.0.1 + marker upstream + framing utuh · bukti build `dist/0.0.1/` (classes2.dex `0e1020aa…` + SHA256.txt).
+3. Seri lama (0.1.0 … 0.6.3) = **histori di README §Riwayat + commit** — tidak dipakai lagi untuk terbitan baru.
+
+**B. DOC TUNGGAL — README.md satu-satunya dokumen:**
+1. **Folder `docs/` DIHAPUS SELURUHNYA** (termasuk arsip build-scripts 0.5.7–0.6.2 yang baru dipindah kemarin) — tidak ada lagi dokumen tercecer.
+2. Yang hidup kini: `README.md` (satu kebenaran) · **satu script terbit aktif di root** · kode/asset/harness di `local-server/`.
+
+**C. BERSIH-BERSIH FINAL — penumpukan versi dilucuti:**
+1. **`releases/` kini HANYA `APK-LSF-0.0.1.apk`** — APK-LSF-0.6.2.apk dan APK-LSF-0.6.3.apk dihapus dari repo (object LFS lama tidak lagi terpakai pohon).
+2. **`dist/` kini HANYA `0.0.1/`** (bukti build terbit aktif) — 0.6.2/0.6.3 dihapus; `.gitignore` pengecualian dist ikut dirapikan.
+3. **Root script: satu saja — `build-0.0.1.sh`** (gantikan build-0.6.3.sh; BASE lama 0.6.2 dihapus dari repo — build berikutnya memakai dasar 0.0.1).
+4. **Struktur repo FINAL** (satu makna per entri): `README.md` (doc tunggal) · `build-0.0.1.sh` (terbit aktif) · `DB-LOCAL.apk` (APK dasar proyek) · `local-server/` (kode + asset + harness) · `dist/0.0.1/` (bukti build) · `releases/APK-LSF-0.0.1.apk` (terbit) · `logs/local/` + `logs/online/` (log perangkat) · `tools/` + `keystore/` (toolchain) · `.gitignore` + `.gitattributes`.
+5. Sesi build 0.6.3 (kemarin) tetap terdokumentasi di §2.30 — nilainya (fix upstream) kini terbawa utuh dalam 0.0.1.
+
 ---
 
 

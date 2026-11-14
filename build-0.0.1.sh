@@ -1,50 +1,42 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.6.1 — SUB JUDUL JALUR PER BARIS + JEJAK ASLI
-# HTTPCANARY (nilai asli utuh, routing terpisah)
+# Build APK-LSF 0.0.1 — PENOMORAN BARU (RESET SERI, keputusan owner 2026-11-14) · isi teknis = fix upstream default Play LOCAL
 #
-# Perintah owner (2026-11-13):
-#   "sub judul pada log (Online / local) gk ada jelas bikin bingung"
-#   "Log Emang saya campur Biar jelas current state yg jalan apa ..
-#    jelas jelas isi log anda yg ngawur .."
-#   "bkan masalah rekam aslinya dulu, kalau anda paham konsep
-#    httpcanary capturre atau log akan jelas"
-#   "log dari online nanti sebagai bahan diskusi untuk memastikan
-#    apalah server local kita cacat dan tau harus kemana ..
-#    server local kita gak asal bikin nama : local, alamat; local"
+# Laporan owner (2026-11-14, log perangkat logs/local/ di GitHub):
+#   "Github sudah saya update di bagian local terhenti saat klik play
+#    setelah muncul nama server local"
 #
-# Baru 0.6.1 (timeline campur TETAP SATU LAYAR — desain owner):
-#   1) SUB JUDUL JALUR PER BARIS — field "m" (lokal/online) sudah ada di
-#      JSON sejak 0.5.4 tapi renderRows dasbor MEMBUANGNYA. Kini: badge
-#      [LOCAL] hijau / [ONLINE] kuning di depan kalimat (warna = badge
-#      kepala), baris PERTAMA rincian = "Jalur : …", dan hasil Copy ikut
-#      format human.log [ICON|JALUR].
-#   2) human.log txt membawa tag jalur di kepala tiap baris:
-#      [✅|LOCAL] / [📡·|ONLINE] (dulu hanya JSON yang bawa "m").
-#   3) JEJAK ASLI HTTPCANARY — dulu 0.6.0: Capture + blok ISI baris
-#      daftar server memakai teks HASIL tulis-ulang → nilai ASLI hilang
-#      dari jejak (Gerbang tampil 127.0.0.1:8080 dua kali — komentar kode
-#      tidak cocok perilaku; temuan owner "isi log anda yg ngawur").
-#      Kini: teks ASLI SEBELUM tulis-ulang disimpan khusus (respAsli) —
-#      REKAM (arah ←) + blok ISI menampilkan respons ASLI utuh dari
-#      login.popoh5.com:610 (nilai asli apa adanya = bahan diskusi/
-#      diagnosis); field Routing TERPISAH menyatakan apa yang diterima
-#      klien (url = relay lokal, diteruskan ke url ASLI per entri) dan
-#      menegaskan: tulis-ulang = routing, BUKAN sumber config.
-#   4) BARIS RELAY NYEBUT JALUR — 📡 tersambung, ✅ loginGame, 🔌 tutup
-#      sesi, 🎮 Play relay, ⚠️ upstream tidak terjangkau, ❌ Play berhenti
-#      (pesan beda per jalur: LOCAL = isian manual kosong + Solusi isi
-#      config/game-upstream.txt; ONLINE = tabel daftar server ASLI kosong)
-#      — semuanya kini membawa field "Jalur : LOCAL — … / ONLINE — …".
-#   5) Versi dasbor (StatusStore) naik 0.5.6 → 0.6.1 (dulu tertinggal).
+# DIAGNOSIS (dari log perangkat owner sendiri — logs/local/human.log):
+#   SDK milestone 0.3.0 TERBUKTI PENUH di perangkat:
+#     - DAFTAR  registerUser → 200 · 1,0 KB (04:23:02, uid tes@mail.com)
+#     - AUTO    autoLogin    → 200 (04:24:00, 04:24:18)
+#     - LOGIN   loginByName ditolak benar saat salah → 40101 (04:25:11),
+#               sukses → 200 · 1,0 KB (04:25:19) + loginchecknative code 0
+#     - TAMU    registerVisitor (log sebelumnya 7d91d09)
+#   Lalu: "📋 Daftar server terkirim — 1 server (paket MANUAL)" →
+#         "❌ Play berhenti — jalur LOCAL belum punya upstream relay"
+#         "io.connect : http://127.0.0.1:8080 · upstream: (kosong)"
+#   AKAR: field "upstream" config-offline/servers.json = "" →
+#         resolveGameUpstream(mode LOCAL) = null → relay tanpa tujuan.
 #
-# Dasar: releases/APK-LSF-0.5.9.apk (sha256 3e1bdcb7… — terbit).
+# Baru 0.6.3:
+#   1) Paket manual config-offline/servers.json — field "upstream" TERISI
+#      DEFAULT: https://s2111-bs.popoh5.com:8141 (entri pertama daftar
+#      server ASLI dari jejak capture 2026-11-13 — TERBUKTI jalan di log
+#      ONLINE: Play → enterGame → gameplay mengalir; nilai nyata dari
+#      peta, bukan karangan). manifest.txt sha256 ikut diperbarui.
+#   2) Teks boot LOCAL menyebut SUMBER upstream (isian file pemilik vs
+#      paket manual) — dasbor & log tetap jujur satu jalur.
+#   3) StatusStore.VERSION → 0.6.3.
+#
+# Dasar: releases/APK-LSF-0.6.2.apk (164.003.964 B — dasar terakhir seri lama).
+# Catatan: penomoran DIRESET ke 0.0.1 per owner 2026-11-14 — "mulai dari 0.0.1 bukan 0.6.3".
+#          Isi teknis = build 0.6.3 (fix upstream default Play LOCAL) — hanya nomor yang berubah.
 #
 # Patch yang diterapkan (TANPA apktool — dex game & resource tidak disentuh):
 #   1) javac(ECJ) + d8  -> classes2.dex baru (kode server lokal)
-#   2) ganti assets/server/dashboard.html (badge jalur + Jalur rincian + Copy)
-#   3) mirror www/ + config-offline/ + QHinfo di-stage ulang (byte sama)
-#   4) buang tanda tangan lama -> zipalign + sign (keystore tetap)
+#   2) mirror www/ + config-offline/ + QHinfo di-stage ulang
+#   3) buang tanda tangan lama -> zipalign + sign (keystore tetap)
 # =============================================================
 set -euo pipefail
 
@@ -55,13 +47,13 @@ ECJ="${ECJ:-$REPO/tools/ecj-3.33.0.jar}"
 KS="${KS:-$REPO/keystore/lsf.keystore}"
 KS_ALIAS="${KS_ALIAS:-lsf}"
 KS_PASS="${KS_PASS:-lsf-local-2025}"
-BASE="${BASE:-$REPO/releases/APK-LSF-0.5.9.apk}"
+BASE="${BASE:-$REPO/releases/APK-LSF-0.6.2.apk}"
 LOGIN_PORT_QH="${LOGIN_PORT_QH:-8610}"
 SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
 BUILD="$REPO/build"
 DIST="$REPO/dist"
-OUT="$REPO/releases/APK-LSF-0.6.1.apk"
+OUT="$REPO/releases/APK-LSF-0.0.1.apk"
 MIN_API="${MIN_API:-21}"
 WWW="$ASSETS/server/www"
 
@@ -80,7 +72,7 @@ echo "[1b] compile + jalankan harness JVM (bukti perilaku, tidak masuk APK) ..."
 java -jar "$ECJ" -source 8 -target 8 -encoding UTF-8 -nowarn \
   -classpath "$BUILD/classes:$TOOLS/sqlite-jdbc.jar" -d "$BUILD/harness" \
   "$REPO/local-server/harness/HarnessSdk.java"
-HR="$BUILD/harness-root-061"
+HR="$BUILD/harness-root-001"
 rm -rf "$HR"
 java -cp "$BUILD/classes:$BUILD/harness:$TOOLS/sqlite-jdbc.jar" HarnessSdk "$HR" | tail -3 || true
 
@@ -102,6 +94,18 @@ else
 fi
 printf 'http://127.0.0.1:%s' "$LOGIN_PORT_QH" > "$BUILD/stage/assets/QHinfo"
 
+echo "[3b] verifikasi paket manual 0.6.3 (upstream default TERISI — hard-fail):"
+python3 - "$ASSETS/server/config-offline/servers.json" <<'PYUP'
+import json, sys
+raw = open(sys.argv[1], encoding='utf-8').read()
+j = json.loads(raw)
+up = (j.get('serverList') or [{}])[0].get('upstream', '')
+if not up.startswith('https://') and not up.startswith('http://'):
+    print('FATAL: field "upstream" paket manual KOSONG — Play LOCAL akan berhenti lagi')
+    sys.exit(1)
+print('   OK: upstream default = %s' % up)
+PYUP
+
 echo "[4/8] salin APK dasar + buang tanda tangan lama + payload lama + QHinfo lama ..."
 cp "$BASE" "$BUILD/work.apk"
 zip -d "$BUILD/work.apk" 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.DSA' 'META-INF/MANIFEST.MF' >/dev/null 2>&1 || true
@@ -118,8 +122,18 @@ echo "[5/8] sisipkan classes2.dex + dashboard + mirror www/ + config-offline + Q
   cd "$BUILD/stage"
   # shellcheck disable=SC2046
   zip -X -0 ../work.apk classes2.dex assets/QHinfo assets/server/dashboard.html \
-    $(cd "$BUILD/stage" && find assets/server/www assets/server/config-offline -type f | sort) >/dev/null
+    $(cd "$BUILD/stage" && find assets/server/www assets/server/config-offline -type f | sort) \
+    > /tmp/zip-stage-001.log 2>&1
 )
+# 0.6.2 — hard-fail bila classes2.dex gagal disisip (zip diam-diam melewati
+# file yang tidak ada — cacat senyap yang nyaris menerbitkan APK tanpa kode
+# server baru pada build manual 2026-11-13):
+if ! grep -q "adding: classes2.dex\|updating: classes2.dex" /tmp/zip-stage-001.log; then
+  echo "FATAL: classes2.dex TIDAK tersisip ke work.apk — periksa build/stage" >&2
+  exit 1
+fi
+unzip -p "$BUILD/work.apk" classes2.dex | cmp -s - "$BUILD/dex/classes.dex" \
+  || { echo "FATAL: classes2.dex di work.apk ≠ build/dex/classes.dex" >&2; exit 1; }
 
 echo "[6/8] zipalign + sign (keystore tetap) ..."
 rm -f "$DIST/work-aligned-signed.apk"; mkdir -p "$DIST"
@@ -129,48 +143,52 @@ java -jar "$UBER" -a "$BUILD/work.apk" \
 
 echo "[7/8] verifikasi ..."
 NEWAPK="$DIST/work-aligned-signed.apk"
-echo "-- bukti 0.6.1 di dex (python byte-count — strings memangkas baris em-dash; harus >0):"
+echo "-- bukti 0.6.3 di dex (python byte-count — harus >0):"
 python3 - "$BUILD/dex/classes.dex" <<'PYEOF'
 import sys
 data = open(sys.argv[1], 'rb').read()
 baru = [
-    'jalur ONLINE',
-    'server login lokal — jalur LOCAL',
-    'respons ASLI (sebelum tulis-ulang)',
-    'tulis-ulang = routing, BUKAN sumber config',
-    'respons ASLI dari login.popoh5.com:610 (utuh — jejak capture)',
-    'Play berhenti — jalur LOCAL',
-    'Play berhenti — jalur ONLINE',
+    'paket manual config-offline/servers.json',
+    'config/game-upstream.txt — isian pemilik',
+    '(sumber: ',
+    'rewriteServerListFramed',
+    'framing engine.io UTUH',
 ]
 lama = [
-    'respons daftar server (utuh — persis yang diterima klien)',
-    'Rewrite  : ',
-    'loginServer hasil rewrite setting bin',
-    ' (passthrough → relay lokal)',
+    'url ASLI per entri · tulis-ulang = routing',
 ]
 gagal = 0
 for p in baru:
     n = data.count(p.encode('utf-8'))
-    print('   BARU  [harus >0]  %3d  %s' % (n, p))
+    print('   BARU  wajib >0: %3d  %s' % (n, p))
     if n == 0:
         gagal += 1
 for p in lama:
     n = data.count(p.encode('utf-8'))
-    print('   LAMA  [harus =0]  %3d  %s' % (n, p))
+    print('   LAMA  wajib =0: %3d  %s' % (n, p))
     if n != 0:
         gagal += 1
 sys.exit(1 if gagal else 0)
 PYEOF
-# set -e: python keluar 1 = build GAGAL di sini (marker baru tidak lengkap /
-# narasi lama masih ada) — APK tidak diterbitkan. Disiplin hati-hati manual.
 echo "-- CRC penting (classes.dex game & config endpoint WAJIB identik dengan dasar):"
 unzip -v "$BASE" | grep -E "classes\.dex |config_BS\.properties|config\.properties|QHinfo" || true
 echo "-- CRC APK BARU:"
 unzip -v "$NEWAPK" | grep -E "classes\.dex |config_BS\.properties|config\.properties|classes2\.dex|server/payload|dashboard|QHinfo" | head -20 || true
 echo "-- isi QHinfo baru (harus http://127.0.0.1:8610):"
 unzip -p "$NEWAPK" assets/QHinfo; echo
-echo "-- badge jalur di dashboard baru (harus >0):"
-unzip -p "$NEWAPK" assets/server/dashboard.html | grep -c "jtag" || true
+echo "-- upstream default DALAM APK (hard-fail):"
+python3 - "$NEWAPK" <<'PYEOF2'
+import zipfile, sys, json
+z = zipfile.ZipFile(sys.argv[1])
+d = z.read('classes2.dex')
+if d.count(b'0.0.1') == 0:
+    print('FATAL: versi 0.0.1 tidak ada di classes2.dex APK (dex basi?)'); sys.exit(1)
+j = json.loads(z.read('assets/server/config-offline/servers.json').decode('utf-8'))
+up = (j.get('serverList') or [{}])[0].get('upstream', '')
+if up != 'https://s2111-bs.popoh5.com:8141':
+    print('FATAL: upstream dalam APK salah/koosng: %r' % up); sys.exit(1)
+print('   OK: 0.0.1 di classes2.dex + upstream default %s ada di APK' % up)
+PYEOF2
 
 echo "[8/8] terbitkan ..."
 cp "$NEWAPK" "$OUT"
