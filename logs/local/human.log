@@ -1,11 +1,17 @@
-2026-11-14 04:22:39 [ℹ️|LOCAL] Log di dasbor dibersihkan oleh pengguna (file human.log tetap tersimpan)
-2026-11-14 04:22:46 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
+2026-11-14 19:41:19 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
     └─ SQLite (android.database.sqlite) · /storage/emulated/0/Android/data/com.db.local/server/config/dragonball.db
-2026-11-14 04:22:46 [🧹·] Mirror www/ sudah terpasang (28 file · 0 B) — tidak ada yang perlu diulang
-    └─ penanda cocok (versi 4, 28 file utuh)
-2026-11-14 04:22:46 [💾·|LOCAL] Config OFFLINE manual siap — config-offline/ (5 file · 3 KB) — paket MANUAL (setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)
-2026-11-14 04:22:46 [ℹ️·|LOCAL] Dasbor dimuat dari APK (assets/server/dashboard.html · 30,3 KB)
-2026-11-14 04:22:46 [📦|LOCAL] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 0 ms
+2026-11-14 19:41:21 [🧹] Mirror server asli diekstrak OTOMATIS dari APK → www/
+    ├─ Isi      : 28 file · 55,5 MB (setting bin, H5 Egret, js, resource, upgrade)
+    ├─ Cara     : sekali saat boot pertama — tanpa langkah manual
+    └─ Catatan  : sumber: assets/server/www · versi mirror 4
+2026-11-14 19:41:21 [💾·|LOCAL] Config OFFLINE manual siap — config-offline/ (5 file · 3 KB) — paket MANUAL (setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)
+2026-11-14 19:41:21 [ℹ️·|LOCAL] Dasbor dimuat dari APK (assets/server/dashboard.html · 30,3 KB)
+2026-11-14 19:41:21 [🚀|LOCAL] Server lokal siap — mode LOCAL
+    ├─ Port    : game :8080 · login :8610 · dasbor :4000
+    ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610 · config: paket MANUAL config-offline/ (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal) · Play → socket game :8080 → upstream https://s2111-bs.popoh5.com:8141 (sumber: paket manual config-offline/servers.json)
+    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
+    └─ Pemain  : guest33687147 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
+2026-11-14 19:41:21 [📦|LOCAL] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 0 ms
     └─ Menunjuk : 127.0.0.1 (game :8080 · login :8610) — sejak disiapkan manual
     ▸ ISI · ISI · bedah field-per-field + teks config · 668 B
        Enkripsi     : XOR kunci "DragonBall" — dibedah field-per-field sebelum disajikan
@@ -56,469 +62,49 @@
        		"showCurChannel": "toFacebook"
        	}
        }
-2026-11-14 04:22:46 [🚀|LOCAL] Server lokal siap — mode LOCAL
-    ├─ Port    : game :8080 · login :8610 · dasbor :4000
-    ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610 · config: paket MANUAL config-offline/ (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal) · Play → socket game :8080 → upstream BELUM DIISI (isi config/game-upstream.txt)
-    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
-    └─ Pemain  : guest77671203 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
-2026-11-14 04:22:46 [📄|LOCAL] GET /bs/upgrade/base.version · mirror www/ · 4 B · 2 ms
+2026-11-14 19:41:23 [📄|LOCAL] GET /bs/upgrade/base.version · mirror www/ · 4 B · 1 ms
     ▸ ISI · ISI · 4 B (teks)
        110
-2026-11-14 04:22:46 [📄|LOCAL] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 1 ms
+2026-11-14 19:41:23 [📄|LOCAL] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 0 ms
     ▸ ISI · ISI · 5 B (teks)
        11390
-2026-11-14 04:22:46 [📡·|LOCAL] Server asli dragon.sjmobilegame.com:82 bisa dihubungi · 336 ms
-    └─ DNS dragon.sjmobilegame.com → 212.64.58.211
-2026-11-14 04:22:46 [📡·|LOCAL] Server asli configus.sjmobilegame.com:443 bisa dihubungi · 36 ms
-    └─ DNS configus.sjmobilegame.com → 43.168.14.49
-2026-11-14 04:22:46 [📡·|LOCAL] Server asli dragonh5cdn.popoh5.com:443 bisa dihubungi · 37 ms
-    └─ DNS dragonh5cdn.popoh5.com → 43.168.14.49
-2026-11-14 04:22:46 [ℹ️·|LOCAL] Server SDK lokal siap — layar login SDK ASLI dilayani di sini (init dari perangkat 8655A9EB39D7FF3421C1675A638A272D)
-2026-11-14 04:22:46 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/init → 200 · 763 B · 1 ms (server SDK lokal)
+2026-11-14 19:41:23 [📄|LOCAL] GET /bs/upgrade/upgrade.json · mirror www/ · 130 B · 0 ms
+    ▸ ISI · ISI · 130 B (teks)
+       {"11389": "11389_11390.zip", "11388": "11388_11390.zip", "11387": "11387_11390.zip", "11386": "11386_11390.zip", "all": "all.zip"}
+2026-11-14 19:41:23 [📄|LOCAL] GET /bs/upgrade/size.json · mirror www/ · 105 B · 0 ms
+    ▸ ISI · ISI · 105 B (teks)
+       {"base": "31015076", "11389": 252562, "11388": 252562, "11387": 252562, "11386": 252562, "all": 19385098}
+2026-11-14 19:41:23 [📄·|LOCAL] GET /bs/upgrade/all.zip · mirror www/ · 18,5 MB · 1 ms
+    ▸ ISI · ISI · 18,5 MB (binary)
+       // binary 18,5 MB — tidak ditampilkan sebagai teks
+2026-11-14 19:41:24 [ℹ️·|LOCAL] Server SDK lokal siap — layar login SDK ASLI dilayani di sini (init dari perangkat 8655A9EB39D7FF3421C1675A638A272D)
+2026-11-14 19:41:24 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/init → 200 · 763 B · 1 ms (server SDK lokal)
     ▸ ISI · ISI · jawaban SDK lokal · 763 B
        {"result":true,"data":{"payTypes":[],"version":{"versionName":"empty","versionNo":"empty","versionUrl":"empty","updateTime":"empty","isMust":"empty","updateTips":"empty"},"productConfig":{"useServiceCenter":"0","isShowFloat":"0","showShare":"1","title":"","logo":"","useSms":"0","skinStyle":"0","serviceInfo":"","guestShowBind":1,"single_play":0,"adZhifuSwt":0,"noticeNode":0,"regMailVerify":0,"pycenttype":0,"onGoToPUrl":0,"onGoToPUrlData":"","trashTime":0,"noFirebaseLog":0,"logEvtReport":0},"otherpayType":2,"payFast":[],"isNotGift":0,"showShare":"1","requestIp":"127.0.0.1","showDiscount":0,"nodes":{"deleteAccount":0,"serverInfo":0,"oneYeaerTips":0,"removeEmail":0},"loginTypes":["1","13"],"countryCode":"ID","first_install":1},"error":{"id":0,"message":""}}
-2026-11-14 04:22:46 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/getNotice → 200 · 55 B · 1 ms (server SDK lokal)
+2026-11-14 19:41:24 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/getNotice → 200 · 55 B · 0 ms (server SDK lokal)
     ▸ ISI · ISI · jawaban SDK lokal · 55 B
        {"result":true,"data":[],"error":{"id":0,"message":""}}
-2026-11-14 04:22:47 [📡·|LOCAL] Server asli qsdk.t4game.com:443 bisa dihubungi · 222 ms
-    └─ DNS qsdk.t4game.com → 47.88.88.118
-2026-11-14 04:22:47 [📡·|LOCAL] Server asli login.popoh5.com:610 bisa dihubungi · 214 ms
-    └─ DNS login.popoh5.com → 47.89.242.44
-2026-11-14 04:23:02 [👤|LOCAL] Akun baru "tes@mail.com" terdaftar — langsung masuk
-    ├─ Akun     : tes@mail.com
-    ├─ Disimpan : dragonball.db (kata sandi MD5) — langsung dipakai game
-    └─ Sesi     : token baru diterbitkan dan dikirim ke layar SDK
-2026-11-14 04:23:02 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/user/registerUser → 200 · 1,0 KB · 9 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 1,0 KB
-       {"result":true,"data":{"authToken":"0f1504945ec63820b1f5c5aa94304022","userData":{"uid":"tes@mail.com","username":"tes@mail.com","token":"0f1504945ec63820b1f5c5aa94304022","isGuest":0,"isNewUser":1,"mobile":"","bindInfo":{"bindFB":{"isBind":0,"otherAccountName":"","bid":6,"buid":""},"bindGameCenter":{"isBind":0,"otherAccountName":"","bid":7,"buid":""},"bindGoogle":{"isBind":0,"otherAccountName":"","bid":8,"buid":""},"bindEmail":{"isBind":0,"otherAccountName":"","bid":13,"buid":""},"bindNaver":{"isBind":0,"otherAccountName":"","bid":9,"buid":""},"bindTwitter":{"isBind":0,"otherAccountName":"","bid":10,"buid":""},"bindLine":{"isBind":0,"otherAccountName":"","bid":11,"buid":""},"bindVK":{"isBind":0,"otherAccountName":"","bid":14,"buid":""},"signApple":{"isBind":0,"otherAccountName":"","bid":16,"buid":""},"bindPlay":{"isBind":0,"otherAccountName":"","bid":17,"buid":""},"bd94hi":{"isBind":0,"otherAccountName":"","bid":18,"buid":""},"bdhw":{"isBind":0,"otherAccountName":"","bid":19,"buid":""}}},"checkRealName":0},"error":{"id":0,"message":""}}
-2026-11-14 04:23:04 [🔑|LOCAL] Sesi akun tes@mail.com disahkan — game lanjut boot
-    ├─ Uid      : tes@mail.com · mode akun
-    ├─ Hasil    : code 0 (skema respons asli login.popoh5.com:510) — shell melanjutkan boot ke H5
-    └─ Sesi     : disimpan ke dragonball.db (sdk_sessions) — url game memakai userid ini
-2026-11-14 04:23:04 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/loginchecknative → 200 · 201 B · 12 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 201 B
-       {"code":0,"sdk":"BSNative","nickName":"tes@mail.com","loginToken":"01ead11760a54770057dd14354c804dd","userId":"tes@mail.com","sign":"612110abd46ec97759002e2ed9b7affe","sdkType":"BS","osType":"Android"}
-2026-11-14 04:23:04 [📄·|LOCAL] GET /bs/index-native.html · mirror www/ · 10,5 KB · 1 ms
-    ▸ ISI · ISI · 10,5 KB (teks)
-       <!DOCTYPE HTML>
-       <html>
-       
-       <head>
-           <meta charset="utf-8">
-           <title>DragonBall</title>
-           <meta name="viewport"
-               content="width=device-width,initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no" />
-           <meta name="apple-mobile-web-app-capable" content="yes" />
-           <meta name="full-screen" content="true" />
-           <meta name="screen-orientation" content="portrait" />
-           <meta name="x5-fullscreen" content="true" />
-           <meta name="360-fullscreen" content="true" />
-           <style>
-               html,
-               body {
-                   -ms-touch-action: none;
-                   background: #888888;
-                   padding: 0;
-                   border: 0;
-                   margin: 0;
-                   height: 100%;
-               }
-           </style>
-       </head>
-       
-       <body>
-           <div style="margin: auto;width: 100%;height: 100%;" class="egret-player" data-entry-class="Main"
-               data-orientation="portrait" data-scale-mode="showAll" data-frame-rate="60" data-content-width="750"
-               data-content-height="1334" data-show-paint-rect="false" data-multi-fingered="2" data-show-fps="false"
-               data-show-log="false" data-show-fps-style="x:0,y:0,size:12,textColor:0xffffff,bgAlpha:0.9">
-           </div>
-           <script>
-               window["Log_Clean"] = true;
-               window["debug"] = false;
-               window["CacheNum"] = 20;
-               window["reportBattlleLog"] = "http://log.sjflaregame.com:10000/error/battle/client";
-               window["privacyUrl"] = "http://www.parajoymobile.com/privacy_en.html";
-               var thirdParams = null; //第三方sdk的参数
-               var loginServer = null; //登录服
-               var clientParams = null; //透传参数
-       
-               var getLoginServer = function () {
-                   return loginServer;
-               }
-               var loadScript = function (list, callback) {
-                   var loaded = 0;
-                   var loadNext = function () {
-                       loadSingleScript(list[loaded], function () {
-                           loaded++;
-                           if (loaded >= list.length) {
-                               callback();
-                           } else {
-                               loadNext();
-                           }
-                       })
-                   };
-                   loadNext();
-               };
-       
-               var loadSingleScript = function (src, callback) {
-                   var s = document.createElement('script');
-                   s.async = false;
-                   s.src = src;
-                   s.addEventListener('load', function () {
-                       s.parentNode.removeChild(s);
-                       s.removeEventListener('load', arguments.callee, false);
-                       callback();
-                   }, false);
-                   document.body.appendChild(s);
-               };
-       
-               var xhr = new XMLHttpRequest();
-               xhr.open('GET', './manifest.json?v=' + Math.random(), true);
-               xhr.addEventListener("load", function () {
-                   var manifest = JSON.parse(xhr.response);
-                   var list = manifest.initial.concat(manifest.game);
-                   loadScript(list, function () {
-                       /**
-                        * {
-                        * "renderMode":, //Engine rendering mode, "canvas" or "webgl"
-                        * "audioType": 0 //Use the audio type, 0: default, 2: web audio, 3: audio
-                        * "antialias": //Whether the anti-aliasing is enabled in WebGL mode, true: on, false: off, defaults to false
-                        * "calculateCanvasScaleFactor": //a function return canvas scale factor
-                        * }
-                        **/
-       
-                       window["loadJsonFunc"] = function (path) {
-                           return RES.getRes(path);
-                       }
-                       window["refreshPage"] = function () {
-                           egret.ExternalInterface.call("refresh", "refresh");
-                           window["show18Login"] = clientParams["show18Login"];
-                           window["show18Home"] = clientParams["show18Home"];
-                           window["sdkNativeChannel"] = clientParams["sdkNativeChannel"];
-                           window["showCurChannel"] = clientParams["showCurChannel"];
-                       }
-                       egret.ExternalInterface.addCallback("refresh", function (msg) {
-                           window.location.reload();
-                       });
-                       egret.ExternalInterface.addCallback("startGame", function (msg) {
-                           var json = JSON.parse(msg);
-                           if (json.thirdParams && json.thirdParams != "") {
-                               thirdParams = JSON.parse(json.thirdParams);
-                               window["osType"] = thirdParams.osType;
-                           }
-                           loginServer = json.loginServer;
-                           window["gameIcon"] = json.thirdChannel;
-                           if (json.clientParams && json.clientParams != "") {
-                               clientParams = JSON.parse(json.clientParams);
-                               window["hideList"] = clientParams["hideList"];
-                               window["gameIcon"] = clientParams["gameIcon"];
-                               window["supportLang"] = clientParams["supportLang"];
-                               window["battleAudio"] = clientParams["battleAudio"];
-                               // window["showUserCenterSdk"] = clientParams["showUserCenterSdk"];
-                               // window["showContact"] = clientParams["showContact"];
-                               // window["switchAccount"] = clientParams["switchAccount"];
-                               window["sdkNativeChannel"] = clientParams["sdkNativeChannel"];
-                               window["showCurChannel"] = clientParams["showCurChannel"];
-                           }
-                           if (window["osType"]) {
-                               window["version"] = json.version + " for " + window["osType"];
-                           } else {
-                               window["version"] = json.version;
-                           }
-                           window["versionConfig"] = json.versionConfig;
-                           window["debugLanguage"] = json.language;
-                           egret.runEgret({
-                               renderMode: "webgl",
-                               audioType: 0,
-                               calculateCanvasScaleFactor: function (context) {
-                                   var backingStore = context.backingStorePixelRatio ||
-                                       context.webkitBackingStorePixelRatio ||
-                                       context.mozBackingStorePixelRatio ||
-                                       context.msBackingStorePixelRatio ||
-                                       context.oBackingStorePixelRatio ||
-                                       context.backingStorePixelRatio || 1;
-                                   return (window.devicePixelRatio || 1) / backingStore;
-                               }
-                           });
-                       });
-                       egret.ExternalInterface.call("startGame", "get Sdk Channel");
-       
-                   });
-               });
-               xhr.send(null);
-           </script>
-           <script>
-               var checkSDK = function () {
-                   egret.ExternalInterface.call("changeView", "change view");
-                   return true;
-               }
-               var getSdkLoginInfo = function () {
-                   var sdkData = thirdParams.data;
-                   if (sdkData && sdkData.securityCode) { 
-                       // 这是配合海贼、乱斗的登录服务器
-                       return {sdk:sdkData.sdk,nickName:sdkData.nickname,userId:sdkData.userid,security:sdkData.securityCode};
-                   }
-                   return thirdParams;
-               }
-       
-               var checkFromNative = function () {
-                   // 增加这个方法，支付的时候全部都只能一个一个买（不能设置数量）
-                   return true;
-               }
-               var paySdk = function (data) {
-                   data.power = data.money;
-                   if (data.h5payParam) {
-                       // 越南渠道特有的处理
-                       data.serverName = data.serverId;
-                   }
-                   egret.ExternalInterface.call("pei", JSON.stringify(data));
-               }
-               var switchUser = function () {
-                   egret.ExternalInterface.call("refresh", "switch usr");
-               };
-               //facebook 分享 serverId    roleName  extra  需要把这三个字段传一下  extra 可以为空
-               var giveLikeSdk = function (data) {
-                   egret.ExternalInterface.call("giveLike", JSON.stringify(data));
-               };
-               //客服中心
-               var contactSdk = function () {
-                   egret.ExternalInterface.call("contact", "contact");
-               };
-       
-               //切换账户 贪玩en
-               var switchAccountSdk = function () {
-                   egret.ExternalInterface.call("switchAccount", "switchAccount");
-               };
-       
-               //fb 点赞
-               var fbGiveLiveSdk = function () {
-                   egret.ExternalInterface.call("fbGiveLive", "fbGiveLive");
-               };
-       
-               //用户中心
-               var userCenterSdk = function () {
-                   egret.ExternalInterface.call("userCenter", "userCenter");
-               };
-               //领取礼包
-               var gifBagSdk = function () {
-                   egret.ExternalInterface.call("gifBag", "gifBag");
-               };
-       
-               var report2Sdk = function (data) {
-                   data.powerNum = data.moneyNum;
-                   egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-               };
-               var gameChapterFinish = function (lessonId) {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 12,
-                           level: lessonId
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var openShopPage = function () {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 13
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var gameLevelUp = function (level) {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 11,
-                           level: level
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var tutorialFinish = function () {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 14
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var reload = function () {
-                   egret.ExternalInterface.call("refresh", "reload game");
-               };
-       
-               var changeLanguage = function (lang) {
-                   egret.ExternalInterface.call("changeLanguage", lang);
-                   window.location.reload();
-               }
-               var openURL = function (url) {
-                   egret.ExternalInterface.call("openURL", url);
-               }
-       
-               var open = function (url, target) {
-                   egret.ExternalInterface.call("openURL", url);
-               }
-           </script>
-       </body>
-       
-       </html>
-2026-11-14 04:23:04 [📄|LOCAL] GET /bs/manifest.json · mirror www/ · 533 B · 1 ms
-    ▸ ISI · ISI · 533 B (teks)
-       {
-       	"initial": [
-       		"js/egret.min_d9413192.js",
-       		"js/egret.web.min_b66ab113.js",
-       		"js/game.min_16249d0f.js",
-       		"js/tween.min_6c5a88f9.js",
-       		"js/assetsmanager.min_2ef412b7.js",
-       		"js/eui.min_493403ce.js",
-       		"js/dragonBones.min_6252b9c4.js"
-       	],
-       	"game": [
-       		"js/md5.min_97e969ef.js",
-       		"js/lz-string.min_896bee8b.js",
-       		"js/socket.io.min_57ea9db7.js",
-       		"js/blockmessage.min_7dc7bcec.js",
-       		"js/battlelogic.min_d446437e.js",
-       		"js/ThinkingAnalyticsSDK.min_72d3fad5.js",
-       		"js/default.thm_4d02a3c6.js",
-       		"js/main.min_777039fc.js"
-       	]
-       }
-2026-11-14 04:23:04 [ℹ️·|LOCAL] Tombol melayang tampil
-2026-11-14 04:23:08 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
-    ▸ ISI · ISI · 38 B (teks)
-       {"clientVersion":"20260929_180158-EN"}
-2026-11-14 04:23:08 [📦|LOCAL] CONFIG serversetting.json disajikan — paket manual config-offline/ · 66 B · 1 ms
-    └─ Menunjuk : loginserver 127.0.0.1:8610 — sejak disiapkan manual
-    ▸ ISI · ISI · bedah + teks config · 66 B
-       Enkripsi     : JSON polos (tanpa enkripsi) — dibedah field-per-field
-       loginserver  : http://127.0.0.1:8610  (asli) — host:port login yang di-connect H5 main.min (connectToLogin)
-       requireSDK   : false  (asli) — flag SDK
-       
-       — teks config —
-       {
-       	"loginserver": "http://127.0.0.1:8610",
-       	"requireSDK": false
-       }
-2026-11-14 04:23:09 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 0 ms
-    ▸ ISI · ISI · 38 B (teks)
-       {"clientVersion":"20260929_180158-EN"}
-2026-11-14 04:23:10 [📡|LOCAL] Klien game tersambung ke server login lokal — jalur LOCAL
-    ├─ Jalur    : LOCAL — login & sesi dikelola server ini (dragonball.db)
-    ├─ Sesi     : zORvHYL2Dfd4hBbJ (engine.io v3 · polling, tanpa websocket)
-    ├─ Tujuan   : 127.0.0.1:8610 (endpoint login dari paket MANUAL config-offline — setting bin, dilayani apa adanya)
-    └─ Lanjutan : menunggu loginGame + GetServerList dari klien H5
-2026-11-14 04:23:10 [📋|LOCAL] Daftar server terkirim — 1 server (paket MANUAL)
-    ├─ Sumber   : config-offline/servers.json — paket CONFIG OFFLINE MANUAL bawaan APK
-    ├─            (bukan snapshot online — owner: online cuma jejak arah, bukan config asli offline)
-    ├─ Tujuan   : url tiap entri = 127.0.0.1:8080 — klik Play masuk SERVER GAME LOKAL
-    ├─ Upstream : BELUM DIISI — isi config/game-upstream.txt (1 baris URL server game asli) atau field "upstream" di config-offline/servers.json
-    └─ Ukuran   : 359 B · 0 ms · pemain sekarang di layar pilih server
-2026-11-14 04:23:10 [❌|LOCAL] Play berhenti — jalur LOCAL belum punya upstream relay
-    ├─ Jalur     : LOCAL — config manual (paket offline)
-    ├─ io.connect : http://127.0.0.1:8080 (url entri daftar server lokal)
-    ├─ upstream   : (kosong)
-    └─ Solusi     : isi config/game-upstream.txt (SATU baris URL server game ASLI) di folder config/ perangkat — atau field "upstream" pada config-offline/servers.json
-2026-11-14 04:23:56 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
-    └─ SQLite (android.database.sqlite) · /storage/emulated/0/Android/data/com.db.local/server/config/dragonball.db
-2026-11-14 04:23:56 [🧹·] Mirror www/ sudah terpasang (28 file · 0 B) — tidak ada yang perlu diulang
-    └─ penanda cocok (versi 4, 28 file utuh)
-2026-11-14 04:23:56 [💾·|LOCAL] Config OFFLINE manual siap — config-offline/ (5 file · 3 KB) — paket MANUAL (setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)
-2026-11-14 04:23:56 [ℹ️·|LOCAL] Dasbor dimuat dari APK (assets/server/dashboard.html · 30,3 KB)
-2026-11-14 04:23:56 [📦|LOCAL] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 1 ms
-    └─ Menunjuk : 127.0.0.1 (game :8080 · login :8610) — sejak disiapkan manual
-    ▸ ISI · ISI · bedah field-per-field + teks config · 668 B
-       Enkripsi     : XOR kunci "DragonBall" — dibedah field-per-field sebelum disajikan
-       testMode     : 1  (asli) — flag mode uji bawaan server
-       url          : http://127.0.0.1:8080/bs/index-native.html  (asli) — URL H5 game dibuka shell WebView (boot game)
-       tsUrl        : http://127.0.0.1:8080/bs/index-native.html  (asli) — varian uji — jalur produksi tidak memakainya
-       update       : http://127.0.0.1:8080/bs/upgrade  (asli) — endpoint paket pembaruan (zip + upgrade.json)
-       checkTime    : 300  (asli) — jarak cek pembaruan (detik)
-       loginServer  : http://127.0.0.1  (asli) — HOST login — shell menambah :loginPort (socket.io) dan :loginWebPort (loginchecknative) sendiri
-       tsLoginServer: http://127.0.0.1:8610  (asli) — HOST login varian uji
-       loginPort    : 8610  (asli) — port socket.io login (asli 610)
-       loginWebPort : 8610  (asli) — port web login SDK (asli 510 — loginchecknative)
-       clientParams : hideList 5 harga disembunyikan · supportLang 3 bahasa (en, fr, kr) · showCurChannel toFacebook
-       
-       — teks config (setting.json dienkripsi XOR “DragonBall”) —
-       {
-       	"testMode": 1,
-       	"url": "http://127.0.0.1:8080/bs/index-native.html",
-       	"tsUrl": "http://127.0.0.1:8080/bs/index-native.html",
-       	"update": "http://127.0.0.1:8080/bs/upgrade",
-       	"checkTime": 300,
-       	"loginServer": "http://127.0.0.1",
-       	"tsLoginServer": "http://127.0.0.1:8610",
-       	"loginPort": 8610,
-       	"loginWebPort": 8610,
-       	"clientParams": {
-       		"hideList": [
-       			"1.99",
-       			"2.99",
-       			"14.99",
-       			"59.99",
-       			"89.99"
-       		],
-       		"supportLang": [
-       			{
-       				"languageName": "English",
-       				"lang": "en"
-       			},
-       			{
-       				"languageName": "Fran\u00e7ais",
-       				"lang": "fr"
-       			},
-       			{
-       				"languageName": "\ud55c\uad6d\uc778",
-       				"lang": "kr"
-       			}
-       		],
-       		"showCurChannel": "toFacebook"
-       	}
-       }
-2026-11-14 04:23:56 [🚀|LOCAL] Server lokal siap — mode LOCAL
-    ├─ Port    : game :8080 · login :8610 · dasbor :4000
-    ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610 · config: paket MANUAL config-offline/ (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal) · Play → socket game :8080 → upstream BELUM DIISI (isi config/game-upstream.txt)
-    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
-    └─ Pemain  : guest77671203 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
-2026-11-14 04:23:56 [📄|LOCAL] GET /bs/upgrade/base.version · mirror www/ · 4 B · 1 ms
-    ▸ ISI · ISI · 4 B (teks)
-       110
-2026-11-14 04:23:56 [📄|LOCAL] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 0 ms
-    ▸ ISI · ISI · 5 B (teks)
-       11390
-2026-11-14 04:23:56 [📡·|LOCAL] Server asli dragon.sjmobilegame.com:82 bisa dihubungi · 332 ms
+2026-11-14 19:41:24 [📡·|LOCAL] Server asli dragon.sjmobilegame.com:82 bisa dihubungi · 3,5 dtk
     └─ DNS dragon.sjmobilegame.com → 212.64.58.211
-2026-11-14 04:23:56 [📡·|LOCAL] Server asli configus.sjmobilegame.com:443 bisa dihubungi · 31 ms
+2026-11-14 19:41:25 [📡·|LOCAL] Server asli configus.sjmobilegame.com:443 bisa dihubungi · 300 ms
     └─ DNS configus.sjmobilegame.com → 43.168.14.49
-2026-11-14 04:23:56 [📡·|LOCAL] Server asli dragonh5cdn.popoh5.com:443 bisa dihubungi · 30 ms
-    └─ DNS dragonh5cdn.popoh5.com → 43.168.14.49
-2026-11-14 04:23:56 [ℹ️·|LOCAL] Server SDK lokal siap — layar login SDK ASLI dilayani di sini (init dari perangkat 8655A9EB39D7FF3421C1675A638A272D)
-2026-11-14 04:23:56 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/init → 200 · 763 B · 0 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 763 B
-       {"result":true,"data":{"payTypes":[],"version":{"versionName":"empty","versionNo":"empty","versionUrl":"empty","updateTime":"empty","isMust":"empty","updateTips":"empty"},"productConfig":{"useServiceCenter":"0","isShowFloat":"0","showShare":"1","title":"","logo":"","useSms":"0","skinStyle":"0","serviceInfo":"","guestShowBind":1,"single_play":0,"adZhifuSwt":0,"noticeNode":0,"regMailVerify":0,"pycenttype":0,"onGoToPUrl":0,"onGoToPUrlData":"","trashTime":0,"noFirebaseLog":0,"logEvtReport":0},"otherpayType":2,"payFast":[],"isNotGift":0,"showShare":"1","requestIp":"127.0.0.1","showDiscount":0,"nodes":{"deleteAccount":0,"serverInfo":0,"oneYeaerTips":0,"removeEmail":0},"loginTypes":["1","13"],"countryCode":"ID","first_install":1},"error":{"id":0,"message":""}}
-2026-11-14 04:23:56 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/getNotice → 200 · 55 B · 0 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 55 B
-       {"result":true,"data":[],"error":{"id":0,"message":""}}
-2026-11-14 04:23:57 [📡·|LOCAL] Server asli qsdk.t4game.com:443 bisa dihubungi · 212 ms
-    └─ DNS qsdk.t4game.com → 47.88.88.118
-2026-11-14 04:23:57 [📡·|LOCAL] Server asli login.popoh5.com:610 bisa dihubungi · 213 ms
-    └─ DNS login.popoh5.com → 47.89.242.44
-2026-11-14 04:24:00 [👤|LOCAL] Layar SDK — masuk sebagai akun tes@mail.com
+2026-11-14 19:41:25 [👤|LOCAL] Layar SDK — masuk sebagai tamu guest33687147
     ├─ Perangkat  : 8655A9EB39…
-    ├─ Cara masuk : autoLogin — sesi tersimpan masih valid (token dikenal)
-    └─ Identitas  : akun tes@mail.com — tersimpan dragonball.db (tahan reboot)
-2026-11-14 04:24:00 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/user/autoLogin → 200 · 1,0 KB · 21 ms (server SDK lokal)
+    ├─ Cara masuk : registerVisitor — tamu pertama server lokal: identitas tamu lama pemilik dipertahankan
+    └─ Identitas  : tamu guest33687147 — tersimpan dragonball.db (tahan reboot)
+2026-11-14 19:41:25 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/user/registerVisitor → 200 · 1,0 KB · 9 ms (server SDK lokal)
     ▸ ISI · ISI · jawaban SDK lokal · 1,0 KB
-       {"result":true,"data":{"authToken":"0f1504945ec63820b1f5c5aa94304022","userData":{"uid":"tes@mail.com","username":"tes@mail.com","token":"0f1504945ec63820b1f5c5aa94304022","isGuest":0,"isNewUser":0,"mobile":"","bindInfo":{"bindFB":{"isBind":0,"otherAccountName":"","bid":6,"buid":""},"bindGameCenter":{"isBind":0,"otherAccountName":"","bid":7,"buid":""},"bindGoogle":{"isBind":0,"otherAccountName":"","bid":8,"buid":""},"bindEmail":{"isBind":0,"otherAccountName":"","bid":13,"buid":""},"bindNaver":{"isBind":0,"otherAccountName":"","bid":9,"buid":""},"bindTwitter":{"isBind":0,"otherAccountName":"","bid":10,"buid":""},"bindLine":{"isBind":0,"otherAccountName":"","bid":11,"buid":""},"bindVK":{"isBind":0,"otherAccountName":"","bid":14,"buid":""},"signApple":{"isBind":0,"otherAccountName":"","bid":16,"buid":""},"bindPlay":{"isBind":0,"otherAccountName":"","bid":17,"buid":""},"bd94hi":{"isBind":0,"otherAccountName":"","bid":18,"buid":""},"bdhw":{"isBind":0,"otherAccountName":"","bid":19,"buid":""}}},"checkRealName":0},"error":{"id":0,"message":""}}
-2026-11-14 04:24:00 [🔑|LOCAL] Sesi akun tes@mail.com disahkan — game lanjut boot
-    ├─ Uid      : tes@mail.com · mode akun
+       {"result":true,"data":{"authToken":"b62fdfff42dfd83affa74cf74816ed66","userData":{"uid":"guest33687147","username":"guest33687147","token":"b62fdfff42dfd83affa74cf74816ed66","isGuest":1,"isNewUser":1,"mobile":"","bindInfo":{"bindFB":{"isBind":0,"otherAccountName":"","bid":6,"buid":""},"bindGameCenter":{"isBind":0,"otherAccountName":"","bid":7,"buid":""},"bindGoogle":{"isBind":0,"otherAccountName":"","bid":8,"buid":""},"bindEmail":{"isBind":0,"otherAccountName":"","bid":13,"buid":""},"bindNaver":{"isBind":0,"otherAccountName":"","bid":9,"buid":""},"bindTwitter":{"isBind":0,"otherAccountName":"","bid":10,"buid":""},"bindLine":{"isBind":0,"otherAccountName":"","bid":11,"buid":""},"bindVK":{"isBind":0,"otherAccountName":"","bid":14,"buid":""},"signApple":{"isBind":0,"otherAccountName":"","bid":16,"buid":""},"bindPlay":{"isBind":0,"otherAccountName":"","bid":17,"buid":""},"bd94hi":{"isBind":0,"otherAccountName":"","bid":18,"buid":""},"bdhw":{"isBind":0,"otherAccountName":"","bid":19,"buid":""}}},"checkRealName":0},"error":{"id":0,"message":""}}
+2026-11-14 19:41:26 [📡·|LOCAL] Server asli dragonh5cdn.popoh5.com:443 bisa dihubungi · 1,5 dtk
+    └─ DNS dragonh5cdn.popoh5.com → 43.168.14.49
+2026-11-14 19:41:27 [🔑|LOCAL] Sesi tamu guest33687147 disahkan — game lanjut boot
+    ├─ Uid      : guest33687147 · mode tamu
     ├─ Hasil    : code 0 (skema respons asli login.popoh5.com:510) — shell melanjutkan boot ke H5
     └─ Sesi     : disimpan ke dragonball.db (sdk_sessions) — url game memakai userid ini
-2026-11-14 04:24:00 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/loginchecknative → 200 · 201 B · 24 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 201 B
-       {"code":0,"sdk":"BSNative","nickName":"tes@mail.com","loginToken":"20dc114d3b09ff6fedf1cf8e1c656d64","userId":"tes@mail.com","sign":"612110abd46ec97759002e2ed9b7affe","sdkType":"BS","osType":"Android"}
-2026-11-14 04:24:01 [📄·|LOCAL] GET /bs/index-native.html · mirror www/ · 10,5 KB · 1 ms
+2026-11-14 19:41:27 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/loginchecknative → 200 · 203 B · 11 ms (server SDK lokal)
+    ▸ ISI · ISI · jawaban SDK lokal · 203 B
+       {"code":0,"sdk":"BSNative","nickName":"guest33687147","loginToken":"a7841e75e0334bcf04eb433d50d82aae","userId":"guest33687147","sign":"04a6ac228253dfe00eab0db34a474123","sdkType":"BS","osType":"Android"}
+2026-11-14 19:41:28 [📄·|LOCAL] GET /bs/index-native.html · mirror www/ · 10,5 KB · 1 ms
     ▸ ISI · ISI · 10,5 KB (teks)
        <!DOCTYPE HTML>
        <html>
@@ -781,7 +367,7 @@
        </body>
        
        </html>
-2026-11-14 04:24:01 [📄|LOCAL] GET /bs/manifest.json · mirror www/ · 533 B · 2 ms
+2026-11-14 19:41:28 [📄|LOCAL] GET /bs/manifest.json · mirror www/ · 533 B · 0 ms
     ▸ ISI · ISI · 533 B (teks)
        {
        	"initial": [
@@ -804,11 +390,14 @@
        		"js/main.min_777039fc.js"
        	]
        }
-2026-11-14 04:24:01 [ℹ️·|LOCAL] Tombol melayang tampil
-2026-11-14 04:24:05 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
+2026-11-14 19:41:28 [📡·|LOCAL] Server asli qsdk.t4game.com:443 bisa dihubungi · 2,1 dtk
+    └─ DNS qsdk.t4game.com → 47.88.88.118
+2026-11-14 19:41:32 [📡·|LOCAL] Server asli login.popoh5.com:610 bisa dihubungi · 3,6 dtk
+    └─ DNS login.popoh5.com → 47.89.242.44
+2026-11-14 19:41:34 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
     ▸ ISI · ISI · 38 B (teks)
        {"clientVersion":"20260929_180158-EN"}
-2026-11-14 04:24:05 [📦|LOCAL] CONFIG serversetting.json disajikan — paket manual config-offline/ · 66 B · 0 ms
+2026-11-14 19:41:34 [📦|LOCAL] CONFIG serversetting.json disajikan — paket manual config-offline/ · 66 B · 0 ms
     └─ Menunjuk : loginserver 127.0.0.1:8610 — sejak disiapkan manual
     ▸ ISI · ISI · bedah + teks config · 66 B
        Enkripsi     : JSON polos (tanpa enkripsi) — dibedah field-per-field
@@ -820,549 +409,69 @@
        	"loginserver": "http://127.0.0.1:8610",
        	"requireSDK": false
        }
-2026-11-14 04:24:06 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
+2026-11-14 19:41:34 [📡|LOCAL] Server game ASLI (upstream) bisa dihubungi — s2111-bs.popoh5.com:8141 · 2,0 dtk
+    ├─ Upstream : https://s2111-bs.popoh5.com:8141 (sumber: config-offline/servers.json)
+    └─ DNS     : s2111-bs.popoh5.com → 47.254.81.28
+2026-11-14 19:41:35 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
     ▸ ISI · ISI · 38 B (teks)
        {"clientVersion":"20260929_180158-EN"}
-2026-11-14 04:24:06 [📡|LOCAL] Klien game tersambung ke server login lokal — jalur LOCAL
+2026-11-14 19:41:35 [📡|LOCAL] Klien game tersambung ke server login lokal — jalur LOCAL
     ├─ Jalur    : LOCAL — login & sesi dikelola server ini (dragonball.db)
-    ├─ Sesi     : WlKp82nnNfggJfT- (engine.io v3 · polling, tanpa websocket)
+    ├─ Sesi     : 2ujhFvYCyD3tyLfu (engine.io v3 · polling, tanpa websocket)
     ├─ Tujuan   : 127.0.0.1:8610 (endpoint login dari paket MANUAL config-offline — setting bin, dilayani apa adanya)
     └─ Lanjutan : menunggu loginGame + GetServerList dari klien H5
-2026-11-14 04:24:06 [📋|LOCAL] Daftar server terkirim — 1 server (paket MANUAL)
+2026-11-14 19:41:35 [📋|LOCAL] Daftar server terkirim — 1 server (paket MANUAL)
     ├─ Sumber   : config-offline/servers.json — paket CONFIG OFFLINE MANUAL bawaan APK
     ├─            (bukan snapshot online — owner: online cuma jejak arah, bukan config asli offline)
     ├─ Tujuan   : url tiap entri = 127.0.0.1:8080 — klik Play masuk SERVER GAME LOKAL
-    ├─ Upstream : BELUM DIISI — isi config/game-upstream.txt (1 baris URL server game asli) atau field "upstream" di config-offline/servers.json
-    └─ Ukuran   : 359 B · 0 ms · pemain sekarang di layar pilih server
-2026-11-14 04:24:06 [❌|LOCAL] Play berhenti — jalur LOCAL belum punya upstream relay
-    ├─ Jalur     : LOCAL — config manual (paket offline)
-    ├─ io.connect : http://127.0.0.1:8080 (url entri daftar server lokal)
-    ├─ upstream   : (kosong)
-    └─ Solusi     : isi config/game-upstream.txt (SATU baris URL server game ASLI) di folder config/ perangkat — atau field "upstream" pada config-offline/servers.json
-2026-11-14 04:24:10 [ℹ️·|LOCAL] Rute SDK tak dikenal /v1/auth/getUserInfo — dijawab sukses kosong
-2026-11-14 04:24:10 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/auth/getUserInfo → 200 · 55 B · 2 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 55 B
-       {"result":true,"data":[],"error":{"id":0,"message":""}}
-2026-11-14 04:24:14 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
-    └─ SQLite (android.database.sqlite) · /storage/emulated/0/Android/data/com.db.local/server/config/dragonball.db
-2026-11-14 04:24:14 [🧹·] Mirror www/ sudah terpasang (28 file · 0 B) — tidak ada yang perlu diulang
-    └─ penanda cocok (versi 4, 28 file utuh)
-2026-11-14 04:24:14 [💾·|LOCAL] Config OFFLINE manual siap — config-offline/ (5 file · 3 KB) — paket MANUAL (setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)
-2026-11-14 04:24:14 [ℹ️·|LOCAL] Dasbor dimuat dari APK (assets/server/dashboard.html · 30,3 KB)
-2026-11-14 04:24:14 [📦|LOCAL] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 0 ms
-    └─ Menunjuk : 127.0.0.1 (game :8080 · login :8610) — sejak disiapkan manual
-    ▸ ISI · ISI · bedah field-per-field + teks config · 668 B
-       Enkripsi     : XOR kunci "DragonBall" — dibedah field-per-field sebelum disajikan
-       testMode     : 1  (asli) — flag mode uji bawaan server
-       url          : http://127.0.0.1:8080/bs/index-native.html  (asli) — URL H5 game dibuka shell WebView (boot game)
-       tsUrl        : http://127.0.0.1:8080/bs/index-native.html  (asli) — varian uji — jalur produksi tidak memakainya
-       update       : http://127.0.0.1:8080/bs/upgrade  (asli) — endpoint paket pembaruan (zip + upgrade.json)
-       checkTime    : 300  (asli) — jarak cek pembaruan (detik)
-       loginServer  : http://127.0.0.1  (asli) — HOST login — shell menambah :loginPort (socket.io) dan :loginWebPort (loginchecknative) sendiri
-       tsLoginServer: http://127.0.0.1:8610  (asli) — HOST login varian uji
-       loginPort    : 8610  (asli) — port socket.io login (asli 610)
-       loginWebPort : 8610  (asli) — port web login SDK (asli 510 — loginchecknative)
-       clientParams : hideList 5 harga disembunyikan · supportLang 3 bahasa (en, fr, kr) · showCurChannel toFacebook
-       
-       — teks config (setting.json dienkripsi XOR “DragonBall”) —
-       {
-       	"testMode": 1,
-       	"url": "http://127.0.0.1:8080/bs/index-native.html",
-       	"tsUrl": "http://127.0.0.1:8080/bs/index-native.html",
-       	"update": "http://127.0.0.1:8080/bs/upgrade",
-       	"checkTime": 300,
-       	"loginServer": "http://127.0.0.1",
-       	"tsLoginServer": "http://127.0.0.1:8610",
-       	"loginPort": 8610,
-       	"loginWebPort": 8610,
-       	"clientParams": {
-       		"hideList": [
-       			"1.99",
-       			"2.99",
-       			"14.99",
-       			"59.99",
-       			"89.99"
-       		],
-       		"supportLang": [
-       			{
-       				"languageName": "English",
-       				"lang": "en"
-       			},
-       			{
-       				"languageName": "Fran\u00e7ais",
-       				"lang": "fr"
-       			},
-       			{
-       				"languageName": "\ud55c\uad6d\uc778",
-       				"lang": "kr"
-       			}
-       		],
-       		"showCurChannel": "toFacebook"
-       	}
-       }
-2026-11-14 04:24:14 [🚀|LOCAL] Server lokal siap — mode LOCAL
-    ├─ Port    : game :8080 · login :8610 · dasbor :4000
-    ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610 · config: paket MANUAL config-offline/ (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal) · Play → socket game :8080 → upstream BELUM DIISI (isi config/game-upstream.txt)
-    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
-    └─ Pemain  : guest77671203 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
-2026-11-14 04:24:14 [📄|LOCAL] GET /bs/upgrade/base.version · mirror www/ · 4 B · 0 ms
+    ├─ Upstream : https://s2111-bs.popoh5.com:8141 — socket game :8080 diteruskan ke sini (relay)
+    └─ Ukuran   : 720 B · 0 ms · pemain sekarang di layar pilih server
+2026-11-14 19:41:37 [🎮|LOCAL] Play → socket game lokal :8080 — diteruskan ke SERVER GAME ASLI
+    ├─ Jalur    : LOCAL — relay :8080 meneruskan ke upstream isian manual
+    ├─ Upstream : https://s2111-bs.popoh5.com:8141 (sumber: config-offline/servers.json)
+    ├─ Query    : EIO=3&transport=polling&t=Q7Q4zXw
+    └─ Sesi     : sid dari server asli · relay polling
+2026-11-14 19:41:37 [🎮|LOCAL] ← upstream s2111-bs.popoh5.com · 54 B · 215 ms
+    ▸ ISI · jawaban upstream (utuh)
+       51:42["verify","b7738641-da52-4493-9107-7739c62d35e9"]
+2026-11-14 19:41:37 [🎮·|LOCAL] → upstream · 67 B · 252 ms
+2026-11-14 19:41:38 [🎮·|LOCAL] ← upstream s2111-bs.popoh5.com · 17 B · 907 ms
+2026-11-14 19:41:38 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
+    ▸ ISI · ISI · 38 B (teks)
+       {"clientVersion":"20260929_180158-EN"}
+2026-11-14 19:41:38 [🎮·|LOCAL] ← upstream s2111-bs.popoh5.com · 18 B · 310 ms
+2026-11-14 19:41:38 [🎮|LOCAL] → enterGame(user) diteruskan ke server game ASLI · 216 B · 264 ms
+    ▸ ISI · payload POST (utuh — diteruskan byte-per-byte)
+       212:421["handler.process",{"type":"user","action":"enterGame","loginToken":"a7841e75e0334bcf04eb433d50d82aae","userId":"guest33687147","serverId":1,"version":"1.0","language":"en","gameVersion":"20260929_180158-EN"}]
+2026-11-14 19:41:39 [ℹ️·|LOCAL] Tombol melayang tampil
+2026-11-14 19:41:39 [📄|LOCAL] GET /bs/upgrade/base.version · mirror www/ · 4 B · 1 ms
     ▸ ISI · ISI · 4 B (teks)
        110
-2026-11-14 04:24:14 [📄|LOCAL] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 0 ms
+2026-11-14 19:41:39 [📄|LOCAL] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 1 ms
     ▸ ISI · ISI · 5 B (teks)
        11390
-2026-11-14 04:24:15 [📡·|LOCAL] Server asli dragon.sjmobilegame.com:82 bisa dihubungi · 353 ms
-    └─ DNS dragon.sjmobilegame.com → 212.64.58.211
-2026-11-14 04:24:15 [📡·|LOCAL] Server asli configus.sjmobilegame.com:443 bisa dihubungi · 28 ms
-    └─ DNS configus.sjmobilegame.com → 43.168.14.49
-2026-11-14 04:24:15 [ℹ️·|LOCAL] Server SDK lokal siap — layar login SDK ASLI dilayani di sini (init dari perangkat 8655A9EB39D7FF3421C1675A638A272D)
-2026-11-14 04:24:15 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/init → 200 · 763 B · 1 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 763 B
-       {"result":true,"data":{"payTypes":[],"version":{"versionName":"empty","versionNo":"empty","versionUrl":"empty","updateTime":"empty","isMust":"empty","updateTips":"empty"},"productConfig":{"useServiceCenter":"0","isShowFloat":"0","showShare":"1","title":"","logo":"","useSms":"0","skinStyle":"0","serviceInfo":"","guestShowBind":1,"single_play":0,"adZhifuSwt":0,"noticeNode":0,"regMailVerify":0,"pycenttype":0,"onGoToPUrl":0,"onGoToPUrlData":"","trashTime":0,"noFirebaseLog":0,"logEvtReport":0},"otherpayType":2,"payFast":[],"isNotGift":0,"showShare":"1","requestIp":"127.0.0.1","showDiscount":0,"nodes":{"deleteAccount":0,"serverInfo":0,"oneYeaerTips":0,"removeEmail":0},"loginTypes":["1","13"],"countryCode":"ID","first_install":1},"error":{"id":0,"message":""}}
-2026-11-14 04:24:15 [📡·|LOCAL] Server asli dragonh5cdn.popoh5.com:443 bisa dihubungi · 33 ms
-    └─ DNS dragonh5cdn.popoh5.com → 43.168.14.49
-2026-11-14 04:24:15 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/getNotice → 200 · 55 B · 0 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 55 B
-       {"result":true,"data":[],"error":{"id":0,"message":""}}
-2026-11-14 04:24:15 [📡·|LOCAL] Server asli qsdk.t4game.com:443 bisa dihubungi · 209 ms
-    └─ DNS qsdk.t4game.com → 47.88.88.118
-2026-11-14 04:24:15 [📡·|LOCAL] Server asli login.popoh5.com:610 bisa dihubungi · 211 ms
-    └─ DNS login.popoh5.com → 47.89.242.44
-2026-11-14 04:24:18 [👤|LOCAL] Layar SDK — masuk sebagai akun tes@mail.com
-    ├─ Perangkat  : 8655A9EB39…
-    ├─ Cara masuk : autoLogin — sesi tersimpan masih valid (token dikenal)
-    └─ Identitas  : akun tes@mail.com — tersimpan dragonball.db (tahan reboot)
-2026-11-14 04:24:18 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/user/autoLogin → 200 · 1,0 KB · 24 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 1,0 KB
-       {"result":true,"data":{"authToken":"0f1504945ec63820b1f5c5aa94304022","userData":{"uid":"tes@mail.com","username":"tes@mail.com","token":"0f1504945ec63820b1f5c5aa94304022","isGuest":0,"isNewUser":0,"mobile":"","bindInfo":{"bindFB":{"isBind":0,"otherAccountName":"","bid":6,"buid":""},"bindGameCenter":{"isBind":0,"otherAccountName":"","bid":7,"buid":""},"bindGoogle":{"isBind":0,"otherAccountName":"","bid":8,"buid":""},"bindEmail":{"isBind":0,"otherAccountName":"","bid":13,"buid":""},"bindNaver":{"isBind":0,"otherAccountName":"","bid":9,"buid":""},"bindTwitter":{"isBind":0,"otherAccountName":"","bid":10,"buid":""},"bindLine":{"isBind":0,"otherAccountName":"","bid":11,"buid":""},"bindVK":{"isBind":0,"otherAccountName":"","bid":14,"buid":""},"signApple":{"isBind":0,"otherAccountName":"","bid":16,"buid":""},"bindPlay":{"isBind":0,"otherAccountName":"","bid":17,"buid":""},"bd94hi":{"isBind":0,"otherAccountName":"","bid":18,"buid":""},"bdhw":{"isBind":0,"otherAccountName":"","bid":19,"buid":""}}},"checkRealName":0},"error":{"id":0,"message":""}}
-2026-11-14 04:24:19 [🔑|LOCAL] Sesi akun tes@mail.com disahkan — game lanjut boot
-    ├─ Uid      : tes@mail.com · mode akun
-    ├─ Hasil    : code 0 (skema respons asli login.popoh5.com:510) — shell melanjutkan boot ke H5
-    └─ Sesi     : disimpan ke dragonball.db (sdk_sessions) — url game memakai userid ini
-2026-11-14 04:24:19 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/loginchecknative → 200 · 201 B · 25 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 201 B
-       {"code":0,"sdk":"BSNative","nickName":"tes@mail.com","loginToken":"4c1578b74aa582ed2b8b593309cd492d","userId":"tes@mail.com","sign":"612110abd46ec97759002e2ed9b7affe","sdkType":"BS","osType":"Android"}
-2026-11-14 04:24:19 [📄·|LOCAL] GET /bs/index-native.html · mirror www/ · 10,5 KB · 1 ms
-    ▸ ISI · ISI · 10,5 KB (teks)
-       <!DOCTYPE HTML>
-       <html>
-       
-       <head>
-           <meta charset="utf-8">
-           <title>DragonBall</title>
-           <meta name="viewport"
-               content="width=device-width,initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no" />
-           <meta name="apple-mobile-web-app-capable" content="yes" />
-           <meta name="full-screen" content="true" />
-           <meta name="screen-orientation" content="portrait" />
-           <meta name="x5-fullscreen" content="true" />
-           <meta name="360-fullscreen" content="true" />
-           <style>
-               html,
-               body {
-                   -ms-touch-action: none;
-                   background: #888888;
-                   padding: 0;
-                   border: 0;
-                   margin: 0;
-                   height: 100%;
-               }
-           </style>
-       </head>
-       
-       <body>
-           <div style="margin: auto;width: 100%;height: 100%;" class="egret-player" data-entry-class="Main"
-               data-orientation="portrait" data-scale-mode="showAll" data-frame-rate="60" data-content-width="750"
-               data-content-height="1334" data-show-paint-rect="false" data-multi-fingered="2" data-show-fps="false"
-               data-show-log="false" data-show-fps-style="x:0,y:0,size:12,textColor:0xffffff,bgAlpha:0.9">
-           </div>
-           <script>
-               window["Log_Clean"] = true;
-               window["debug"] = false;
-               window["CacheNum"] = 20;
-               window["reportBattlleLog"] = "http://log.sjflaregame.com:10000/error/battle/client";
-               window["privacyUrl"] = "http://www.parajoymobile.com/privacy_en.html";
-               var thirdParams = null; //第三方sdk的参数
-               var loginServer = null; //登录服
-               var clientParams = null; //透传参数
-       
-               var getLoginServer = function () {
-                   return loginServer;
-               }
-               var loadScript = function (list, callback) {
-                   var loaded = 0;
-                   var loadNext = function () {
-                       loadSingleScript(list[loaded], function () {
-                           loaded++;
-                           if (loaded >= list.length) {
-                               callback();
-                           } else {
-                               loadNext();
-                           }
-                       })
-                   };
-                   loadNext();
-               };
-       
-               var loadSingleScript = function (src, callback) {
-                   var s = document.createElement('script');
-                   s.async = false;
-                   s.src = src;
-                   s.addEventListener('load', function () {
-                       s.parentNode.removeChild(s);
-                       s.removeEventListener('load', arguments.callee, false);
-                       callback();
-                   }, false);
-                   document.body.appendChild(s);
-               };
-       
-               var xhr = new XMLHttpRequest();
-               xhr.open('GET', './manifest.json?v=' + Math.random(), true);
-               xhr.addEventListener("load", function () {
-                   var manifest = JSON.parse(xhr.response);
-                   var list = manifest.initial.concat(manifest.game);
-                   loadScript(list, function () {
-                       /**
-                        * {
-                        * "renderMode":, //Engine rendering mode, "canvas" or "webgl"
-                        * "audioType": 0 //Use the audio type, 0: default, 2: web audio, 3: audio
-                        * "antialias": //Whether the anti-aliasing is enabled in WebGL mode, true: on, false: off, defaults to false
-                        * "calculateCanvasScaleFactor": //a function return canvas scale factor
-                        * }
-                        **/
-       
-                       window["loadJsonFunc"] = function (path) {
-                           return RES.getRes(path);
-                       }
-                       window["refreshPage"] = function () {
-                           egret.ExternalInterface.call("refresh", "refresh");
-                           window["show18Login"] = clientParams["show18Login"];
-                           window["show18Home"] = clientParams["show18Home"];
-                           window["sdkNativeChannel"] = clientParams["sdkNativeChannel"];
-                           window["showCurChannel"] = clientParams["showCurChannel"];
-                       }
-                       egret.ExternalInterface.addCallback("refresh", function (msg) {
-                           window.location.reload();
-                       });
-                       egret.ExternalInterface.addCallback("startGame", function (msg) {
-                           var json = JSON.parse(msg);
-                           if (json.thirdParams && json.thirdParams != "") {
-                               thirdParams = JSON.parse(json.thirdParams);
-                               window["osType"] = thirdParams.osType;
-                           }
-                           loginServer = json.loginServer;
-                           window["gameIcon"] = json.thirdChannel;
-                           if (json.clientParams && json.clientParams != "") {
-                               clientParams = JSON.parse(json.clientParams);
-                               window["hideList"] = clientParams["hideList"];
-                               window["gameIcon"] = clientParams["gameIcon"];
-                               window["supportLang"] = clientParams["supportLang"];
-                               window["battleAudio"] = clientParams["battleAudio"];
-                               // window["showUserCenterSdk"] = clientParams["showUserCenterSdk"];
-                               // window["showContact"] = clientParams["showContact"];
-                               // window["switchAccount"] = clientParams["switchAccount"];
-                               window["sdkNativeChannel"] = clientParams["sdkNativeChannel"];
-                               window["showCurChannel"] = clientParams["showCurChannel"];
-                           }
-                           if (window["osType"]) {
-                               window["version"] = json.version + " for " + window["osType"];
-                           } else {
-                               window["version"] = json.version;
-                           }
-                           window["versionConfig"] = json.versionConfig;
-                           window["debugLanguage"] = json.language;
-                           egret.runEgret({
-                               renderMode: "webgl",
-                               audioType: 0,
-                               calculateCanvasScaleFactor: function (context) {
-                                   var backingStore = context.backingStorePixelRatio ||
-                                       context.webkitBackingStorePixelRatio ||
-                                       context.mozBackingStorePixelRatio ||
-                                       context.msBackingStorePixelRatio ||
-                                       context.oBackingStorePixelRatio ||
-                                       context.backingStorePixelRatio || 1;
-                                   return (window.devicePixelRatio || 1) / backingStore;
-                               }
-                           });
-                       });
-                       egret.ExternalInterface.call("startGame", "get Sdk Channel");
-       
-                   });
-               });
-               xhr.send(null);
-           </script>
-           <script>
-               var checkSDK = function () {
-                   egret.ExternalInterface.call("changeView", "change view");
-                   return true;
-               }
-               var getSdkLoginInfo = function () {
-                   var sdkData = thirdParams.data;
-                   if (sdkData && sdkData.securityCode) { 
-                       // 这是配合海贼、乱斗的登录服务器
-                       return {sdk:sdkData.sdk,nickName:sdkData.nickname,userId:sdkData.userid,security:sdkData.securityCode};
-                   }
-                   return thirdParams;
-               }
-       
-               var checkFromNative = function () {
-                   // 增加这个方法，支付的时候全部都只能一个一个买（不能设置数量）
-                   return true;
-               }
-               var paySdk = function (data) {
-                   data.power = data.money;
-                   if (data.h5payParam) {
-                       // 越南渠道特有的处理
-                       data.serverName = data.serverId;
-                   }
-                   egret.ExternalInterface.call("pei", JSON.stringify(data));
-               }
-               var switchUser = function () {
-                   egret.ExternalInterface.call("refresh", "switch usr");
-               };
-               //facebook 分享 serverId    roleName  extra  需要把这三个字段传一下  extra 可以为空
-               var giveLikeSdk = function (data) {
-                   egret.ExternalInterface.call("giveLike", JSON.stringify(data));
-               };
-               //客服中心
-               var contactSdk = function () {
-                   egret.ExternalInterface.call("contact", "contact");
-               };
-       
-               //切换账户 贪玩en
-               var switchAccountSdk = function () {
-                   egret.ExternalInterface.call("switchAccount", "switchAccount");
-               };
-       
-               //fb 点赞
-               var fbGiveLiveSdk = function () {
-                   egret.ExternalInterface.call("fbGiveLive", "fbGiveLive");
-               };
-       
-               //用户中心
-               var userCenterSdk = function () {
-                   egret.ExternalInterface.call("userCenter", "userCenter");
-               };
-               //领取礼包
-               var gifBagSdk = function () {
-                   egret.ExternalInterface.call("gifBag", "gifBag");
-               };
-       
-               var report2Sdk = function (data) {
-                   data.powerNum = data.moneyNum;
-                   egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-               };
-               var gameChapterFinish = function (lessonId) {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 12,
-                           level: lessonId
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var openShopPage = function () {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 13
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var gameLevelUp = function (level) {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 11,
-                           level: level
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var tutorialFinish = function () {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 14
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var reload = function () {
-                   egret.ExternalInterface.call("refresh", "reload game");
-               };
-       
-               var changeLanguage = function (lang) {
-                   egret.ExternalInterface.call("changeLanguage", lang);
-                   window.location.reload();
-               }
-               var openURL = function (url) {
-                   egret.ExternalInterface.call("openURL", url);
-               }
-       
-               var open = function (url, target) {
-                   egret.ExternalInterface.call("openURL", url);
-               }
-           </script>
-       </body>
-       
-       </html>
-2026-11-14 04:24:19 [📄|LOCAL] GET /bs/manifest.json · mirror www/ · 533 B · 1 ms
-    ▸ ISI · ISI · 533 B (teks)
-       {
-       	"initial": [
-       		"js/egret.min_d9413192.js",
-       		"js/egret.web.min_b66ab113.js",
-       		"js/game.min_16249d0f.js",
-       		"js/tween.min_6c5a88f9.js",
-       		"js/assetsmanager.min_2ef412b7.js",
-       		"js/eui.min_493403ce.js",
-       		"js/dragonBones.min_6252b9c4.js"
-       	],
-       	"game": [
-       		"js/md5.min_97e969ef.js",
-       		"js/lz-string.min_896bee8b.js",
-       		"js/socket.io.min_57ea9db7.js",
-       		"js/blockmessage.min_7dc7bcec.js",
-       		"js/battlelogic.min_d446437e.js",
-       		"js/ThinkingAnalyticsSDK.min_72d3fad5.js",
-       		"js/default.thm_4d02a3c6.js",
-       		"js/main.min_777039fc.js"
-       	]
-       }
-2026-11-14 04:24:19 [ℹ️·|LOCAL] Tombol melayang tampil
-2026-11-14 04:24:23 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 0 ms
-    ▸ ISI · ISI · 38 B (teks)
-       {"clientVersion":"20260929_180158-EN"}
-2026-11-14 04:24:23 [📦|LOCAL] CONFIG serversetting.json disajikan — paket manual config-offline/ · 66 B · 0 ms
-    └─ Menunjuk : loginserver 127.0.0.1:8610 — sejak disiapkan manual
-    ▸ ISI · ISI · bedah + teks config · 66 B
-       Enkripsi     : JSON polos (tanpa enkripsi) — dibedah field-per-field
-       loginserver  : http://127.0.0.1:8610  (asli) — host:port login yang di-connect H5 main.min (connectToLogin)
-       requireSDK   : false  (asli) — flag SDK
-       
-       — teks config —
-       {
-       	"loginserver": "http://127.0.0.1:8610",
-       	"requireSDK": false
-       }
-2026-11-14 04:24:25 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
-    ▸ ISI · ISI · 38 B (teks)
-       {"clientVersion":"20260929_180158-EN"}
-2026-11-14 04:24:25 [📡|LOCAL] Klien game tersambung ke server login lokal — jalur LOCAL
-    ├─ Jalur    : LOCAL — login & sesi dikelola server ini (dragonball.db)
-    ├─ Sesi     : 9piMTrYPYg5L1vhh (engine.io v3 · polling, tanpa websocket)
-    ├─ Tujuan   : 127.0.0.1:8610 (endpoint login dari paket MANUAL config-offline — setting bin, dilayani apa adanya)
-    └─ Lanjutan : menunggu loginGame + GetServerList dari klien H5
-2026-11-14 04:24:25 [📋|LOCAL] Daftar server terkirim — 1 server (paket MANUAL)
-    ├─ Sumber   : config-offline/servers.json — paket CONFIG OFFLINE MANUAL bawaan APK
-    ├─            (bukan snapshot online — owner: online cuma jejak arah, bukan config asli offline)
-    ├─ Tujuan   : url tiap entri = 127.0.0.1:8080 — klik Play masuk SERVER GAME LOKAL
-    ├─ Upstream : BELUM DIISI — isi config/game-upstream.txt (1 baris URL server game asli) atau field "upstream" di config-offline/servers.json
-    └─ Ukuran   : 359 B · 0 ms · pemain sekarang di layar pilih server
-2026-11-14 04:24:25 [❌|LOCAL] Play berhenti — jalur LOCAL belum punya upstream relay
-    ├─ Jalur     : LOCAL — config manual (paket offline)
-    ├─ io.connect : http://127.0.0.1:8080 (url entri daftar server lokal)
-    ├─ upstream   : (kosong)
-    └─ Solusi     : isi config/game-upstream.txt (SATU baris URL server game ASLI) di folder config/ perangkat — atau field "upstream" pada config-offline/servers.json
-2026-11-14 04:24:28 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
-    └─ SQLite (android.database.sqlite) · /storage/emulated/0/Android/data/com.db.local/server/config/dragonball.db
-2026-11-14 04:24:28 [🧹·] Mirror www/ sudah terpasang (28 file · 0 B) — tidak ada yang perlu diulang
-    └─ penanda cocok (versi 4, 28 file utuh)
-2026-11-14 04:24:28 [💾·|LOCAL] Config OFFLINE manual siap — config-offline/ (5 file · 3 KB) — paket MANUAL (setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)
-2026-11-14 04:24:28 [ℹ️·|LOCAL] Dasbor dimuat dari APK (assets/server/dashboard.html · 30,3 KB)
-2026-11-14 04:24:28 [📦|LOCAL] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 0 ms
-    └─ Menunjuk : 127.0.0.1 (game :8080 · login :8610) — sejak disiapkan manual
-    ▸ ISI · ISI · bedah field-per-field + teks config · 668 B
-       Enkripsi     : XOR kunci "DragonBall" — dibedah field-per-field sebelum disajikan
-       testMode     : 1  (asli) — flag mode uji bawaan server
-       url          : http://127.0.0.1:8080/bs/index-native.html  (asli) — URL H5 game dibuka shell WebView (boot game)
-       tsUrl        : http://127.0.0.1:8080/bs/index-native.html  (asli) — varian uji — jalur produksi tidak memakainya
-       update       : http://127.0.0.1:8080/bs/upgrade  (asli) — endpoint paket pembaruan (zip + upgrade.json)
-       checkTime    : 300  (asli) — jarak cek pembaruan (detik)
-       loginServer  : http://127.0.0.1  (asli) — HOST login — shell menambah :loginPort (socket.io) dan :loginWebPort (loginchecknative) sendiri
-       tsLoginServer: http://127.0.0.1:8610  (asli) — HOST login varian uji
-       loginPort    : 8610  (asli) — port socket.io login (asli 610)
-       loginWebPort : 8610  (asli) — port web login SDK (asli 510 — loginchecknative)
-       clientParams : hideList 5 harga disembunyikan · supportLang 3 bahasa (en, fr, kr) · showCurChannel toFacebook
-       
-       — teks config (setting.json dienkripsi XOR “DragonBall”) —
-       {
-       	"testMode": 1,
-       	"url": "http://127.0.0.1:8080/bs/index-native.html",
-       	"tsUrl": "http://127.0.0.1:8080/bs/index-native.html",
-       	"update": "http://127.0.0.1:8080/bs/upgrade",
-       	"checkTime": 300,
-       	"loginServer": "http://127.0.0.1",
-       	"tsLoginServer": "http://127.0.0.1:8610",
-       	"loginPort": 8610,
-       	"loginWebPort": 8610,
-       	"clientParams": {
-       		"hideList": [
-       			"1.99",
-       			"2.99",
-       			"14.99",
-       			"59.99",
-       			"89.99"
-       		],
-       		"supportLang": [
-       			{
-       				"languageName": "English",
-       				"lang": "en"
-       			},
-       			{
-       				"languageName": "Fran\u00e7ais",
-       				"lang": "fr"
-       			},
-       			{
-       				"languageName": "\ud55c\uad6d\uc778",
-       				"lang": "kr"
-       			}
-       		],
-       		"showCurChannel": "toFacebook"
-       	}
-       }
-2026-11-14 04:24:28 [🚀|LOCAL] Server lokal siap — mode LOCAL
-    ├─ Port    : game :8080 · login :8610 · dasbor :4000
-    ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610 · config: paket MANUAL config-offline/ (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal) · Play → socket game :8080 → upstream BELUM DIISI (isi config/game-upstream.txt)
-    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
-    └─ Pemain  : guest77671203 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
-2026-11-14 04:24:28 [📄|LOCAL] GET /bs/upgrade/base.version · mirror www/ · 4 B · 0 ms
+2026-11-14 19:41:39 [📄|LOCAL] GET /bs/upgrade/size.json · mirror www/ · 105 B · 1 ms
+    ▸ ISI · ISI · 105 B (teks)
+       {"base": "31015076", "11389": 252562, "11388": 252562, "11387": 252562, "11386": 252562, "all": 19385098}
+2026-11-14 19:41:40 [📄|LOCAL] GET /bs/upgrade/base.version · mirror www/ · 4 B · 1 ms
     ▸ ISI · ISI · 4 B (teks)
        110
-2026-11-14 04:24:28 [📄|LOCAL] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 0 ms
+2026-11-14 19:41:40 [📄|LOCAL] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 0 ms
     ▸ ISI · ISI · 5 B (teks)
        11390
-2026-11-14 04:24:29 [ℹ️·|LOCAL] Server SDK lokal siap — layar login SDK ASLI dilayani di sini (init dari perangkat 8655A9EB39D7FF3421C1675A638A272D)
-2026-11-14 04:24:29 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/init → 200 · 763 B · 2 ms (server SDK lokal)
+2026-11-14 19:41:41 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/init → 200 · 763 B · 1 ms (server SDK lokal)
     ▸ ISI · ISI · jawaban SDK lokal · 763 B
        {"result":true,"data":{"payTypes":[],"version":{"versionName":"empty","versionNo":"empty","versionUrl":"empty","updateTime":"empty","isMust":"empty","updateTips":"empty"},"productConfig":{"useServiceCenter":"0","isShowFloat":"0","showShare":"1","title":"","logo":"","useSms":"0","skinStyle":"0","serviceInfo":"","guestShowBind":1,"single_play":0,"adZhifuSwt":0,"noticeNode":0,"regMailVerify":0,"pycenttype":0,"onGoToPUrl":0,"onGoToPUrlData":"","trashTime":0,"noFirebaseLog":0,"logEvtReport":0},"otherpayType":2,"payFast":[],"isNotGift":0,"showShare":"1","requestIp":"127.0.0.1","showDiscount":0,"nodes":{"deleteAccount":0,"serverInfo":0,"oneYeaerTips":0,"removeEmail":0},"loginTypes":["1","13"],"countryCode":"ID","first_install":1},"error":{"id":0,"message":""}}
-2026-11-14 04:24:29 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/getNotice → 200 · 55 B · 0 ms (server SDK lokal)
+2026-11-14 19:41:41 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/getNotice → 200 · 55 B · 0 ms (server SDK lokal)
     ▸ ISI · ISI · jawaban SDK lokal · 55 B
        {"result":true,"data":[],"error":{"id":0,"message":""}}
-2026-11-14 04:24:29 [📡·|LOCAL] Server asli dragon.sjmobilegame.com:82 bisa dihubungi · 461 ms
-    └─ DNS dragon.sjmobilegame.com → 212.64.58.211
-2026-11-14 04:24:29 [📡·|LOCAL] Server asli configus.sjmobilegame.com:443 bisa dihubungi · 101 ms
-    └─ DNS configus.sjmobilegame.com → 43.168.14.49
-2026-11-14 04:24:29 [📡·|LOCAL] Server asli dragonh5cdn.popoh5.com:443 bisa dihubungi · 102 ms
-    └─ DNS dragonh5cdn.popoh5.com → 43.168.14.49
-2026-11-14 04:24:29 [📡·|LOCAL] Server asli qsdk.t4game.com:443 bisa dihubungi · 215 ms
-    └─ DNS qsdk.t4game.com → 47.88.88.118
-2026-11-14 04:24:29 [📡·|LOCAL] Server asli login.popoh5.com:610 bisa dihubungi · 213 ms
-    └─ DNS login.popoh5.com → 47.89.242.44
-2026-11-14 04:24:49 [👤|LOCAL] Akun "tes@mail.com" masuk
-    ├─ Akun     : tes@mail.com (akun + kata sandi)
-    ├─ Disimpan : dragonball.db — identitas yang sama dipakai tahap game
-    └─ Sesi     : token baru diterbitkan dan dikirim ke layar SDK
-2026-11-14 04:24:49 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/user/loginByName → 200 · 1,0 KB · 28 ms (server SDK lokal)
+2026-11-14 19:41:43 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/user/registerVisitor → 200 · 1,0 KB · 3 ms (server SDK lokal)
     ▸ ISI · ISI · jawaban SDK lokal · 1,0 KB
-       {"result":true,"data":{"authToken":"0f1504945ec63820b1f5c5aa94304022","userData":{"uid":"tes@mail.com","username":"tes@mail.com","token":"0f1504945ec63820b1f5c5aa94304022","isGuest":0,"isNewUser":0,"mobile":"","bindInfo":{"bindFB":{"isBind":0,"otherAccountName":"","bid":6,"buid":""},"bindGameCenter":{"isBind":0,"otherAccountName":"","bid":7,"buid":""},"bindGoogle":{"isBind":0,"otherAccountName":"","bid":8,"buid":""},"bindEmail":{"isBind":0,"otherAccountName":"","bid":13,"buid":""},"bindNaver":{"isBind":0,"otherAccountName":"","bid":9,"buid":""},"bindTwitter":{"isBind":0,"otherAccountName":"","bid":10,"buid":""},"bindLine":{"isBind":0,"otherAccountName":"","bid":11,"buid":""},"bindVK":{"isBind":0,"otherAccountName":"","bid":14,"buid":""},"signApple":{"isBind":0,"otherAccountName":"","bid":16,"buid":""},"bindPlay":{"isBind":0,"otherAccountName":"","bid":17,"buid":""},"bd94hi":{"isBind":0,"otherAccountName":"","bid":18,"buid":""},"bdhw":{"isBind":0,"otherAccountName":"","bid":19,"buid":""}}},"checkRealName":0},"error":{"id":0,"message":""}}
-2026-11-14 04:24:51 [🔑|LOCAL] Sesi akun tes@mail.com disahkan — game lanjut boot
-    ├─ Uid      : tes@mail.com · mode akun
-    ├─ Hasil    : code 0 (skema respons asli login.popoh5.com:510) — shell melanjutkan boot ke H5
-    └─ Sesi     : disimpan ke dragonball.db (sdk_sessions) — url game memakai userid ini
-2026-11-14 04:24:51 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/loginchecknative → 200 · 201 B · 24 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 201 B
-       {"code":0,"sdk":"BSNative","nickName":"tes@mail.com","loginToken":"da98408ca07fc8189641b166f0745ced","userId":"tes@mail.com","sign":"612110abd46ec97759002e2ed9b7affe","sdkType":"BS","osType":"Android"}
-2026-11-14 04:24:51 [📄·|LOCAL] GET /bs/index-native.html · mirror www/ · 10,5 KB · 1 ms
+       {"result":true,"data":{"authToken":"b62fdfff42dfd83affa74cf74816ed66","userData":{"uid":"guest33687147","username":"guest33687147","token":"b62fdfff42dfd83affa74cf74816ed66","isGuest":1,"isNewUser":0,"mobile":"","bindInfo":{"bindFB":{"isBind":0,"otherAccountName":"","bid":6,"buid":""},"bindGameCenter":{"isBind":0,"otherAccountName":"","bid":7,"buid":""},"bindGoogle":{"isBind":0,"otherAccountName":"","bid":8,"buid":""},"bindEmail":{"isBind":0,"otherAccountName":"","bid":13,"buid":""},"bindNaver":{"isBind":0,"otherAccountName":"","bid":9,"buid":""},"bindTwitter":{"isBind":0,"otherAccountName":"","bid":10,"buid":""},"bindLine":{"isBind":0,"otherAccountName":"","bid":11,"buid":""},"bindVK":{"isBind":0,"otherAccountName":"","bid":14,"buid":""},"signApple":{"isBind":0,"otherAccountName":"","bid":16,"buid":""},"bindPlay":{"isBind":0,"otherAccountName":"","bid":17,"buid":""},"bd94hi":{"isBind":0,"otherAccountName":"","bid":18,"buid":""},"bdhw":{"isBind":0,"otherAccountName":"","bid":19,"buid":""}}},"checkRealName":0},"error":{"id":0,"message":""}}
+2026-11-14 19:41:44 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/loginchecknative → 200 · 203 B · 4 ms (server SDK lokal)
+    ▸ ISI · ISI · jawaban SDK lokal · 203 B
+       {"code":0,"sdk":"BSNative","nickName":"guest33687147","loginToken":"64ecdf0df6960ed7e53c43120e0e362e","userId":"guest33687147","sign":"04a6ac228253dfe00eab0db34a474123","sdkType":"BS","osType":"Android"}
+2026-11-14 19:41:45 [📄·|LOCAL] GET /bs/index-native.html · mirror www/ · 10,5 KB · 1 ms
     ▸ ISI · ISI · 10,5 KB (teks)
        <!DOCTYPE HTML>
        <html>
@@ -1625,7 +734,7 @@
        </body>
        
        </html>
-2026-11-14 04:24:51 [📄|LOCAL] GET /bs/manifest.json · mirror www/ · 533 B · 0 ms
+2026-11-14 19:41:45 [📄|LOCAL] GET /bs/manifest.json · mirror www/ · 533 B · 1 ms
     ▸ ISI · ISI · 533 B (teks)
        {
        	"initial": [
@@ -1648,472 +757,26 @@
        		"js/main.min_777039fc.js"
        	]
        }
-2026-11-14 04:24:51 [ℹ️·|LOCAL] Tombol melayang tampil
-2026-11-14 04:25:01 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 0 ms
+2026-11-14 19:41:49 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
     ▸ ISI · ISI · 38 B (teks)
        {"clientVersion":"20260929_180158-EN"}
-2026-11-14 04:25:01 [📦|LOCAL] CONFIG serversetting.json disajikan — paket manual config-offline/ · 66 B · 0 ms
-    └─ Menunjuk : loginserver 127.0.0.1:8610 — sejak disiapkan manual
-    ▸ ISI · ISI · bedah + teks config · 66 B
-       Enkripsi     : JSON polos (tanpa enkripsi) — dibedah field-per-field
-       loginserver  : http://127.0.0.1:8610  (asli) — host:port login yang di-connect H5 main.min (connectToLogin)
-       requireSDK   : false  (asli) — flag SDK
-       
-       — teks config —
-       {
-       	"loginserver": "http://127.0.0.1:8610",
-       	"requireSDK": false
-       }
-2026-11-14 04:25:02 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
+2026-11-14 19:41:51 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 5 ms
     ▸ ISI · ISI · 38 B (teks)
        {"clientVersion":"20260929_180158-EN"}
-2026-11-14 04:25:02 [📡|LOCAL] Klien game tersambung ke server login lokal — jalur LOCAL
-    ├─ Jalur    : LOCAL — login & sesi dikelola server ini (dragonball.db)
-    ├─ Sesi     : jZE1kKNNPWxE9ivO (engine.io v3 · polling, tanpa websocket)
-    ├─ Tujuan   : 127.0.0.1:8610 (endpoint login dari paket MANUAL config-offline — setting bin, dilayani apa adanya)
-    └─ Lanjutan : menunggu loginGame + GetServerList dari klien H5
-2026-11-14 04:25:02 [📋|LOCAL] Daftar server terkirim — 1 server (paket MANUAL)
-    ├─ Sumber   : config-offline/servers.json — paket CONFIG OFFLINE MANUAL bawaan APK
-    ├─            (bukan snapshot online — owner: online cuma jejak arah, bukan config asli offline)
-    ├─ Tujuan   : url tiap entri = 127.0.0.1:8080 — klik Play masuk SERVER GAME LOKAL
-    ├─ Upstream : BELUM DIISI — isi config/game-upstream.txt (1 baris URL server game asli) atau field "upstream" di config-offline/servers.json
-    └─ Ukuran   : 359 B · 0 ms · pemain sekarang di layar pilih server
-2026-11-14 04:25:02 [❌|LOCAL] Play berhenti — jalur LOCAL belum punya upstream relay
-    ├─ Jalur     : LOCAL — config manual (paket offline)
-    ├─ io.connect : http://127.0.0.1:8080 (url entri daftar server lokal)
-    ├─ upstream   : (kosong)
-    └─ Solusi     : isi config/game-upstream.txt (SATU baris URL server game ASLI) di folder config/ perangkat — atau field "upstream" pada config-offline/servers.json
-2026-11-14 04:25:05 [💾·] dragonball.db siap (SQLite, 44,0 KB) — akun/tamu/sesi tahan reboot
-    └─ SQLite (android.database.sqlite) · /storage/emulated/0/Android/data/com.db.local/server/config/dragonball.db
-2026-11-14 04:25:05 [🧹·] Mirror www/ sudah terpasang (28 file · 0 B) — tidak ada yang perlu diulang
-    └─ penanda cocok (versi 4, 28 file utuh)
-2026-11-14 04:25:05 [💾·|LOCAL] Config OFFLINE manual siap — config-offline/ (5 file · 3 KB) — paket MANUAL (setting.json, bin XOR, serversetting, servers 1 entri lokal, manifest sha256)
-2026-11-14 04:25:05 [ℹ️·|LOCAL] Dasbor dimuat dari APK (assets/server/dashboard.html · 30,3 KB)
-2026-11-14 04:25:05 [📦|LOCAL] CONFIG setting bin disajikan — paket manual config-offline/ · 668 B · 0 ms
-    └─ Menunjuk : 127.0.0.1 (game :8080 · login :8610) — sejak disiapkan manual
-    ▸ ISI · ISI · bedah field-per-field + teks config · 668 B
-       Enkripsi     : XOR kunci "DragonBall" — dibedah field-per-field sebelum disajikan
-       testMode     : 1  (asli) — flag mode uji bawaan server
-       url          : http://127.0.0.1:8080/bs/index-native.html  (asli) — URL H5 game dibuka shell WebView (boot game)
-       tsUrl        : http://127.0.0.1:8080/bs/index-native.html  (asli) — varian uji — jalur produksi tidak memakainya
-       update       : http://127.0.0.1:8080/bs/upgrade  (asli) — endpoint paket pembaruan (zip + upgrade.json)
-       checkTime    : 300  (asli) — jarak cek pembaruan (detik)
-       loginServer  : http://127.0.0.1  (asli) — HOST login — shell menambah :loginPort (socket.io) dan :loginWebPort (loginchecknative) sendiri
-       tsLoginServer: http://127.0.0.1:8610  (asli) — HOST login varian uji
-       loginPort    : 8610  (asli) — port socket.io login (asli 610)
-       loginWebPort : 8610  (asli) — port web login SDK (asli 510 — loginchecknative)
-       clientParams : hideList 5 harga disembunyikan · supportLang 3 bahasa (en, fr, kr) · showCurChannel toFacebook
-       
-       — teks config (setting.json dienkripsi XOR “DragonBall”) —
-       {
-       	"testMode": 1,
-       	"url": "http://127.0.0.1:8080/bs/index-native.html",
-       	"tsUrl": "http://127.0.0.1:8080/bs/index-native.html",
-       	"update": "http://127.0.0.1:8080/bs/upgrade",
-       	"checkTime": 300,
-       	"loginServer": "http://127.0.0.1",
-       	"tsLoginServer": "http://127.0.0.1:8610",
-       	"loginPort": 8610,
-       	"loginWebPort": 8610,
-       	"clientParams": {
-       		"hideList": [
-       			"1.99",
-       			"2.99",
-       			"14.99",
-       			"59.99",
-       			"89.99"
-       		],
-       		"supportLang": [
-       			{
-       				"languageName": "English",
-       				"lang": "en"
-       			},
-       			{
-       				"languageName": "Fran\u00e7ais",
-       				"lang": "fr"
-       			},
-       			{
-       				"languageName": "\ud55c\uad6d\uc778",
-       				"lang": "kr"
-       			}
-       		],
-       		"showCurChannel": "toFacebook"
-       	}
-       }
-2026-11-14 04:25:05 [🚀|LOCAL] Server lokal siap — mode LOCAL
-    ├─ Port    : game :8080 · login :8610 · dasbor :4000
-    ├─ Mode    : LOCAL — konten game: mirror www/ · login & akun: LOKAL :8610 · config: paket MANUAL config-offline/ (apa adanya — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal) · Play → socket game :8080 → upstream BELUM DIISI (isi config/game-upstream.txt)
-    ├─ Folder  : /storage/emulated/0/Android/data/com.db.local/server (penyimpanan eksternal)
-    └─ Pemain  : guest77671203 — sesi & data di dragonball.db 44,0 KB (tahan reboot)
-2026-11-14 04:25:05 [📄|LOCAL] GET /bs/upgrade/base.version · mirror www/ · 4 B · 0 ms
-    ▸ ISI · ISI · 4 B (teks)
-       110
-2026-11-14 04:25:05 [📄|LOCAL] GET /bs/upgrade/resource.version · mirror www/ · 5 B · 0 ms
-    ▸ ISI · ISI · 5 B (teks)
-       11390
-2026-11-14 04:25:05 [📡·|LOCAL] Server asli dragon.sjmobilegame.com:82 bisa dihubungi · 383 ms
-    └─ DNS dragon.sjmobilegame.com → 212.64.58.211
-2026-11-14 04:25:05 [ℹ️·|LOCAL] Server SDK lokal siap — layar login SDK ASLI dilayani di sini (init dari perangkat 8655A9EB39D7FF3421C1675A638A272D)
-2026-11-14 04:25:05 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/init → 200 · 763 B · 1 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 763 B
-       {"result":true,"data":{"payTypes":[],"version":{"versionName":"empty","versionNo":"empty","versionUrl":"empty","updateTime":"empty","isMust":"empty","updateTips":"empty"},"productConfig":{"useServiceCenter":"0","isShowFloat":"0","showShare":"1","title":"","logo":"","useSms":"0","skinStyle":"0","serviceInfo":"","guestShowBind":1,"single_play":0,"adZhifuSwt":0,"noticeNode":0,"regMailVerify":0,"pycenttype":0,"onGoToPUrl":0,"onGoToPUrlData":"","trashTime":0,"noFirebaseLog":0,"logEvtReport":0},"otherpayType":2,"payFast":[],"isNotGift":0,"showShare":"1","requestIp":"127.0.0.1","showDiscount":0,"nodes":{"deleteAccount":0,"serverInfo":0,"oneYeaerTips":0,"removeEmail":0},"loginTypes":["1","13"],"countryCode":"ID","first_install":1},"error":{"id":0,"message":""}}
-2026-11-14 04:25:05 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/system/getNotice → 200 · 55 B · 0 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 55 B
-       {"result":true,"data":[],"error":{"id":0,"message":""}}
-2026-11-14 04:25:05 [📡·|LOCAL] Server asli configus.sjmobilegame.com:443 bisa dihubungi · 35 ms
-    └─ DNS configus.sjmobilegame.com → 43.168.14.49
-2026-11-14 04:25:05 [📡·|LOCAL] Server asli dragonh5cdn.popoh5.com:443 bisa dihubungi · 29 ms
-    └─ DNS dragonh5cdn.popoh5.com → 43.168.14.49
-2026-11-14 04:25:05 [📡·|LOCAL] Server asli qsdk.t4game.com:443 bisa dihubungi · 214 ms
-    └─ DNS qsdk.t4game.com → 47.88.88.118
-2026-11-14 04:25:06 [📡·|LOCAL] Server asli login.popoh5.com:610 bisa dihubungi · 210 ms
-    └─ DNS login.popoh5.com → 47.89.242.44
-2026-11-14 04:25:11 [⚠️|LOCAL] Login akun "tes@mail.com" DITOLAK — akun tidak dikenal / kata sandi salah (40101)
-    ├─ Akun     : tes@mail.com
-    ├─ Sebab    : tidak ada di dragonball.db atau kata sandi tidak cocok
-    └─ Lanjutan : masuk sebagai tamu tetap bisa — atau daftar akun baru di layar SDK
-2026-11-14 04:25:11 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/user/loginByName → 200 · 88 B · 0 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 88 B
-       {"result":false,"data":[],"error":{"id":40101,"message":"akun atau password tidak ada"}}
-2026-11-14 04:25:13 [⚠️|LOCAL] Login akun "tes@mail.com" DITOLAK — akun tidak dikenal / kata sandi salah (40101)
-    ├─ Akun     : tes@mail.com
-    ├─ Sebab    : tidak ada di dragonball.db atau kata sandi tidak cocok
-    └─ Lanjutan : masuk sebagai tamu tetap bisa — atau daftar akun baru di layar SDK
-2026-11-14 04:25:13 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/user/loginByName → 200 · 88 B · 0 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 88 B
-       {"result":false,"data":[],"error":{"id":40101,"message":"akun atau password tidak ada"}}
-2026-11-14 04:25:19 [👤|LOCAL] Akun "tes@mail.com" masuk
-    ├─ Akun     : tes@mail.com (akun + kata sandi)
-    ├─ Disimpan : dragonball.db — identitas yang sama dipakai tahap game
-    └─ Sesi     : token baru diterbitkan dan dikirim ke layar SDK
-2026-11-14 04:25:19 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/v1/user/loginByName → 200 · 1,0 KB · 28 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 1,0 KB
-       {"result":true,"data":{"authToken":"0f1504945ec63820b1f5c5aa94304022","userData":{"uid":"tes@mail.com","username":"tes@mail.com","token":"0f1504945ec63820b1f5c5aa94304022","isGuest":0,"isNewUser":0,"mobile":"","bindInfo":{"bindFB":{"isBind":0,"otherAccountName":"","bid":6,"buid":""},"bindGameCenter":{"isBind":0,"otherAccountName":"","bid":7,"buid":""},"bindGoogle":{"isBind":0,"otherAccountName":"","bid":8,"buid":""},"bindEmail":{"isBind":0,"otherAccountName":"","bid":13,"buid":""},"bindNaver":{"isBind":0,"otherAccountName":"","bid":9,"buid":""},"bindTwitter":{"isBind":0,"otherAccountName":"","bid":10,"buid":""},"bindLine":{"isBind":0,"otherAccountName":"","bid":11,"buid":""},"bindVK":{"isBind":0,"otherAccountName":"","bid":14,"buid":""},"signApple":{"isBind":0,"otherAccountName":"","bid":16,"buid":""},"bindPlay":{"isBind":0,"otherAccountName":"","bid":17,"buid":""},"bd94hi":{"isBind":0,"otherAccountName":"","bid":18,"buid":""},"bdhw":{"isBind":0,"otherAccountName":"","bid":19,"buid":""}}},"checkRealName":0},"error":{"id":0,"message":""}}
-2026-11-14 04:25:20 [🔑|LOCAL] Sesi akun tes@mail.com disahkan — game lanjut boot
-    ├─ Uid      : tes@mail.com · mode akun
-    ├─ Hasil    : code 0 (skema respons asli login.popoh5.com:510) — shell melanjutkan boot ke H5
-    └─ Sesi     : disimpan ke dragonball.db (sdk_sessions) — url game memakai userid ini
-2026-11-14 04:25:20 [🌐|LOCAL] ⇄ POST 127.0.0.1:8610/loginchecknative → 200 · 201 B · 26 ms (server SDK lokal)
-    ▸ ISI · ISI · jawaban SDK lokal · 201 B
-       {"code":0,"sdk":"BSNative","nickName":"tes@mail.com","loginToken":"581252a0d1b3786c46d3a4d8537042ef","userId":"tes@mail.com","sign":"612110abd46ec97759002e2ed9b7affe","sdkType":"BS","osType":"Android"}
-2026-11-14 04:25:21 [📄·|LOCAL] GET /bs/index-native.html · mirror www/ · 10,5 KB · 1 ms
-    ▸ ISI · ISI · 10,5 KB (teks)
-       <!DOCTYPE HTML>
-       <html>
-       
-       <head>
-           <meta charset="utf-8">
-           <title>DragonBall</title>
-           <meta name="viewport"
-               content="width=device-width,initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no" />
-           <meta name="apple-mobile-web-app-capable" content="yes" />
-           <meta name="full-screen" content="true" />
-           <meta name="screen-orientation" content="portrait" />
-           <meta name="x5-fullscreen" content="true" />
-           <meta name="360-fullscreen" content="true" />
-           <style>
-               html,
-               body {
-                   -ms-touch-action: none;
-                   background: #888888;
-                   padding: 0;
-                   border: 0;
-                   margin: 0;
-                   height: 100%;
-               }
-           </style>
-       </head>
-       
-       <body>
-           <div style="margin: auto;width: 100%;height: 100%;" class="egret-player" data-entry-class="Main"
-               data-orientation="portrait" data-scale-mode="showAll" data-frame-rate="60" data-content-width="750"
-               data-content-height="1334" data-show-paint-rect="false" data-multi-fingered="2" data-show-fps="false"
-               data-show-log="false" data-show-fps-style="x:0,y:0,size:12,textColor:0xffffff,bgAlpha:0.9">
-           </div>
-           <script>
-               window["Log_Clean"] = true;
-               window["debug"] = false;
-               window["CacheNum"] = 20;
-               window["reportBattlleLog"] = "http://log.sjflaregame.com:10000/error/battle/client";
-               window["privacyUrl"] = "http://www.parajoymobile.com/privacy_en.html";
-               var thirdParams = null; //第三方sdk的参数
-               var loginServer = null; //登录服
-               var clientParams = null; //透传参数
-       
-               var getLoginServer = function () {
-                   return loginServer;
-               }
-               var loadScript = function (list, callback) {
-                   var loaded = 0;
-                   var loadNext = function () {
-                       loadSingleScript(list[loaded], function () {
-                           loaded++;
-                           if (loaded >= list.length) {
-                               callback();
-                           } else {
-                               loadNext();
-                           }
-                       })
-                   };
-                   loadNext();
-               };
-       
-               var loadSingleScript = function (src, callback) {
-                   var s = document.createElement('script');
-                   s.async = false;
-                   s.src = src;
-                   s.addEventListener('load', function () {
-                       s.parentNode.removeChild(s);
-                       s.removeEventListener('load', arguments.callee, false);
-                       callback();
-                   }, false);
-                   document.body.appendChild(s);
-               };
-       
-               var xhr = new XMLHttpRequest();
-               xhr.open('GET', './manifest.json?v=' + Math.random(), true);
-               xhr.addEventListener("load", function () {
-                   var manifest = JSON.parse(xhr.response);
-                   var list = manifest.initial.concat(manifest.game);
-                   loadScript(list, function () {
-                       /**
-                        * {
-                        * "renderMode":, //Engine rendering mode, "canvas" or "webgl"
-                        * "audioType": 0 //Use the audio type, 0: default, 2: web audio, 3: audio
-                        * "antialias": //Whether the anti-aliasing is enabled in WebGL mode, true: on, false: off, defaults to false
-                        * "calculateCanvasScaleFactor": //a function return canvas scale factor
-                        * }
-                        **/
-       
-                       window["loadJsonFunc"] = function (path) {
-                           return RES.getRes(path);
-                       }
-                       window["refreshPage"] = function () {
-                           egret.ExternalInterface.call("refresh", "refresh");
-                           window["show18Login"] = clientParams["show18Login"];
-                           window["show18Home"] = clientParams["show18Home"];
-                           window["sdkNativeChannel"] = clientParams["sdkNativeChannel"];
-                           window["showCurChannel"] = clientParams["showCurChannel"];
-                       }
-                       egret.ExternalInterface.addCallback("refresh", function (msg) {
-                           window.location.reload();
-                       });
-                       egret.ExternalInterface.addCallback("startGame", function (msg) {
-                           var json = JSON.parse(msg);
-                           if (json.thirdParams && json.thirdParams != "") {
-                               thirdParams = JSON.parse(json.thirdParams);
-                               window["osType"] = thirdParams.osType;
-                           }
-                           loginServer = json.loginServer;
-                           window["gameIcon"] = json.thirdChannel;
-                           if (json.clientParams && json.clientParams != "") {
-                               clientParams = JSON.parse(json.clientParams);
-                               window["hideList"] = clientParams["hideList"];
-                               window["gameIcon"] = clientParams["gameIcon"];
-                               window["supportLang"] = clientParams["supportLang"];
-                               window["battleAudio"] = clientParams["battleAudio"];
-                               // window["showUserCenterSdk"] = clientParams["showUserCenterSdk"];
-                               // window["showContact"] = clientParams["showContact"];
-                               // window["switchAccount"] = clientParams["switchAccount"];
-                               window["sdkNativeChannel"] = clientParams["sdkNativeChannel"];
-                               window["showCurChannel"] = clientParams["showCurChannel"];
-                           }
-                           if (window["osType"]) {
-                               window["version"] = json.version + " for " + window["osType"];
-                           } else {
-                               window["version"] = json.version;
-                           }
-                           window["versionConfig"] = json.versionConfig;
-                           window["debugLanguage"] = json.language;
-                           egret.runEgret({
-                               renderMode: "webgl",
-                               audioType: 0,
-                               calculateCanvasScaleFactor: function (context) {
-                                   var backingStore = context.backingStorePixelRatio ||
-                                       context.webkitBackingStorePixelRatio ||
-                                       context.mozBackingStorePixelRatio ||
-                                       context.msBackingStorePixelRatio ||
-                                       context.oBackingStorePixelRatio ||
-                                       context.backingStorePixelRatio || 1;
-                                   return (window.devicePixelRatio || 1) / backingStore;
-                               }
-                           });
-                       });
-                       egret.ExternalInterface.call("startGame", "get Sdk Channel");
-       
-                   });
-               });
-               xhr.send(null);
-           </script>
-           <script>
-               var checkSDK = function () {
-                   egret.ExternalInterface.call("changeView", "change view");
-                   return true;
-               }
-               var getSdkLoginInfo = function () {
-                   var sdkData = thirdParams.data;
-                   if (sdkData && sdkData.securityCode) { 
-                       // 这是配合海贼、乱斗的登录服务器
-                       return {sdk:sdkData.sdk,nickName:sdkData.nickname,userId:sdkData.userid,security:sdkData.securityCode};
-                   }
-                   return thirdParams;
-               }
-       
-               var checkFromNative = function () {
-                   // 增加这个方法，支付的时候全部都只能一个一个买（不能设置数量）
-                   return true;
-               }
-               var paySdk = function (data) {
-                   data.power = data.money;
-                   if (data.h5payParam) {
-                       // 越南渠道特有的处理
-                       data.serverName = data.serverId;
-                   }
-                   egret.ExternalInterface.call("pei", JSON.stringify(data));
-               }
-               var switchUser = function () {
-                   egret.ExternalInterface.call("refresh", "switch usr");
-               };
-               //facebook 分享 serverId    roleName  extra  需要把这三个字段传一下  extra 可以为空
-               var giveLikeSdk = function (data) {
-                   egret.ExternalInterface.call("giveLike", JSON.stringify(data));
-               };
-               //客服中心
-               var contactSdk = function () {
-                   egret.ExternalInterface.call("contact", "contact");
-               };
-       
-               //切换账户 贪玩en
-               var switchAccountSdk = function () {
-                   egret.ExternalInterface.call("switchAccount", "switchAccount");
-               };
-       
-               //fb 点赞
-               var fbGiveLiveSdk = function () {
-                   egret.ExternalInterface.call("fbGiveLive", "fbGiveLive");
-               };
-       
-               //用户中心
-               var userCenterSdk = function () {
-                   egret.ExternalInterface.call("userCenter", "userCenter");
-               };
-               //领取礼包
-               var gifBagSdk = function () {
-                   egret.ExternalInterface.call("gifBag", "gifBag");
-               };
-       
-               var report2Sdk = function (data) {
-                   data.powerNum = data.moneyNum;
-                   egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-               };
-               var gameChapterFinish = function (lessonId) {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 12,
-                           level: lessonId
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var openShopPage = function () {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 13
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var gameLevelUp = function (level) {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 11,
-                           level: level
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var tutorialFinish = function () {
-                   if (thirdParams && thirdParams.sdkType == "PP") {
-                       var data = {
-                           dataType: 14
-                       };
-                       egret.ExternalInterface.call("report2Third", JSON.stringify(data));
-                   }
-               }
-               var reload = function () {
-                   egret.ExternalInterface.call("refresh", "reload game");
-               };
-       
-               var changeLanguage = function (lang) {
-                   egret.ExternalInterface.call("changeLanguage", lang);
-                   window.location.reload();
-               }
-               var openURL = function (url) {
-                   egret.ExternalInterface.call("openURL", url);
-               }
-       
-               var open = function (url, target) {
-                   egret.ExternalInterface.call("openURL", url);
-               }
-           </script>
-       </body>
-       
-       </html>
-2026-11-14 04:25:21 [📄|LOCAL] GET /bs/manifest.json · mirror www/ · 533 B · 1 ms
-    ▸ ISI · ISI · 533 B (teks)
-       {
-       	"initial": [
-       		"js/egret.min_d9413192.js",
-       		"js/egret.web.min_b66ab113.js",
-       		"js/game.min_16249d0f.js",
-       		"js/tween.min_6c5a88f9.js",
-       		"js/assetsmanager.min_2ef412b7.js",
-       		"js/eui.min_493403ce.js",
-       		"js/dragonBones.min_6252b9c4.js"
-       	],
-       	"game": [
-       		"js/md5.min_97e969ef.js",
-       		"js/lz-string.min_896bee8b.js",
-       		"js/socket.io.min_57ea9db7.js",
-       		"js/blockmessage.min_7dc7bcec.js",
-       		"js/battlelogic.min_d446437e.js",
-       		"js/ThinkingAnalyticsSDK.min_72d3fad5.js",
-       		"js/default.thm_4d02a3c6.js",
-       		"js/main.min_777039fc.js"
-       	]
-       }
-2026-11-14 04:25:21 [ℹ️·|LOCAL] Tombol melayang tampil
-2026-11-14 04:25:25 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
+2026-11-14 19:41:51 [🎮|LOCAL] ← upstream s2111-bs.popoh5.com · 54 B · 219 ms
+    ▸ ISI · jawaban upstream (utuh)
+       51:42["verify","a4957f82-16a0-48a7-9a22-2c09d1c23b9e"]
+2026-11-14 19:41:52 [🎮·|LOCAL] → upstream · 67 B · 244 ms
+2026-11-14 19:41:52 [🎮·|LOCAL] ← upstream s2111-bs.popoh5.com · 17 B · 910 ms
+2026-11-14 19:41:52 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 1 ms
     ▸ ISI · ISI · 38 B (teks)
        {"clientVersion":"20260929_180158-EN"}
-2026-11-14 04:25:25 [📦|LOCAL] CONFIG serversetting.json disajikan — paket manual config-offline/ · 66 B · 1 ms
-    └─ Menunjuk : loginserver 127.0.0.1:8610 — sejak disiapkan manual
-    ▸ ISI · ISI · bedah + teks config · 66 B
-       Enkripsi     : JSON polos (tanpa enkripsi) — dibedah field-per-field
-       loginserver  : http://127.0.0.1:8610  (asli) — host:port login yang di-connect H5 main.min (connectToLogin)
-       requireSDK   : false  (asli) — flag SDK
-       
-       — teks config —
-       {
-       	"loginserver": "http://127.0.0.1:8610",
-       	"requireSDK": false
-       }
-2026-11-14 04:25:26 [📄|LOCAL] GET /bs/resource/properties/clientversion.json · mirror www/ · 38 B · 0 ms
-    ▸ ISI · ISI · 38 B (teks)
-       {"clientVersion":"20260929_180158-EN"}
-2026-11-14 04:25:26 [📡|LOCAL] Klien game tersambung ke server login lokal — jalur LOCAL
-    ├─ Jalur    : LOCAL — login & sesi dikelola server ini (dragonball.db)
-    ├─ Sesi     : xAVC2rDIg0dPMlGl (engine.io v3 · polling, tanpa websocket)
-    ├─ Tujuan   : 127.0.0.1:8610 (endpoint login dari paket MANUAL config-offline — setting bin, dilayani apa adanya)
-    └─ Lanjutan : menunggu loginGame + GetServerList dari klien H5
-2026-11-14 04:25:26 [📋|LOCAL] Daftar server terkirim — 1 server (paket MANUAL)
-    ├─ Sumber   : config-offline/servers.json — paket CONFIG OFFLINE MANUAL bawaan APK
-    ├─            (bukan snapshot online — owner: online cuma jejak arah, bukan config asli offline)
-    ├─ Tujuan   : url tiap entri = 127.0.0.1:8080 — klik Play masuk SERVER GAME LOKAL
-    ├─ Upstream : BELUM DIISI — isi config/game-upstream.txt (1 baris URL server game asli) atau field "upstream" di config-offline/servers.json
-    └─ Ukuran   : 359 B · 0 ms · pemain sekarang di layar pilih server
-2026-11-14 04:25:26 [❌|LOCAL] Play berhenti — jalur LOCAL belum punya upstream relay
-    ├─ Jalur     : LOCAL — config manual (paket offline)
-    ├─ io.connect : http://127.0.0.1:8080 (url entri daftar server lokal)
-    ├─ upstream   : (kosong)
-    └─ Solusi     : isi config/game-upstream.txt (SATU baris URL server game ASLI) di folder config/ perangkat — atau field "upstream" pada config-offline/servers.json
+2026-11-14 19:41:53 [🎮|LOCAL] → enterGame(user) diteruskan ke server game ASLI · 216 B · 232 ms
+    ▸ ISI · payload POST (utuh — diteruskan byte-per-byte)
+       212:421["handler.process",{"type":"user","action":"enterGame","loginToken":"64ecdf0df6960ed7e53c43120e0e362e","userId":"guest33687147","serverId":1,"version":"1.0","language":"en","gameVersion":"20260929_180158-EN"}]
+2026-11-14 19:41:53 [🎮·|LOCAL] ← upstream s2111-bs.popoh5.com · 18 B · 280 ms
+2026-11-14 19:42:23 [⚠️|LOCAL] Server game ASLI (upstream) tidak terjangkau — Play tidak bisa lanjut
+    ├─ Jalur    : LOCAL — relay :8080 → upstream isian manual (bukan daftar server)
+    ├─ Upstream : https://s2111-bs.popoh5.com:8141
+    ├─ Sebab    : java.net.SocketTimeoutException: timeout
+    └─ Waktu    : 45,0 dtk — klien akan mencoba ulang sendiri
