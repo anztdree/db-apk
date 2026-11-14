@@ -385,12 +385,13 @@ public final class LoginServer extends NanoHTTPD {
                         "OFFLINE · paket manual config-offline/ · " + HumanLog.fmtBytes(data.length())
                                 + " · " + HumanLog.fmtMs(ms)
                                 + (up.length() > 0 ? " · upstream relay: " + up
-                                        : " · upstream relay: BELUM DIISI"),
+                                        : " · upstream relay: TIDAK DIISI (paket tidak membawa tujuan — LOCAL tidak menyentuh server asli otomatis)"),
                         data + "\n\n— catatan —\n"
                                 + "url entri = tujuan io.connect klien saat klik Play (127.0.0.1:"
                                 + Config.gamePort() + " = server game lokal).\n"
-                                + "Field \"upstream\" = server game ASLI tujuan relay :8080.\n"
-                                + "Isi di perangkat: config/game-upstream.txt (1 baris URL, tanpa build ulang)");
+                                + "Field \"upstream\" di paket = keterangan saja (KOSONG) — tujuan relay\n"
+                                + "hanya dari ISIAN PEMILIK: config/game-upstream.txt (dasbor seksi CONFIG,\n"
+                                + "1 baris URL, tanpa build ulang). Paket tidak pernah membawa alamat server asli.");
             } catch (Throwable ignored) {
             }
             // 0.4.9 — MILESTONE TUNGGAL + RINCIAN PENUH (permintaan owner:
@@ -412,9 +413,10 @@ public final class LoginServer extends NanoHTTPD {
                                 + "Tujuan   : url tiap entri = 127.0.0.1:" + Config.gamePort()
                                 + " — klik Play masuk SERVER GAME LOKAL\n"
                                 + "Upstream : " + (up.length() > 0
-                                        ? up + " — socket game :8080 diteruskan ke sini (relay)"
-                                        : "BELUM DIISI — isi config/game-upstream.txt (1 baris URL server game asli)"
-                                                + " atau field \"upstream\" di config-offline/servers.json") + "\n"
+                                        ? up + " — socket game :8080 diteruskan ke sini (relay isian pemilik)"
+                                        : "TIDAK DIISI — paket manual tidak membawa tujuan relay (tegasan owner:"
+                                                + " LOCAL tidak menyentuh server asli otomatis). Isi bila perlu:"
+                                                + " config/game-upstream.txt lewat dasbor seksi CONFIG") + "\n"
                                 + "Ukuran   : " + HumanLog.fmtBytes(data.length()) + " · " + HumanLog.fmtMs(ms)
                                 + " · pemain sekarang di layar pilih server");
             }

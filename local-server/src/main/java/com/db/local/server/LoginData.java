@@ -279,23 +279,27 @@ public final class LoginData {
     // ---------------- upstream server game (0.5.4) ----------------
 
     /**
-     * 0.5.4 — URL SERVER GAME ASLI tujuan relay :8080 (klik Play → io.connect
-     * ke url entri daftar = 127.0.0.1:8080 → diteruskan ke sini). Urutan sumber:
-     *   1) config/game-upstream.txt  — SATU baris URL, disunting pemilik DI
-     *      PERANGKAT tanpa build ulang (folder config/ = transaksional, tidak
-     *      pernah ditimpa boot);
-     *   2) "upstream" pada entri pertama config-offline/servers.json — paket
-     *      MANUAL bawaan APK (keputusan pemilik saat build);
-     *   3) kosong — server game lokal belum punya tujuan: log memberi tahu
-     *      PERSIS cara mengisinya (bukan loading diam tanpa penjelasan lagi).
-     * URL TIDAK pernah diambil dari config online (jejak arah bukan sumber nilai).
+     * 0.5.4 — URL tujuan relay :8080 (klik Play → io.connect ke url entri daftar
+     * = 127.0.0.1:8080 → diteruskan ke sini).
+     * KOREKSI FATAL 2026-11-14 (owner: "config online itu cuma jejak agar kita
+     * gak tersesat.. bukan malah murni di pakai mentah-mentah") — SATU-SATUNYA
+     * sumber: config/game-upstream.txt — SATU baris URL, disunting pemilik DI
+     * PERANGKAT tanpa build ulang (dasbor seksi CONFIG / folder config/ =
+     * transaksional, tidak pernah ditimpa boot).
+     * Field "upstream" di paket manual TIDAK DIBACA LAGI sebagai tujuan relay —
+     * dulu 0.6.3 mengisinya dengan alamat server game ASLI mentah-mentah dari
+     * jejak online (s2111-bs.popoh5.com:8141) = LOCAL diam-diam bergantung ke
+     * server online; kini field itu kosong dan hanya keterangan.
+     * Kosong = relay tidak punya tujuan: LOCAL tidak menyentuh server asli
+     * otomatis — log memberi tahu PERSIS cara pemilik mengisi (bukan loading
+     * diam tanpa penjelasan lagi).
      */
     public static String gameUpstream() {
         String[] r = gameUpstreamEx();
         return r[0];
     }
 
-    /** @return [url, sumber("file"|"servers.json"|"")] — publik utk log & dasbor. */
+    /** @return [url, sumber("file"|"")] — publik utk log & dasbor. */
     public static String[] gameUpstreamEx() {
         synchronized (LOCK) {
             try {
@@ -310,47 +314,7 @@ public final class LoginData {
                 }
             } catch (Throwable ignored) {
             }
-            try {
-                String raw = serverListData();
-                if (raw != null) {
-                    int a = raw.indexOf("\"upstream\"");
-                    if (a >= 0) {
-                        String v = jsonStr(raw, a);
-                        if (v != null && (v.startsWith("http://") || v.startsWith("https://"))) {
-                            return new String[]{v, "servers.json"};
-                        }
-                    }
-                }
-            } catch (Throwable ignored) {
-            }
             return new String[]{"", ""};
-        }
-    }
-
-    /** Nilai string JSON tepat setelah posisi kunci ("key":"value") — util kecil. */
-    private static String jsonStr(String raw, int keyIdx) {
-        try {
-            int c = raw.indexOf(':', keyIdx);
-            if (c < 0) {
-                return null;
-            }
-            int a = raw.indexOf('"', c);
-            if (a < 0) {
-                return null;
-            }
-            int b = a + 1;
-            while (b < raw.length() && raw.charAt(b) != '"') {
-                if (raw.charAt(b) == '\\') {
-                    b++;
-                }
-                b++;
-            }
-            if (b >= raw.length()) {
-                return null;
-            }
-            return raw.substring(a + 1, b);
-        } catch (Throwable t) {
-            return null;
         }
     }
 

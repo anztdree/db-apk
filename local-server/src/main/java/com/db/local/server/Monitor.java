@@ -122,20 +122,22 @@ public final class Monitor {
     private static final java.util.HashSet<String> gameSeen = new java.util.HashSet<String>();
 
     /**
-     * 0.5.4 — uji kesehatan SERVER GAME untuk mode LOCAL: tujuan = UPSTREAM
-     * (field "upstream" paket manual / config/game-upstream.txt — server game
-     * ASLI tujuan relay :8080). Dulu probe iterasi url serverList — di 0.5.3
-     * url itu = 127.0.0.1:8080 (NanoHTTPD sendiri) sehingga "bisa dihubungi ·
-     * 2 ms" = Positif Palsu (TCP HTTP terbuka padahal jalur socket game belum
-     * ada) dan di mode ONLINE jadi tidak relevan (gameplay langsung ke server
-     * asli). Upstream kosong → baris ⚠ yang menjelaskan cara mengisi.
+     * 0.5.4 — uji kesehatan tujuan relay game utk mode LOCAL: target = UPSTREAM
+     * ISIAN PEMILIK (config/game-upstream.txt — SATU-SATUNYA sumber; koreksi
+     * fatal 2026-11-14: field "upstream" paket manual tidak dibaca lagi — paket
+     * tidak pernah membawa alamat server asli). Dulu probe iterasi url
+     * serverList — di 0.5.3 url itu = 127.0.0.1:8080 (NanoHTTPD sendiri) sehingga
+     * "bisa dihubungi · 2 ms" = Positif Palsu (TCP HTTP terbuka padahal jalur
+     * socket game belum ada) dan di mode ONLINE jadi tidak relevan (gameplay
+     * langsung ke server asli). Isian kosong → TIDAK menyentuh server mana pun
+     * (LOCAL tanpa kontak keluar) — balik begitu saja tanpa probe.
      * Hasil: StatusStore.original + log 📡/⚠️ + return ringkasan.
      */
     public static String probeGameServers(int n) {
         synchronized (GAMEPROBELOCK) {
             String[] res = GameServer.resolveGameUpstream(Config.mode());
             if (res == null) {
-                return "(upstream belum diisi)";
+                return "(tanpa isian pemilik — probe tidak menyentuh server mana pun)";
             }
             String up = res[0];
             String src = res[1];
@@ -182,15 +184,15 @@ public final class Monitor {
             if (ok) {
                 String detail = "Upstream : " + up + " (sumber: " + src + ")\n" + dnsNote;
                 if (first) {
-                    HumanLog.ev("📡", "Server game ASLI (upstream) bisa dihubungi — " + tgt
+                    HumanLog.ev("📡", "Upstream relay (isian pemilik) bisa dihubungi — " + tgt
                             + " · " + HumanLog.fmtMs(ms), detail);
                 } else {
-                    HumanLog.evTech("📡", "Server game " + tgt + " (upstream) bisa dihubungi · "
+                    HumanLog.evTech("📡", "Upstream relay " + tgt + " (isian pemilik) bisa dihubungi · "
                             + HumanLog.fmtMs(ms), dnsNote);
                 }
                 return "✓ " + tgt + " · " + HumanLog.fmtMs(ms);
             }
-            HumanLog.ev("⚠️", "Server game ASLI (upstream) TIDAK bisa dihubungi — " + tgt + " (" + note + ")",
+            HumanLog.ev("⚠️", "Upstream relay (isian pemilik) TIDAK bisa dihubungi — " + tgt + " (" + note + ")",
                     "Upstream   : " + up + "\n"
                             + "Waktu coba : " + HumanLog.fmtMs(ms) + "\n"
                             + (dnsNote == null ? "" : dnsNote));

@@ -69,15 +69,22 @@ import fi.iki.elonen.NanoHTTPD;
  *     padat (dedupe 10 mnt per file).
  *   - Batch tetap masuk GRUP LogGroups (statistik Σ di dasbor).
  *
- * 0.5.4 RELAY SOCKET GAME :8080 (penutup "loading muter-muter tanpa kejelasan"):
+ * 0.5.4 RELAY socket game :8080 (penutup "loading muter-muter tanpa kejelasan"):
  * url entri daftar server manual = http://127.0.0.1:8080 → klik Play membuat
  * klien io.connect KE PORT INI memakai engine.io v3 polling (persis jalur login).
  * Dulu :8080 hanya HTTP statis → klien retry selamanya, log DIAM. Kini
- * /socket.io/ di mode LOCAL diteruskan utuh (byte-per-byte) ke SERVER GAME
- * ASLI = field "upstream" (config-offline/servers.json) atau SATU baris di
- * config/game-upstream.txt — LoginData.gameUpstream(). Upstream kosong =
- * baris ❌ yang menjelaskan PERSIS cara mengisi (bukan loading tanpa cerita).
- * Relay memakai mesin yang sama dengan passthrough login (LoginServer).
+ * /socket.io/ di mode LOCAL diteruskan utuh (byte-per-byte) ke UPSTREAM RELAY =
+ * SATU baris di config/game-upstream.txt — LoginData.gameUpstream() — HANYA
+ * isian pemilik sendiri (dasbor seksi CONFIG / file di perangkat).
+ * KOREKSI FATAL (tegasan owner 2026-11-14: "online itu cuma jejak agar kita gak
+ * tersesat.. bukan malah murni dipakai mentah-mentah"): field "upstream" paket
+ * manual TIDAK lagi membawa alamat server game ASLI — dulu 0.6.3 mengisi
+ * s2111-bs.popoh5.com:8141 mentah dari capture = LOCAL diam-diam bergantung ke
+ * server online (bukti log owner 19:41:37–19:42:23: enterGame diteruskan ke
+ * server asli, Play mati saat upstream tak terjangkau). Paket kini kosong;
+ * LOCAL tanpa isian pemilik = tidak ada kontak keluar sama sekali — kebutuhan
+ * protokol game yang belum punya jawaban lokal dicatat UTUH di log (log =
+ * nyawa) sebagai bahan handcraft berikutnya, bukan dilempar ke server asli.
  * Di mode ONLINE /socket.io/ dijawab 404 jelas — gameplay langsung ke server
  * asli (url daftar ASLI), server lokal tidak berada di jalur itu.
  *
@@ -136,8 +143,8 @@ public final class GameServer extends NanoHTTPD {
                 resp = rootPage();
             } else if ("/socket.io/".equals(uri) || "/socket.io".equals(uri)) {
                 // 0.5.4 — klik Play: klien io.connect ke url entri daftar server.
-                // LOCAL = relay ke server game ASLI (upstream); ONLINE = 404 jelas
-                // (gameplay langsung ke server asli, bukan lewat port ini).
+                // LOCAL = relay ke UPSTREAM ISIAN PEMILIK (bila diisi); ONLINE = 404
+                // jelas (gameplay langsung ke server asli, bukan lewat port ini).
                 resp = socketIo(session, m, mode);
             } else if ("local".equals(mode)) {
                 resp = serveLocal(uri, query, t0);
@@ -245,16 +252,21 @@ public final class GameServer extends NanoHTTPD {
     }
 
     /**
-     * 0.6.0 — resolusi upstream relay game untuk SEMUA mode (dipakai relay +
-     * Monitor probe): isian owner menang; mode ONLINE lanjut ke tabel daftar
-     * server ASLI. Return {url, sumber} atau null.
+     * 0.6.0 — resolusi upstream relay game (dipakai relay + Monitor probe).
+     * KOREKSI FATAL 2026-11-14 (owner: "config online itu cuma jejak agar kita
+     * gak tersesat.. bukan malah murni di pakai mentah-mentah"): sumber satu-satunya
+     * = ISIAN PEMILIK — config/game-upstream.txt (dasbor seksi CONFIG / file di
+     * perangkat). Field "upstream" di paket manual TIDAK DIBACA LAGI — paket
+     * tidak pernah membawa alamat server asli (dulu 0.6.3 mengisi
+     * s2111-bs.popoh5.com:8141 mentah = pelanggaran yang sudah dikoreksi).
+     * Mode ONLINE tetap lanjut ke tabel daftar server ASLI (jalur passthrough).
+     * Return {url, sumber} atau null (LOCAL = tidak ada tujuan → tidak ada
+     * kontak keluar; Play berhenti dengan log yang jujur dan utuh).
      */
     public static String[] resolveGameUpstream(String mode) {
-        String up = LoginData.gameUpstream();
         String[] upEx = LoginData.gameUpstreamEx();
-        if (up != null && up.length() > 0) {
-            return new String[]{up, "file".equals(upEx[1]) ? "config/game-upstream.txt"
-                    : "config-offline/servers.json"};
+        if ("file".equals(upEx[1]) && upEx[0].length() > 0) {
+            return new String[]{upEx[0], "config/game-upstream.txt — isian pemilik"};
         }
         if (!"local".equals(mode)) {
             return onlineUpstreamPick();
@@ -264,17 +276,19 @@ public final class GameServer extends NanoHTTPD {
 
     /**
      * Klik Play: klien io.connect(url entri daftar). Di LOCAL url itu = port ini
-     * → /socket.io/ diteruskan UTUH ke server game ASLI (upstream — mesin relay
+     * → /socket.io/ diteruskan UTUH ke UPSTREAM ISIAN PEMILIK (mesin relay
      * yang sama dgn passthrough login 0.5.1). Di ONLINE: gameplay LANGSUNG ke
      * server asli — port ini tidak dipakai; dijawab 404 dengan penjelasan.
      */
     /**
      * Klik Play: klien io.connect(url entri daftar) → /socket.io/ diteruskan
-     * UTUH ke server game ASLI (upstream — mesin relay sama dgn passthrough
+     * UTUH ke UPSTREAM ISIAN PEMILIK (mesin relay sama dgn passthrough
      * login 0.5.1). 0.6.0: relay AKTIF DI SEMUA MODE — di ONLINE, url daftar
      * server ASLI ditulis-ulang ke port ini (jalur passthrough login), jadi
-     * Play online pun tertangkap penuh di log; di LOCAL, upstream = isian
-     * owner (config/game-upstream.txt / field "upstream" servers.json).
+     * Play online pun tertangkap penuh di log; di LOCAL, upstream = ISIAN
+     * PEMILIK saja (config/game-upstream.txt — koreksi fatal 2026-11-14:
+     * field "upstream" paket manual tidak dibaca lagi, paket tidak pernah
+     * membawa alamat server asli).
      */
     private Response socketIo(IHTTPSession session, Method m, String mode) {
         String query = session.getQueryParameterString();
@@ -286,10 +300,13 @@ public final class GameServer extends NanoHTTPD {
             return textResp(LoginServer.safeStatus(400),
                     "websocket tidak diteruskan — klien engine.io tetap di polling");
         }
-        // 0.6.0 — upstream semua mode (urutan dilaporkan utuh di log):
-        //  1) isian owner: config/game-upstream.txt / field "upstream" servers.json
-        //  2) mode ONLINE: url ASLI dari daftar server passthrough (serverId
-        //     terpilih bila terbaca dari paket login — bila tidak, entri pertama)
+        // 0.6.0+KOREKSI FATAL 2026-11-14 — upstream relay (urutan dilaporkan utuh):
+        //  1) SATU-SATUNYA sumber di LOCAL: isian pemilik config/game-upstream.txt
+        //     (dasbor seksi CONFIG / file di perangkat) — tujuan PILIHAN pemilik.
+        //  2) Field "upstream" paket manual TIDAK dibaca lagi — paket tidak
+        //     pernah membawa alamat server asli (dulu 0.6.3 mengisi mentah).
+        //  3) mode ONLINE: url ASLI dari daftar server passthrough (serverId
+        //     terpilih bila terbaca dari paket login — bila tidak, entri pertama).
         String[] res = resolveGameUpstream(mode);
         if (res == null) {
             long now = System.currentTimeMillis();
@@ -299,14 +316,18 @@ public final class GameServer extends NanoHTTPD {
                 // LOCAL = isian manual belum ada; ONLINE = tabel daftar server ASLI
                 // masih kosong (passthrough login belum memberi GetServerList).
                 if ("local".equals(mode)) {
-                    HumanLog.ev("❌", "Play berhenti — jalur LOCAL belum punya upstream relay",
+                    HumanLog.ev("❌", "Play berhenti — LOCAL tidak merelay ke server asli (arahan owner: 100% terpisah)",
                             "Jalur     : LOCAL — config manual (paket offline)\n"
                                     + "io.connect : http://127.0.0.1:" + Config.gamePort()
                                     + " (url entri daftar server lokal)\n"
-                                    + "upstream   : (kosong)\n"
-                                    + "Solusi     : isi config/game-upstream.txt (SATU baris URL server game "
-                                    + "ASLI) di folder config/ perangkat — atau field \"upstream\" pada "
-                                    + "config-offline/servers.json");
+                                    + "Query     : " + (qs.length() > 0 ? qs : "(kosong)") + "\n"
+                                    + "upstream   : (kosong — paket manual TIDAK membawa tujuan relay)\n"
+                                    + "Tegasan    : owner 2026-11-14 — online cuma jejak arah, bukan sumber nilai;\n"
+                                    + "             LOCAL tidak menyentuh server asli otomatis.\n"
+                                    + "Solusi     : satu-satunya jalur = ISIAN PEMILIK sendiri — dasbor\n"
+                                    + "             seksi CONFIG (tersimpan config/game-upstream.txt, SATU baris\n"
+                                    + "             URL, aktif tanpa restart). Tanpa isian: relay tidak berjalan —\n"
+                                    + "             kebutuhan protokol game dicatat UTUH di log utk handcraft.");
                 } else {
                     HumanLog.ev("❌", "Play berhenti — jalur ONLINE belum punya url ASLI",
                             "Jalur     : ONLINE — passthrough ke server asli\n"
@@ -317,7 +338,7 @@ public final class GameServer extends NanoHTTPD {
             }
             return textResp(LoginServer.safeStatus(502),
                     "local".equals(mode)
-                            ? "upstream server game belum diisi — isi config/game-upstream.txt"
+                            ? "upstream relay belum diisi pemilik — dasbor seksi CONFIG (config/game-upstream.txt)"
                             : "tabel daftar server ASLI masih kosong — jalur ONLINE belum bisa relay");
         }
         String up = res[0];
@@ -338,9 +359,9 @@ public final class GameServer extends NanoHTTPD {
                     Method.POST == m ? 30000 : 45000);
         } catch (Throwable t) {
             long ms = System.currentTimeMillis() - t0;
-            HumanLog.ev("⚠️", "Server game ASLI (upstream) tidak terjangkau — Play tidak bisa lanjut",
+            HumanLog.ev("⚠️", "Upstream relay (isian pemilik) tidak terjangkau — Play tidak bisa lanjut",
                     "Jalur    : " + ("local".equals(mode)
-                            ? "LOCAL — relay :8080 → upstream isian manual (bukan daftar server)"
+                            ? "LOCAL — relay :8080 → upstream isian pemilik (bukan daftar server)"
                             : "ONLINE — relay :8080 → url ASLI dari daftar server") + "\n"
                             + "Upstream : " + up + "\n"
                             + "Sebab    : " + t + "\n"
@@ -358,13 +379,16 @@ public final class GameServer extends NanoHTTPD {
                 if (now - lastGameSessLogAt >= 600000L) {
                     lastGameSessLogAt = now;
                     HumanLog.ev("🎮", "Play → socket game lokal :" + Config.gamePort()
-                                    + " — diteruskan ke SERVER GAME ASLI",
+                                    + ("local".equals(mode)
+                                            ? " — relay ke upstream isian pemilik"
+                                            : " — diteruskan ke SERVER GAME ASLI"),
                             "Jalur    : " + ("local".equals(mode)
-                                    ? "LOCAL — relay :8080 meneruskan ke upstream isian manual"
+                                    ? "LOCAL — relay :8080 meneruskan ke upstream isian pemilik (config/game-upstream.txt)"
                                     : "ONLINE — relay :8080 meneruskan ke url ASLI dari daftar server") + "\n"
                                     + "Upstream : " + up + " (sumber: " + src + ")\n"
                                     + "Query    : " + (qs.length() > 0 ? qs : "(kosong)") + "\n"
-                                    + "Sesi     : sid dari server asli · relay polling");
+                                    + "Sesi     : sid dari "
+                                    + ("local".equals(mode) ? "upstream" : "server asli") + " · relay polling");
                 }
             } else if (u.body.length > 0 && ms > 0) {
                 if (respText.indexOf("42[") >= 0) {
@@ -382,7 +406,9 @@ public final class GameServer extends NanoHTTPD {
             String act = ringkasAksi(body);
             if (act != null) {
                 // 0.6.0 — payload POST yang membawa aksi game: isi UTUH di blok ISI
-                HumanLog.evIsi("🎮", "→ " + act + " diteruskan ke server game ASLI · "
+                HumanLog.evIsi("🎮", "→ " + act + ("local".equals(mode)
+                                                ? " diteruskan ke upstream isian pemilik"
+                                                : " diteruskan ke server game ASLI") + " · "
                                 + HumanLog.fmtBytes(body.length()) + " · " + HumanLog.fmtMs(ms),
                         null, "payload POST (utuh — diteruskan byte-per-byte)", body);
             } else {

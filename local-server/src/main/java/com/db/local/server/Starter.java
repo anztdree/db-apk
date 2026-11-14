@@ -363,15 +363,14 @@ public final class Starter {
                 // adanya (tanpa tulis-ulang runtime) + status upstream relay Play.
                 String[] upEx = LoginData.gameUpstreamEx();
                 String upTxt = upEx[0].length() > 0
-                        ? upEx[0] + " (sumber: " + ("file".equals(upEx[1])
-                                ? "config/game-upstream.txt — isian pemilik" 
-                                : "paket manual config-offline/servers.json") + ")"
-                        : "BELUM DIISI (isi config/game-upstream.txt — SATU baris URL server game ASLI"
-                                + " — atau field \"upstream\" di config-offline/servers.json)";
+                        ? upEx[0] + " (sumber: config/game-upstream.txt — isian pemilik)"
+                        : "TIDAK DIISI — LOCAL tidak menyentuh server asli otomatis (tegasan owner "
+                                + "2026-11-14: online cuma jejak arah, bukan sumber nilai). Relay hanya "
+                                + "jalan bila pemilik mengisi config/game-upstream.txt — dasbor seksi CONFIG";
                 modeDetail = "LOCAL — konten game: mirror www/ · login & akun: LOKAL :"
                         + Config.loginPort() + " · config: paket MANUAL config-offline/ (apa adanya"
                         + " — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal)"
-                        + " · Play → socket game :" + Config.gamePort() + " → upstream " + upTxt;
+                        + " · Play → socket game :" + Config.gamePort() + " → " + upTxt;
             } else {
                 // 0.5.1 — ONLINE: config login tetap menulis-ulang ke server lokal
                 // (SEMUA mode); server lokal meneruskan utuh ke server asli.
@@ -426,10 +425,13 @@ public final class Starter {
         monitor.runOnce();
         StatusStore.persist();
 
-        // ---------- 6b) probe SERVER GAME upstream (0.5.4 — LOCAL saja) ----------
-        // 0.5.4: probe = UPSTREAM relay (server game asli tujuan Play) — di mode
-        // ONLINE tidak relevan (gameplay langsung ke server asli, dulu malah
-        // probe 127.0.0.1:8080 sendiri = positif palsu).
+        // ---------- 6b) probe UPSTREAM RELAY (0.5.4 — LOCAL saja) ----------
+        // 0.5.4: probe = tujuan relay isian pemilik. Koreksi fatal 2026-11-14:
+        // paket tidak lagi membawa tujuan (field "upstream" kosong, tidak dibaca)
+        // — tanpa isian pemilik, probe TIDAK menyentuh server mana pun (LOCAL
+        // tanpa kontak keluar); Monitor.probeGameServers sendiri balik begitu saja.
+        // Di mode ONLINE tidak relevan (gameplay langsung ke server asli, dulu
+        // malah probe 127.0.0.1:8080 sendiri = positif palsu).
         if ("local".equals(Config.mode())) {
             try {
                 Thread pg = new Thread(new Runnable() {

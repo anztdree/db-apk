@@ -1,37 +1,33 @@
 #!/usr/bin/env bash
 # =============================================================
-# Build APK-LSF 0.0.1 — PENOMORAN BARU (RESET SERI, keputusan owner 2026-11-14) · isi teknis = fix upstream default Play LOCAL
+# Build APK-LSF 0.0.1 — KOREKSI KESALAHAN FATAL (owner 2026-11-14:
+#   "KESALAHAN FATAL TIDAK BISA DI TOLERANSI! ANDA AMBIL MENTAH CONFIG DARI
+#    SERVER ASLINYA!! .. CONFIG ONLINE ITU CUMA JEJAK AGAR KITA GAK TERSESAT..
+#    BUKAN MALAH MURNI DI PAKAI MENTAH-MENTAH")
 #
-# Laporan owner (2026-11-14, log perangkat logs/local/ di GitHub):
-#   "Github sudah saya update di bagian local terhenti saat klik play
-#    setelah muncul nama server local"
+# PELANGGARAN YANG DIKOREKSI (bukti log perangkat owner logs/local/ 19:41–19:42):
+#   0.6.3/0.0.1 lama mengisi field "upstream" paket manual dengan alamat server
+#   game ASLI (s2111-bs.popoh5.com:8141) mentah-mentah dari jejak online →
+#   mode LOCAL jadi MITM relay ke server online: enterGame(user) diteruskan ke
+#   server asli byte-per-byte, dan Play MATI saat upstream tak terjangkau
+#   (SocketTimeoutException 19:42:23). LOCAL bukan server mandiri — itu
+#   pelanggaran tegasan berulang owner: OFFLINE/ONLINE 100% terpisah.
 #
-# DIAGNOSIS (dari log perangkat owner sendiri — logs/local/human.log):
-#   SDK milestone 0.3.0 TERBUKTI PENUH di perangkat:
-#     - DAFTAR  registerUser → 200 · 1,0 KB (04:23:02, uid tes@mail.com)
-#     - AUTO    autoLogin    → 200 (04:24:00, 04:24:18)
-#     - LOGIN   loginByName ditolak benar saat salah → 40101 (04:25:11),
-#               sukses → 200 · 1,0 KB (04:25:19) + loginchecknative code 0
-#     - TAMU    registerVisitor (log sebelumnya 7d91d09)
-#   Lalu: "📋 Daftar server terkirim — 1 server (paket MANUAL)" →
-#         "❌ Play berhenti — jalur LOCAL belum punya upstream relay"
-#         "io.connect : http://127.0.0.1:8080 · upstream: (kosong)"
-#   AKAR: field "upstream" config-offline/servers.json = "" →
-#         resolveGameUpstream(mode LOCAL) = null → relay tanpa tujuan.
+# PERBAIKAN:
+#   1) Paket manual config-offline/servers.json — "upstream" = "" (kosong);
+#      manifest.txt ditulis ulang (paket TIDAK PERNAH membawa alamat server asli).
+#   2) Kode: satu-satunya sumber tujuan relay = ISIAN PEMILIK
+#      config/game-upstream.txt (dasbor seksi CONFIG). Field paket tidak dibaca
+#      lagi (LoginData.gameUpstreamEx file-only; GameServer.resolveGameUpstream).
+#      LOCAL tanpa isian = TIDAK ada kontak keluar; Play berhenti dengan log
+#      jujur + payload klien UTUH (bahan handcraft berikutnya) — bukan relay
+#      diam-diam ke server asli.
+#   3) Guard build DIBALIK: hard-fail bila file paket mana pun memuat host
+#      server asli (popoh5.com, sjmobilegame.com, sjflaregame.com, t4game.com,
+#      parajoymobile.com) — paket mentah dari online tidak lolos terbit.
 #
-# Baru 0.6.3:
-#   1) Paket manual config-offline/servers.json — field "upstream" TERISI
-#      DEFAULT: https://s2111-bs.popoh5.com:8141 (entri pertama daftar
-#      server ASLI dari jejak capture 2026-11-13 — TERBUKTI jalan di log
-#      ONLINE: Play → enterGame → gameplay mengalir; nilai nyata dari
-#      peta, bukan karangan). manifest.txt sha256 ikut diperbarui.
-#   2) Teks boot LOCAL menyebut SUMBER upstream (isian file pemilik vs
-#      paket manual) — dasbor & log tetap jujur satu jalur.
-#   3) StatusStore.VERSION → 0.6.3.
-#
-# Dasar: releases/APK-LSF-0.6.2.apk (164.003.964 B — dasar terakhir seri lama).
-# Catatan: penomoran DIRESET ke 0.0.1 per owner 2026-11-14 — "mulai dari 0.0.1 bukan 0.6.3".
-#          Isi teknis = build 0.6.3 (fix upstream default Play LOCAL) — hanya nomor yang berubah.
+# Dasar: releases/APK-LSF-0.0.1.apk (terbitan 2026-11-14 pagi — berisi paket
+#        pelanggaran; digantikan terbitan koreksi ini).
 #
 # Patch yang diterapkan (TANPA apktool — dex game & resource tidak disentuh):
 #   1) javac(ECJ) + d8  -> classes2.dex baru (kode server lokal)
@@ -47,7 +43,7 @@ ECJ="${ECJ:-$REPO/tools/ecj-3.33.0.jar}"
 KS="${KS:-$REPO/keystore/lsf.keystore}"
 KS_ALIAS="${KS_ALIAS:-lsf}"
 KS_PASS="${KS_PASS:-lsf-local-2025}"
-BASE="${BASE:-$REPO/releases/APK-LSF-0.6.2.apk}"
+BASE="${BASE:-$REPO/releases/APK-LSF-0.0.1.apk}"
 LOGIN_PORT_QH="${LOGIN_PORT_QH:-8610}"
 SRC="$REPO/local-server/src/main/java"
 ASSETS="$REPO/local-server/assets"
@@ -74,7 +70,7 @@ java -jar "$ECJ" -source 8 -target 8 -encoding UTF-8 -nowarn \
   "$REPO/local-server/harness/HarnessSdk.java"
 HR="$BUILD/harness-root-001"
 rm -rf "$HR"
-java -cp "$BUILD/classes:$BUILD/harness:$TOOLS/sqlite-jdbc.jar" HarnessSdk "$HR" | tail -3 || true
+java -cp "$BUILD/classes:$BUILD/harness:$TOOLS/sqlite-jdbc.jar" HarnessSdk "$HR" "$REPO" | tail -3 || true
 
 echo "[2/8] d8 -> classes2.dex (DbJdbc DISINGKIRKAN — hanya harness desktop) ..."
 mapfile -t CLASS_FILES < <(find "$BUILD/classes" -name '*.class' ! -name 'DbJdbc.class' ! -path '*DbJdbc*')
@@ -94,16 +90,27 @@ else
 fi
 printf 'http://127.0.0.1:%s' "$LOGIN_PORT_QH" > "$BUILD/stage/assets/QHinfo"
 
-echo "[3b] verifikasi paket manual 0.6.3 (upstream default TERISI — hard-fail):"
-python3 - "$ASSETS/server/config-offline/servers.json" <<'PYUP'
-import json, sys
-raw = open(sys.argv[1], encoding='utf-8').read()
-j = json.loads(raw)
+echo "[3b] verifikasi paket manual 0.0.1-koreksi (TANPA alamat server asli — hard-fail):"
+python3 - "$ASSETS/server/config-offline" <<'PYUP'
+import json, sys, os
+folder = sys.argv[1]
+FORBIDDEN = ["popoh5.com", "sjmobilegame.com", "sjflaregame.com", "t4game.com", "parajoymobile.com"]
+gagal = 0
+for name in sorted(os.listdir(folder)):
+    p = os.path.join(folder, name)
+    raw = open(p, encoding='utf-8', errors='replace').read()
+    for h in FORBIDDEN:
+        if h in raw:
+            print('FATAL: paket manual memuat host server asli %s di %s — owner: config online cuma jejak, bukan sumber nilai' % (h, name))
+            gagal += 1
+j = json.loads(open(os.path.join(folder, 'servers.json'), encoding='utf-8').read())
 up = (j.get('serverList') or [{}])[0].get('upstream', '')
-if not up.startswith('https://') and not up.startswith('http://'):
-    print('FATAL: field "upstream" paket manual KOSONG — Play LOCAL akan berhenti lagi')
+if up != '':
+    print('FATAL: field "upstream" paket manual harus "" (kosong) — tujuan relay hanya isian pemilik; sekarang: %r' % up)
+    gagal += 1
+if gagal:
     sys.exit(1)
-print('   OK: upstream default = %s' % up)
+print('   OK: paket manual bebas host server asli · upstream kosong (tujuan relay = isian pemilik saja)')
 PYUP
 
 echo "[4/8] salin APK dasar + buang tanda tangan lama + payload lama + QHinfo lama ..."
@@ -143,19 +150,20 @@ java -jar "$UBER" -a "$BUILD/work.apk" \
 
 echo "[7/8] verifikasi ..."
 NEWAPK="$DIST/work-aligned-signed.apk"
-echo "-- bukti 0.6.3 di dex (python byte-count — harus >0):"
+echo "-- bukti 0.0.1-koreksi di dex (python byte-count — harus >0):"
 python3 - "$BUILD/dex/classes.dex" <<'PYEOF'
 import sys
 data = open(sys.argv[1], 'rb').read()
 baru = [
-    'paket manual config-offline/servers.json',
+    'paket manual TIDAK membawa tujuan relay',
     'config/game-upstream.txt — isian pemilik',
-    '(sumber: ',
+    'arahan owner: 100% terpisah',
     'rewriteServerListFramed',
     'framing engine.io UTUH',
 ]
 lama = [
-    'url ASLI per entri · tulis-ulang = routing',
+    's2111-bs.popoh5.com',
+    'upstream isian manual (bukan daftar server)',
 ]
 gagal = 0
 for p in baru:
@@ -176,18 +184,28 @@ echo "-- CRC APK BARU:"
 unzip -v "$NEWAPK" | grep -E "classes\.dex |config_BS\.properties|config\.properties|classes2\.dex|server/payload|dashboard|QHinfo" | head -20 || true
 echo "-- isi QHinfo baru (harus http://127.0.0.1:8610):"
 unzip -p "$NEWAPK" assets/QHinfo; echo
-echo "-- upstream default DALAM APK (hard-fail):"
+echo "-- upstream DALAM APK (hard-fail: wajib kosong + bebas host server asli):"
 python3 - "$NEWAPK" <<'PYEOF2'
-import zipfile, sys, json
+import zipfile, sys, json, os
 z = zipfile.ZipFile(sys.argv[1])
 d = z.read('classes2.dex')
 if d.count(b'0.0.1') == 0:
     print('FATAL: versi 0.0.1 tidak ada di classes2.dex APK (dex basi?)'); sys.exit(1)
+FORBIDDEN = ["popoh5.com", "sjmobilegame.com", "sjflaregame.com", "t4game.com", "parajoymobile.com"]
+gagal = 0
+for n in z.namelist():
+    if n.startswith('assets/server/config-offline/'):
+        raw = z.read(n).decode('utf-8', errors='replace')
+        for h in FORBIDDEN:
+            if h in raw:
+                print('FATAL: APK membawa host server asli %s di %s' % (h, n)); gagal += 1
 j = json.loads(z.read('assets/server/config-offline/servers.json').decode('utf-8'))
 up = (j.get('serverList') or [{}])[0].get('upstream', '')
-if up != 'https://s2111-bs.popoh5.com:8141':
-    print('FATAL: upstream dalam APK salah/koosng: %r' % up); sys.exit(1)
-print('   OK: 0.0.1 di classes2.dex + upstream default %s ada di APK' % up)
+if up != '':
+    print('FATAL: upstream dalam APK harus "" (kosong): %r' % up); sys.exit(1)
+if gagal:
+    sys.exit(1)
+print('   OK: 0.0.1 di classes2.dex + paket dalam APK bebas host server asli + upstream kosong')
 PYEOF2
 
 echo "[8/8] terbitkan ..."

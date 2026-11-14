@@ -1,5 +1,6 @@
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -737,6 +738,70 @@ public class HarnessSdk {
                         + " → parser klien menolak (a != s.length)",
                 rwLama != null && prefixLama61 == pktLama.length() && paketBaru61 < pktLama.length()
                         && !rwLama.contains("s1-bs.popoh5.com"));
+
+        // ---------------- TAHAP 19: KOREKSI KESALAHAN FATAL UPSTREAM (owner
+        // 2026-11-14: "KESALAHAN FATAL TIDAK BISA DI TOLERANSI! ANDA AMBIL
+        // MENTAH CONFIG DARI SERVER ASLINYA!! .. CONFIG ONLINE ITU CUMA JEJAK
+        // AGAR KITA GAK TERSESAT.. BUKAN MALAH MURNI DI PAKAI MENTAH-MENTAH")
+        // — relay hanya isian pemilik; paket manual bebas server asli ----------------
+        // 19a) tanpa isian pemilik: LOCAL tidak punya tujuan relay — TIDAK ada
+        //      kontak keluar (bukan fallback ke server asli).
+        String[] ex19 = LoginData.gameUpstreamEx();
+        check("19 koreksi: tanpa game-upstream.txt → sumber kosong (bukan servers.json)",
+                ex19[0].length() == 0 && ex19[1].length() == 0);
+        check("19 koreksi: resolveGameUpstream LOCAL tanpa isian = null"
+                        + " (TIDAK menyentuh server asli otomatis)",
+                GameServer.resolveGameUpstream("local") == null);
+        // 19b) isian pemilik = SATU-SATUNYA sumber relay (dasbor seksi CONFIG / file).
+        write(new File(conf, "game-upstream.txt"), "https://127.0.0.1:9999\n");
+        String[] ex19b = LoginData.gameUpstreamEx();
+        check("19 koreksi: game-upstream.txt (isian pemilik) = satu-satunya sumber relay",
+                "https://127.0.0.1:9999".equals(ex19b[0]) && "file".equals(ex19b[1]));
+        check("19 koreksi: resolveGameUpstream LOCAL dgn isian pemilik = file pemilik",
+                GameServer.resolveGameUpstream("local") != null
+                        && "https://127.0.0.1:9999".equals(GameServer.resolveGameUpstream("local")[0]));
+        new File(conf, "game-upstream.txt").delete();
+        // 19c) PAKET berisi upstream pun (simulasi paket pelanggaran 0.6.3) — tetap
+        //      TIDAK dibaca: field "upstream" paket manual bukan tujuan relay lagi.
+        write(new File(off, "servers.json"),
+                "{\"errorCode\":0,\"serverList\":[{\"serverId\":\"1\",\"url\":\"http://127.0.0.1:8080\","
+                        + "\"name\":\"Server Lokal\",\"upstream\":\"https://s2111-bs.popoh5.com:8141\"}],\"history\":[]}");
+        String[] ex19c = LoginData.gameUpstreamEx();
+        check("19 koreksi: paket berisi upstream pun TIDAK dibaca (relay hanya isian pemilik;"
+                        + " dulu 0.6.3 membaca field ini = kesalahan fatal)",
+                ex19c[0].length() == 0 && ex19c[1].length() == 0);
+        // 19d) PAKET ASLI di repo (bila harness dijalankan di dalam repo) wajib bebas
+        //      host server asli — paket mentah dari online tidak boleh lolos terbit.
+        if (args.length > 1 && args[1] != null && args[1].length() > 0) {
+            File offPaket = new File(new File(new File(args[1], "local-server"),
+                    "assets"), "server");
+            offPaket = new File(offPaket, "config-offline");
+            if (offPaket.isDirectory()) {
+                String[] dilarang = {"popoh5.com", "sjmobilegame.com", "sjflaregame.com",
+                        "t4game.com", "parajoymobile.com"};
+                boolean bersih = true;
+                String kena = "";
+                File[] isinya = offPaket.listFiles();
+                if (isinya != null) {
+                    java.util.Arrays.sort(isinya);
+                    for (File f : isinya) {
+                        if (!f.isFile()) {
+                            continue;
+                        }
+                        String isi = readAll(new FileInputStream(f));
+                        for (String h : dilarang) {
+                            if (isi.contains(h)) {
+                                bersih = false;
+                                kena = f.getName() + " memuat " + h;
+                            }
+                        }
+                    }
+                }
+                check("19 koreksi: paket ASLI repo bebas host server asli"
+                                + " (config online cuma jejak arah, bukan sumber nilai)" + (bersih ? "" : " — " + kena),
+                        bersih);
+            }
+        }
 
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");
