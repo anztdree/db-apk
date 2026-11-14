@@ -19,7 +19,13 @@ import java.io.Writer;
  *                         // "online" = teruskan ke server asli (pilihan pemilik via tombol melayang)
  *   "gamePort": 8080,     // port GAME — endpoint di assets client menunjuk ke sini
  *   "debugPort": 4000,    // port dasbor debug developer (game tidak tahu port ini)
- *   "loginPort": 8610,    // port server LOGIN lokal — engine.io v3 + socket.io v2 (0.4.0)
+ *   "sdkPort": 8610,      // 0.0.2 — port server SDK lokal (HTTP murni: /v1/* +
+ *                         // /loginchecknative) — QHinfo menunjuk ke sini.
+ *                         // Pemisahan port pola 5-server asli (owner 2026-11-14):
+ *                         // SDK, login, main, chat, dungeon — TERPISAH port.
+ *   "loginPort": 8611,    // 0.0.2 — port server LOGIN lokal (engine.io v3 +
+ *                         // socket.io v2) — murni socket, TANPA API SDK (dulu
+ *                         // 8610 diganda dua peran; kini terpisah rapi).
  *   "useSdk": false,      // false = login guest lokal via url ?userid=… (PR3);
  *                         // true = layar SDK asli dipakai (SDK tetap ke server asli)
  *   "bind": "127.0.0.1",
@@ -45,7 +51,11 @@ public final class Config {
     private static volatile String mode = "local";
     private static volatile int gamePort = 8080;
     private static volatile int debugPort = 4000;
-    private static volatile int loginPort = 8610;
+    // 0.0.2 — PEMISAHAN PORT (pola 5-server asli; owner: "pola server aslinya
+    // punya 5 server utama.. SDK, login, main, chat, dungeon, terpisah dengan
+    // berbagai port"). SDK HTTP = 8610 (QHinfo), LOGIN socket = 8611.
+    private static volatile int sdkPort = 8610;
+    private static volatile int loginPort = 8611;
     private static volatile boolean useSdk = false;
     private static volatile int monitorSec = 60;
     private static volatile int toggleX = -1;
@@ -58,7 +68,8 @@ public final class Config {
                     + "  \"mode\": \"local\",\n"
                     + "  \"gamePort\": 8080,\n"
                     + "  \"debugPort\": 4000,\n"
-                    + "  \"loginPort\": 8610,\n"
+                    + "  \"sdkPort\": 8610,\n"
+                    + "  \"loginPort\": 8611,\n"
                     + "  \"useSdk\": false,\n"
                     + "  \"bind\": \"127.0.0.1\",\n"
                     + "  \"monitorSec\": 60,\n"
@@ -97,9 +108,30 @@ public final class Config {
                     if (dp >= 1024 && dp <= 65535) {
                         debugPort = dp;
                     }
+                    int sp = (int) grepLong(raw, "\"sdkPort\"", sdkPort);
+                    if (sp >= 1024 && sp <= 65535) {
+                        sdkPort = sp;
+                    }
                     int lp = (int) grepLong(raw, "\"loginPort\"", loginPort);
                     if (lp >= 1024 && lp <= 65535) {
                         loginPort = lp;
+                    }
+                    // 0.0.2 MIGRASI — server.json LAMA (0.0.1 ke bawah) tidak punya
+                    // "sdkPort" dan "loginPort"-nya bernilai 8610 (dulu satu port
+                    // dua peran). Bila kini sama → SDK tetap memegang port itu
+                    // (QHinfo + loginchecknative shell menunjuk ke sana), login
+                    // socket digeser ke port terdekat yang bebas — TANPA asumsi
+                    // diam-diam: keputusan terekam di log.
+                    if (sdkPort == loginPort) {
+                        int gerak = 8611;
+                        while (gerak == sdkPort) {
+                            gerak++;
+                        }
+                        loginPort = gerak;
+                        HumanLog.ev("⚠️", "server.json lama: sdkPort == loginPort ("
+                                + sdkPort + ") — port itu dipertahankan untuk SDK (QHinfo); "
+                                + "port LOGIN digeser otomatis ke " + loginPort
+                                + " (pemisahan 0.0.2 — pola 5-server asli)", null);
                     }
                     String us = grepStr(raw, "\"useSdk\"");
                     if (us != null) {
@@ -143,7 +175,12 @@ public final class Config {
         return debugPort;
     }
 
-    /** Port server LOGIN lokal (engine.io v3 + socket.io v2) — bawaan 8610. */
+    /** Port server SDK lokal (HTTP murni /v1/* + /loginchecknative) — bawaan 8610. */
+    public static int sdkPort() {
+        return sdkPort;
+    }
+
+    /** Port server LOGIN lokal (engine.io v3 + socket.io v2 murni) — bawaan 8611. */
     public static int loginPort() {
         return loginPort;
     }
@@ -258,6 +295,7 @@ public final class Config {
                 + "  \"mode\": \"" + mode + "\",\n"
                 + "  \"gamePort\": " + gamePort + ",\n"
                 + "  \"debugPort\": " + debugPort + ",\n"
+                + "  \"sdkPort\": " + sdkPort + ",\n"
                 + "  \"loginPort\": " + loginPort + ",\n"
                 + "  \"useSdk\": " + useSdk + ",\n"
                 + "  \"bind\": \"127.0.0.1\",\n"

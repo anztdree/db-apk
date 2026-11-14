@@ -543,13 +543,16 @@ public final class GameServer extends NanoHTTPD {
             byte[] b = readAllBytes(f);
             long ms = System.currentTimeMillis() - t0;
             // Pengaman konfigurasi (sekali per proses): bin manual memakai port
-            // DEFAULT (8080/8610) — bila server.json mengubah port, paket manual
-            // harus dibuat ulang (bukan ditulis-ulang saat runtime — keputusan 0.5.3).
-            if (!portWarned && (Config.gamePort() != 8080 || Config.loginPort() != 8610)) {
+            // DEFAULT 0.0.2 (game 8080 · login socket 8611 · SDK 8610) — bila
+            // server.json mengubah port, paket manual harus dibuat ulang (bukan
+            // ditulis-ulang saat runtime — keputusan 0.5.3).
+            if (!portWarned && (Config.gamePort() != 8080 || Config.loginPort() != 8611
+                    || Config.sdkPort() != 8610)) {
                 portWarned = true;
-                HumanLog.ev("⚠️", "Port server.json beda dari bin manual (8080/8610) — paket config-offline "
+                HumanLog.ev("⚠️", "Port server.json beda dari bin manual (8080/8611/8610) — paket config-offline "
                         + "harus dibuat ulang agar cocok", "gamePort=" + Config.gamePort()
-                        + " · loginPort=" + Config.loginPort());
+                        + " · loginPort=" + Config.loginPort()
+                        + " · sdkPort=" + Config.sdkPort());
             }
             // 0.5.4 — feed: SATU baris padat (dedupe 10 mnt); ISI PENUH (bedah
             // field-per-field + teks setting.json) → seksi CONFIG dasbor (show/hide).
@@ -803,11 +806,13 @@ public final class GameServer extends NanoHTTPD {
                 // ditulis-ulang SEBELUM disajikan — klien tidak pernah langsung ke
                 // login.popoh5.com; server login lokal yang meneruskan utuh.
                 if (uri.endsWith("setting_BS_Android.bin")) {
-                    byte[] rw = SettingBin.rewrittenOnline(data, Config.gamePort(), Config.loginPort());
+                    byte[] rw = SettingBin.rewrittenOnline(data, Config.gamePort(), Config.loginPort(),
+                            Config.sdkPort());
                     String originalPlain = SettingBin.decryptedPlain(bos.toByteArray());
                     if (rw != data) {
                         data = rw;
-                        String plain = SettingBin.plainOnline(bos.toByteArray(), Config.gamePort(), Config.loginPort());
+                        String plain = SettingBin.plainOnline(bos.toByteArray(), Config.gamePort(),
+                                Config.loginPort(), Config.sdkPort());
                         txt = (plain == null) ? txt : plain;
                         rewriteNote = " · login + url H5 ditulis-ulang ke server lokal";
                     }

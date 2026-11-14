@@ -19,7 +19,9 @@ import com.db.local.server.LogGroups;
 import com.db.local.server.LoginData;
 import com.db.local.server.LoginServer;
 import com.db.local.server.SdkData;
+import com.db.local.server.SdkServer;
 import com.db.local.server.SettingBin;
+import com.db.local.server.StatusStore;
 import com.db.local.server.Xxtea;
 
 /**
@@ -75,6 +77,9 @@ public class HarnessSdk {
         rmrf(root);
         File conf = new File(root, "config");
         conf.mkdirs();
+        // 0.0.2 — server.json SENGaja bentuk LAMA (loginPort 8610, tanpa
+        // "sdkPort") untuk menguji MIGRASI pemisahan port: SDK tetap 8610,
+        // login socket digeser otomatis ke 8611 (lihat TAHAP 3).
         write(new File(conf, "server.json"),
                 "{\"mode\":\"local\",\"gamePort\":8080,\"debugPort\":4000,\"loginPort\":8610,\"useSdk\":false}");
         write(new File(conf, "servers.json"),
@@ -84,10 +89,11 @@ public class HarnessSdk {
         // ---------------- 0.5.3: paket CONFIG OFFLINE MANUAL (folder config-offline/) ----------------
         File off = new File(root, "config-offline");
         off.mkdirs();
+        // 0.0.2 — field KONTRAK KLIEN saja (tanpa upstream/urlInner/chatInner)
         write(new File(off, "servers.json"),
                 "{\"errorCode\":0,\"serverList\":[{\"serverId\":\"1\",\"url\":\"http://127.0.0.1:8080\","
                         + "\"new\":true,\"hot\":true,\"name\":\"Server Lokal\",\"online\":true,\"openDate\":\"\","
-                        + "\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\",\"urlInner\":\"\",\"chatInner\":\"\"}],\"history\":[]}");
+                        + "\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\"}],\"history\":[]}");
 
         // ---------------- TAHAP 1: MIGRASI txt lama → dragonball.db ----------------
         write(new File(conf, "local-user.txt"), LEGACY_GUEST + "\n");
@@ -122,13 +128,23 @@ public class HarnessSdk {
         check("REBOOT: sesi tetap", Db.i().session(LEGACY_TOKEN) != null);
         check("REBOOT: tidak ada impor dobel (jumlah akun tetap 1)", LoginData.accountCount() == 1);
 
-        // ---------------- TAHAP 3: server login + seluruh jalur SDK (regresi 0.4.2) ----------------
-        Config.load(root); // mode LOCAL dari server.json (tanpa ini default = online → proxy)
-        LoginServer ls = new LoginServer("127.0.0.1", 8610);
+        // ---------------- TAHAP 3: server SDK + server login TERPISAH + seluruh
+        // jalur SDK (regresi 0.4.2) — 0.0.2 PEMISAHAN PORT ----------------
+        Config.load(root); // server.json LEGACY (loginPort 8610, tanpa sdkPort)
+        // 0.0.2 migrasi: sdkPort==loginPort → SDK mempertahankan 8610 (QHinfo),
+        // login socket digeser 8611 — keputusan terekam log, tanpa asumsi diam.
+        check("0.0.2 migrasi server.json legacy: sdkPort tetap 8610 (QHinfo menunjuk ke sana)",
+                Config.sdkPort() == 8610);
+        check("0.0.2 migrasi server.json legacy: loginPort digeser otomatis ke 8611 (tidak bentrok)",
+                Config.loginPort() == 8611);
+        SdkServer ssx = new SdkServer("127.0.0.1", Config.sdkPort());
+        ssx.start(500, false);
+        LoginServer ls = new LoginServer("127.0.0.1", Config.loginPort());
         ls.start(500, false);
         Thread.sleep(700);
 
-        String base = "http://127.0.0.1:8610";
+        String base = "http://127.0.0.1:8610";   // SDK HTTP murni (SdkServer)
+        String lbase = "http://127.0.0.1:8611";  // login socket murni (LoginServer)
         String dev = "DEVTEST0123456789";
 
         // 1) /v1/system/init — envelope persis SDK
@@ -230,9 +246,15 @@ public class HarnessSdk {
         check("loginGame skema server asli utuh", r.contains("loginToken") && r.contains("isCreated"));
         check("DB: akun loginGame tercatat", Db.i().account("penjagabaru") != null);
 
-        // 10) socket.io handshake + GetServerList (regresi 0.4.0)
+        // 10) socket.io handshake + GetServerList (regresi 0.4.0) — 0.0.2: di port LOGIN 8611
+        r = get(lbase + "/socket.io/?EIO=3&transport=polling&t=1");
+        check("handshake engine.io framing 0{...}40 (port login 8611)", r.contains(":0{") && r.contains(":40"));
         r = get(base + "/socket.io/?EIO=3&transport=polling&t=1");
-        check("handshake engine.io framing 0{...}40", r.contains(":0{") && r.contains(":40"));
+        check("0.0.2 pemisahan: port SDK 8610 TIDAK melayani /socket.io/ (satu port satu peran)",
+                !r.contains(":0{") && !r.contains(":40"));
+        r = get(lbase + "/v1/system/init");
+        check("0.0.2 pemisahan: port LOGIN 8611 menolak /v1/* dengan penunjuk jalan ke 8610",
+                r.contains("pindah ke port 8610"));
         frame = "420[\"handler.process\",{\"action\":\"GetServerList\"}]";
         r = socketIoPost(frame);
         check("GetServerList 1 server (paket MANUAL)", r.contains("serverId"));
@@ -240,6 +262,8 @@ public class HarnessSdk {
                 r.contains("http://127.0.0.1:8080"));
         check("GetServerList OFFLINE: TIDAK ada url popoh5 di jawaban",
                 !r.contains("popoh5.com"));
+        check("0.0.2 paket serverList: field kontrak klien saja (tanpa upstream/urlInner/chatInner)",
+                !r.contains("\"upstream\"") && !r.contains("urlInner") && !r.contains("chatInner"));
 
         // 11) rewrite setting bin — loginServer TANPA port + userid sesi SDK
         String binJson = "{\n\t\"testMode\": 1,\n"
@@ -253,13 +277,16 @@ public class HarnessSdk {
                 + "\t\"clientParams\": {\"supportLang\": []}\n}";
         File binEnc = new File(conf, "setting-test.bin");
         write(binEnc, new String(xor(binJson.getBytes("UTF-8")), "ISO-8859-1"));
+        // 2-arg — delegasi penuh ke Config (setelah migrasi: login 8611 · SDK 8610)
+        // + userid sesi SDK dari dragonball.db/jaring memori.
         byte[] out = SettingBin.rewrittenLocal(binEnc, 8080);
         String outJson = new String(xor(out), "UTF-8");
         check("bin loginServer TANPA port (FIX 0.4.2)",
                 outJson.contains("\"loginServer\": \"http://127.0.0.1\"")
                         && outJson.contains("\"loginWebPort\": 8610")
                         && !outJson.contains("\"loginServer\": \"http://127.0.0.1:"));
-        check("bin loginPort 8610", outJson.contains("\"loginPort\": 8610"));
+        check("0.0.2 bin loginPort 8611 (socket) + loginWebPort 8610 (loginchecknative → SDK) TERPISAH",
+                outJson.contains("\"loginPort\": 8611") && outJson.contains("\"loginWebPort\": 8610"));
         check("bin url game → 127.0.0.1:8080", outJson.contains("http://127.0.0.1:8080/bs/index-native.html"));
         check("bin url userid = sesi SDK (penjagabaru — dari dragonball.db)",
                 outJson.contains("userid=penjagabaru"));
@@ -412,7 +439,7 @@ public class HarnessSdk {
                 + "\"tsLoginServer\":\"http://118.24.68.91:7003\","
                 + "\"loginPort\":\"610\",\"loginWebPort\":\"510\"}";
         byte[] binOnlineEnc = xor(binOnlineJson.getBytes("UTF-8"));
-        byte[] binOnlineOut = SettingBin.rewrittenOnline(binOnlineEnc, 8080, 8610);
+        byte[] binOnlineOut = SettingBin.rewrittenOnline(binOnlineEnc, 8080, 8611, 8610);
         String binOnlinePlain = new String(xor(binOnlineOut), "UTF-8");
         check("0.5.1 ONLINE bin: url H5 → port game lokal (8080)",
                 "http://127.0.0.1:8080/bs/index-native.html?v=9".equals(jsonStr(binOnlinePlain, "url")));
@@ -420,11 +447,11 @@ public class HarnessSdk {
                 "http://127.0.0.1:8080/bs/upgrade".equals(jsonStr(binOnlinePlain, "update")));
         check("0.5.1 ONLINE bin: loginServer → server login lokal (TANPA port — gaya 0.4.2)",
                 "http://127.0.0.1".equals(jsonStr(binOnlinePlain, "loginServer")));
-        check("0.5.1 ONLINE bin: loginPort + loginWebPort → 8610",
-                "8610".equals(jsonStr(binOnlinePlain, "loginPort"))
+        check("0.0.2 ONLINE bin: loginPort 8611 (socket) + loginWebPort 8610 (SDK) TERPISAH",
+                "8611".equals(jsonStr(binOnlinePlain, "loginPort"))
                         && "8610".equals(jsonStr(binOnlinePlain, "loginWebPort")));
-        check("0.5.1 ONLINE bin: tsLoginServer → server login lokal",
-                "http://127.0.0.1:8610".equals(jsonStr(binOnlinePlain, "tsLoginServer")));
+        check("0.0.2 ONLINE bin: tsLoginServer → server login lokal :8611",
+                "http://127.0.0.1:8611".equals(jsonStr(binOnlinePlain, "tsLoginServer")));
         check("0.5.1 ONLINE bin: tsUrl tetap ASLI (varian uji — persis gaya LOCAL)",
                 "http://dragon.sjmobilegame.com:82/bs103/index-native.html"
                         .equals(jsonStr(binOnlinePlain, "tsUrl")));
@@ -434,9 +461,9 @@ public class HarnessSdk {
                 !new String(binOnlineOut).contains("loginServer"));
         // 16b) serversetting.json mode ONLINE (GameServer passthrough): loginserver → lokal
         String ssAsli = "{\n\t\"loginserver\": \"https://login.popoh5.com:610\",\n\t\"requireSDK\": false\n}";
-        String ssBaru = SettingBin.setJsonValue(ssAsli, "loginserver", "http://127.0.0.1:8610");
-        check("0.5.1 ONLINE serversetting: loginserver → http://127.0.0.1:8610",
-                ssBaru.contains("http://127.0.0.1:8610") && !ssBaru.contains("login.popoh5.com"));
+        String ssBaru = SettingBin.setJsonValue(ssAsli, "loginserver", "http://127.0.0.1:8611");
+        check("0.5.1 ONLINE serversetting: loginserver → http://127.0.0.1:8611 (socket login)",
+                ssBaru.contains("http://127.0.0.1:8611") && !ssBaru.contains("login.popoh5.com"));
         check("0.5.1 ONLINE serversetting: field lain UTUH (requireSDK)",
                 ssBaru.contains("requireSDK") && ssBaru.contains("false"));
         // 16c) passthrough engine.io — parser framing (dipakai log alur ONLINE)
@@ -477,8 +504,8 @@ public class HarnessSdk {
         check("0.5.2 akar bin: loginServer ASLI → lokal ditulis dua-duanya",
                 akar.contains("https://login.popoh5.com")
                         && akar.contains("http://127.0.0.1"));
-        check("0.5.2 akar bin: port 610 → 8610 terlihat",
-                akar.contains("610") && akar.contains("8610"));
+        check("0.5.2 akar bin: port 610 → 8611 (socket) & 8610 (SDK) terlihat",
+                akar.contains("610") && akar.contains("8611") && akar.contains("8610"));
         check("0.5.2 akar bin: peran loginWebPort dijelaskan (loginchecknative)",
                 akar.contains("loginchecknative"));
         check("0.5.2 akar bin: config tanpa clientParams dilaporkan jujur",
@@ -517,7 +544,7 @@ public class HarnessSdk {
         String akarSs = ConfigAkar.serversetting(ssAsli, ssBaru);
         check("0.5.2 akar serversetting: loginserver ASLI → klien (tanda →)",
                 akarSs.contains("https://login.popoh5.com:610")
-                        && akarSs.contains("→") && akarSs.contains("http://127.0.0.1:8610"));
+                        && akarSs.contains("→") && akarSs.contains("http://127.0.0.1:8611"));
         check("0.5.2 akar serversetting: requireSDK ditandai (asli)",
                 akarSs.contains("requireSDK") && akarSs.contains("(asli)"));
         check("0.5.2 akar serversetting: enkripsi disebut (JSON polos)",
@@ -559,23 +586,25 @@ public class HarnessSdk {
                 !darurat.contains("popoh5.com"));
         LoginData.init(conf, off); // pulihkan sumber manual untuk sisa uji
         // 18c) templat paket manual: semua alamat lokal, nol popoh5 (kunci isi)
+        // 0.0.2 — loginPort 8611 (socket) + loginWebPort 8610 (loginchecknative → SDK)
         String templatBin = "{\"testMode\":1,"
                 + "\"url\":\"http://127.0.0.1:8080/bs/index-native.html\","
                 + "\"tsUrl\":\"http://127.0.0.1:8080/bs/index-native.html\","
                 + "\"update\":\"http://127.0.0.1:8080/bs/upgrade\","
                 + "\"checkTime\":300,\"loginServer\":\"http://127.0.0.1\","
-                + "\"tsLoginServer\":\"http://127.0.0.1:8610\","
-                + "\"loginPort\":8610,\"loginWebPort\":8610}";
+                + "\"tsLoginServer\":\"http://127.0.0.1:8611\","
+                + "\"loginPort\":8611,\"loginWebPort\":8610}";
         check("0.5.3 templat bin manual: semua endpoint = 127.0.0.1",
                 templatBin.indexOf("popoh5") < 0 && templatBin.indexOf("sjmobilegame") < 0
                         && templatBin.contains("http://127.0.0.1"));
-        check("0.5.3 templat bin manual: loginServer TANPA port (shell sambung sendiri)",
+        check("0.5.3 templat bin manual: loginServer TANPA port + loginPort 8611 TERPISAH loginWebPort 8610",
                 templatBin.contains("\"loginServer\":\"http://127.0.0.1\"")
-                        && templatBin.contains("\"loginPort\":8610"));
-        // 18d) serversetting manual: loginserver lokal + requireSDK false
-        String ssManual = "{\n\t\"loginserver\": \"http://127.0.0.1:8610\",\n\t\"requireSDK\": false\n}";
-        check("0.5.3 serversetting manual: loginserver lokal, nol popoh5",
-                ssManual.contains("http://127.0.0.1:8610") && ssManual.indexOf("popoh5") < 0);
+                        && templatBin.contains("\"loginPort\":8611")
+                        && templatBin.contains("\"loginWebPort\":8610"));
+        // 18d) serversetting manual: loginserver lokal (socket login 8611) + requireSDK false
+        String ssManual = "{\n\t\"loginserver\": \"http://127.0.0.1:8611\",\n\t\"requireSDK\": false\n}";
+        check("0.5.3 serversetting manual: loginserver lokal :8611, nol popoh5",
+                ssManual.contains("http://127.0.0.1:8611") && ssManual.indexOf("popoh5") < 0);
         check("0.5.3 serversetting manual: requireSDK false (dibaca ConfigAkar)",
                 "false".equals(SettingBin.getJsonRaw(ssManual, "requireSDK")));
         // 18e) pembedah akar tetap bekerja utk paket manual (asli == klien)
@@ -926,6 +955,77 @@ public class HarnessSdk {
         gs22.stop();
         gs22 = null;
 
+        // ---------------- TAHAP 23: PEMISAHAN PORT 0.0.2 — SDK :8610 & LOGIN :8611
+        // (owner: "pola server aslinya punya 5 server utama.. SDK, login, main,
+        // chat, dungeon, terpisah dengan berbagai port" + "SDK dan loginserver
+        // harus matang sempurna rapi") ----------------
+        // 23a) paket nyata di repo: setting.json = kontrak pemisahan port;
+        //      bin = XOR(setting.json) EXACT; serversetting menunjuk login :8611.
+        if (args.length > 1 && args[1] != null && args[1].length() > 0) {
+            File paketDir = new File(new File(new File(new File(args[1], "local-server"),
+                    "assets"), "server"), "config-offline");
+            if (paketDir.isDirectory()) {
+                try {
+                    File setJson = new File(paketDir, "setting.json");
+                    File setBin = new File(paketDir, "setting_BS_Android.bin");
+                    File srvJson = new File(paketDir, "servers.json");
+                    File srvSet = new File(paketDir, "serversetting.json");
+                    String setTxt = readAll(new FileInputStream(setJson));
+                    byte[] binAsli = new byte[(int) setBin.length()];
+                    java.io.DataInputStream din = new java.io.DataInputStream(new FileInputStream(setBin));
+                    din.readFully(binAsli);
+                    din.close();
+                    check("23 paket nyata: setting_BS_Android.bin = XOR(setting.json) EXACT (dua arah)",
+                            new String(xor(binAsli), "UTF-8").equals(setTxt));
+                    check("23 paket nyata: setting.json loginPort 8611 (login socket)",
+                            setTxt.contains("\"loginPort\": 8611"));
+                    check("23 paket nyata: setting.json loginWebPort 8610 (loginchecknative → SDK)",
+                            setTxt.contains("\"loginWebPort\": 8610"));
+                    String srvTxt = readAll(new FileInputStream(srvJson));
+                    check("23 paket nyata: servers.json kontrak klien saja (tanpa upstream/urlInner/chatInner)",
+                            !srvTxt.contains("\"upstream\"") && !srvTxt.contains("urlInner")
+                                    && !srvTxt.contains("chatInner"));
+                    check("23 paket nyata: servers.json url entri lokal 127.0.0.1:8080",
+                            srvTxt.contains("http://127.0.0.1:8080"));
+                    String srvSetTxt = readAll(new FileInputStream(srvSet));
+                    check("23 paket nyata: serversetting.json loginserver = http://127.0.0.1:8611",
+                            srvSetTxt.contains("http://127.0.0.1:8611"));
+                    // 23b) manifest.txt = sha256 SETIAP file cocok (paket tak boleh geser diam-diam)
+                    String mani = readAll(new FileInputStream(new File(paketDir, "manifest.txt")));
+                    String[] cek = {"setting.json", "setting_BS_Android.bin",
+                            "serversetting.json", "servers.json"};
+                    boolean shaOk = true;
+                    StringBuilder shaBad = new StringBuilder();
+                    for (String nm : cek) {
+                        java.security.MessageDigest md =
+                                java.security.MessageDigest.getInstance("SHA-256");
+                        byte[] isi = readAll(new FileInputStream(new File(paketDir, nm)))
+                                .getBytes("UTF-8");
+                        byte[] h = md.digest(isi);
+                        StringBuilder hx = new StringBuilder();
+                        for (byte x : h) {
+                            hx.append(String.format("%02x", x));
+                        }
+                        if (!mani.contains(hx.toString())) {
+                            shaOk = false;
+                            shaBad.append(' ').append(nm);
+                        }
+                    }
+                    check("23 paket nyata: manifest.txt sha256 cocok SEMUA file"
+                            + (shaOk ? "" : " — geser:" + shaBad), shaOk);
+                } catch (Throwable t23) {
+                    check("23 paket nyata: audit paket gagal jalan — " + t23, false);
+                }
+            }
+        }
+        // 23c) StatusStore membawa versi 0.0.2 + status SDK terpisah
+        String stJson = StatusStore.toJson();
+        check("23 StatusStore: version = 0.0.2",
+                stJson.contains("\"version\":\"0.0.2\""));
+        check("23 StatusStore: sdkPort/sdkAlive + loginPort/loginAlive terpisah",
+                stJson.contains("\"sdkPort\"") && stJson.contains("\"sdkAlive\"")
+                        && stJson.contains("\"loginPort\"") && stJson.contains("\"loginAlive\""));
+
         System.out.println();
         System.out.println("==== HASIL: " + pass + " LULUS, " + fail + " GAGAL ====");
         System.exit(fail == 0 ? 0 : 1);
@@ -1007,21 +1107,22 @@ public class HarnessSdk {
         return out;
     }
 
-    /** POST engine.io berframing ke /socket.io/ (payload socket.io event). */
+    /** POST engine.io berframing ke /socket.io/ (payload socket.io event).
+     *  0.0.2 — port LOGIN 8611 (socket murni; SDK sudah pindah 8610). */
     static String socketIoPost(String eventJson) throws Exception {
-        String hs = get("http://127.0.0.1:8610/socket.io/?EIO=3&transport=polling&t=1");
+        String hs = get("http://127.0.0.1:8611/socket.io/?EIO=3&transport=polling&t=1");
         int a = hs.indexOf('{');
         int b = hs.indexOf('}', a);
         String sid = jsonStr(hs.substring(a, b + 1), "sid");
         // CONNECT berframing: "2:40"
         String body = 2 + ":" + "40";
-        post("http://127.0.0.1:8610/socket.io/?EIO=3&transport=polling&sid=" + URLEncoder.encode(sid, "UTF-8"),
+        post("http://127.0.0.1:8611/socket.io/?EIO=3&transport=polling&sid=" + URLEncoder.encode(sid, "UTF-8"),
                 body);
         // EVENT berframing: "<len>:420[...]"
         body = eventJson.length() + ":" + eventJson;
-        post("http://127.0.0.1:8610/socket.io/?EIO=3&transport=polling&sid=" + URLEncoder.encode(sid, "UTF-8"),
+        post("http://127.0.0.1:8611/socket.io/?EIO=3&transport=polling&sid=" + URLEncoder.encode(sid, "UTF-8"),
                 body);
-        return get("http://127.0.0.1:8610/socket.io/?EIO=3&transport=polling&sid=" + URLEncoder.encode(sid, "UTF-8"));
+        return get("http://127.0.0.1:8611/socket.io/?EIO=3&transport=polling&sid=" + URLEncoder.encode(sid, "UTF-8"));
     }
 
     static void check(String name, boolean ok) {

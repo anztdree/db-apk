@@ -225,9 +225,12 @@ public final class LoginData {
      * CONFIG OFFLINE manual (config-offline/servers.json — 1 entri "Server Lokal"
      * url http://127.0.0.1:&lt;gamePort&gt;). Snapshot online DIHAPUS dari jalur
      * aktif (owner: "online cuma jejak arah bukan config asli ke offline").
-     * Format yang dibaca H5 (main.min): {errorCode, serverList:[{serverId,url,name,
-     * online,new,hot,openDate,offlineReason,merge,mergeTo,urlInner,chatInner}],
-     * history}.
+     * 0.0.2 — format = KONTRAK KLIEN SAJA (hasil bedah main.min: field yang
+     * BENAR-BENAR dibaca): {errorCode, serverList:[{serverId,url,name,online,new,
+     * hot,openDate,offlineReason,merge,mergeTo}], history}. Field urlInner/
+     * chatInner/upstream DIBUANG — tidak pernah dibaca klien (0 referensi di
+     * JS) dan bukan kontrak; urlInner/chatInner warisan respons online,
+     * upstream ciptaan era relay.
      */
     public static String serverListData() {
         synchronized (LOCK) {
@@ -248,11 +251,11 @@ public final class LoginData {
             if (raw == null || raw.indexOf("\"serverList\"") < 0) {
                 // fallback darurat — TETAP LOKAL (tidak pernah popoh5): satu entri
                 // manual dengan url port game aktif supaya Play tetap masuk lokal.
+                // 0.0.2 — field kontrak klien saja (tanpa upstream/urlInner/chatInner).
                 raw = "{\"errorCode\":0,\"serverList\":[{\"serverId\":\"1\","
                         + "\"url\":\"http://127.0.0.1:" + Config.gamePort() + "\",\"new\":true,\"hot\":true,"
                         + "\"name\":\"Server Lokal\",\"online\":true,\"openDate\":\"\","
-                        + "\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\",\"upstream\":\"\","
-                        + "\"urlInner\":\"\",\"chatInner\":\"\"}],\"history\":[]}";
+                        + "\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\"}],\"history\":[]}";
                 try {
                     HumanLog.ev("⚠️", "config-offline/servers.json tidak ada atau salah format"
                             + " — memakai daftar darurat 1 server LOKAL (127.0.0.1)",

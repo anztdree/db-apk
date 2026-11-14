@@ -78,7 +78,8 @@ public final class SettingBin {
      * kombinasi file+port agar tidak menghitung ulang tiap permintaan.
      */
     public static byte[] rewrittenLocal(File f, int gamePort) {
-        return rewrittenLocal(f, gamePort, Config.loginPort(), Config.useSdk() ? null : currentUserIdSuffix());
+        return rewrittenLocal(f, gamePort, Config.loginPort(), Config.sdkPort(),
+                Config.useSdk() ? null : currentUserIdSuffix());
     }
 
     /**
@@ -97,9 +98,15 @@ public final class SettingBin {
         return LoginData.localUserId();
     }
 
-    /** Versi lengkap — dipanggil GameServer dengan nilai config aktif. */
-    public static byte[] rewrittenLocal(File f, int gamePort, int loginPort, String userIdSuffix) {
+    /** Versi lengkap — dipanggil harness dgn nilai config aktif.
+     *  0.0.2 — loginPort (socket.io login) dan loginWebPort (loginchecknative
+     *  → SDK) TERPISAH: shell menyambung loginServer+":"+loginPort untuk
+     *  socket login dan loginServer+":"+loginWebPort untuk loginchecknative.
+     *  Dulu keduanya dipaksa sama — itulah tumpang-sihid 8610 yang kini dipecah. */
+    public static byte[] rewrittenLocal(File f, int gamePort, int loginPort, int loginWebPort,
+            String userIdSuffix) {
         String key = f.length() + ":" + f.lastModified() + ":" + gamePort + ":" + loginPort
+                + ":" + loginWebPort
                 + ":" + (userIdSuffix == null ? "-" : userIdSuffix);
         byte[] c = cache;
         if (c != null && key.equals(cacheKey)) {
@@ -110,14 +117,15 @@ public final class SettingBin {
             if (c != null && key.equals(cacheKey)) {
                 return c;
             }
-            byte[] out = compute(f, gamePort, loginPort, userIdSuffix);
+            byte[] out = compute(f, gamePort, loginPort, loginWebPort, userIdSuffix);
             cache = out;
             cacheKey = key;
             return out;
         }
     }
 
-    private static byte[] compute(File f, int gamePort, int loginPort, String userIdSuffix) {
+    private static byte[] compute(File f, int gamePort, int loginPort, int loginWebPort,
+            String userIdSuffix) {
         try {
             byte[] enc = readAll(f);
             byte[] plain = xor(enc);
@@ -127,9 +135,10 @@ public final class SettingBin {
             // menyambung ":"+loginPort / ":"+loginWebPort sendiri (loginchecknative).
             replaced = replaced.replace(LOGIN_ORIGINAL, "http://127.0.0.1");
             replaced = replaced.replace(TS_LOGIN_ORIGINAL, "http://127.0.0.1:" + loginPort);
-            // port login asli (610 web socket login, 510 web login SDK) → port login lokal
+            // 0.0.2 — dua port BERBEDA: loginPort (socket.io login, 8611) dan
+            // loginWebPort (loginchecknative → server SDK, 8610).
             replaced = setJsonValue(replaced, "loginPort", String.valueOf(loginPort));
-            replaced = setJsonValue(replaced, "loginWebPort", String.valueOf(loginPort));
+            replaced = setJsonValue(replaced, "loginWebPort", String.valueOf(loginWebPort));
             // PR3/0.4.2: userid url H5 = identitas sesi SDK (fallback guest lokal)
             if (userIdSuffix != null && userIdSuffix.length() > 0) {
                 String url = getJsonValue(replaced, "url");
@@ -162,9 +171,10 @@ public final class SettingBin {
      * Input = byte bin ASLI hasil passthrough dari server asli (GameServer
      * servePassthrough memanggil ini sebelum menyajikan). Gagal apa pun →
      * byte asli kembali (perilaku lama — game tetap jalan).
+     * 0.0.2 — loginWebPort dipisah (loginchecknative → server SDK).
      */
-    public static byte[] rewrittenOnline(byte[] enc, int gamePort, int loginPort) {
-        String plain = plainOnline(enc, gamePort, loginPort);
+    public static byte[] rewrittenOnline(byte[] enc, int gamePort, int loginPort, int loginWebPort) {
+        String plain = plainOnline(enc, gamePort, loginPort, loginWebPort);
         if (plain == null) {
             return enc;
         }
@@ -179,14 +189,14 @@ public final class SettingBin {
      * 0.5.1 — teks hasil dekripsi + tulis-ulang mode ONLINE (bahan Capture);
      * null bila gagal. Penggantian = PERSIS rewrittenOnline.
      */
-    static String plainOnline(byte[] enc, int gamePort, int loginPort) {
+    static String plainOnline(byte[] enc, int gamePort, int loginPort, int loginWebPort) {
         try {
             String s = new String(xor(enc), "UTF-8");
             String replaced = s.replace(HOST_ORIGINAL, "http://127.0.0.1:" + gamePort);
             replaced = replaced.replace(LOGIN_ORIGINAL, "http://127.0.0.1");
             replaced = replaced.replace(TS_LOGIN_ORIGINAL, "http://127.0.0.1:" + loginPort);
             replaced = setJsonValue(replaced, "loginPort", String.valueOf(loginPort));
-            replaced = setJsonValue(replaced, "loginWebPort", String.valueOf(loginPort));
+            replaced = setJsonValue(replaced, "loginWebPort", String.valueOf(loginWebPort));
             if (replaced.equals(s)) {
                 return null; // tidak ada yang cocok — biarkan asli
             }
@@ -213,7 +223,7 @@ public final class SettingBin {
             // (0.5.0 — decryptedRewritten tetap gaya LOCAL; mode ONLINE memakai
             //  plainOnline() terpisah agar kedua gaya tidak saling menimpa)
             replaced = setJsonValue(replaced, "loginPort", String.valueOf(Config.loginPort()));
-            replaced = setJsonValue(replaced, "loginWebPort", String.valueOf(Config.loginPort()));
+            replaced = setJsonValue(replaced, "loginWebPort", String.valueOf(Config.sdkPort()));
             if (!Config.useSdk()) {
                 String uid = currentUserIdSuffix();
                 if (uid != null && uid.length() > 0) {

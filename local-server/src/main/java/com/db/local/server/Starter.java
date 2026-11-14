@@ -16,8 +16,13 @@ import java.io.File;
  *    + default login (config/servers.json — daftar server snapshot asli) bila belum ada
  * 4) Dasbor debug di port 4000 (hanya developer — game tidak tahu port ini)
  * 5) Port GAME di port 8080 — endpoint client menunjuk ke sini (LOCAL/ONLINE)
- * 6) Server LOGIN lokal di port 8610 — engine.io v3 + socket.io v2 (PR3 0.4.0;
- *    loginGame/GetServerList dilayani dari data lokal — README §2.10) + TAHAP SDK
+ * 6) Server SDK lokal di port 8610 — HTTP MURNI: /v1/* + /loginchecknative
+ *    (0.0.2 pemisahan port — dulu ditumpangkan di LoginServer; QHinfo shell
+ *    menunjuk ke sini; pola 5-server asli: SDK, login, main, chat, dungeon
+ *    terpisah port)
+ * 6b) Server LOGIN lokal di port 8611 — engine.io v3 + socket.io v2 MURNI
+ *    (0.0.2; dulu 8610 diganda dua peran) — loginGame/GetServerList dilayani
+ *    dari data lokal — README §2.10
  * 7) Monitor kesehatan server asli (log hanya saat berubah + denyut 10 menit)
  * 8) Tombol melayang switch mode yang BISA DIGESER (drag) — posisi tersimpan
  *
@@ -32,6 +37,7 @@ public final class Starter {
     private static volatile File tmpDir;
     private static volatile LocalServer dashboard;
     private static volatile GameServer gameServer;
+    private static volatile SdkServer sdkServer;
     private static volatile LoginServer loginServer;
     private static volatile Monitor monitor;
 
@@ -286,6 +292,7 @@ public final class Starter {
         }
         StatusStore.configure(Config.debugPort(), Config.gamePort(), Config.mode(),
                 root.getAbsolutePath(), c.getPackageName());
+        StatusStore.setSdkPort(Config.sdkPort());
         StatusStore.setLoginPort(Config.loginPort());
         try {
             StatusStore.setLoginUser(LoginData.localUserId());
@@ -327,10 +334,30 @@ public final class Starter {
                     "Sebab    : " + t + "\nLanjutan : cek port atau ubah gamePort di server.json — lalu buka ulang aplikasi");
         }
 
-        // ---------- 5b) server LOGIN lokal (PR3 0.4.0) ----------
+        // ---------- 5a) server SDK lokal (0.0.2 — PEMISAHAN PORT) ----------
+        // HTTP MURNI di port sdkPort (8610): /v1/* + /loginchecknative — layar
+        // login SDK asli (QHinfo shell menunjuk ke sini). Dulu API SDK ditumpang
+        // di dalam LoginServer :8610 — satu port dua peran = akar "berantakan";
+        // kini SATU PORT SATU PERAN (pola 5-server asli).
+        boolean sdkOk = false;
+        try {
+            SdkServer ss = new SdkServer("127.0.0.1", Config.sdkPort());
+            ss.start(2000, true);
+            sdkServer = ss;
+            StatusStore.markSdk(true);
+            sdkOk = true;
+        } catch (Throwable t) {
+            StatusStore.markSdk(false);
+            HumanLog.ev("❌", "Server SDK lokal GAGAL hidup di port " + Config.sdkPort()
+                    + " — layar login SDK & loginchecknative tidak akan berfungsi",
+                    "Sebab    : " + t + "\nLanjutan : cek sdkPort di server.json — lalu buka ulang aplikasi");
+        }
+
+        // ---------- 5b) server LOGIN lokal (PR3 0.4.0; 0.0.2 port 8611) ----------
         // Protokol SAMA dengan login.popoh5.com:610 (engine.io v3 + socket.io v2);
         // dipakai game bila mode LOCAL menulis-ulang endpoint login. Hidup selalu
-        // (bersebelahan) — mode ONLINE tidak menunjuk ke sini.
+        // (bersebelahan) — mode ONLINE tidak menunjuk ke sini. 0.0.2: MURNI
+        // socket.io — API SDK sudah pindah ke SdkServer di atas.
         boolean loginOk = false;
         try {
             LoginServer ls = new LoginServer("127.0.0.1", Config.loginPort());
@@ -341,13 +368,13 @@ public final class Starter {
         } catch (Throwable t) {
             StatusStore.markLogin(false);
             HumanLog.ev("❌", "Server login lokal GAGAL hidup di port " + Config.loginPort()
-                    + " — login guest lokal tidak akan berfungsi",
+                    + " — login game (socket.io) tidak akan berfungsi",
                     "Sebab    : " + t + "\nLanjutan : cek loginPort di server.json — lalu buka ulang aplikasi");
         }
         StatusStore.persist();
         // ===== BOOT SATU BARIS BERRINCI (0.4.9 — bentuk disetujui owner: emoji +
         // blok rincian ├─/└─ penuh, TIDAK dipangkas; dulu 3 baris terpisah) =====
-        if (dashOk && gameOk && loginOk) {
+        if (dashOk && gameOk && sdkOk && loginOk) {
             String dbInfo;
             try {
                 File dbf = new File(conf, "dragonball.db");
@@ -367,8 +394,9 @@ public final class Starter {
                         ? upEx[0] + " (relay OPSIONAL — isian pemilik config/game-upstream.txt)"
                         : "MESIN GAME LOKAL — Play dijawab server ini sendiri (kontrak protokol "
                                 + "dari kode klien, nilai pemain dari dragonball.db; NOL kontak keluar)";
-                modeDetail = "LOCAL — konten game: mirror www/ · login & akun: LOKAL :"
-                        + Config.loginPort() + " · config: paket MANUAL config-offline/ (apa adanya"
+                modeDetail = "LOCAL — konten game: mirror www/ · akun SDK: HTTP :"
+                        + Config.sdkPort() + " · login game: socket :" + Config.loginPort()
+                        + " (pemisahan 0.0.2) · config: paket MANUAL config-offline/ (apa adanya"
                         + " — tanpa tulis-ulang runtime) · daftar server: paket manual (1 entri lokal)"
                         + " · Play → socket game :" + Config.gamePort() + " → " + upTxt;
             } else {
@@ -379,19 +407,20 @@ public final class Starter {
                         + " (passthrough utuh) — token & progres tetap dari/ke server asli";
             }
             HumanLog.ev("🚀", "Server lokal siap — mode " + Config.mode().toUpperCase(),
-                    "Port    : game :" + Config.gamePort() + " · login :" + Config.loginPort()
+                    "Port    : game :" + Config.gamePort() + " · sdk :" + Config.sdkPort()
+                            + " · login :" + Config.loginPort()
                             + " · dasbor :" + Config.debugPort() + "\n"
                             + "Mode    : " + modeDetail + "\n"
                             + "Folder  : " + root.getAbsolutePath()
                             + " (" + (ext ? "penyimpanan eksternal" : "penyimpanan internal") + ")\n"
                             + "Pemain  : " + guestNote + " — sesi & data di " + dbInfo);
         }
-        if (!dashOk && gameServer == null) {
+        if (!dashOk && gameServer == null && sdkServer == null) {
             return; // tidak ada yang bisa dilanjutkan
         }
 
         // ---------- 5c) PENJAGA PORT (0.4.1) ----------
-        // Probe 8080 + 8610 tiap 5 dtk. Dulu kegagalan level KONEKSI tidak
+        // Probe 8080 + 8610 + 8611 tiap 5 dtk. Dulu kegagalan level KONEKSI tidak
         // terlihat sama sekali di log (server hanya mencatat permintaan yang
         // sampai) — game menampilkan “Please Check NetWork” tanpa petunjuk.
         // Kini: port mati = ⚠ di log (laporan pertama + tiap ±1 menit),
@@ -400,6 +429,7 @@ public final class Starter {
             Thread wd = new Thread(new Runnable() {
                 public void run() {
                     int gameMiss = 0;
+                    int sdkMiss = 0;
                     int loginMiss = 0;
                     while (true) {
                         try {
@@ -408,6 +438,7 @@ public final class Starter {
                             return;
                         }
                         gameMiss = watchdogProbe(Config.gamePort(), "game", gameMiss);
+                        sdkMiss = watchdogProbe(Config.sdkPort(), "sdk", sdkMiss);
                         loginMiss = watchdogProbe(Config.loginPort(), "login", loginMiss);
                     }
                 }

@@ -19,13 +19,15 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class StatusStore {
     private static final Object LOCK = new Object();
-    private static final String VERSION = "0.0.1";
+    private static final String VERSION = "0.0.2";
 
     private static String bind = "127.0.0.1";
     private static int port = 4000;
     private static int gamePort = 8080;
     private static volatile boolean gameAlive = false;
-    private static int loginPort = 8610;
+    private static int sdkPort = 8610;
+    private static volatile boolean sdkAlive = false;
+    private static int loginPort = 8611;
     private static volatile boolean loginAlive = false;
     private static volatile int wwwFiles = 0;
     private static String mode = "local"; // 0.5.5 UTAMANYA LOCAL — bawaan; ditimpa Config.mode() saat boot
@@ -65,6 +67,12 @@ public final class StatusStore {
         }
     }
 
+    static void setSdkPort(int p) {
+        synchronized (LOCK) {
+            sdkPort = p;
+        }
+    }
+
     static void setLoginPort(int p) {
         synchronized (LOCK) {
             loginPort = p;
@@ -74,6 +82,12 @@ public final class StatusStore {
     static void setLoginUser(String uid) {
         synchronized (LOCK) {
             loginUserId = uid == null ? "" : uid;
+        }
+    }
+
+    static void markSdk(boolean alive) {
+        synchronized (LOCK) {
+            sdkAlive = alive;
         }
     }
 
@@ -174,6 +188,8 @@ public final class StatusStore {
                     .append(Json.str("mode", mode)).append(',')
                     .append(Json.num("gamePort", gamePort)).append(',')
                     .append(Json.bool("gameAlive", gameAlive)).append(',')
+                    .append(Json.num("sdkPort", sdkPort)).append(',')
+                    .append(Json.bool("sdkAlive", sdkAlive)).append(',')
                     .append(Json.num("loginPort", loginPort)).append(',')
                     .append(Json.bool("loginAlive", loginAlive)).append(',')
                     .append(Json.num("loginAccounts", LoginData.accountCount())).append(',')

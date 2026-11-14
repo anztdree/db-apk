@@ -14,9 +14,9 @@ import java.util.concurrent.TimeUnit;
 import fi.iki.elonen.NanoHTTPD;
 
 /**
- * SERVER LOGIN LOKAL — port 8610 (config loginPort). Menerapkan protokol yang
- * SAMA dengan server asli login.popoh5.com:610, hasil rekayasa balik + probe
- * langsung 2026-11-02 (README §2.10):
+ * SERVER LOGIN LOKAL — port 8611 (config loginPort; 0.0.2 dulu 8610).
+ * Menerapkan protokol yang SAMA dengan server asli login.popoh5.com:610,
+ * hasil rekayasa balik + probe langsung 2026-11-02 (README §2.10):
  *
  *   engine.io v3 (EIO=3) transport polling + socket.io v2.1 (client game memakai
  *   socket.io.min v2.1.0 di bundle H5). Framing polling: "<panjang>:<paket>"
@@ -103,27 +103,24 @@ public final class LoginServer extends NanoHTTPD {
         String uri = session.getUri();
         Map<String, String> parms = session.getParms();
         try {
-            // 0.4.2 ALUR SDK: rute API quickgame + loginchecknative — dibaca dulu agar
-            // tidak jatuh ke 404 socket.io. Body POST dibaca SEKALI di sini (stream
-            // tidak bisa dibaca dua kali) lalu diteruskan ke SdkApi.
-            if ((uri.startsWith("/v1/") || uri.equals("/loginchecknative")
-                    || uri.equals("/loginchecknative/")) && m == Method.POST) {
-                String sdkBody = readBody(session);
-                Response r = SdkApi.handle(m, uri, parms, sdkBody);
-                if (r != null) {
-                    return r;
-                }
-            } else if (uri.startsWith("/v1/") || uri.equals("/loginchecknative")
+            // 0.0.2 PEMISAHAN PORT — API SDK (/v1/*, /loginchecknative) PINDAH ke
+            // SdkServer :sdkPort (8610). Server ini MURNI socket.io login — satu
+            // port satu peran (pola 5-server asli: SDK, login, main, chat,
+            // dungeon terpisah port). Permintaan SDK di sini = salah alamat:
+            // dijawab penunjuk jalan yang jelas, bukan dilayani diam-diam.
+            if (uri.startsWith("/v1/") || uri.equals("/loginchecknative")
                     || uri.equals("/loginchecknative/")) {
-                Response r = SdkApi.handle(m, uri, parms, "");
-                if (r != null) {
-                    return r;
-                }
+                return text(Response.Status.NOT_FOUND,
+                        "API SDK pindah ke port " + Config.sdkPort()
+                                + " (pemisahan 0.0.2 — satu port satu peran).\n"
+                                + "Port ini hanya melayani /socket.io/ (protokol login).\n"
+                                + "QHinfo shell tetap menunjuk " + Config.sdkPort() + ".");
             }
             if (!"/socket.io/".equals(uri) && !"/socket.io".equals(uri)) {
                 return text(Response.Status.NOT_FOUND,
-                        "Server login lokal melayani /socket.io/ (protokol game) + API SDK (/v1/*, "
-                                + "/loginchecknative). Dasbor developer ada di port " + Config.debugPort() + ".");
+                        "Server login lokal melayani /socket.io/ (protokol login) saja — murni socket\n"
+                                + "(0.0.2: API SDK pindah ke port " + Config.sdkPort() + ", dasbor "
+                                + Config.debugPort() + ").");
             }
             // 0.5.1 — mode ONLINE: passthrough utuh ke server login ASLI. Config
             // (bin/serversetting) sudah menulis-ulang jalur login ke server lokal

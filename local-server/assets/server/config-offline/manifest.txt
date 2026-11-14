@@ -1,29 +1,36 @@
 MANIFEST CONFIG OFFLINE — DISIAPKAN MANUAL (bukan hasil unduh server asli)
 Online hanya jejak arah format/protokol — semua nilai di bawah keputusan manual.
 
-sha256  a8eb0b30b0db39e981f40ca9b88fe652517529d1a8921cba2491f0516fd1d9ab
-  setting.json  ·  668 B
-sha256  caaae67fa242785dfab38224a698c99a63f56cb4efd949359ba03fec118fc368
-  setting_BS_Android.bin  ·  668 B
-sha256  057710e738589dbaef081374dcf0f85cdc263fa1940af270437928e1be64305e
-  serversetting.json  ·  66 B
-sha256  b2d52fccc12a2cd61472fe1686fda15a1d020e08689a45914eb17ea787f04dd6
-  servers.json  ·  688 B
+sha256  44cf3e0d130d6a7e10e162b520c07da7b40820aeca758a9848e992e6f81e7a56
+  setting.json  ·  1214 B
+sha256  0e27581cbaf0988336c524c79247f160d47cbb3f207d6f77643e1e1b1c114dbc
+  setting_BS_Android.bin  ·  1214 B
+sha256  607f9c65fd56d770f546dd128156812c1d40284ba62a750a8e9978fd3f086cc0
+  serversetting.json  ·  80 B
+sha256  a385bd129f2768e7121a72b0a7e8de9858c74b4484f8c24f9797982c839068f4
+  servers.json  ·  567 B
 
 CATATAN:
 - setting_BS_Android.bin = setting.json dienkripsi XOR kunci 'DragonBall' (protokol shell).
-- Port di dalam bin = DEFAULT (game 8080, login 8610). Jika server.json mengubah
-  port, file ini HARUS dibuat ulang (sunting setting.json, XOR ulang) - bukan saat runtime.
-- servers.json = entri manual 'Server Lokal' url http://127.0.0.1:8080 (tujuan io.connect
-  klien saat klik Play). FIELD "upstream" = tujuan relay :8080 PILIHAN PEMILIK —
-  KOSONG bawaan paket. TEGASAN PEMILIK 2026-11-14: dulu field ini pernah diisi
-  alamat server game ASLI mentah-mentah dari jejak online — KESALAHAN FATAL yang
-  sudah dikoreksi; online cuma JEJAK ARAH, bukan sumber nilai, dan LOCAL tidak
-  menyentuh server asli otomatis. Jalur mengisi relay = isian pemilik sendiri:
-  dasbor seksi CONFIG (tersimpan config/game-upstream.txt) — paket manual
-  TIDAK PERNAH membawa alamat server asli.
+- Port di dalam bin = DEFAULT 0.0.2 (game 8080 · login socket 8611 · SDK 8610).
+  Jika server.json mengubah port, file ini HARUS dibuat ulang (sunting
+  setting.json, XOR ulang) - bukan saat runtime.
+- PEMISAHAN PORT 0.0.2 (owner: "pola server aslinya punya 5 server utama..
+  SDK, login, main, chat, dungeon, terpisah dengan berbagai port"):
+  - loginPort 8611  = server LOGIN socket (engine.io v3 + socket.io v2 murni)
+  - loginWebPort 8610 = loginchecknative shell → server SDK HTTP murni
+    (QHinfo menunjuk http://127.0.0.1:8610)
+  Dulu keduanya 8610 diganda dua peran — kini satu port satu peran.
+- servers.json = entri manual 'Server Lokal' url http://127.0.0.1:8080 (tujuan
+  io.connect klien saat klik Play). 0.0.2 — HANYA FIELD KONTRAK KLIEN (bedah
+  main.min): serverId, url, new, hot, name, online, openDate, offlineReason,
+  merge, mergeTo. Field upstream/urlInner/chatInner DIHAPUS — tidak pernah
+  dibaca klien (0 referensi di JS): urlInner/chatInner warisan respons online,
+  upstream ciptaan era relay (pelanggaran fatal yang sudah dikoreksi — paket
+  TIDAK PERNAH membawa alamat server asli; tujuan relay opsional = isian
+  pemilik config/game-upstream.txt via dasbor seksi CONFIG).
 - REBUILD 0.0.1 — MESIN GAME LOKAL (GameEngine): klik Play TIDAK membutuhkan
-  relay lagi — protokol game dijawab server lokal sendiri (verify XXTEA kunci
+  relay — protokol game dijawab server lokal sendiri (verify XXTEA kunci
   "verification" dari kode klien, enterGame, aksi lanjutan, Notify). Nilai
   pemain dari dragonball.db (kv game_player:). Isian upstream pemilik kini
   berstatus OPSI relay yang tetap dihormati bila diisi.
