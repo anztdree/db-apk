@@ -3,15 +3,22 @@ package com.db.local.server;
 import java.io.File;
 
 /**
- * DRAGONBALL.DB — DATABASE SQLITE LOKAL (0.4.3).
+ * DRAGONBALL.DB — DATABASE SQLITE LOKAL (0.4.3; 0.0.3 pindah folder).
  *
- * Satu file <root>/config/dragonball.db — engine SQLite bawaan Android
+ * Satu file <root>/db/dragonball.db — engine SQLite bawaan Android
  * (android.database.sqlite — engine yang sama dipakai aplikasi sistem, nol
  * tambahan APK). Menggantikan penyimpanan txt/tab yang rapuh (tulis-ulang
  * penuh = korup bila mati di tengah, tanpa lock, tanpa indeks, parsing tab
  * pecah oleh karakter khusus). SQLite memberi: transaksi ACID, atomic write,
  * journal crash-safe, PRIMARY KEY beneran, dan bisa diperiksa dengan tools
  * standar (sqlite3 dragonball.db "SELECT * FROM accounts").
+ *
+ * 0.0.3 — DATA PEMAIN KINI DI db/ (bukan config/): keluhan owner "struktur
+ * folder pembacaan file di folder server Android/data.. berantakan" — config/
+ * murni PENGATURAN (server.json, game-upstream.txt), db/ murni DATA PEMAIN.
+ * Perangkat lama dipindah otomatis Paths.migrateFromLegacyLayout() SEBELUM
+ * boot() dipanggil (config/dragonball.db → db/dragonball.db, terekam log) —
+ * data tidak hilang.
  *
  * SKEMA (final — 4 tabel):
  *
@@ -145,16 +152,23 @@ public final class Db {
     /**
      * Buka dragonball.db + migrasi txt warisan. Dipanggil Starter SEBELUM
      * Cleaner (file txt lama masih ada di boot pertama 0.4.3).
+     *
+     * 0.0.3 — dua folder terpisah:
+     *   dbDir          = folder db/ — tempat dragonball.db SAAT INI;
+     *   legacyConfDir  = folder config/ — sumber file txt warisan 0.4.2
+     *                    (perangkat lama; dibaca lalu di-rename *.imported —
+     *                    isinya sudah pindah ke SQLite).
+     * Jalur file database = Paths.dbFile() (sumber tunggal — 0.0.3).
      */
-    public static void boot(File confDir) {
+    public static void boot(File dbDir, File legacyConfDir) {
         synchronized (LOCK) {
             try {
-                if (!confDir.exists()) {
-                    confDir.mkdirs();
+                if (!dbDir.exists()) {
+                    dbDir.mkdirs();
                 }
             } catch (Throwable ignored) {
             }
-            File f = new File(confDir, "dragonball.db");
+            File f = new File(dbDir, "dragonball.db");
             Throwable firstErr = null;
             try {
                 impl = new DbAndroid(f);
@@ -173,7 +187,7 @@ public final class Db {
             }
             long imported = 0;
             try {
-                imported = migrateLegacy(confDir);
+                imported = migrateLegacy(legacyConfDir);
             } catch (Throwable t) {
                 log("⚠️", "Migrasi data lama ke dragonball.db menemui kendala — boot tetap jalan",
                         String.valueOf(t));
@@ -192,7 +206,13 @@ public final class Db {
 
     // ---------------- migrasi txt warisan (0.4.2 → 0.4.3) ----------------
 
-    /** Import file txt lama → SQLite. Return jumlah baris yang benar-benar diimpor. */
+    /**
+     * Import file txt lama → SQLite. Return jumlah baris yang benar-benar
+     * diimpor. 0.0.3: sumber tetap folder config/ (file warisan 0.4.2 hanya
+     * pernah hidup di sana); setelah impor di-rename *.imported — kini config/
+     * whitelist-nya murni pengaturan, jadi *.imported disapu Cleaner
+     * (isinya sudah aman di SQLite — bukan data hilang).
+     */
     private static long migrateLegacy(File confDir) {
         long n = 0;
         // 1) local-user.txt → kv local_user

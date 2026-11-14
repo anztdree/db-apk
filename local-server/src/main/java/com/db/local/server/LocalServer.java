@@ -228,10 +228,10 @@ public final class LocalServer extends NanoHTTPD {
         }
     }
 
-    /** JSON isi folder www/ — daftar file + ukuran; bukti folder root bersih & lengkap. */
+    /** JSON isi folder www/ — daftar file + ukuran; bukti folder root bersih & lengkap.
+     *  0.0.3 — jalur = Paths.www() (sumber tunggal). */
     private String wwwListJson() {
-        File root = Starter.serverRoot();
-        File www = (root != null) ? new File(root, "www") : null;
+        File www = Paths.ready() ? Paths.www() : null;
         StringBuilder sb = new StringBuilder(8192);
         sb.append("{\"files\":[");
         final int[] count = {0};
@@ -291,11 +291,14 @@ public final class LocalServer extends NanoHTTPD {
             if (root == null) {
                 return "{\"ok\":false,\"error\":\"folder server belum siap\"}";
             }
-            java.io.File conf = new java.io.File(root, "config");
+            java.io.File conf = Paths.ready() ? Paths.config()
+                    : new java.io.File(root, "config");
             if (!conf.exists()) {
                 conf.mkdirs();
             }
-            java.io.File f = new java.io.File(conf, "game-upstream.txt");
+            // 0.0.3 — jalur = Paths.gameUpstream() (sumber tunggal)
+            java.io.File f = Paths.ready() ? Paths.gameUpstream()
+                    : new java.io.File(conf, "game-upstream.txt");
             java.io.Writer w = new java.io.OutputStreamWriter(
                     new java.io.FileOutputStream(f, false), "UTF-8");
             w.write(url);

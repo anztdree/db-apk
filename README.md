@@ -348,7 +348,7 @@ LaunchActivity (channel "BS", LaunchActivity.onCreate:388)
 
 **Database (menggantikan txt — alasan: txt = tulis-ulang file penuh (korup bila mati di tengah), tanpa lock, parsing tab rapuh, tanpa indeks, tidak bisa di-SELECT, dan — bug tersembunyi 0.4.2 — `config/*.txt` TIDAK masuk whitelist Cleaner sehingga TERHAPUS tiap boot = guest/akun tidak pernah tahan reboot!):**
 
-Satu file **`config/dragonball.db`** — engine SQLite **bawaan Android** (`android.database.sqlite`, tanpa Context: `openOrCreateDatabase(path)`) — nol tambahan APK, engine yang sama dipakai aplikasi sistem:
+Satu file **`db/dragonball.db`** (0.0.3 — dulu `config/dragonball.db`; DATA PEMAIN kini TERPISAH dari pengaturan — keluhan owner: "struktur folder pembacaan file di folder server Android/data.. berantakan"; migrasi otomatis saat boot, terekam log) — engine SQLite **bawaan Android** (`android.database.sqlite`, tanpa Context: `openOrCreateDatabase(path)`) — nol tambahan APK, engine yang sama dipakai aplikasi sistem:
 
 ```sql
 CREATE TABLE accounts     (username TEXT PRIMARY KEY, pass_md5 TEXT, created_at TEXT,
@@ -365,9 +365,9 @@ CREATE TABLE kv           (key TEXT PRIMARY KEY, value TEXT);   -- local_user, l
 - **Keunggulan**: transaksi ACID + journal crash-safe + lock + indeks PK + bisa diperiksa `sqlite3 dragonball.db "SELECT * FROM accounts"`
 - **Engine (rantai)**: `DbAndroid` (device) → `DbJdbc` (HANYA harness desktop — SQL sama persis, class TIDAK masuk APK) → `DbMem` (jaring memori — boot tetap jalan apa pun yang terjadi)
 - **MIGRASI OTOMATIS** (boot pertama, SEBELUM Cleaner): `local-user.txt` → `kv local_user` · `accounts.txt` → `accounts` · `sdk-guests.txt` → `sdk_guests` · `sdk-session.txt` → `sdk_sessions` · `sdk-last.txt` → `kv last_uid` → file lama di-rename `*.imported` (nol data hilang; diimpor sekali — tahan dobel)
-- **Cleaner**: whitelist `config/` kini melindungi `dragonball.db` (+`-journal/-wal/-shm/-corrupt`)
+- **Cleaner (0.0.3)**: whitelist per-folder — `db/` melindungi `dragonball.db` (+`-journal/-wal/-shm/-corrupt`); `config/` MURNI pengaturan (`server.json`, `game-upstream.txt`); `state/` melindungi `status.json` + `www.stamp`; `PETA.txt` di root dilindungi
 - **Korupsi?** `DbAndroid` memulihkan hanya untuk korupsi SQLite SUNGUHAN (`SQLiteDatabaseCorruptException`/malformed) — galat lain (lock sesaat, engine tak tersedia) TIDAK menyentuh file (bug awal harness: rename otomatis membuat data "hilang" — sudah difix & diuji)
-- File yang TETAP file (sengaja): `server.json` (config aplikasi) · `servers.json` (snapshot daftar server — boleh disunting pemilik) · `status.json` · log
+- File yang TETAP file (sengaja): `config/server.json` (config aplikasi) · `config-offline/servers.json` (paket manual — sumber daftar server sejak 0.5.3) · `state/status.json` (dasbor) · log
 
 **Verifikasi sandbox (harness 0.4.3 — 50/50 LULUS, `local-server/harness/HarnessSdk.java` di-commit):** engine = SQLite nyata via JDBC; migrasi kelima file warisan (guest pemilik, akun + login_count 7, sesi, last_uid); file lama di-rename `.imported`; **REBOOT** (buka ulang DB) = guest/akun/sesi utuh tanpa impor dobel; autoLogin token warisan; regresi SDK 0.4.2 PENUH (init, registerVisitor migrasi/ulang, registerUser +dobel ditolak, loginByName benar/salah→40101, autoLogin 40005, ckRegVistor, loginchecknative code 0/500, loginGame ikut sesi SDK via socket.io BERFRAMING, handshake+GetServerList); rewrite bin (userid = pilihan layar SDK dari DB).
 
@@ -1052,6 +1052,37 @@ Pesan owner: *"Itu capture asli saat mode online.. sedangkan mode Local kita bar
 2. **Verifikasi dalam APK**: marker dex BARU >0 — `0.0.2` / `Server SDK lokal` / `sdkPort` / `pindah ke port ` / `MESIN GAME LOKAL` / `game_player:` · marker LAMA =0 — `s2111-bs.popoh5.com` / `upstream":"https` / `urlInner` / `chatInner` · QHinfo `http://127.0.0.1:8610` (SDK) · paket config-offline dalam APK: bebas host asli + tanpa field mati + port 8080/8611/8610 · classes2.dex 216.892 B sha256 tercatat `dist/0.0.2/` · **CRC classes.dex game identik dasar `281225eb`** (dex game & resource tidak disentuh).
 3. **Rencana lanjutan (menunggu persetujuan owner — urutan owner: main-server BARU direncanakan setelah SDK+login rapi)**: CHAT :8612 + DUNGEON :8613 via service-discovery dari MAIN :8080 (registChat → `_chatServerUrl`; aksi team → `myTeamServerSocketUrl`) — pola asli persis, semua nilai handcraft lokal.
 
+### 2.35 STRUKTUR FOLDER ANDROID/DATA JELAS — SUMBER TUNGGAL PATH (keluhan owner 2026-11-15: *"berantakan juga struktur foler pembacaan file di folder server Android/data.. struktur folder loca di android/data harus juga jelass"*)
+
+**A. DIAGNOSIS (audit 0.0.2 — bukti kode, bukan asumsi):**
+1. `dragonball.db` (DATA PEMAIN paling berharga) tinggal di `config/` — campur dengan pengaturan.
+2. `status.json` (state runtime dasbor) + `www.stamp` (penanda mirror) ikut menumpuk di `config/`.
+3. `config/servers.json` (snapshot mati era 0.4.4) masih DILINDUNGI whitelist padahal TIDAK dibaca lagi sejak 0.5.3 (serverlist hanya dari paket manual `config-offline/` — harness 18a) — DUA servers.json di dua folder = sumber bingung.
+4. `capture/` masih di whitelist root padahal REKAM mati total 0.5.4 — komentar lama "dihapus manual oleh pemilik" = kontradiksi anti-sampah; sisa menetap di perangkat.
+5. String path tersebar di 10+ kelas tanpa sumber tunggal (`new File(root, "config")` dsb. di Starter/Db/Config/Payload/Cleaner/GameServer/LoginData/LocalServer/HumanLog/CrashGuard).
+6. Tidak ada peta folder di perangkat — pemilik buka file manager = tebak-tebakan.
+
+**B. STRUKTUR BARU (tiap folder SATU makna — peta lengkap lihat §2 daftar root):** `PETA.txt` · `config/` (pengaturan: server.json + game-upstream.txt) · `db/` (data pemain: dragonball.db) · `state/` (runtime: status.json + www.stamp) · `www/` (mirror game :8080) · `config-offline/` (paket manual klien) · `logs/` · `tmp/`.
+
+**C. EKSEKUSI 0.0.3:**
+1. **`Paths.java` BARU — SUMBER TUNGGAL SEMUA JALUR**: folder (config/db/state/www/config-offline/logs/tmp) + file (serverJson/gameUpstream/dbFile/statusJson/wwwStamp/petaTxt/humanLog/eventsJsonl/crashLog) + `ensureDirs()` + `migrateFromLegacyLayout()` + `writePetaIfStale()`. Semua kelas dirombak lewat Paths — dilarang membuat jalur sendiri.
+2. **Migrasi otomatis perangkat lama** (Starter SEBELUM Db.boot & Cleaner, log 📂 berisi daftar pindahan): `config/dragonball.db` (+`-journal/-wal/-shm/.corrupt`) → `db/`; `config/status.json` + `config/www.stamp` → `state/`; TIDAK PERNAH menimpa target yang sudah ada (data baru menang); fallback salin-antar-volume bila rename gagal.
+3. **`Cleaner` 0.0.3 — whitelist per-folder**: root = PETA.txt + 7 folder; `config/` = server.json + game-upstream.txt (snapshot servers.json MATI DIHAPUS — dua servers.json sumber bingung); `db/` = dragonball.db + jurnal; `state/` = status.json + www.stamp; `capture/` DIHAPUS dari whitelist (REKAM mati 0.5.4 — sisa disapu otomatis dengan nama+ukuran di log).
+4. **`PETA.txt` di root perangkat** — dibuat server bila hilang/versi peta berubah (idempoten): makna tiap folder, mana yang boleh disunting pemilik, mana data yang jangan dihapus; baris boot 🚀 kini membawa "Peta : PETA.txt".
+5. **BUG PERSISTENSI boolean `Config` TERBONGKAR & DIPERBAIKI**: `grepStr` dipakai untuk boolean tanpa kutip (`useSdk`/`logTech`/`rekam`) — malah menangkap nama kunci BERIKUTNYA (`"logTech"` → `"rekam"`, `"useSdk"` → `"bind"`) sehingga pilihan dasbor BISA LUPA saat reboot; kini `grepBool` membaca nilai antara `:` dan `,`/`}` dengan benar (terbongkar karena server.json kini dibaca-ulang sungguhan di harness).
+6. **`Db.boot(dbDir, legacyConfDir)`** — DB dibuka dari `db/`, txt warisan 0.4.2 tetap dibaca dari `config/` (di-rename `*.imported` → disapu Cleaner, isinya sudah aman di SQLite).
+7. `Payload` (penanda → `state/`), `Config` (server.json via Paths), `LoginData`/`LocalServer` (game-upstream via Paths), `GameServer` (paket manual via Paths), `Starter` (root/logs/conf/tmp/www via Paths + PETA + migrasi + boot line) — SEMUA dirombak ke sumber tunggal.
+
+**D. BUKTI — harness TAHAP 1a (+13 tes; total 192 LULUS + 15 GAGAL LINGKUNGAN, baseline SQLite sandbox tetap — nol regresi):**
+1. Migrasi folder: config/dragonball.db+jurnal → db/, status.json + www.stamp → state/, ringkasan menyebut SEMUA pindahan, target sudah ada TIDAK ditimpa.
+2. PETA.txt: ditulis di root, menjelaskan SATU makna per folder + "Peta versi 1", idempoten (tidak ditulis-ulang).
+3. Cleaner 0.0.3: config/servers.json mati DIHAPUS; `*.imported` di config/ disapu; db/dragonball.db dilindungi; config-offline/ dilindungi; sisa capture/ DIHAPUS; PETA.txt + state/status.json + state/www.stamp dilindungi.
+4. Persistensi boolean: setLogTech(true) → dibaca-ulang → tetap true (bug lama diperbaiki; dulu lupa saat reboot).
+
+**E. TERBITAN 0.0.3:**
+1. **`releases/APK-LSF-0.0.3.apk` — 164.032.636 B · sha256 `43c0bd7247ecd339da4edad32e5e89e21ef230a81ca97da71736edbb88683bd8`** · dasar `APK-LSF-0.0.2.apk` (`d4df3f10…`) · sign v1+v2+v3 keystore tetap (CN DB Local LSF, s.d. 2056).
+2. **Verifikasi dalam APK**: marker dex BARU >0 — `0.0.3` / `PETA.txt` / `Peta versi ` / `migrateFromLegacyLayout` / `grepBool` / `MESIN GAME LOKAL` / `game_player:` · marker LAMA =0 — `s2111-bs.popoh5.com` / `upstream":"https` / `urlInner` / `chatInner` · QHinfo `http://127.0.0.1:8610` · paket config-offline dalam APK: bebas host asli + tanpa field mati + port 8080/8611/8610 · **CRC classes.dex game identik dasar `281225eb`** (dex game & resource tidak disentuh) · classes2.dex 223.592 B tercatat `dist/0.0.3/`.
+
 ---
 
 
@@ -1174,35 +1205,47 @@ Aturan penulisan log:
 8. Panel status di atas dashboard juga kalimat manusia, mis.:
    `Server lokal HIDUP sejak 14:30 · sudah menjawab 37 permintaan · 0 gagal · port 4000`.
 
-**Root folder server — ANTI-SAMPAH (v3.0, aturan keras):**
+**Root folder server — STRUKTUR JELAS + ANTI-SAMPAH (0.0.3, aturan keras; keluhan owner: "berantakan juga struktur folder pembacaan file di folder server Android/data.. struktur folder local di android/data harus juga jelas"):**
 
 ```
-Android/data/com.db.local/server/          ← HANYA 4 entri ini, tidak boleh lain
-├── config/
-│   ├── server.json                        ← mode (local/online), gamePort, debugPort,
-│   │                                        toggleX/toggleY (posisi terakhir tombol melayang)
-│   ├── www.stamp                          ← penanda versi mirror (bukan di dalam www/!)
-│   └── status.json                        ← snapshot status (alat bantu luar dasbor)
-├── logs/                                  ← human.log + events.jsonl (ring 800, rotasi 4 MB)
-├── tmp/                                   ← DIKOSONGKAN setiap boot
-└── www/                                   ← MIRROR PENUH SERVER ASLI — ekstraksi OTOMATIS dari APK
-    ├── bs/db/android/setting_BS_Android.bin
-    ├── bs/index-native.html · manifest.json · js/ (15 file) · resource/properties/ (2 json)
-    ├── bs/upgrade/ (base.version, resource.version, upgrade.json, size.json,
-    │               base.zip, all.zip, 11386–11389_11390.zip)
-    └── lzceshi/native_setting/Android/setting_BS_Android.bin
+Android/data/com.db.local/server/          ← HANYA entri berikut, tidak boleh lain
+├── PETA.txt                               ← PETA FOLDER — dibuat server, dibuka pemilik dulu
+├── config/                                ← PENGATURAN — boleh pemilik sunting
+│   ├── server.json                        ← mode (local/online), port (game 8080, sdk 8610,
+│   │                                        login 8611, dasbor 4000), logTech, rekam, toggleX/Y
+│   └── game-upstream.txt                  ← relay OPSIONAL isian pemilik (kosong = lokal murni)
+├── db/                                    ← DATA PEMAIN — JANGAN DIHAPUS (tahan reboot)
+│   └── dragonball.db                      ← akun/tamu/sesi/data game (+ -journal/-wal/-shm)
+├── state/                                 ← keadaan runtime — dibuat ulang otomatis
+│   ├── status.json                        ← snapshot status untuk dasbor :4000
+│   └── www.stamp                          ← penanda versi mirror www/
+├── www/                                   ← MIRROR STATIS GAME — dilayani :8080 — jangan disunting
+│   └── bs/                                ← index-native.html · manifest.json · js/ (15 file)
+│                                            resource/properties/ · upgrade/ (version + zip)
+├── config-offline/                        ← PAKET MANUAL KLIEN — ditimpa dari APK tiap boot
+│   ├── setting.json · setting_BS_Android.bin (XOR DragonBall)
+│   └── servers.json (1 entri lokal) · serversetting.json · manifest.txt (sha256)
+├── logs/                                  ← human.log · events.jsonl · crash.log (nyawa)
+└── tmp/                                   ← kerja sementara — boleh dihapus kapan saja
 ```
 
-**Pembersih whitelist (`Cleaner.java`, v3.0):** setiap boot, apa pun di dalam `server/` di luar
-4 entri di atas — dan di dalam `config/` di luar 3 file di atas — DIHAPUS otomatis (jumlah +
-ukuran tercatat di log). Ini menyapu sampah peninggalan build lama tanpa langkah manual.
-Sumber sampah lama dihilangkan dari akarnya: `ApkReader` (dan endpoint `/api/apk/*`,
-`/api/analyze`, `/api/monitor/run`) DIHAPUS dari server — tidak ada lagi pembacaan/cadangan
-APK yang menumpuk.
+**Sumber tunggal path (`Paths.java`, 0.0.3):** SEMUA jalur folder/file lewat satu kelas — dulu string
+path tersebar di 10+ kelas (`new File(root, "config")` di Starter/Db/Config/Payload/GameServer/
+LoginData/LocalServer/Cleaner) = akar keberantakan yang dikoreksi.
+
+**Migrasi otomatis perangkat lama (0.0.3, SEBELUM Cleaner — data tidak hilang, terekam log 📂):**
+`config/dragonball.db` (+jurnal) → `db/` · `config/status.json` → `state/` · `config/www.stamp` →
+`state/` — sumber yang sudah ada TIDAK ditimpa (data baru menang).
+
+**Pembersih whitelist (`Cleaner.java`, 0.0.3 — per-folder):** setiap boot, entri di luar daftar di atas
+DIHAPUS otomatis (nama + ukuran tercatat di log). Yang ikut disapu sejak 0.0.3: `config/servers.json`
+(snapshot mati era 0.4.4 — serverlist dibaca HANYA dari paket manual `config-offline/` sejak 0.5.3;
+dua servers.json = sumber bingung) dan sisa `capture/` era REKAM (mati total sejak 0.5.4 — dulu
+"dihapus manual oleh pemilik" = sisa menetap diam-diam).
 
 **Mirror & ekstraksi otomatis (v3.0):** seluruh isi fisik server asli (31 file — daftar §2.9)
 dibawa di dalam APK (`assets/server/www/`) dan diekstrak otomatis `Payload.java` → `www/`
-sebelum server menyala (penanda versi = `config/www.stamp`; www/ dihapus / clear data →
+sebelum server menyala (penanda versi = `state/www.stamp` sejak 0.0.3; www/ dihapus / clear data →
 terisi ulang otomatis). Game TETAP membaca via HTTP dari port game lokal — assets hanya
 gudang, BUKAN jalur baca game. Mode LOCAL menyajikan mirror apa adanya KECUALI setting
 bin yang di-rewrite hostnya (lihat bawah). File yang diminta game tapi belum ada di mirror
@@ -1356,6 +1399,7 @@ tanpa izin storage tambahan (folder own-app).
 
 | Versi | Isi | Fase |
 |---|---|---|
+| **0.0.3** | **STRUKTUR FOLDER ANDROID/DATA JELAS — SUMBER TUNGGAL PATH** (owner: *"berantakan juga struktur foler pembacaan file di folder server Android/data.. struktur folder loca di android/data harus juga jelass"* — §2.35): **Paths.java BARU** — sumber tunggal SEMUA jalur (dulu string path tersebar 10+ kelas) · struktur root: **PETA.txt** (peta folder di perangkat, dibuat server) · **config/** = pengaturan murni (server.json + game-upstream.txt) · **db/** = DATA PEMAIN (dragonball.db — dulu campur di config/) · **state/** = runtime (status.json + www.stamp) · www/ · config-offline/ · logs/ · tmp/ · **migrasi otomatis** perangkat lama (config/dragonball.db→db/, status.json+www.stamp→state/ — terekam log 📂, tak menimpa) · **Cleaner per-folder**: config/servers.json mati (0.4.4) + sisa capture/ (REKAM mati 0.5.4) DIHAPUS; PETA/db/state dilindungi · **bug persistensi boolean Config terbongkar & diperbaiki** (grepStr → grepBool; pilihan dasbor dulu bisa lupa saat reboot) · harness +13 tes = **192 LULUS + 15 GAGAL LINGKUNGAN** (nol regresi) · APK-LSF-0.0.3.apk sha256 `43c0bd72…`, CRC classes.dex game identik `281225eb` | **M3 ✓ (folder perangkat satu makna per folder — pemilik buka PETA.txt langsung paham)** |
 | **0.0.2** | **PEMISAHAN PORT SDK/LOGIN — POLA 5-SERVER ASLI** (owner: *"pola server aslinya punya 5 server utama.. SDK, login, main, chat, dungeon, terpisah dengan berbagai port"* + *"SDK dan loginserver harus matang sempurna rapi"* — §2.34): **SdkServer.java BARU** — API SDK HTTP murni :8610 (/v1/* + loginchecknative; QHinfo) — dulu ditumpangkan di LoginServer :8610 (satu port dua peran = akar "berantakan") · **LoginServer murni socket :8611** — SDK di port login = 404 penunjuk jalan · **Config** `sdkPort`/`loginPort` terpisah + migrasi aman server.json legacy (SDK pertahankan 8610, login geser 8611, terekam log) · **SettingBin** `loginPort` (socket) / `loginWebPort` (loginchecknative→SDK) dipecah semua mode · **Starter** 4 layanan + watchdog 3 port · **StatusStore 0.0.2** + status SDK · **paket config-offline handcraft**: setting.json loginPort 8611 + loginWebPort 8610 (bin XOR ulang), serversetting loginserver :8611, servers.json HANYA kontrak klien (upstream/urlInner/chatInner DIHAPUS — 0 referensi di JS), manifest sha256 baru · harness TAHAP 23 = **179 LULUS + 15 GAGAL LINGKUNGAN** (nol regresi, +14 tes) · APK-LSF-0.0.2.apk sha256 `d4df3f10…`, CRC classes.dex game identik `281225eb` | **M3 ✓ (SDK & LOGIN terpisah rapi — fondasi chat/dungeon berikutnya)** |
 | **0.0.1-mesin** | **REBUILD LOCAL — MESIN GAME LOKAL** (arahan owner *"local kita ini rebuild bukan hasil jiplak dari online!!!"* — §2.33): **GameEngine.java** — peladen protokol game :8080 (verify XXTEA → enterGame → aksi lanjutan → Notify) kontrak dari KODE KLIEN SENDIRI, nilai dari dragonball.db · **Xxtea.java** klon persis TEA klien (vektor silang bun dua arah) · **GamePlayer.java** data pemain lokal (kv `game_player:` tahan reboot) · wiring: LOCAL tanpa isian upstream = mesin lokal (Play HIDUP, nol kontak keluar); isian pemilik = relay opsional tetap dihormati · harness TAHAP 22 uji HTTP nyata jalur Play = **165 LULUS + 15 GAGAL LINGKUNGAN** (nol regresi) · APK-LSF-0.0.1.apk pengganti sha256 `703b9f60…` | **M3 ✓ (ambil alih jalur game: verify/enterGame/aksi lanjutan dijawab lokal)** |
 | **0.0.1-koreksi** | **KOREKSI KESALAHAN FATAL — CONFIG ONLINE JANGAN DIPAKAI MENTAH** (owner: *"KESALAHAN FATAL TIDAK BISA DI TOLERANSI! ANDA AMBIL MENTAH CONFIG DARI SERVER ASLINYA!! .. CONFIG ONLINE ITU CUMA JEJAK AGAR KITA GAK TERSESAT.. BUKAN MALAH MURNI DI PAKAI MENTAH-MENTAH"* — §2.32): paket manual `"upstream": ""` + manifest ditulis ulang · satu-satunya sumber relay = isian pemilik `config/game-upstream.txt` (field paket TIDAK dibaca lagi — LoginData file-only + resolveGameUpstream) · LOCAL tanpa isian = nol kontak keluar, Play berhenti dgn log jujur + payload utuh · label "SERVER GAME ASLI" → "upstream isian pemilik" di semua baris LOCAL · guard build dibalik: FATAL bila paket memuat host server asli (popoh5/sjmobilegame/sjflaregame/t4game/parajoymobile) + verifikasi sama di dalam APK · harness +6 tes TAHAP 19 = **147 LULUS + 15 GAGAL LINGKUNGAN** · APK-LSF-0.0.1.apk sha256 `a43c58e7…` (dasar 0.0.1-lama `037369ed…` berisi paket pelanggaran — digantikan) | **Koreksi atas pelanggaran §2.30-B.3 — paket manual kembali murni handcraft** |

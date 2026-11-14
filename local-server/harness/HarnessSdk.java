@@ -18,6 +18,7 @@ import com.db.local.server.HumanLog;
 import com.db.local.server.LogGroups;
 import com.db.local.server.LoginData;
 import com.db.local.server.LoginServer;
+import com.db.local.server.Paths;
 import com.db.local.server.SdkData;
 import com.db.local.server.SdkServer;
 import com.db.local.server.SettingBin;
@@ -26,6 +27,14 @@ import com.db.local.server.Xxtea;
 
 /**
  * HARNESS 0.4.6 — MODEL FINAL LOG (grup batch) + regresi penuh 0.4.2–0.4.5.
+ *
+ * Baru 0.0.3 — STRUKTUR FOLDER JELAS (keluhan owner: "berantakan juga struktur
+ * folder pembacaan file di folder server Android/data.. struktur folder local
+ * di android/data harus juga jelas"): TAHAP 1a — Paths sumber tunggal path;
+ * migrasi layout lama (config/dragonball.db → db/, status.json + www.stamp →
+ * state/) tanpa menimpa; PETA.txt di root (peta folder, idempoten); whitelist
+ * Cleaner 0.0.3 per-folder (config/servers.json mati + capture/ mati DIHAPUS,
+ * PETA.txt + db/ + state/ dilindungi); StatusStore 0.0.3.
  *
  * Baru 0.4.6 (kesepakatan owner "group itu kalau terdeteksi emang
  * config/resource yg banyak. kalau alur ya gk usah di group"): LogGroups —
@@ -95,6 +104,56 @@ public class HarnessSdk {
                         + "\"new\":true,\"hot\":true,\"name\":\"Server Lokal\",\"online\":true,\"openDate\":\"\","
                         + "\"offlineReason\":\"\",\"merge\":false,\"mergeTo\":\"\"}],\"history\":[]}");
 
+        // ---------------- TAHAP 1a: MIGRASI STRUKTUR FOLDER (0.0.3 — keluhan owner
+        // "struktur folder pembacaan file di folder server Android/data.. berantakan",
+        // "struktur folder local di android/data harus juga jelas") ----------------
+        // Simulasi perangkat 0.0.2: dragonball.db + status.json + www.stamp menumpuk
+        // di config/. Paths.migrateFromLegacyLayout() memindahkan ke tempat yang
+        // benar SEBELUM Db.boot & Cleaner — data tidak hilang, tidak menimpa.
+        File legacySim = new File(root, "legacy-sim");
+        File lconf = new File(legacySim, "config");
+        lconf.mkdirs();
+        write(new File(lconf, "dragonball.db"), "FAKE-DB-0.0.2");
+        write(new File(lconf, "dragonball.db-journal"), "J");
+        write(new File(lconf, "status.json"), "{}");
+        write(new File(lconf, "www.stamp"), "mirror-version=4\n");
+        Paths.init(legacySim); // Paths menunjuk root simulasi
+        String moved = Paths.migrateFromLegacyLayout();
+        check("0.0.3 migrasi: config/dragonball.db → db/ (data pemain terpisah dari config)",
+                new File(legacySim, "db/dragonball.db").exists()
+                        && !new File(lconf, "dragonball.db").exists());
+        check("0.0.3 migrasi: jurnal SQLite ikut pindah ke db/",
+                new File(legacySim, "db/dragonball.db-journal").exists());
+        check("0.0.3 migrasi: config/status.json → state/",
+                new File(legacySim, "state/status.json").exists());
+        check("0.0.3 migrasi: config/www.stamp → state/",
+                new File(legacySim, "state/www.stamp").exists());
+        check("0.0.3 migrasi: ringkasan menyebut SEMUA pindahan (tidak diam-diam)",
+                moved.contains("config/dragonball.db → db/dragonball.db")
+                        && moved.contains("config/status.json → state/status.json")
+                        && moved.contains("config/www.stamp → state/www.stamp"));
+        write(new File(lconf, "status.json"), "LAMA");
+        Paths.migrateFromLegacyLayout();
+        check("0.0.3 migrasi aman: target sudah ada → sumber TIDAK menimpa (data baru menang)",
+                "LAMA".equals(readAll(new java.io.FileInputStream(new File(lconf, "status.json"))))
+                        && "{}".equals(readAll(new java.io.FileInputStream(
+                                new File(legacySim, "state/status.json")))));
+        Paths.init(root); // kembali ke root utama harness
+
+        // PETA.txt — peta folder di perangkat (0.0.3: "struktur folder local di
+        // android/data harus juga jelas") — dibuat bila hilang/versi berubah
+        String petaState = Paths.writePetaIfStale();
+        check("0.0.3 PETA.txt ditulis di root server (peta folder untuk pemilik)",
+                "ditulis".equals(petaState) && Paths.petaTxt().exists());
+        String petaTxt = readAll(new java.io.FileInputStream(Paths.petaTxt()));
+        check("0.0.3 PETA.txt menjelaskan SATU makna per folder (config/db/state/www/config-offline/logs/tmp)",
+                petaTxt.contains("config/") && petaTxt.contains("db/") && petaTxt.contains("state/")
+                        && petaTxt.contains("www/") && petaTxt.contains("config-offline/")
+                        && petaTxt.contains("logs/") && petaTxt.contains("tmp/")
+                        && petaTxt.contains("Peta versi 1"));
+        check("0.0.3 PETA.txt idempoten — tidak ditulis-ulang bila tetap",
+                "sudah".equals(Paths.writePetaIfStale()));
+
         // ---------------- TAHAP 1: MIGRASI txt lama → dragonball.db ----------------
         write(new File(conf, "local-user.txt"), LEGACY_GUEST + "\n");
         write(new File(conf, "accounts.txt"),
@@ -103,7 +162,7 @@ public class HarnessSdk {
         write(new File(conf, "sdk-session.txt"), LEGACY_TOKEN + "\t" + LEGACY_GUEST + "\t1\t2026-11-02 21:31:00\n");
         write(new File(conf, "sdk-last.txt"), LEGACY_GUEST + "\t" + LEGACY_GUEST + "\t2026-11-02 21:31:05\n");
 
-        Db.boot(conf);
+        Db.boot(new File(root, "db"), conf); // 0.0.3 — DB di db/, txt warisan dari config/
         LoginData.init(conf, off); // 0.5.3 — dua folder: config/ + config-offline/
         SdkData.init(conf);
 
@@ -121,7 +180,7 @@ public class HarnessSdk {
                         && new File(conf, "local-user.txt.imported").exists());
 
         // ---------------- TAHAP 2: REBOOT — buka ulang DB (simulasi mati/hidup) ----------------
-        Db.boot(conf);
+        Db.boot(new File(root, "db"), conf);
         check("REBOOT: guest pemilik tetap (dulu txt terhapus Cleaner — bug 0.4.2)",
                 LEGACY_GUEST.equals(LoginData.localUserId()));
         check("REBOOT: akun tetap", LoginData.accountPassword(LEGACY_ACC) != null);
@@ -334,16 +393,50 @@ public class HarnessSdk {
         check("loginGame mengikuti sesi SDK (email)", r.contains("budi.new@gmail.com"));
         check("DB: akun email tercatat di tabel accounts (loginGame)",
                 Db.i().account("budi.new@gmail.com") != null);
-        // 12) whitelist Cleaner — servers.json tidak boleh dihapus lagi (0.4.4)
+        // 12) whitelist Cleaner 0.0.3 — struktur JELAS: config/ murni pengaturan,
+        //     db/ data pemain, state/ keadaan runtime; file mati DIHAPUS dengan
+        //     nama+ukuran di log (bukti audit 0.0.3):
+        //     - config/servers.json (snapshot era 0.4.4) TIDAK dibaca lagi sejak
+        //       0.5.3 (serverlist hanya paket manual — tes 18a) → dihapus;
+        //     - capture/ mati sejak 0.5.4 (REKAM dihapus total) → sisa disapu;
+        //     - PETA.txt + db/dragonball.db + state/* DILINDUNGI.
         java.lang.reflect.Method mClean = Class.forName("com.db.local.server.Cleaner")
                 .getDeclaredMethod("clean", File.class);
         Object cr = mClean.invoke(null, root);
         String cleaned = cr.getClass().getField("names").get(cr).toString();
-        check("Cleaner: servers.json TIDAK dihapus (boleh disunting pemilik)", !cleaned.contains("servers.json"));
-        check("Cleaner: dragonball.db tetap dilindungi", !cleaned.contains("dragonball.db"));
+        check("Cleaner 0.0.3: config/servers.json MATI (snapshot 0.4.4) dihapus — dua servers.json sumber bingung",
+                cleaned.contains("config/servers.json") && !new File(root, "config/servers.json").exists());
+        check("Cleaner 0.0.3: *.imported di config/ disapu (isinya sudah aman di SQLite)",
+                cleaned.contains("config/local-user.txt.imported"));
+        // db/dragonball.db dilindungi — bila engine SQLite sandbox tak membuat file
+        // (jaring memori), buat penanda sendiri agar uji whitelist deterministik
+        File dbfGuard = new File(new File(root, "db"), "dragonball.db");
+        if (!dbfGuard.exists()) {
+            write(dbfGuard, "DB");
+        }
+        check("Cleaner: dragonball.db tetap dilindungi (kini db/ — data pemain)",
+                !cleaned.contains("db/dragonball.db") && dbfGuard.exists());
         check("Cleaner: folder config-offline/ TIDAK dihapus (paket MANUAL dilindungi 0.5.3)",
                 new File(root, "config-offline").exists()
                         && new File(root, "config-offline/servers.json").exists());
+        // sisa capture/ era REKAM (mati 0.5.4) — dulu menetap di perangkat selamanya
+        File cap = new File(root, "capture");
+        cap.mkdirs();
+        write(new File(cap, "rekam.jsonl"), "[]");
+        // file state/ juga dibuat utk membuktikan dilindungi
+        File stateDir = new File(root, "state");
+        stateDir.mkdirs();
+        write(new File(stateDir, "status.json"), "{}");
+        write(new File(stateDir, "www.stamp"), "mirror-version=4\n");
+        cr = mClean.invoke(null, root);
+        cleaned = cr.getClass().getField("names").get(cr).toString();
+        check("Cleaner 0.0.3: capture/ sisa era REKAM DIHAPUS otomatis (dulu menetap diam-diam)",
+                !new File(root, "capture").exists());
+        check("Cleaner 0.0.3: PETA.txt dilindungi (peta folder untuk pemilik)",
+                Paths.petaTxt().exists());
+        check("Cleaner 0.0.3: state/status.json + state/www.stamp dilindungi (keadaan runtime)",
+                new File(root, "state/status.json").exists()
+                        && new File(root, "state/www.stamp").exists());
 
         // 13) LOG BERSIH 0.4.5 — dua tingkat (penting selalu / teknis hanya RINCI);
         //     file human.log TETAP lengkap — mode bersih tidak menghilangkan bukti
@@ -1020,8 +1113,8 @@ public class HarnessSdk {
         }
         // 23c) StatusStore membawa versi 0.0.2 + status SDK terpisah
         String stJson = StatusStore.toJson();
-        check("23 StatusStore: version = 0.0.2",
-                stJson.contains("\"version\":\"0.0.2\""));
+        check("23 StatusStore: version = 0.0.3",
+                stJson.contains("\"version\":\"0.0.3\""));
         check("23 StatusStore: sdkPort/sdkAlive + loginPort/loginAlive terpisah",
                 stJson.contains("\"sdkPort\"") && stJson.contains("\"sdkAlive\"")
                         && stJson.contains("\"loginPort\"") && stJson.contains("\"loginAlive\""));

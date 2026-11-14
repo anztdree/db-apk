@@ -10,7 +10,10 @@ import java.io.Writer;
 
 /**
  * Config server lokal — <root>/config/server.json, disimpan DI LUAR APK
- * supaya bisa dilihat dan diubah tanpa rebuild.
+ * supaya bisa dilihat dan diubah tanpa rebuild. 0.0.3: jalur selalu lewat
+ * Paths.serverJson() (sumber tunggal — config/ murni PENGATURAN: hanya
+ * server.json + game-upstream.txt; data pemain pindah db/, state runtime
+ * pindah state/).
  *
  * Isi default (0.5.5 — arahan owner: "saat apk di install dan di buka adalah
  * Utamanya Local" — dulu bawaan ONLINE):
@@ -82,15 +85,17 @@ public final class Config {
     private Config() {
     }
 
-    /** Baca server.json dari root folder (tulis default bila belum ada). */
+    /** Baca server.json dari folder config (tulis default bila belum ada).
+     *  0.0.3 — jalur = Paths.serverJson() (SUMBER TUNGGAL); parameter tetap
+     *  diterima utk kompatibilitas pemanggil lama/harness tanpa Paths. */
     public static void load(File serverRoot) {
         synchronized (LOCK) {
             try {
-                File conf = new File(serverRoot, "config");
+                File conf = Paths.ready() ? Paths.config() : new File(serverRoot, "config");
                 if (!conf.exists()) {
                     conf.mkdirs();
                 }
-                File f = new File(conf, "server.json");
+                File f = Paths.ready() ? Paths.serverJson() : new File(conf, "server.json");
                 file = f;
                 if (!f.exists()) {
                     writeText(f, DEFAULT_JSON);
@@ -133,10 +138,12 @@ public final class Config {
                                 + "port LOGIN digeser otomatis ke " + loginPort
                                 + " (pemisahan 0.0.2 — pola 5-server asli)", null);
                     }
-                    String us = grepStr(raw, "\"useSdk\"");
-                    if (us != null) {
-                        useSdk = "true".equalsIgnoreCase(us.trim());
-                    }
+                    // 0.0.3 — boolean dibaca DENGAN parse nilai benar (grepBool):
+                    // dulu grepStr dipakai utk boolean tanpa kutip — malah menangkap
+                    // nama kunci BERIKUTNYA ("logTech" → "rekam", "useSdk" → "bind")
+                    // sehingga pilihan dasbor bisa lupa setelah reboot (bug lama yang
+                    // terbongkar saat server.json dibaca-ulang sungguhan).
+                    useSdk = grepBool(raw, "\"useSdk\"", useSdk);
                     int ms = (int) grepLong(raw, "\"monitorSec\"", monitorSec);
                     if (ms >= 10 && ms <= 3600) {
                         monitorSec = ms;
@@ -147,14 +154,8 @@ public final class Config {
                         toggleX = tx;
                         toggleY = ty;
                     }
-                    String lt = grepStr(raw, "\"logTech\"");
-                    if (lt != null) {
-                        logTech = "true".equalsIgnoreCase(lt.trim());
-                    }
-                    String rk = grepStr(raw, "\"rekam\"");
-                    if (rk != null) {
-                        rekam = "true".equalsIgnoreCase(rk.trim());
-                    }
+                    logTech = grepBool(raw, "\"logTech\"", logTech);
+                    rekam = grepBool(raw, "\"rekam\"", rekam);
                 }
             } catch (Throwable t) {
                 HumanLog.ev("⚠️", "server.json gagal dibaca — memakai nilai bawaan (mode LOCAL, port game 8080, dasbor 4000)",
@@ -372,6 +373,42 @@ public final class Config {
             return raw.substring(a + 1, b);
         } catch (Throwable t) {
             return null;
+        }
+    }
+
+    /**
+     * 0.0.3 — baca nilai boolean JSON (true/false tanpa kutip) DENGAN BENAR:
+     * ambil teks antara ':' sampai ',' / '}' lalu cek awalan "true". Dulu
+     * boolean dibaca grepStr (untuk nilai berkutip) — salah menangkap nama
+     * kunci berikutnya → pilihan toggle dasbor bisa lupa saat reboot.
+     */
+    private static boolean grepBool(String raw, String key, boolean def) {
+        try {
+            int i = raw.indexOf(key);
+            if (i < 0) {
+                return def;
+            }
+            int c = raw.indexOf(':', i);
+            if (c < 0) {
+                return def;
+            }
+            int e1 = raw.indexOf(',', c);
+            int e2 = raw.indexOf('}', c);
+            int end;
+            if (e1 < 0) {
+                end = e2;
+            } else if (e2 < 0) {
+                end = e1;
+            } else {
+                end = Math.min(e1, e2);
+            }
+            String v = raw.substring(c + 1, end < 0 ? raw.length() : end).trim();
+            if (v.length() == 0) {
+                return def;
+            }
+            return v.startsWith("true");
+        } catch (Throwable t) {
+            return def;
         }
     }
 }

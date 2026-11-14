@@ -116,9 +116,13 @@ public final class GameServer extends NanoHTTPD {
         super(bind, port);
         this.appCtx = appCtx;
         this.wwwRoot = wwwRoot;
-        this.offlineRoot = (wwwRoot != null && wwwRoot.getParentFile() != null)
-                ? new File(wwwRoot.getParentFile(), "config-offline")
-                : null;
+        // 0.0.3 — folder paket manual = Paths.offline() (SUMBER TUNGGAL;
+        // dulu disimpulkan sendiri dari parent wwwRoot — jalur ganda = berantakan)
+        this.offlineRoot = Paths.ready()
+                ? Paths.offline()
+                : ((wwwRoot != null && wwwRoot.getParentFile() != null)
+                        ? new File(wwwRoot.getParentFile(), "config-offline")
+                        : null);
         setTempFileManagerFactory(new TempFileManagerFactory() {
             public TempFileManager create() {
                 return new DefaultTempFileManager();

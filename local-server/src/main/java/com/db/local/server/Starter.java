@@ -88,6 +88,15 @@ public final class Starter {
         t.start();
     }
 
+    /**
+     * 1) FOLDER ROOT + SUMBER TUNGGAL PATH (0.0.3).
+     * Semua jalur folder/file kini lewat Paths.* — dilarang new File(root, "…")
+     * tersebar (akar keberantakan yang dikoreksi 0.0.3). Struktur root
+     * Android/data/<paket>/server/ — tiap folder SATU makna (peta: PETA.txt):
+     *   config/  = pengaturan · db/ = data pemain · state/ = keadaan runtime
+     *   www/     = mirror game · config-offline/ = paket manual klien
+     *   logs/    = log · tmp/ = kerja sementara · PETA.txt = peta folder
+     */
     private static void doBoot() {
         Context c = appCtx;
         if (c == null) {
@@ -108,28 +117,31 @@ public final class Starter {
             ext = false;
             root = new File(c.getFilesDir().getParentFile(), "server");
         }
-        File logs = new File(root, "logs");
-        File conf = new File(root, "config");
-        File tmp = new File(root, "tmp");
-        File www = new File(root, "www");
+        Paths.init(root); // 0.0.3 — SUMBER TUNGGAL SEMUA JALUR (Paths.java)
+        File logs = Paths.logs();
+        File conf = Paths.config();
+        File tmp = Paths.tmp();
+        File www = Paths.www();
         try {
             mk(logs);
             mk(conf);
             mk(tmp);
             mk(www);
+            Paths.ensureDirs(); // + db/ state/ config-offline/ (0.0.3)
         } catch (Throwable firstTry) {
             try {
                 ext = false;
                 root = new File(c.getFilesDir(), "server");
-                serverRoot = root;
-                logs = new File(root, "logs");
-                conf = new File(root, "config");
-                tmp = new File(root, "tmp");
-                www = new File(root, "www");
+                Paths.init(root);
+                logs = Paths.logs();
+                conf = Paths.config();
+                tmp = Paths.tmp();
+                www = Paths.www();
                 mk(logs);
                 mk(conf);
                 mk(tmp);
                 mk(www);
+                Paths.ensureDirs();
             } catch (Throwable secondTry) {
                 HumanLog.ev("⚠️", "Folder server tidak bisa dibuat — server tetap dicoba hidup tanpa file log di disk",
                         String.valueOf(secondTry));
@@ -147,7 +159,7 @@ public final class Starter {
         // meninggalkan logs/crash.log. Saat boot ini: bukti dibaca, tampil SATU
         // baris ⚠️ ber-isi stack penuh, lalu file di-rename .read — tidak berulang.
         try {
-            File cf = new File(logs, "crash.log");
+            File cf = Paths.crashLog();
             if (!cf.exists()) {
                 cf = new File(Starter.tmpDir(), "crash.log"); // ditulis sebelum logs/ siap
             }
@@ -197,22 +209,47 @@ public final class Starter {
         } catch (Throwable ignored) {
         }
 
+        // ---------- 1a5) MIGRASI STRUKTUR FOLDER (0.0.3 — layout lama → jelas) ----------
+        // Perangkat 0.0.2 ke bawah: dragonball.db tinggal di config/ (data campur
+        // config = keluhan owner "berantakan"). Kini dipindah SEBELUM Db.boot &
+        // Cleaner — data TIDAK hilang, keputusan TIDAK diam-diam (terekam log):
+        //   config/dragonball.db (+jurnal) → db/ · config/status.json → state/
+        //   config/www.stamp → state/ · config/servers.json (mati) + capture/
+        //   (mati 0.5.4) → disapu Cleaner dengan nama+ukuran di log.
+        try {
+            String moved = Paths.migrateFromLegacyLayout();
+            if (moved.length() > 0) {
+                HumanLog.ev("📂", "Struktur folder dirapikan (0.0.3) — data pemain kini di db/, "
+                        + "keadaan runtime di state/, pengaturan murni di config/",
+                        "Pindahan :\n" + moved + "\nPeta     : peta folder lengkap di "
+                                + Paths.petaTxt().getAbsolutePath());
+            }
+        } catch (Throwable t) {
+            HumanLog.ev("⚠️", "Migrasi struktur folder menemui kendala — layout lama tetap dipakai apa adanya",
+                    String.valueOf(t));
+        }
+
         // ---------- 1a2) DATABASE dragonball.db (SQLite) + migrasi txt warisan ----------
         // Dibuka SEBELUM Cleaner: di boot pertama 0.4.3, file txt 0.4.2
         // (local-user.txt, accounts.txt, sdk-*.txt) masih ada di config/ — dibaca,
         // diimpor ke dragonball.db, lalu di-rename *.imported (data tidak hilang).
         // Dulu txt ini tidak masuk whitelist Cleaner — TERHAPUS tiap boot (bug
         // tersembunyi: guest/akun tidak tahan reboot); kini DB masuk whitelist.
+        // 0.0.3: DB kini di db/dragonball.db (data pemain TERPISAH dari config) —
+        // jalur lewat Paths.dbFile(), sumber tunggal.
         try {
-            Db.boot(conf);
+            Db.boot(Paths.db(), Paths.config());
         } catch (Throwable t) {
             HumanLog.ev("⚠️", "dragonball.db gagal dibuka — data dijaga jaring memori (boot tetap jalan)",
                     "Sebab    : " + t + "\nLanjutan : login & akun tetap dilayani dari memori — tahan reboot hilang sementara");
         }
 
-        // ---------- 1b) PEMBERSIH: folder server hanya boleh config/www/logs/tmp ----------
+        // ---------- 1b) PEMBERSIH: struktur root JELAS + terjaga whitelist ----------
         // Aturan folder bersih (README §2): apa pun di luar whitelist — peninggalan
-        // build lama, salinan APK, file analisis, status.json nyasar — DIHAPUS.
+        // build lama, salinan APK, file analisis, status.json nyasar, sisa capture/
+        // era REKAM (mati 0.5.4), servers.json mati di config/ — DIHAPUS.
+        // 0.0.3: whitelist per-folder (config/db/state masing-masing dijaga) +
+        // PETA.txt dilindungi (peta folder untuk pemilik).
         try {
             Cleaner.Result cr = Cleaner.clean(root);
             if (cr.removed > 0) {
@@ -221,6 +258,25 @@ public final class Starter {
             }
         } catch (Throwable t) {
             HumanLog.ev("⚠️", "Pembersih folder gagal jalan — folder tetap dipakai apa adanya",
+                    String.valueOf(t));
+        }
+
+        // ---------- 1b2) PETA.TXT — peta folder di perangkat (0.0.3) ----------
+        // Keluhan owner: "struktur folder local di android/data harus juga jelas" —
+        // pemilik buka file manager langsung menemukan PETA.txt berisi makna tiap
+        // folder (siapa boleh disunting, mana data, mana mirror). Dibuat bila
+        // hilang / versi peta berubah; tidak ditulis-ulang tiap boot.
+        try {
+            String petaState = Paths.writePetaIfStale();
+            if ("ditulis".equals(petaState)) {
+                HumanLog.ev("🧹", "PETA.txt dibuat di root server — peta folder lengkap untuk pemilik",
+                        "Isi      : makna tiap folder (config/db/state/www/config-offline/logs/tmp)"
+                                + " + siapa boleh disunting\nAlamat   : " + Paths.petaTxt().getAbsolutePath());
+            } else if (petaState.startsWith("gagal")) {
+                HumanLog.ev("⚠️", "PETA.txt gagal ditulis — peta folder tidak tersedia di perangkat", petaState);
+            }
+        } catch (Throwable t) {
+            HumanLog.ev("⚠️", "PETA.txt gagal ditulis — peta folder tidak tersedia di perangkat",
                     String.valueOf(t));
         }
 
@@ -264,13 +320,13 @@ public final class Starter {
         int serverCountN = 0;
         String offlineNote = null;
         try {
-            File confDir = new File(root, "config");
+            File confDir = Paths.config();
             // 0.5.4 — catatan paket manual TIDAK lagi dilog di sini: Config.mode()
             // belum terbaca (server.json dibaca di langkah 3) — dulu baris 💾
             // "Config OFFLINE manual siap" muncul JUGA di boot ONLINE (log campur
             // aduk). Disimpan, dilog SETELAH mode terbaca — hanya di LOCAL.
             offlineNote = Payload.extractOfflineConfig(appCtx, root);
-            LoginData.init(confDir, new File(root, "config-offline"));
+            LoginData.init(confDir, Paths.offline());
             SdkData.init(confDir);
             guestNote = LoginData.localUserId();
             serverCountN = LoginData.serverCount();
@@ -298,8 +354,9 @@ public final class Starter {
             StatusStore.setLoginUser(LoginData.localUserId());
         } catch (Throwable ignored) {
         }
-        // status.json hidup di config/ — root folder tetap bersih (aturan §2)
-        StatusStore.setStatusFile(new File(root, "config/status.json"));
+        // status.json hidup di state/ — keadaan runtime TERPISAH dari config/
+        // pengaturan (0.0.3 — keluhan owner struktur folder berantakan)
+        StatusStore.setStatusFile(Paths.statusJson());
         // (baris Mode dipindah ke blok 3 baris setelah port hidup — 0.4.7)
 
         // ---------- 4) dasbor debug (port 4000) ----------
@@ -377,10 +434,10 @@ public final class Starter {
         if (dashOk && gameOk && sdkOk && loginOk) {
             String dbInfo;
             try {
-                File dbf = new File(conf, "dragonball.db");
+                File dbf = Paths.dbFile();
                 dbInfo = (dbf.exists() && dbf.length() > 0)
-                        ? "dragonball.db " + HumanLog.fmtBytes(dbf.length()) + " (tahan reboot)"
-                        : "tersimpan lokal (tahan reboot)";
+                        ? "dragonball.db " + HumanLog.fmtBytes(dbf.length()) + " di db/ (tahan reboot)"
+                        : "tersimpan lokal di db/ (tahan reboot)";
             } catch (Throwable ignored) {
                 dbInfo = "tersimpan lokal (tahan reboot)";
             }
@@ -413,6 +470,8 @@ public final class Starter {
                             + "Mode    : " + modeDetail + "\n"
                             + "Folder  : " + root.getAbsolutePath()
                             + " (" + (ext ? "penyimpanan eksternal" : "penyimpanan internal") + ")\n"
+                            + "Peta    : " + Paths.petaTxt().getName()
+                            + " di root folder — peta lengkap tiap folder (buka ini dulu)\n"
                             + "Pemain  : " + guestNote + " — sesi & data di " + dbInfo);
         }
         if (!dashOk && gameServer == null && sdkServer == null) {

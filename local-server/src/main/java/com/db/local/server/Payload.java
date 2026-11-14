@@ -33,8 +33,9 @@ import java.util.List;
  *   menjawab di alamat yang sama seperti server asli.
  * - Ekstraksi ulang otomatis bila: penanda versi berubah, atau ada file mirror
  *   yang hilang (mis. sebagian dihapus / clear data sebagian).
- * - PENANDA disimpan di config/www.stamp (BUKAN di dalam www/) — www/ tetap
- *   murni cermin server, tanpa file asing (aturan folder bersih §2).
+ * - PENANDA disimpan di state/www.stamp (0.0.3 — dulu config/; state/ =
+ *   keadaan runtime yang dibuat ulang otomatis) — www/ tetap murni cermin
+ *   server, config/ murni pengaturan (aturan folder bersih §2).
  * - File tambahan di luar mirror TIDAK dihapus (mis. hasil self-seed).
  * - Gagal ekstraksi TIDAK PERNAH menggagalkan boot — game tetap jalan
  *   (fallback 404, terbukti dari analisis dex §2.8).
@@ -139,7 +140,9 @@ public final class Payload {
             if (root == null) {
                 return null;
             }
-            File outDir = new File(root, "config-offline");
+            // 0.0.3 — folder paket = Paths.offline() (sumber tunggal);
+            // fallback root param untuk pemanggil tanpa Paths (uji).
+            File outDir = Paths.ready() ? Paths.offline() : new File(root, "config-offline");
             if (!outDir.exists()) {
                 outDir.mkdirs();
             }
@@ -192,6 +195,12 @@ public final class Payload {
     // ---------- internal ----------
 
     private static File markerFile(File wwwRoot) {
+        // 0.0.3 — penanda pindah ke state/www.stamp (SUMBER TUNGGAL Paths);
+        // www/ tetap murni cermin server, config/ murni pengaturan.
+        File m = Paths.wwwStamp();
+        if (Paths.ready()) {
+            return m;
+        }
         File parent = wwwRoot.getParentFile();
         File conf = (parent != null) ? new File(parent, "config") : new File("config");
         return new File(conf, MARKER_NAME);

@@ -302,17 +302,18 @@ public final class LoginData {
         return r[0];
     }
 
-    /** @return [url, sumber("file"|"")] — publik utk log & dasbor. */
+    /** @return [url, sumber("file"|"")] — publik utk log & dasbor.
+     *  0.0.3 — file = Paths.gameUpstream() (config/game-upstream.txt; sumber
+     *  tunggal), fallback folder init() utk pemanggil tanpa Paths. */
     public static String[] gameUpstreamEx() {
         synchronized (LOCK) {
             try {
-                if (confDir != null) {
-                    File f = new File(confDir, "game-upstream.txt");
-                    if (f.exists() && f.length() > 6) {
-                        String s = readText(f).trim();
-                        if (s.startsWith("http://") || s.startsWith("https://")) {
-                            return new String[]{s, "file"};
-                        }
+                File f = Paths.ready() ? Paths.gameUpstream()
+                        : (confDir != null ? new File(confDir, "game-upstream.txt") : null);
+                if (f != null && f.exists() && f.length() > 6) {
+                    String s = readText(f).trim();
+                    if (s.startsWith("http://") || s.startsWith("https://")) {
+                        return new String[]{s, "file"};
                     }
                 }
             } catch (Throwable ignored) {
