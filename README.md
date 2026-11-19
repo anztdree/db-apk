@@ -1,12 +1,10 @@
 # db-apk — DB - Local (`com.db.local`) — 1 APK, 2 SISTEM, 100% OFFLINE
 
 Dokumen tunggal proyek = **proposal kerja saya** (asisten). Semua klaim
-bertanda **[TERVERIFIKASI]** dibuktikan dari isi APK itu sendiri (manifest,
-bytecode `classes.dex`, asset, native lib, dan **JS game asli hasil dekripsi
-pack**), bukan asumsi. Git history dan artefak lama = **VOID** (keputusan
-owner) — tidak dipulihkan, tidak dijadikan acuan. Acuan tunggal: file APK
-original di repo ini. Rincian dibedah di chat; README ini adalah dokumen
-kerja untuk eksekusi.
+bertanda **[TERVERIFIKASI]** dibuktikan dari isi APK + **backup data terpasang
+asli** (`log/com.Vanguard.twnthe.zip` = data dir app asli, berisi cache HTTP
+produksi) — bukan asumsi. Git history & artefak lama = **VOID**. Acuan tunggal:
+APK original di repo ini. Rincian dibedah di chat; README = dokumen kerja.
 
 ---
 
@@ -14,21 +12,19 @@ kerja untuk eksekusi.
 
 | Properti | Nilai |
 |---|---|
-| Package | `com.db.local` (asli sebelum rename: `com.guan.wangys`) |
+| Package | `com.db.local` (asli sebelum rename: `com.Vanguard.twnthe` / `com.guan.wangys`) |
 | Label | `DB - Local` |
 | Project name | `DragonBall` |
 | versionCode / versionName | `1` / `1.0.1` |
 | minSdk / targetSdk | 21 / 30 (compileSdk 23) |
 | Ukuran | 104.945.181 bytes |
 | SHA-256 | `b308c44de6ec082a70c39e388a2cef4e9cdc1cee30b38c14a30bef86a7bc2218` |
-| Signature | AOSP testkey (akan diganti keystore BARU saat rebuild) |
-| Clear-text HTTP | **DIIZINKAN** — `usesCleartextTraffic="true"` + `network_security_config.xml` base-config `cleartextTrafficPermitted="true"` |
-| Application class | `com.zhuhuan.game.Application` |
-| Launcher / Game host | `com.zhuhuan.game.LaunchActivity` / `MainActivity` |
-| Native lib | `libegret.so` (Egret Native + libcurl + WebSocket JNI), `libgavesec.so` (pelindung string) |
-| WebSocket client di device | **TooTallNate Java-WebSocket** (tertananam di `assets/runtime-dex.jar`) — RFC6455 standar |
-| Dynamic runtime | `assets/runtime-dex.jar` (loader hot-update Egret, obfuscated) |
-| Game SDK | QuickGame SDK, Facebook SDK, Google Billing 3.0.2, GMS Sign-in (semuanya OPSIONAL — gagal offline non-fatal) |
+| Signature | AOSP testkey (ganti keystore BARU saat rebuild) |
+| Clear-text HTTP | **DIIZINKAN** — `usesCleartextTraffic="true"` + `network_security_config.xml` |
+| Application / Launcher / Host | `com.zhuhuan.game.Application` / `LaunchActivity` / `MainActivity` |
+| Native lib | `libegret.so` (Egret Native + libcurl + WebSocket JNI), `libgavesec.so` |
+| WebSocket client device | Java-WebSocket (RFC6455) di `assets/runtime-dex.jar` |
+| Game SDK | QuickGame, Facebook, Google Billing 3.0.2, GMS — semua OPSIONAL, gagal offline non-fatal |
 
 ---
 
@@ -40,11 +36,10 @@ kerja untuk eksekusi.
 |                                                                  |
 |  SISTEM 2 (client, BEKU/PATEN)         SISTEM 1 (mini SERVER)    |
 |  - logika TIDAK diubah                 - classes2.dex s2.* (baru)|
-|  - 4 titik edit (semuanya alamat)        - boot di Application   |
-|    -> semua jadi 127.0.0.1:4000          .onCreate (paling awal, |
-|  - redirect lanjutan via setting JSON     SEBELUM LaunchActivity)|
-|                                        - bind 127.0.0.1:4000     |
-|                                        - HTTP + WebSocket 1 port |
+|  - 4 titik edit, semuanya ALAMAT       - boot di Application     |
+|    -> semua jadi 127.0.0.1:4000          .onCreate (paling awal) |
+|  - redirect lanjutan via setting JSON  - bind 127.0.0.1:4000     |
+|                                        - HTTP + WS + SQLite      |
 |                                        - dashboard owner /dash   |
 +------------------------------------------------------------------+
 ```
@@ -53,8 +48,8 @@ kerja untuk eksekusi.
 
 ## 3. ENKRIPSI RESOURCE `onepieceencrypts` — TERPECAHKAN [TERVERIFIKASI]
 
-Ditemukan di bytecode `classes.dex`, kelas obfuscated
-`cointhreat...customreading`, metode `nationalcommunitymissing([B)[B`.
+Ditemukan di bytecode `classes.dex` (kelas obfuscated
+`cointhreat...customreading`, metode `nationalcommunitymissing([B)[B`).
 Skrip pembuktian: **`tools/decrypt_onepiece.py`** (reproducible).
 
 ```
@@ -66,17 +61,15 @@ Skrip pembuktian: **`tools/decrypt_onepiece.py`** (reproducible).
 output    byte LE per word, pad = byte terakhir dibuang
 ```
 
-Hasil dekripsi (bukti nyata):
-
 | Pack | Ukuran | Isi terdekripsi |
 |---|---|---|
-| `voyage_fancy_radius.bin` | 1.233.600 B | **ZIP, 161 entri**: `index.html`, `manifest_ts.json`, `js/` (egret, game, eui, fairygui, dragonBones, assetsmanager, main…), `resource/` |
-| `pschent_full_tired.bin` | 9.428.744 B | **ZIP, 741 entri**: `js/` 14 modul (termasuk **`main.min_7eae4d6e.js` 4,7 MB** = logika game penuh, `socket.io.min_57ea9db7.js` = **socket.io client v2.1.2**, `lz-string.min`, `md5.min`) + `resource/` |
-| `vvcc.bin` | 183.764 B | **JSON peta nama file** (1.944 key: path asli ↔ nama obfuscated) |
-| `vvcc_tc.bin` | 10.956 B | **JSON peta nama file** (139 key) |
+| `voyage_fancy_radius.bin` | 1.233.600 B | ZIP 161 entri: `index.html`, `manifest_ts.json`, `js/`, `resource/` |
+| `pschent_full_tired.bin` | 9.428.744 B | ZIP 741 entri: `js/` 14 modul (**`main.min` 4,7 MB**, `socket.io.min` = client **v2.1.2**, `lz-string.min`, `md5.min`) + `resource/` |
+| `vvcc.bin` / `vvcc_tc.bin` | 183.764 / 10.956 B | peta nama file obfuscated (1.944 + 139 key) |
 
-> Artinya: **seluruh kode client + kontrak protokol sudah di tangan**.
-> Kontrak wire di §5 diambil langsung dari JS asli ini — bukan tebakan.
+> Seluruh kode client + kontrak protokol **di tangan**. Kontrak wire di §5–§7
+> diambil dari JS asli + **frame produksi nyata** dari cache backup (§7) —
+> bukan tebakan.
 
 ---
 
@@ -84,42 +77,71 @@ Hasil dekripsi (bukti nyata):
 
 ### 4.1 Boot native (bytecode)
 
-1. `LaunchActivity` pilih supplier **"BS"** (`const-string 'BS'` di
-   `LaunchActivity`) → baca `config_BS.properties` EntryPoint1/2 (base64)
-   → HTTP GET (retry 5x, timeout naik `5*i*1000`) → response
-   **di-XOR key `"DragonBall"`** (`const-string 'DragonBall'` di
-   `cointhreat/.../seventygenom->nationalcommunitymissing` dan
-   `LaunchActivity.<init>`) → parse JSON setting → SharedPreferences.
+1. `LaunchActivity` pilih supplier **"BS"** → `config_BS.properties`
+   EntryPoint1/2 (base64) → HTTP GET (retry 5x, timeout naik) → response
+   **XOR key `"DragonBall"`** (`const-string 'DragonBall'` di
+   `seventygenom->nationalcommunitymissing` + `LaunchActivity.<init>`)
+   → JSON setting → SharedPreferences.
 2. `MainActivity`: `EgretNativeAndroid.initialize(gameUrl)`; fallback
-   `gameUrlTs` (Base64); bridge `jsbind` (`addJavascriptInterface`,
-   string `'jsbind'` di `classes.dex`); penyusun parameter runtime
-   (`MainActivity->hardlinerspare`): `clientParams`, `loginServer`,
-   `mSdkParams`, `mGameUrl`, `mPreloadPath`, `language`, `version`.
-3. Hot-update: bandingkan lokal `base.version`=110 / `resource.version`=11220
-   dengan `{updateUrl}/…` (`upgrade.json`, `size.json`, `base.zip`, `all.zip`);
-   gagal/404 = aman (pakai resource bawaan APK).
+   `gameUrlTs` (Base64); bridge `jsbind`; param runtime (`hardlinerspare`):
+   `clientParams`, `loginServer`, `mSdkParams`, `mGameUrl`, `mPreloadPath`.
+3. Hot-update: lokal `base.version`=110 / `resource.version`=11220 vs
+   `{updateUrl}/…`; gagal/404 = aman (resource bawaan).
 
-### 4.2 Titik jaringan JS game (dari JS asli, hasil dekripsi §3)
+### 4.2 Titik jaringan JS game (dari JS asli hasil dekripsi)
 
-| Titik | Sumber alamat | Kebutuhan |
+| Titik | Sumber alamat | Status offline |
 |---|---|---|
-| Setting JSON | EntryPoint di `config*.properties` (edit alamat saja) | JSON field §5.1, XOR `DragonBall` |
-| `window.getLoginServer()` | **nilai dari native_setting `loginServer:loginPort`** — dibaca `classes.dex` (`jsonObject.getString("loginServer")`), dibawa layer native, di-expose ke JS. JS sendiri **TIDAK punya definisinya** (1 referensi di `main.min` = pemanggilnya saja) dan fallback `resource/properties/serversetting.json` **TIDAK ADA** di pack (peta `vvcc` 1.944 entri tanpa `serversetting`) ⇒ satu-satunya sumber alamat = setting JSON yang kita kendalikan 100% | URL socket login |
-| `window.getSdkLoginInfo()` | via bridge (`excuteFunction("getSdkLoginInfo")`); bila `null` → JS jatuh ke **“无渠道登录” (login tanpa channel)** → `isNoSdk=true` → `checkLastLogin()` — jalur login offline, TANPA Google/Facebook | identitas |
-| `socket login-server` | `getLoginServer()` | handshake verify + `loginGame` + `GetServerList` |
-| `socket main-server` | `serverItem.url` (dari jawaban GetServerList) | semua RPC gameplay (`handler.process`) |
-| `socket chat-server` | `serverItem.chaturl` | `registChat`, chat room |
-| `socket dungeon-server` | `serverItem.dungeonurl` | dungeon/battle realtime |
-| `./manifest.json?v=` | XHR relatif (dir shell lokal) | daftar JS — sudah ada di pack |
-| `checkTime` | setting | sinkron waktu server |
-
-SDK lain (Facebook/Billing/GMS/PEI/qsdk) = opsional, gagal offline non-fatal.
+| Setting JSON | EntryPoint `config*.properties` (1 edit base64) | dilayani kernel |
+| `window.getLoginServer()` | nilai `loginServer:loginPort` dari native_setting — JS **tidak punya definisinya** (1 referensi = pemanggil) dan fallback `serversetting.json` **TIDAK ADA** di pack & peta vvcc ⇒ satu-satunya sumber = setting JSON kita | dilayani kernel |
+| `window.getSdkLoginInfo()` | via bridge; `null` → **无渠道登录** (login tanpa channel) → `checkLastLogin()` | jalur offline |
+| socket login-server | `getLoginServer()` | dilayani kernel |
+| socket main-server | `serverItem.url` dari **ACK GetServerList** | dilayani kernel |
+| socket chat-server | **bukan dari serverList!** — dari ACK `registChat`: `_chatServerUrl` (+ `_worldRoomId`, `_guildRoomId`, `_teamDungeonChatRoom`) | dilayani kernel |
+| socket dungeon-server | **dari ACK team**: `_myTeamServerSocketUrl` (`myTeamServerSocketUrl`) | dilayani kernel |
+| `./manifest.json?v=` | XHR relatif (shell lokal) | sudah di pack |
+| error report battle | `http://log.sjflaregame.com:10000/error/battle/client` (dari JS) | route kernel |
+| SDK (FB/Google/QuickGame/PEI/qsdk) | host SDK asli | mati non-fatal |
 
 ---
 
-## 5. KONTRAK WIRE 1:1 [TERVERIFIKASI DARI JS ASLI]
+## 5. SERVER ASLI MEREKA — PETA BUKTI DARI BACKUP DATA TERPASANG [TERVERIFIKASI]
 
-### 5.1 JSON native_setting (server kirim, XOR `DragonBall`)
+`log/com.Vanguard.twnthe.zip` = backup data dir app asli
+(`com.Vanguard.twnthe`). Di dalamnya: cache HTTP WebView tersusun **per
+hostname** + frame produksi nyata + prefs SDK. Ini peta infra asli mereka:
+
+| # | Layanan | Host:Port ASLI | Bukti (dari backup/APK) |
+|---|---|---|---|
+| 1 | Config service | `https://configus.sjmobilegame.com/bs/db/android` (:443) + fallback COS `configus-1257066086.cos.na-siliconvalley.myqcloud.com` | `config_BS.properties` |
+| 2 | Config alt | `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` | `config.properties` |
+| 3 | CDN resource/shell | `http://pigres.pksilo.com` (:80) | 14.428 file cache webview per-host + localStorage prefs `pigres.pksilo.com.xml` |
+| 4 | **Login server (socket.io)** | `https://login.pksilo.com:443` path `/socket.io/` | cache polling `/socket.io/` 1.792 file, frame engine.io nyata |
+| 5 | **Main server (banyak instance)** | `https://s431-zd.pksilo.com:10300`, `s432-zd:10800`, `s433-zd:10700`, `s434-zd:10600`, `s435-zd:10700`, `s436-zd:10900`, … — **serverList asli berisi 432 entri** | ACK GetServerList 81 KB tertinggal di cache |
+| 6 | Error/log battle | `http://log.sjflaregame.com:10000/error/battle/client` | URL di JS yang di-cache |
+| 7 | SDK CS/log/policy (HAOCHENHUDONG) | `chat/log/cw.sdkapi.xgogaming.com`, `policy.cdnres.xgogaming.com` (:443) | prefs `PREFERENCE_HAOCHENHUDONG` |
+| 8 | qsdk | `qsdk.t4game.com` | `assets/QHinfo` |
+| 9 | Facebook / Google / GMS / Billing | host SDK | prefs SDK |
+
+### 5.1 Tools server asli yang TERBUKTI dari frame cache produksi
+
+| Alat | Bukti mentah |
+|---|---|
+| **nginx** | header cache: `Server: nginx`, `Connection: keep-alive` |
+| Node socket.io v2 di belakang nginx | `Set-Cookie: io=<sid>; Path=/; HttpOnly; SameSite=Strict`, `Access-Control-Allow-Origin: *`, frame `0{sid...}`+`40`, ACK `430/431/433/434` |
+| engine.io v3 params asli | open packet: `0{"sid":"cZ-ZtuTl7FSJ5Uj_N8w7","upgrades":["websocket"],"pingInterval":25000,"pingTimeout":5000}` |
+| **Transport polling DIPAKAI NYATA** | seluruh cache login = polling (XHR), bukan WS — polling wajib didukung |
+| Header custom backend | `Egret-Response-Time: <ms>`, `Egret-Save-Time: <ms>` |
+| Kompresi | `Content-Encoding: deflate` (HTTP), ACK `compress:true` = **LZString UTF-16** (dilihat pola karakternya) |
+| Perilaku unknown action | ACK nyata: `{"ret":902,"message":"unknown socket error"}` |
+| Data record chat/mail | `{_record:[{_id,_time,_kind,_name,_image,_headEffect,_headBox,_content,_type,_param,_oriServerId,...}]}` |
+| DB backend asli | TIDAK terlihat dari client (ada di datacenter) — yang terverifikasi hanya kontrak JSON |
+
+---
+
+## 6. KONTRAK WIRE 1:1 [TERVERIFIKASI DARI JS ASLI + FRAME PRODUKSI]
+
+### 6.1 JSON native_setting (kernel kirim, XOR `DragonBall`)
 
 ```json
 {
@@ -140,266 +162,268 @@ SDK lain (Facebook/Billing/GMS/PEI/qsdk) = opsional, gagal offline non-fatal.
 }
 ```
 
-### 5.2 HTTP port 4000 (satu ServerSocket, multiplex dengan WS)
+### 6.2 HTTP port 4000 (satu ServerSocket, multiplex dengan WS)
 
 | Route | Respons |
 |---|---|
-| `GET /bs/db/android` dan `GET /lzceshi/native_setting/Android` | JSON §5.1 **di-XOR `"DragonBall"`** |
-| `GET /game/base.version?rnd=` / `resource.version?rnd=` | `110` / `11220` (persis assets → client TIDAK download apa pun) |
-| `GET /game/upgrade.json?rnd=` / `size.json?rnd=` | manifest versi-identik (no-op) |
-| `GET /game/base.zip?v=` / `all.zip?v=` | 404 (tidak dibutuhkan bila versi identik) |
-| `GET /static/**` | shell + JS (cadangan bila native minta lewat HTTP) |
-| `GET /health`, `GET /dash` | cek hidup + dashboard owner |
+| `GET /bs/db/android`, `GET /lzceshi/native_setting/Android` | JSON §6.1 di-XOR `"DragonBall"` |
+| `GET /game/base.version` / `resource.version` | `110` / `11220` (versi identik → nol download) |
+| `GET /game/upgrade.json` / `size.json` | manifest versi-identik (no-op) |
+| `GET /game/base.zip` / `all.zip` | 404 (aman, tak dibutuhkan bila versi identik) |
+| `POST /error/battle/client` | 200 + catat log (pengganti `log.sjflaregame.com:10000`) |
+| `GET /index-native.html`, `/static/**` | bootstrap HTML + statis (kernel juga definisikan `window.getLoginServer` di sini sebagai jaring pengaman) |
+| `GET /health`, `/dash` | cek hidup + dashboard owner |
 
-### 5.3 Realtime — socket.io client **v2.1.2** (EIO=3, path `/socket.io`)
+Header respons HTTP kernel (miror asli): `Access-Control-Allow-Origin: *`,
+`Connection: keep-alive`, `Set-Cookie: io=<sid>` (untuk polling),
+`Egret-Response-Time` / `Egret-Save-Time`.
 
-- Transport: websocket (RFC6455 via Java-WebSocket) + polling (fallback).
-- `io.connect(url, {reconnectionAttempts:10})`; heartbeat ping/pong EIO;
-  probe upgrade `2probe`/`3probe`; framing `40` connect, `42["event",data]`,
-  `43` ack, `2`/`3` ping/pong.
+### 6.3 Realtime — socket.io client v2.1.2 (EIO=3, path `/socket.io`)
+
+- DUA transport wajib (asli dipakai nyata):
+  **polling** (XHR GET/POST, frame `<len>:<payload>` beruntun,
+  `Content-Type: text/plain`, cookie `io=`) dan
+  **websocket** (RFC6455, upgrade `2probe/3probe`).
+- Open packet kernel = identik asli:
+  `0{"sid":"<24char>","upgrades":["websocket"],"pingInterval":25000,"pingTimeout":5000}`
+- Heartbeat `2/3` per 25 s, timeout 5 s. Framing: `40` connect, `42["event",data]`,
+  `43<id>[ack]`.
 
 **Handshake verify (persis):**
 ```
-server  -> emit "verify" dengan challenge string <n>
-client  -> o = (new TEA).encrypt(n, "verification")     // XXTEA JS klasik:
-           delta 2654435769, rounds floor(6+52/len), strToLongs LE,
-           key = Utf8("verification").slice(0,16)
-client  -> emit "verify", o, ackFn
-server  -> ack {ret: 0}                                  // ret!=0 = gagal login
+server -> emit "verify" challenge <n>
+client -> o = XXTEA.encrypt(n, "verification")   // delta 2654435769, LE
+client -> emit "verify", o, ackFn
+server -> ack {ret: 0}
 ```
 
-**RPC:** `socket.emit("handler.process", {type, action, ...}, ackFn)`
-— inventaris **419 action unik** tersimpan di **`tools/rpc-inventory.txt`**
-(loginGame, GetServerList, enterGame, registChat, startBattle, getRank,
-friendServerAction, getActivityDetail, checkBattleResult, getReward, …).
+**RPC:** `emit("handler.process", {type, action, ...}, ackFn)` —
+**419 action unik** di `tools/rpc-inventory.txt`.
 
-**Envelope ACK (persis):**
+**Envelope ACK (bentuk produksi nyata):**
 ```json
-{ "ret": 0, "data": "<STRING JSON>", "compress": 0|1,
+{ "ret": 0, "data": "<STRING JSON>", "compress": false,
   "serverTime": <ms>, "server0Time": <ms> }
 ```
-- `data` adalah **STRING JSON** (client `JSON.parse` setelah proses).
-- `compress` truthy → data = **LZString UTF-16** (`LZString.decompressFromUTF16`)
-  — bukan zlib. Server boleh kirim compress=0.
-- `serverTime`/`server0Time` → `ServerTime.updateServerTime(...)` (sinkron jam).
-- `ret != 0` → jalur error client (`"38"` khusus force-update, `"70001"`
-  reportBattleLog). Unknown route → balas `{ret:0,data:"{}"}` + **catat di
-  `rpc.log`** (game jalan terus; kita isi handler belakangan).
+- `compress:true` → `data` = LZString UTF-16 (terbukti di cache). Kernel
+  default `compress:false` (plain), switch di `zone.json`.
+- Unknown action (mode `native`): ACK `{"ret":902,"message":"unknown socket error"}`
+  (persis asli). Mode `silent` (default kernel): `{"ret":0,"data":"{}"}` —
+  dipilih di `zone.json`, dicatat di `rpc.log`.
 
-**Channel notify (server push):** `socket.on("Notify", fn)` dengan
-`{ret:"SUCCESS", data:"<string json>", compress}`; action seperti `"Kickout"`,
-`"onlineBulletin"`.
+**Urutan sesi (dari JS + cache produksi):**
+1. connect (polling dulu → upgrade WS) → verify → `{ret:0}`
+2. `loginGame` `{userId,password,fromChannel,channelName,nickName,subChannel}` → `{loginToken,userId,nickName,channelCode,sign,...}`
+3. `GetServerList` → produksi asli: `{serverList:[432 entri {serverId,new,online,hot,url,name,offlineReason}], history:[...], offlineReason}` — field terverifikasi persis; kernel kirim 1 entri `serverId:"1", new:true, online:true, url:"http://127.0.0.1:4000"` (jumlah/urutan atur di `zone.json`)
+4. main-server connect (`serverItem.url`) → `enterGame` → server kirim save pemain + `myTeamServerSocketUrl:"http://127.0.0.1:4000"` (→ `dungeonurl`)
+5. `registChat` (di main-server) → ACK **`_chatServerUrl:"http://127.0.0.1:4000"`, `_worldRoomId`, `_guildRoomId`, `_teamDungeonChatRoom`** → baru chat-server connect (retry 3 dtk, max 15x)
+6. dungeon-server connect bila battle
+7. 419 action gameplay — UnknownHandler aman (§6.3)
 
-**Urutan sesi (dari JS):**
-1. connect → verify → `{ret:0}`
-2. `{type:"User",action:"loginGame",userId,password,fromChannel,channelName,headImageUrl,nickName,subChannel}` → jawab `{loginToken,userId,nickName,channelCode,sign,...}`
-3. `{type:"User",action:"GetServerList",userId,subChannel,channel}` → jawab `{serverList:[{serverId,name,"new":1,online:1,url,chaturl,dungeonurl,...}],history:[...]}` — client auto-pilih entri pertama `new:1 && online:1`
-4. main-server connect (`serverItem.url`) → `{type:"user",action:"enterGame",loginToken,userId,serverId,version:"1.0",language,gameVersion}` → kirim **save pemain lengkap** (zona)
-5. chat-server connect (`serverItem.chaturl`) → `{type:"user",action:"registChat",...}` (retry 3 dtk, max 15x) → room ids (`guildRoomId`,`teamChatRoomId`,`worldRoomId`,`teamDungeonChatRoom`)
-6. dungeon-server connect (`serverItem.dungeonurl`) bila battle dungeon
-7. selanjutnya: 419 action gameplay — handler bertahap, UnknownHandler aman
-
-**Identitas offline:** tanpa SDK → `getSdkLoginInfo()` null → 无渠道登录 →
-server buat/muat pemain `userId = "local-" + hash(ANDROID_ID)`; password
-bebas (disimpan zona). Tidak butuh Google/Facebook sama sekali.
+**Identitas offline:** 无渠道登录 → kernel buat/muat pemain
+`userId = "local-" + hash(ANDROID_ID)` (pola sama dengan asli: backup
+menyimpan `puIdMessage.txt` = UID device). Tanpa Google/Facebook.
 
 ---
 
-## 6. ALUR LENGKAP APLIKASI ↔ SERVER, SAMPAI TITIK loginServer [TERVERIFIKASI]
+## 7. PENGANTIAN 1:1 — ALAT ASLI vs ALAT KITA [RINCI]
 
-### 6.1 Tahap A — boot native (semua sebelum satu byte pun keluar masuk)
-
-| t | Yang terjadi | Bukti |
+| Asli (bukti §5) | Pengganti KITA | Detail implementasi |
 |---|---|---|
-| t0 | Proses `com.db.local` start | manifest |
-| t1 | `Application.onCreate` → **kernel bind 127.0.0.1:4000 SINKRON (beberapa ms) → return** | smali patch 2 instruksi (§8) |
-| t2 | `LaunchActivity`: baca `assets/config.properties` + `supplierconfig.json` → pilih supplier `"BS"` → baca `assets/config_BS.properties` EntryPoint1/2 (base64) | `const-string 'BS'`, `config_%s.properties` di `classes.dex` |
-| t3 | HTTP GET EntryPoint1 (retry 5x, timeout `5*i*1000` naik) → response bytes | bytecode LaunchActivity |
-| t4 | Response **di-XOR `"DragonBall"`** → JSON native_setting | `const-string 'DragonBall'` di `seventygenom->nationalcommunitymissing` |
-| t5 | Parse setting: `jsonObject.getString("loginServer")`, `"tsLoginServer"`, `loginPort`, `loginWebPort` → SharedPreferences | `LaunchActivity->worktopichardtails` |
-| t6 | `MainActivity`: `EgretNativeAndroid.initialize(gameUrl)` + fallback `gameUrlTs` (Base64) + param map (`clientParams`/`loginServer`/`mSdkParams`/`mGameUrl`/`mPreloadPath`) | `MainActivity->hardlinerspare` |
-| t7 | Egret Native load shell **dari pack di assets** (`nativeRender=1`, `nativeUnzipJson`) — dekripsi `onepieceencrypts` on-device, TANPA internet | §3 |
+| **nginx** (front semua host) | **`s2.http` — engine HTTP buatan sendiri di kernel** (java.net.ServerSocket) | HTTP/1.1: GET/POST, query string, Content-Length, `Expect: 100-continue` (libcurl), keep-alive, header miror (CORS *, io cookie, Egret-* headers). Bukan nginx, TIDAK bisa — tapi wire-nya identik, client tidak cek banner `Server:` |
+| **Node.js + socket.io v2** (login/main/chat/dungeon) | **`s2.ws` — engine.io v3 + socket.io v2 di Java murni** | polling (XHR long-poll, frame `<len>:`) + websocket (RFC6455: handshake SHA-1/base64, mask, len 125/65536/64-bit) — DUA-DUANYA, bukti polling dipakai produksi |
+| **432 main server** (s431…s436-zd, port 10300–10900) | **1 kernel :4000, peran virtual** | alamat dari serverList KITA sendiri → cukup 1 port; 4 peran (login/main/chat/dungeon) dibedakan di layer sesi dari packet pertama (`loginGame` vs `enterGame` vs `registChat` vs battle). Opsional `multiPort` di `zone.json` → 4001 login / 4002 main / 4003 chat / 4004 dungeon |
+| **COS myqcloud** (hot-update) | route `/game/*` versi-identik | nol download, 404 aman |
+| **log.sjflaregame.com:10000** | route `/error/battle/client` | terima POST, catat `log/error.log`, balas 200 |
+| **SDK cluster xgogaming/t4game/FB/Google** | TIDAK digantikan | mati non-fatal; login lewat 无渠道登录 |
+| **DB backend (tak terlihat; datacenter mereka)** | **SQLite bawaan Android** (`android.database.sqlite`, nol dependensi) | file `Android/data/com.db.local/server/db.sqlite` — schema §8.2 |
+| **XXTEA `verification`** | `s2.crypto.Xxtea` | delta 2654435769, LE, round `6+52/n` |
+| **LZString UTF-16** | `s2.crypto.LzString` | default OFF, switch `zone.json` |
+| **XOR `DragonBall`** | `s2.crypto.Xor` | repeating-key, byte-identik |
 
-### 6.2 Tahap B — dari shell JS sampai titik loginServer
+**PORT MAP TEGAS (pertanyaan "port berapa"):**
 
-| t | Yang terjadi | Bukti |
+| Server asli | Port asli | Local |
 |---|---|---|
-| t8 | JS `connectToLogin` (`main.min`, **satu-satunya referensi `getLoginServer` di seluruh JS**): `t = window.getLoginServer()` | `main.min_7eae4d6e.js` |
-| t9 | Fallback JS bila `t` kosong: `resource/properties/serversetting.json` — **FILE INI TIDAK ADA** di pack & peta vvcc ⇒ fallback mustahil terpakai ⇒ alamat login server **pasti** berasal dari native_setting | grep penuh pack + vvcc |
-| t10 | `window.getLoginServer()` = `loginServer:loginPort` dari setting JSON (kita isi `127.0.0.1:4000`) | §5.1 |
-| t11 | socket.io client **v2.1.2** connect → engine.io v3: `GET/WS /socket.io/?EIO=3` → open `{sid}` → probe `2probe/3probe` → `40` connect | `socket.io.min_57ea9db7.js` |
-| t12 | Handshake verify: server emit `"verify"` challenge → client XXTEA-encrypt dengan key `"verification"` → ack `{ret:0}` | JS TEA + `verification` |
-| t13 | `loginGame` → `{loginToken,userId,...}` | §5.3 urutan sesi |
-| t14 | `GetServerList` → `serverList[]` (`url`/`chaturl`/`dungeonurl` — kita isi semua `127.0.0.1:4000`) → auto-pilih `new:1 && online:1` | §5.3 |
-| t15 | main-server connect → `enterGame`; chat-server → `registChat`; dungeon-server bila battle | §5.3 |
-
-### 6.3 Tabel 1:1 — alamat ASLI vs LOCAL (per titik)
-
-| Titik | ASLI (server mereka) | LOCAL (kita) | Sentuh APK? |
-|---|---|---|---|
-| EntryPoint config | `https://configus.sjmobilegame.com/bs/db/android` + fallback COS `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android` | `http://127.0.0.1:4000/bs/db/android` (fallback juga) | **EDIT 1** |
-| EntryPoint config (jalur alt) | `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` | `http://127.0.0.1:4000/lzceshi/native_setting/Android` | **EDIT 2** |
-| Isi setting (XOR `DragonBall`) | host asli mereka | JSON §5.1 semua alamat `127.0.0.1:4000` | TIDAK (client sama) |
-| `loginServer:loginPort` | host asli dari server asli | `127.0.0.1:4000` dari JSON kita | TIDAK |
-| socket login/main/chat/dungeon | 4 host realtime asli | 1 kernel :4000, 4 sesi virtual | TIDAK |
-| hot-update `upgrade.json`… | CDN asli | route versi-identik → nol download | TIDAK |
-
-**Kesimpulan modifikasi minimalis: client TIDAK diubah sama sekali logikanya.
-Yang berubah hanya ALAMAT (2 file properties) + 1 titik boot (2 instruksi
-smali) + 1 dex tambahan (server).**
+| configus / dragon (config) | 443 / 82 | **127.0.0.1:4000** |
+| pigres (CDN shell) | 80 | tidak dibutuhkan (shell dari pack); `/static/**` cadangan |
+| login.pksilo.com | 443 | **127.0.0.1:4000** (peran login) |
+| s431–s436-zd (main, 432 instance) | 10300–10900 | **127.0.0.1:4000** (peran main) |
+| chat server | dari ACK registChat | **127.0.0.1:4000** (peran chat) |
+| dungeon server | dari ACK team | **127.0.0.1:4000** (peran dungeon) |
+| log server | 10000 | **127.0.0.1:4000** route `/error/battle/client` |
+| dash owner | — | **127.0.0.1:4000/dash** |
 
 ---
 
-## 7. TOOLS SERVER MEREKA vs KITA — 1:1 PROTOKOL, BUKAN 1:1 SOFTWARE [TERVERIFIKASI]
+## 8. SISTEM 1 — MINI SERVER: KOMPONEN, BOOT PERTAMA, DATABASE
 
-Kita **tidak meniru software** mereka (nginx/Node/COS tidak ada di APK dan
-tidak dibutuhkan). Kita meniru **protokol wire** yang mereka bicarakan ke
-client — client tidak bisa membedakan.
-
-| Layanan | Yang dipakai server ASLI (bukti) | Yang KITA pakai 1:1 | Kenapa setara |
-|---|---|---|---|
-| Config service | HTTP(S) GET, body JSON **XOR `DragonBall`** — `configus.sjmobilegame.com` + COS fallback (`config_BS.properties`) | route HTTP di kernel `s2.http`, body sama persis di-XOR `"DragonBall"` | client hanya GET + XOR-decode; asal host `127.0.0.1` |
-| CDN hot-update | COS myqcloud (`upgrade.json`, `size.json`, `base.zip`, `all.zip`) | route `/game/*` versi-identik (`110`/`11220`) → nol download; 404 aman (fallback bawaan) | client bandingkan versi → sama → tidak download |
-| Realtime server | **Node.js socket.io v2.x** — bukti: client v2.1.2 (`socket.io.min`), framing `40/42/43`, EIO=3, probe | Java murni: **RFC6455 + engine.io v3 + socket.io v2 wire**, reimplementasi 1:1, nol dependensi | wire identik; transport device Java-WebSocket RFC6455 |
-| Handshake verify | XXTEA key `"verification"` (JS TEA klasik) | `s2.crypto.XXTEA` (LE, delta 2654435769) | algoritma sama, key sama |
-| Kompresi ACK | LZString UTF-16 (`lz-string.min` di pack) | default `compress=0` + `s2.crypto` LZString UTF-16 siap | client menerima dua-duanya |
-| DB pemain | backend asli (tidak terlihat dari client, tidak relevan) | zona JSON atomic (`players/<uid>.json`) | client hanya menerima JSON save |
-| Transport WS di device | Java-WebSocket (RFC6455) tertanam runtime | kernel = server RFC6455 (handshake SHA-1+base64, mask, len 125/65536/64-bit) | standar sama |
-| Toolchain build | Android SDK/aapt (pembuat APK asli) | **ECJ (javac 8) + d8 --min-api 21** → `classes2.dex`; **baksmali/smali** (2 instruksi); **python zipfile raw-copy**; **zipalign + apksigner** | hasil = APK valid, entri original byte-identik |
-
----
-
-## 8. SISTEM 2 — MODIFIKASI MINIMALIS: 4 TITIK EDIT, SISANYA BYTE-IDENTIK [TERVERIFIKASI]
-
-| # | File di APK | Edit | Nilai |
-|---|---|---|---|
-| 1 | `assets/config_BS.properties` | `EntryPoint1` & `EntryPoint1_debug` & `EntryPoint2`(+`_debug`) → base64 local | `http://127.0.0.1:4000/bs/db/android` = `aHR0cDovLzEyNy4wLjAuMTo0MDAwL2JzL2RiL2FuZHJvaWQ=` |
-| 2 | `assets/config.properties` | `EntryPoint1` & `EntryPoint1_debug` → base64 local | `http://127.0.0.1:4000/lzceshi/native_setting/Android` = `aHR0cDovLzEyNy4wLjAuMTo0MDAwL2x6Y2VzaGkvbmF0aXZlX3NldHRpbmcvQW5kcm9pZA==` |
-| 3 | `classes.dex` → `com.zhuhuan.game.Application.onCreate` | sisip 2 instruksi (baksmali → smali): `invoke-static {}, Ls2/Boot;->start()V` + `return-void` guard | boot server paling awal (§9) |
-| 4 | entri baru `classes2.dex` | kernel `s2.*` (§9) | mini server |
-
-- Manifest, `resources.arsc`, lib, asset game, JS, semua entri lain:
-  **raw copy byte-identik** dari original (assemble zip, bukan rebuild gradle).
-- TIDAK ada edit endpoint lain: semua alamat lanjutan (gameUrl, loginServer,
-  serverList url/chaturl/dungeonurl, hot-update) mengalir dari **SATU JSON
-  setting** yang kita kirim (§5.1) — jadi satu titik kontrol.
-- Signature: keystore BARU (v1+v2) → **wajib uninstall APK lama sebelum
-  pasang** (testkey original berbeda tanda tangan).
-
----
-
-## 9. SISTEM 1 — SPESIFIKASI MINI SERVER + PRIORITAS BOOT
-
-Bahasa: **Java 8 murni** (tanpa library eksternal) → `classes2.dex`
-(ART auto-load multi-dex, minSdk 21 → tanpa edit manifest).
-
-### 9.1 Komponen
+### 8.1 Komponen kernel (Java 8 murni, nol dependensi → `classes2.dex`)
 
 | Komponen | Kelas | Isi |
 |---|---|---|
-| Boot | `s2.Boot` | dipanggil 2 instruksi dari `Application.onCreate`; bind `127.0.0.1:4000` **SINKRON** (instan) lalu return; idempotent (guard double-bind) |
-| Core | `s2.core.ServerCore` | 1 `ServerSocket` :4000, thread pool, sniff: `Upgrade: websocket` → WS engine, selain itu HTTP engine |
-| HTTP | `s2.http.*` | parser HTTP/1.1 (Content-Length, `Expect: 100-continue` untuk libcurl), router tabel, responder (json/xor/file) |
-| WS | `s2.ws.*` | handshake RFC6455, frame codec, engine.io v3 (`0` open sid, `2/3` heartbeat, `2probe/3probe`), socket.io v2.1.2 (`40`, `42`, `43`) |
-| Crypto | `s2.crypto.*` | XXTEA (LE) untuk verify `verification`; XOR `DragonBall`; LZString UTF-16 |
-| Game | `s2.game.*` | `GameSession` (state machine 4 koneksi), `Dispatcher` (type+action), handler: Verify/LoginGame/GetServerList/EnterGame/RegistChat/Chat/Notify/Unknown |
-| Zone | `s2.store.ZoneStore` | JSON atomic (tmp+rename) di `Android/data/com.db.local/server/`: `zone.json`, `players/<uid>.json`, `chat.json`, `kv.json`, `log/http.log`, `log/rpc.log` |
-| Dash | `s2.dash.DashPage` | `/dash`: status, jumlah pemain, 100 baris rpc.log terakhir, tombol reload/wipe |
-| Util | `s2.util.Json` | JSON writer/parser minimal (~200 baris, tanpa Gson) |
+| Boot | `s2.Boot` | dipanggil 2 instruksi dari `Application.onCreate`; bind :4000 **SINKRON**; idempotent |
+| Core | `s2.core.ServerCore` | 1 ServerSocket :4000, thread pool, sniff transport |
+| HTTP | `s2.http.HttpParser`, `HttpWriter`, `Router` + handler `Config`, `Hot`, `Static`, `ErrorReport`, `Dash` | HTTP/1.1 + routing |
+| WS | `s2.ws.WsHandshake`, `WsFrame`, `EngineIo` (polling+WS), `SocketIo` | engine.io v3 + socket.io v2 |
+| Crypto | `s2.crypto.Xxtea`, `Xor`, `LzString` | protokol |
+| Game | `s2.game.GameSession`, `Dispatcher`, handler `Verify`, `User` (loginGame/GetServerList/enterGame), `Chat` (registChat/room), `Dungeon`, `Notify`, `Unknown` | state machine 4 peran |
+| Store | `s2.store.Db` (SQLite), `Zone` (zone.json) | persist |
+| Dash | `s2.dash.DashPage` | status + log + reload/wipe |
+| Util | `s2.util.Json` | parser/writer JSON minimal |
 
-### 9.2 Prioritas boot — "server jalan PERTAMA sebelum apapun butuh dia"
+### 8.2 DATABASE — SQLite (bawaan Android, nol dependensi)
+
+File: `Android/data/com.db.local/server/db.sqlite`
+
+```sql
+CREATE TABLE players(uid TEXT PRIMARY KEY, name TEXT, data TEXT, updated INTEGER);
+  -- data = save JSON penuh persis kontrak enterGame client
+CREATE TABLE kv(k TEXT PRIMARY KEY, v TEXT);          -- state dunia, flag, counter
+CREATE TABLE chat(room TEXT, ts INTEGER, sender TEXT, msg TEXT);
+CREATE TABLE records(kind INTEGER, ts INTEGER, data TEXT);  -- _record: mail/bulletin
+CREATE TABLE serverlist(serverId TEXT PRIMARY KEY, name TEXT,
+  new INTEGER, online INTEGER, hot INTEGER, offlineReason TEXT);
+  -- url TIDAK disimpan: kernel selalu bangun "http://127.0.0.1:4000"
+```
+
+- `zone.json` (teks, owner-edit): konfigurasi server (serverlist seed, jumlah
+  entri serverList, mode unknownAction, compress, multiPort).
+- Log teks: `log/http.log`, `log/rpc.log`, `log/boot.log`, `log/error.log`.
+- Backup = copy `db.sqlite` + `zone.json`. Tanpa MySQL/Redis/mesh apapun.
+
+### 8.3 Prioritas boot — "server jalan PERTAMA"
 
 ```
-t0  proses com.db.local dimulai
-t1  Application.onCreate()            <- TITIK EKSEKUSI PALING AWAL di APK
-t2  └─ s2.Boot.start(): bind 127.0.0.1:4000 SINKRON (ServerSocket bind < 50 ms)
-t3  └─ onCreate() return (logika original lanjut UTUH)
-t4  LaunchActivity.onCreate()         <- HTTP GET config ke 127.0.0.1:4000
-                                         port SUDAH listening sejak t2 → langsung dilayani
-t5  MainActivity → shell Egret (pack assets, tanpa internet)
-t6  JS socket.io → 127.0.0.1:4000 (login/main/chat/dungeon)
+t0 proses com.db.local mulai
+t1 Application.onCreate()                 <- titik eksekusi paling awal di APK
+t2 └─ s2.Boot.start(): bind 127.0.0.1:4000 SINKRON (< 50 ms)
+t3 └─ onCreate() return (logika original utuh)
+t4 LaunchActivity.onCreate()              <- GET config ke 127.0.0.1:4000 → SUDAH dilayani
+t5 MainActivity → shell Egret (pack assets, tanpa internet)
+t6 JS socket.io → 127.0.0.1:4000 (polling → upgrade WS)
 ```
 
 - `Application.onCreate` dipanggil framework **sebelum activity apa pun** —
-  ini pemicu boot paling awal yang bisa disisip tanpa mengubah logika app.
-- Alternatif ContentProvider (boot lebih awal lagi) **DITOLAK** karena
-  menuntut edit manifest — melanggar prinsip minimalis. Bind sinkron di t2
-  sudah menutup seluruh race: permintaan jaringan pertama client baru terjadi
-  di t4.
-- Margin aman bawaan client: LaunchActivity sendiri retry 5x dengan timeout
-  naik — jadi bahkan delay puluh ms pun tertelan.
-- Boot `s2.Boot.start()` idempotent: kalau dipanggil dua kali (proses
-  restart, crash recovery) → tidak dobel bind.
-- Jika bind gagal (port dipakai proses lain — mustahil normal karena
-  127.0.0.1 per-app sandbox): log ke zona, client retry menutup sisa risiko.
+  titik boot paling awal tanpa edit manifest (ContentProvider DITOLAK:
+  melanggar minimalis).
+- Margin aman bawaan client: LaunchActivity retry 5x, timeout naik.
+- `Boot.start()` idempotent; gagal bind → log zona, client retry menutup risiko.
+
+---
+
+## 9. SISTEM 2 — MODIFIKASI MINIMALIS: 4 TITIK EDIT, SISANYA BYTE-IDENTIK
+
+| # | File | Edit | Nilai |
+|---|---|---|---|
+| 1 | `assets/config_BS.properties` | EntryPoint1/2 (+`_debug`) → base64 local | `aHR0cDovLzEyNy4wLjAuMTo0MDAwL2JzL2RiL2FuZHJvaWQ=` |
+| 2 | `assets/config.properties` | EntryPoint1 (+`_debug`) → base64 local | `aHR0cDovLzEyNy4wLjAuMTo0MDAwL2x6Y2VzaGkvbmF0aXZlX3NldHRpbmcvQW5kcm9pZA==` |
+| 3 | `classes.dex` → `Application.onCreate` | sisip `invoke-static {}, Ls2/Boot;->start()V` (baksmali→smali) | boot server |
+| 4 | entri baru `classes2.dex` | kernel `s2.*` | mini server |
+
+Manifest, arsc, lib, asset, JS: **raw copy byte-identik**. Semua alamat
+lanjutan (gameUrl, loginServer, serverList url, `_chatServerUrl`,
+`myTeamServerSocketUrl`) mengalir dari SATU JSON setting + ACK kernel —
+satu titik kontrol. Keystore BARU → install pertama wajib uninstall lama;
+setelah itu semua rebuild bisa install-over.
 
 ---
 
 ## 10. STRUKTUR FOLDER — ATURAN "1x REBUILD" [DESAIN FINAL]
 
-### 10.1 Struktur repo (GitHub)
+### 10.1 Repo (GitHub)
 
 ```
 db-apk/
 ├── db-local(Original-DO NOT DELETE!).apk    [LFS] ACUAN TUNGGAL — TIDAK PERNAH diedit
-├── log/com.Vanguard.twnthe.zip              [LFS] pendukung
-├── README.md                                dokumen tunggal (timpa tiap update)
-├── tools/                                   alat bedah (decrypt_onepiece.py, rpc-inventory.txt)
-└── local/                                   FOLDER KERJA SATU-SATUNYA UNTUK REBUILD
+├── log/com.Vanguard.twnthe.zip              [LFS] backup data asli (bukti server §5)
+├── README.md                                dokumen tunggal
+├── tools/
+│   ├── decrypt_onepiece.py                  dekriptor pack
+│   └── rpc-inventory.txt                    419 action RPC
+└── local/                                   FOLDER KERJA REBUILD — SATU-SATUNYA
+    ├── rebuild.sh                           SATU PERINTAH: dex → assemble → sign
     ├── kernel/
-    │   ├── src/s2/…                          kode Java kernel (§9.1) — sumber kebenaran server
-    │   └── build.sh                          ECJ + d8 --min-api 21 → classes2.dex
+    │   ├── build.sh                         ECJ + d8 --min-api 21 → classes2.dex
+    │   └── src/s2/
+    │       ├── Boot.java                    entry boot (Application.onCreate)
+    │       ├── core/
+    │       │   ├── ServerCore.java          ServerSocket :4000 + thread pool + sniff
+    │       │   └── Session.java             abstraksi koneksi (HTTP/WS/polling)
+    │       ├── http/
+    │       │   ├── HttpParser.java          request parser (CL, 100-continue, keep-alive)
+    │       │   ├── HttpWriter.java          response + header miror (CORS, io, Egret-*)
+    │       │   ├── Router.java              tabel route
+    │       │   ├── HConfig.java             native_setting (XOR DragonBall)
+    │       │   ├── HHo.java                 /game/* versi-identik
+    │       │   ├── HStatic.java             /index-native.html, /static/**
+    │       │   ├── HError.java              /error/battle/client
+    │       │   └── HDash.java               /dash + /health
+    │       ├── ws/
+    │       │   ├── WsHandshake.java         RFC6455 accept
+    │       │   ├── WsFrame.java             frame codec (mask, len 125/65536/64bit)
+    │       │   ├── EngineIo.java            polling + websocket, open/heartbeat/probe
+    │       │   └── SocketIo.java            40/42/43 framing, ack id
+    │       ├── crypto/
+    │       │   ├── Xxtea.java               verify "verification"
+    │       │   ├── Xor.java                 DragonBall
+    │       │   └── LzString.java            UTF-16 compress (opsional)
+    │       ├── game/
+    │       │   ├── GameSession.java         state machine peran login/main/chat/dungeon
+    │       │   ├── Dispatcher.java          type+action → handler
+    │       │   ├── HVerify.java             challenge XXTEA
+    │       │   ├── HUser.java               loginGame, GetServerList, enterGame
+    │       │   ├── HChat.java               registChat (_chatServerUrl...), room chat
+    │       │   ├── HDungeon.java            team, _myTeamServerSocketUrl, battle
+    │       │   ├── HNotify.java             push Notify (Kickout, onlineBulletin)
+    │       │   └── HUnknown.java            ret:0 silent / ret:902 native (zone.json)
+    │       ├── store/
+    │       │   ├── Db.java                  SQLite (schema §8.2)
+    │       │   └── Zone.java                zone.json load/save atomic
+    │       ├── dash/
+    │       │   └── DashPage.java            dashboard owner
+    │       └── util/
+    │           └── Json.java                JSON minimal
     ├── patch/
-    │   ├── config.properties                 EDIT 2 (EntryPoint → 127.0.0.1:4000/lzceshi/…)
-    │   ├── config_BS.properties              EDIT 1 (EntryPoint1/2 → 127.0.0.1:4000/bs/…)
-    │   └── application-oncreate.patch        EDIT 3 (baksmali→sisip→smali, 2 instruksi)
+    │   ├── config.properties                EDIT 2
+    │   ├── config_BS.properties             EDIT 1
+    │   └── application-oncreate.patch       EDIT 3 (2 instruksi smali)
     ├── build/
-    │   ├── assemble.py                       original.apk + patch + classes2.dex → APK baru
-    │   │                                     (zip raw-copy: entri original byte-identik)
-    │   ├── sign.sh                           zipalign + apksigner v1+v2
-    │   └── keystore/db-local.keystore        kunci rilis — sekali buat, dipakai SELAMANYA
-    ├── rebuild.sh                            SATU PERINTAH: build.sh → assemble → sign
-    └── dist/DB-Local-Offline.apk             OUTPUT 1x rebuild (hasil akhir)
+    │   ├── assemble.py                      original.apk + patch + classes2.dex → APK baru
+    │   ├── sign.sh                          zipalign + apksigner v1+v2
+    │   └── keystore/db-local.keystore       kunci rilis — sekali buat, SELAMANYA
+    └── dist/
+        └── DB-Local-Offline.apk             OUTPUT 1x rebuild
 ```
 
-### 10.2 Struktur di device (data server, di luar APK)
+### 10.2 Device
 
 ```
-/sdcard/Android/data/com.db.local/server/
-├── zone.json          serverlist, config gameplay, flag fitur — EDITABLE TANPA REBUILD
-├── players/<uid>.json save per pemain
-├── chat.json          riwayat chat room
-├── kv.json            key-value bebas
+/sdcard/Android/data/com.db.local/server/     ← zona server (LUAR APK)
+├── zone.json                                  config owner-editable
+├── db.sqlite                                  DATABASE (schema §8.2)
 └── log/
-    ├── http.log       permintaan HTTP
-    └── rpc.log        419 action + payload unknown (bahan menulis handler)
+    ├── boot.log                               timeline boot
+    ├── http.log                               request HTTP
+    ├── rpc.log                                419 action + payload unknown (bahan handler)
+    └── error.log                              error report client (/error/battle/client)
 ```
 
 ### 10.3 Matriks "kapan perlu rebuild?"
 
-| Yang diubah | Cara | Rebuild APK? |
+| Yang diubah | Cara | Rebuild? |
 |---|---|---|
-| Handler/gameplay baru (kode Java kernel) | edit `local/kernel/src` → `bash local/rebuild.sh` | **1x** (satu perintah, satu output) |
-| Serverlist / config / flag | edit `zone.json` di device, atau tombol reload di `/dash` | **TIDAK** |
-| Save pemain | otomatis oleh kernel | **TIDAK** |
-| Log untuk analisis | baca `log/rpc.log` via `/dash` | **TIDAK** |
-| Alamat endpoint | SELESAI SELAMANYA — sudah `127.0.0.1:4000`, tidak ada alamat lain | **TIDAK** |
+| Handler/gameplay baru (Java) | edit `local/kernel/src` → `bash local/rebuild.sh` | **1x** |
+| Serverlist/config/flag | edit `zone.json` atau tombol `/dash` | **TIDAK** |
+| Save pemain/chat/record | otomatis kernel → `db.sqlite` | **TIDAK** |
+| Analisis log | `/dash` atau baca `log/rpc.log` | **TIDAK** |
+| Alamat endpoint | SELESAI SELAMANYA (`127.0.0.1:4000`) | **TIDAK** |
 | APK original | TIDAK PERNAH disentuh | — |
 
-### 10.4 Kenapa struktur ini menjamin "cukup 1x Rebuild"
-
-1. **Assemble selalu dari original.apk** (acuan tunggal) + patch dari
-   `local/patch` — tidak ada "APK turunan dari turunan"; diff selalu bisa
-   dihitung dari 4 titik edit §8.
-2. **Semua yang sering berubah (data) ada DI LUAR APK** (zona device +
-   `/dash`) — pekerjaan server harian tidak menyentuh APK sama sekali.
-3. **Satu perintah** `local/rebuild.sh` = build dex → assemble → sign,
-   atomik, satu output di `local/dist/`.
-4. **Keystore tetap** → semua rebuild setelah yang pertama bisa
-   install-over tanpa uninstall.
-5. Kernel dirancang kecil & stabil (protokol §5 tidak berubah) —
-   pekerjaan lanjutan = handler gameplay di `s2.game.*` + data zona,
-   keduanya tercakup poin 1 dan 2.
+Kenapa menjamin 1x rebuild: assemble **selalu dari original.apk** + patch
+terkumpul di `local/patch` (tidak ada APK turunan dari turunan); data yang
+sering berubah ada DI LUAR APK; satu perintah `rebuild.sh` atomik; keystore
+tetap → install-over.
 
 ---
 
@@ -407,15 +431,15 @@ db-apk/
 
 - [x] Cleartext 127.0.0.1 diizinkan manifest [TERVERIFIKASI]
 - [x] Endpoint setting dipindah via edit base64 (2 file) [TERVERIFIKASI]
-- [x] `loginServer/loginPort` dari setting (bukan hardcode) [TERVERIFIKASI]
+- [x] `loginServer/loginPort` dari setting; JS tanpa fallback [TERVERIFIKASI]
 - [x] Hot-update 404/fallback aman; versi identik → nol download [TERVERIFIKASI]
-- [x] Kontrak protokol penuh dari JS asli (verify TEA, ACK, LZString, 4 socket, 419 action) [TERVERIFIKASI §5]
-- [x] Login tanpa SDK (无渠道登录) tersedia di client [TERVERIFIKASI JS]
-- [x] Alur lengkap sampai loginServer dipetakan [TERVERIFIKASI §6]
-- [x] Struktur folder 1x rebuild ditetapkan [DESAIN §10]
-- [ ] Kernel `s2.*` classes2.dex (komponen §9.1)
-- [ ] Rebuild (§8) + sanity diff entri zip
-- [ ] Field test: mode pesawat → boot → login → masuk game → gameplay → /dash hidup → matikan app, buka lagi (save persist)
+- [x] Kontrak protokol dari JS asli + FRAME PRODUKSI (verify TEA, ACK, LZString, polling, serverList 432 entri, _chatServerUrl, 902 unknown) [TERVERIFIKASI §6]
+- [x] Peta server asli lengkap dari backup (nginx, port, host, engine params) [TERVERIFIKASI §5]
+- [x] Login tanpa SDK (无渠道登录) [TERVERIFIKASI JS]
+- [x] Struktur folder 1x rebuild + schema SQLite [DESAIN §10, §8.2]
+- [ ] Kernel `s2.*` classes2.dex (komponen §8.1)
+- [ ] Rebuild (§9) + sanity diff entri zip
+- [ ] Field test: mode pesawat → boot → login → masuk game → gameplay → /dash → restart app (save persist)
 
 ---
 
@@ -423,41 +447,36 @@ db-apk/
 
 | File | Keterangan |
 |---|---|
-| `db-local(Original-DO NOT DELETE!).apk` | ORIGINAL (LFS, 104.945.181 B, SHA-256 `b308c4…2218`) — ACUAN TUNGGAL, jangan diubah |
-| `log/com.Vanguard.twnthe.zip` | arsip log/pendukung (LFS) — bukan acuan desain |
-| `tools/decrypt_onepiece.py` | dekriptor `onepieceencrypts` (reproducible, §3) |
-| `tools/rpc-inventory.txt` | 419 action RPC unik + frekuensi (dari JS asli) |
+| `db-local(Original-DO NOT DELETE!).apk` | ORIGINAL (LFS, 104.945.181 B) — ACUAN TUNGGAL |
+| `log/com.Vanguard.twnthe.zip` | backup data dir app asli (154.891.608 B) — BUKTI peta server §5 |
+| `tools/decrypt_onepiece.py` | dekriptor `onepieceencrypts` |
+| `tools/rpc-inventory.txt` | 419 action RPC |
 | `local/` | folder kerja rebuild (§10) — dibuat saat proposal disetujui |
-| `README.md` | dokumen ini (timpa setiap update) |
+| `README.md` | dokumen ini |
 
-**KEPUTUSAN OWNER (mengikat):** seluruh git history & artefak lama (kernel
-lama, APK v01–v05, keystore lama) **VOID/CACAT** — tidak diulik, tidak
-dipulihkan. Semua kernel ditulis baru dari nol mengikuti kontrak §5.
-
----
-
-## 13. POIN DISKUSI (dibedah di chat, bukan di doc)
-
-1. Satu port 4000 (HTTP+WS multiplex) vs dua port — saya rekomendasikan satu.
-2. `compress` ACK: default 0 (plain) dulu, LZString menyusul — setuju?
-3. Identitas pemain: `local-` + hash ANDROID_ID (auto guest) vs manual daftar
-   nama di `/dash`?
-4. 419 action: urutan implementasi mengikuti `rpc.log` dari device (capture-
-   driven) + prioritas manapun yang owner minta duluan.
-5. Detail URL `serverItem.url/chaturl/dungeonurl` (`http://` vs `ws://`) —
-   divalidasi di field test, dua-duanya dilayani kernel.
-6. Injeksi `window.getLoginServer` terjadi di native runtime (string
-   dilindungi `libgavesec`, tidak terbaca statis) — tidak menjadi masalah:
-   nilainya datang dari setting JSON yang kita kirim; kalau field test
-   tunjukkan perlu, kernel juga menyajikan halaman `gameUrl` (bootstrap
-   HTML) yang bisa mendefinisikan `window.getLoginServer` sendiri —
-   dua-duanya sudah tercakup tanpa sentuh client.
-7. Proposal ini menunggu persetujuan owner di chat: setelah disetujui,
-   eksekusi mengikuti §8 (4 titik edit) + §9 (kernel) + §10 (struktur) —
-   TANPA fase, satu paket kerja, rebuild dijalankan cukup 1x.
+**KEPUTUSAN OWNER (mengikat):** git history & artefak lama **VOID** — semua
+kernel ditulis baru dari nol mengikuti kontrak §6.
 
 ---
 
-*Dokumen dibuat dari bedah langsung APK: manifest AXML, bytecode classes.dex
-(androguard), hexdump asset, dekripsi pack `onepieceencrypts` (bukti di
-tools/), dan JS game asli (main.min 4,7 MB, socket.io v2.1.2).*
+## 13. POIN DISKUSI (dibedah di chat)
+
+1. Port tunggal 4000 (4 peran virtual) vs multiPort 4001–4004 — default
+   tunggal, switch `zone.json`.
+2. Unknown action: default `silent` `{ret:0,data:"{}"}` vs `native`
+   `{ret:902,...}` — switch `zone.json`, dicatat rpc.log.
+3. compress ACK: default `false` (plain), switch aktif LZString.
+4. serverList: kirim 1 entri (Server 1) atau N entri (miror "Server 432"
+   style) — atur di zone.json.
+5. Identitas `local-` + hash ANDROID_ID vs daftar manual di /dash.
+6. Urutan implementasi 419 action: capture-driven dari rpc.log + prioritas
+   owner.
+7. Proposal menunggu persetujuan owner di chat → eksekusi satu paket
+   (§9 edit + §8 kernel + §10 struktur), rebuild cukup 1x.
+
+---
+
+*Dibuat dari bedah langsung APK (manifest AXML, bytecode androguard, hexdump
+asset, dekripsi pack `onepieceencrypts`, JS asli) DAN backup data terpasang
+asli (cache HTTP produksi: nginx header, frame engine.io/socket.io nyata,
+serverList 432 entri, ACK compress, record chat).*
