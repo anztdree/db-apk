@@ -313,7 +313,7 @@ Prinsip rebuild:
 
 ---
 
-## 8. FILE DI REPO
+## 8. FILE DI REPO + STATUS PEMULIHAN
 
 | File | Keterangan |
 |---|---|
@@ -321,8 +321,111 @@ Prinsip rebuild:
 | `log/com.Vanguard.twnthe.zip` | arsip log/pendukung (Git LFS, 154.891.608 B) — bukan acuan desain |
 | `README.md` | dokumen ini (doc tunggal; boleh ditimpa setiap update) |
 
+Kondisi nyata yang terungkap dari git history (terverifikasi 2026-11-19):
+
+| Objek | Status | Lokasi pemulihan |
+|---|---|---|
+| Sumber kernel 14 kelas `s2.kernel.*` (4.190 baris) + `Seed.java` | **UTUH** | history commit `aaf61fe` → `kernel/src/` |
+| `zone-seed/` (setting.json, serverList.json, starter-save.json, versionbin.json, handlers tier1, engine.json) | **UTUH** | history `aaf61fe` → `kernel/zone-seed/` |
+| `zone-static/game/` (index-native.html, index.html, manifest.json, 14 JS: egret, eui, dragonBones, game, battlelogic, socket.io, main.min 4,7 MB, dll.) | **UTUH** | history `aaf61fe` → `kernel/zone-static/` |
+| Build tools (`gen-seed.py`, `build-dex.sh`, `assemble-apk.py`, `libs/ecj-3.33.0.jar`, `libs/rhino-core.jar`, `libs/rhino-1.7.10.jar`) | **UTUH** | history `aaf61fe` → `kernel/` |
+| `extract/` (AndroidManifest.xml hasil edit +provider, config.properties & config_BS.properties hasil edit endpoint → `http://127.0.0.1:4000/…`) | **UTUH** | history `aaf61fe` → `extract/` |
+| Keystore `serverkernel.keystore` (v1) + `serverkernel-v2.keystore` | **UTUH** | history `473ca2c` / `e94f388` (root) |
+| Keystore `serverkernel-v3` (pemegang signature v05) | **HILANG** — tak pernah masuk repo | buat keystore baru (v4) |
+| APK `db-local-rebuild-miniserver-05.apk` (FINAL, 116.224.711 B) | **HILANG** — pointer LFS 134 B, objek 404 | rebuild dari sumber (FASE 2) |
+| APK v01–v04 | pointer/hilang | tidak diperlukan |
+
+Perintah pemulihan (sudah teruji):
+
+```
+git fetch --unshallow
+git checkout aaf61fe -- kernel extract      # sumber + tools + extract
+git checkout 473ca2c -- serverkernel-v2.keystore   # opsional
+```
+
+---
+
+## 9. RENCANA MASTER — LOCAL STANDALONE v06 (1:1 DARI SERVER ASLI)
+
+Prinsip: **client beku, server lokal meniru 1:1 layanan server asli**, semua
+bukti diambil dari APK (bedah §3) dan dari catatan kontrak yang tertanam di
+sumber kernel (bukti `main.min.js` offset, field ACK, dsb.).
+
+### 9.1 PETA LAYANAN: SERVER ASLI → LOCAL (1:1)
+
+| # | Layanan SERVER ASLI (online) | Bukti dari APK | LOCAL pengganti (127.0.0.1:4000) | Implementasi kernel |
+|---|---|---|---|---|
+| A | Config server `dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` — JSON XOR `DragonBall` | `config.properties` EntryPoint1; loop XOR + const `"DragonBall"` (smali) | handler `GET /lzceshi/native_setting/Android` — body `config/setting.json` XOR on-the-fly | tier1 `handlers/10-tier1-config.json` (transform `xorDragonBall`) |
+| B | Config supplier BS `configus.sjmobilegame.com/bs/db/android` + backup COS myqcloud | `config_BS.properties` EntryPoint1+2 (supplier "BS" dipilih `onCreate`) | `GET /bs/db/android/setting_BS_Android.bin` + `/bs/db/android/com_db_local.bin` (XOR `DragonBall`) | tier1 idem |
+| C | Resource/version CDN (`base.version`, `resource.version`, `upgrade.json`, `size.json`, `base.zip`, `all.zip`) | `GameUpdateUtil` (string table smali); lokal `game/base.version`=110, `game/resource.version`=11220 | `GET /version/base.version` + `/version/resource.version` = **110/11220 persis assets APK** → Egret NOL download; `upgrade.json`/`size.json`/`*.zip` tidak diperlukan | tier1 + `versionbin.json` |
+| D | Shell/JS host (`index-native.html`, `manifest.json`, 14 JS) | `EgretNativeAndroid.initialize(gameUrl)` | static engine menyajikan `static/game/**` — file static MENANG di atas `files/game/` fallback | merge statis (Http.java) |
+| E | Realtime login/game (`loginServer:loginPort`) | setting JSON `loginServer`/`loginPort` | **engine.io v3** (EIO=3 polling + upgrade WebSocket RFC6455) + **socket.io v2** (`40/42/43`, ping 5/pong 6, probe `2probe/3probe`) | `Wire.java` |
+| F | Auth handshake TEA | layer JS (bukti catatan kernel) | server EMIT `verify` challenge → client jawab **XXTEA** (key `"verification"`), self-check round-trip | `Wire.java` + `Codec.java` |
+| G | Dispatcher gameplay | layer JS | `handler.process` → ACK `{ret, data, compress, serverTime, server0Time}`; tidak match = **HOLD** (NOL popup) | `Wire.java` + `Js.java` (Rhino tier2) |
+| H | Server list pilih server | bukti `main.min.js` ~offset 1353k (`selectNewServer/onLoginSuccess/ServerListNodeViewData`) | ACK `User.GetServerList` = `{serverList:[…], history:[…]}`; entri `serverId,name,url,chaturl,dungeonurl,online,new`; `new:1+online:1` → auto-pilih | `zone-seed/config/serverList.json` |
+| I | DB pemain (save server) | save lengkap via `user.enterGame` | `starter-save.json` + KV zona; save pemain hidup di `Android/data/com.db.local/server/` | `KV.java` + zona |
+| J | Layanan pelengkap: `checkGoogleTicketUrl`, PEI (`peiUrl/wpeiurl`), `qsdk.t4game.com`, Facebook, GMS | SDK opsional, non-fatal | dikosongkan / stub (`/ipcheck`, `/log`); gagalnya tidak menahan boot | tier1 + setting kosong |
+| K | — (tidak ada di asli) | — | **Dashboard owner `/dash`**: status / database / config (hot-swap ±2 dtk) / handlers / logs | `Dash.java` + `Ui.java` + `Hot.java` |
+
+### 9.2 PETA TOOLS: DUNIA ASLI → LOCAL (1:1)
+
+| Peran | Dunia ASLI | LOCAL kita pakai |
+|---|---|---|
+| Runtime game native | Egret Native `libegret.so` di APK | **SAMA** — NOL perubahan (beku) |
+| Engine H5 | Egret + 14 JS dari server asli | **SAMA** — disajikan dari `zone-static/` |
+| Realtime | engine.io v3 + socket.io v2 | **SAMA** — re-implementasi setia di `Wire.java` |
+| Kripto | XXTEA (`verification`) + XOR `DragonBall` + LZString UTF16 + md5 + base64 | **SAMA** — `Codec.java` (delta `0x9E3779B9`, longs LE, kunci `slice(0,16)`) |
+| Format config client | `.properties` + base64 | **SAMA** — hanya nilai EntryPoint diganti ke `127.0.0.1:4000` |
+| Kontrak versi resource | server CDN | **SAMA** — `versionbin.json` 110/11220 = assets APK |
+| Handler backend | server privat asli (tertutup) | tier1 **JSON deklaratif** + tier2 **JS (Rhino 1.7)** — owner edit tanpa recompile |
+| Database | backend asli | KV/JSON zona (`starter-save.json`) |
+| Kompilasi kernel | — | `build-dex.sh`: **ECJ 3.33** (Java 8, classpath `android.jar`+`rhino-core`) → jar → **D8/R8** `--min-api 21` → `classes2.dex` |
+| Assemble | aapt (asli) | **`assemble-apk.py`**: entri original byte-identik + `classes2.dex` + manifest(+provider) + config edit + `assets/static/game/**` |
+| Signature | AOSP testkey (original) | keystore kernel — **v3 hilang** → buat `serverkernel-v4` baru (atau pulihkan v2 dari history) + `uber-apk-signer` |
+| Runtime server | VPS luar | **proses Java dalam APK** — `KernelProvider` boot dulu → `Engine.start` bind `127.0.0.1:4000` |
+
+### 9.3 FASE EKSEKUSI
+
+| Fase | Isi | Keluaran / Bukti selesai |
+|---|---|---|
+| 0 — PEMULIHAN | `git checkout aaf61fe -- kernel extract`; inventaris; checksum libs | folder `kernel/` + `extract/` kembali di repo |
+| 1 — DEP BUILD | siapkan `android.jar` (path `/home/z/my-project/android.jar`) + `r8.jar` (D8 8.5) + JRE | build-dex.sh jalan mulai langkah [1/4] |
+| 2 — REBUILD v06 | `gen-seed.py` → `build-dex.sh` → `assemble-apk.py out/v06-unsigned.apk` (base: ORIGINAL) → sign | **target reproducible: classes2.dex = 983.856 B, sha256 `32b47c2f…`** (catatan commit v05); kalau beda, wajib diff dan beri alasan |
+| 3 — VERIFIKASI LAPANGAN | uninstall APK lama → install v06 → **mode pesawat** → buka ikon | alur: boot provider → native_setting XOR ok → shell → 14 JS → verify XXTEA ACK → `loginGame` → `GetServerList` auto-pilih (`new:1 online:1`) → `user.enterGame` save → `registChat`+`chat.*` → game jalan; `/dash` 5 menu hidup |
+| 4 — AUDIT GAP 1:1 | bedah log Wire + logcat vs tabel §9.1 baris per baris | daftar gap (bila ada) |
+| 5 — ITERASI v07+ | tutup gap; owner-edit zona; LINTAS LFS: APK baru **wajib ter-upload LFS** (verifikasi curl, bukan cuma push) | APK v07 + catatan di README |
+| 6 — RELEASE | keystore final + password tercatat di §8; PAT revoked; backup | rilis stabil |
+
+### 9.4 DEFINITION OF DONE
+
+1. Install bersih di HP + **mode pesawat penuh** → buka ikon → sampai gameplay **tanpa satu pun popup error** (layar belum siap cukup HOLD).
+2. `http://127.0.0.1:4000/dash` hidup: status / database lihat+edit / config edit (hot-swap <2 dtk) / handlers / logs.
+3. Owner mengganti nama server & setting → perubahan terlihat di client tanpa rebuild.
+4. Netmonitor: NOL koneksi keluar perangkat — semua hanya `127.0.0.1:4000`.
+5. `classes2.dex` sha256 = `32b47c2f…` (reproducible) atau diverifikasi fungsional setara dengan alasan terdokumentasi.
+
+### 9.5 RISIKO & MITIGASI
+
+| Risiko | Dampak | Mitigasi |
+|---|---|---|
+| LFS upload gagal lagi (kasus v05: pointer ada, objek 404) | APK hasil hilang permanen | setelah push: `git lfs ls-files` + unduh balik via media URL untuk memastikan objek benar-benar tersimpan; simpan salinan offline |
+| Keystore v3 hilang | v06 tidak bisa di-upgrade di atas instalasi v05 | v05 juga hilang → tak relevan; tetapkan keystore BARU dan JANGAN ganti-ganti lagi |
+| Versi `android.jar`/r8 berbeda dari mesin build lama | dex ≠ v05 (tak byte-identik) | pakai catatan build (D8 8.5, min-api 21); jika berbeda, audit fungsional §9.3-F3 |
+| Kontrak tersembunyi di `main.min.js` (field setting/ACK tambahan) | client hang/gagal di fase tertentu | HOLD + log `Wire.java` menangkap event yang tak terjawab → FASE 4 menutup |
+| Manifest provider salah (authorities/exported) | kernel tidak boot | pakai `extract/AndroidManifest.xml` dari history — jangan edit manual baru |
+| Memori: kernel + Rhino di HP kelas rendah | lag/Crash | `largeHeap=true` sudah ada; pantau via dash; kurangi handler tier2 aktif |
+
+### 9.6 PERTANYAAN DISKUSI (dibedah bersama di chat)
+
+1. **Reproducible vs fungsional** — target FASE 2: wajib dex sha256 `32b47c2f…` sama seperti v05, atau cukup fungsional setara?
+2. **Keystore** — buat `serverkernel-v4` baru, atau pakai `serverkernel-v2` dari history?
+3. **zone-static/game** — catatan commit lama menyebut "14 JS build-kita"; catatan zona bilang "isi final dibangun dari paket client asli — NOL byte buatan kita". Sebelum klaim 1:1 penuh: apakah perlu audit byte terhadap paket client asli (`pschent_full_tired.bin` dkk.)?
+4. **Hot-update** — pertahankan `versionbin` 110/11220 (resource dari APK, NOL download) atau siapkan jalur `all.zip` untuk update resource oleh owner?
+5. **Datapoint dashboard** — fitur owner mana yang masuk FASE 5 (reset save pemain, multi-server, export/import zona, dsb.)?
+6. **Distribusi** — APK final disebar apa adanya (sideload) atau perlu rename package per-kebutuhan?
+
 ---
 
 *Dokumen dibuat dari bedah langsung APK: manifest (AXML), bytecode
-`classes.dex` (androguard), hexdump asset, dan native lib. Klaim yang tidak
-bisa dibuktikan dari APK ditandai [RANCANGAN].*
+`classes.dex` (androguard), hexdump asset, native lib, DAN audit git history
+(sumber kernel v05). Klaim yang tidak bisa dibuktikan ditandai [RANCANGAN].*
