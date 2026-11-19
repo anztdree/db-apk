@@ -50,4 +50,4 @@ Rencana lengkap + bedah 1:1 + status eksekusi: README.md di sumber proyek
 
 - Keystore `serverkernel-v3` (password terdokumentasi di §8 README rencana).
 - APK lama v01–v03 pakai keystore lain → **WAJIB uninstall dulu** sebelum
-  pasang v04.
+  pasang v05.
