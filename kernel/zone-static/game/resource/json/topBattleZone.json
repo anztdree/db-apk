@@ -1,0 +1,32 @@
+{
+  "1": {
+    "id": 1,
+    "dayStart": 180,
+    "dayEnd": 360,
+    "name": "topBattleZone_name_20"
+  },
+  "2": {
+    "id": 2,
+    "dayStart": 361,
+    "dayEnd": 430,
+    "name": "topBattleZone_name_21"
+  },
+  "3": {
+    "id": 3,
+    "dayStart": 431,
+    "dayEnd": 470,
+    "name": "topBattleZone_name_22"
+  },
+  "4": {
+    "id": 4,
+    "dayStart": 471,
+    "dayEnd": 500,
+    "name": "topBattleZone_name_23"
+  },
+  "5": {
+    "id": 5,
+    "dayStart": 501,
+    "dayEnd": 99999999,
+    "name": "topBattleZone_name_24"
+  }
+}

@@ -1,0 +1,112 @@
+[
+  {
+    "kind": "sock",
+    "type": "User",
+    "action": "GetServerList",
+    "respond": {
+      "ret": 0,
+      "dataFile": "config/serverList.json",
+      "compress": false
+    }
+  },
+  {
+    "kind": "sock",
+    "type": "User",
+    "action": "loginGame",
+    "respond": {
+      "ret": 0,
+      "data": "{\"loginToken\":\"local_{{state.nextUid}}\",\"userId\":\"{{state.nextUid}}\",\"nickName\":\"Pemain Lokal\",\"sdk\":\"local\",\"language\":\"id\"}",
+      "compress": false
+    }
+  },
+  {
+    "kind": "sock",
+    "type": "user",
+    "action": "enterGame",
+    "respond": {
+      "ret": 0,
+      "dataFile": "config/starter-save.json",
+      "compress": false
+    }
+  },
+  {
+    "kind": "sock",
+    "type": "user",
+    "action": "registChat",
+    "respond": {
+      "ret": 0,
+      "data": "{\"_success\":1,\"_chatServerUrl\":\"http://127.0.0.1:4000\",\"_worldRoomId\":\"world\",\"_guildRoomId\":\"\",\"_teamDungeonChatRoom\":\"\",\"_teamChatRoomId\":\"\"}",
+      "compress": false
+    }
+  },
+  {
+    "kind": "sock",
+    "type": "chat",
+    "action": "login",
+    "respond": {
+      "ret": 0,
+      "data": "{}",
+      "compress": false
+    }
+  },
+  {
+    "kind": "sock",
+    "type": "chat",
+    "action": "joinRoom",
+    "respond": {
+      "ret": 0,
+      "data": "{\"_record\":{}}",
+      "compress": false
+    }
+  },
+  {
+    "kind": "sock",
+    "type": "chat",
+    "action": "leaveRoom",
+    "respond": {
+      "ret": 0,
+      "data": "{}",
+      "compress": false
+    }
+  },
+  {
+    "kind": "sock",
+    "type": "User",
+    "action": "SaveHistory",
+    "respond": {
+      "ret": 0,
+      "data": "{}",
+      "compress": false
+    }
+  },
+  {
+    "kind": "sock",
+    "type": "User",
+    "action": "SaveUserEnterInfo",
+    "respond": {
+      "ret": 0,
+      "data": "{}",
+      "compress": false
+    }
+  },
+  {
+    "kind": "sock",
+    "type": "User",
+    "action": "SaveLanguage",
+    "respond": {
+      "ret": 0,
+      "data": "{}",
+      "compress": false
+    }
+  },
+  {
+    "kind": "sock",
+    "type": "User",
+    "action": "exitGame",
+    "respond": {
+      "ret": 0,
+      "data": "{}",
+      "compress": false
+    }
+  }
+]

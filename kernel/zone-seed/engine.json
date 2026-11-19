@@ -1,0 +1,7 @@
+{
+  "port": 4000,
+  "pingInterval": 25000,
+  "pingTimeout": 60000,
+  "holdTimeoutMs": 8000,
+  "logBuffer": 3000
+}
