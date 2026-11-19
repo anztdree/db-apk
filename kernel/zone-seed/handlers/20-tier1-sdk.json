@@ -1,6 +1,0 @@
-[
-  { "kind": "http", "path": "/v1/user/registerVisitor", "respond": { "code": 0, "message": "success", "data": { "account": "q_{{state.nextUid}}", "uid": "{{state.nextUid}}", "ts": "{{time}}" } } },
-  { "kind": "http", "path": "/v1/user/autoLogin", "respond": { "result": true, "data": "{}" } },
-  { "kind": "http", "path": "/v1/system/init", "respond": { "code": 0, "message": "success" } },
-  { "kind": "http", "path": "/v1/system/getNotice", "respond": { "code": 0, "message": "success", "data": [] } }
-]
