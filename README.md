@@ -11,7 +11,7 @@ lokal (kernel `s2.kernel.*` di `classes2.dex`) yang menghidupkan game offline
 | File | Apa |
 |---|---|
 | `db-local(Original-DO NOT DELETE!).apk` | ORIGINAL mentah — objek kerja tunggal, jangan pernah diubah |
-| `db-local-rebuild-miniserver-04.apk` | **HASIL REBUILD v04 (FINAL)** — pasang ini (uninstall dulu APK lama jika ada: ganti signature) |
+| `db-local-rebuild-miniserver-05.apk` | **HASIL REBUILD v05 (FINAL)** — pasang ini (uninstall dulu APK lama jika ada: ganti signature) |
 | `kernel/` | Seluruh sumber build reproducible: `build-dex.sh`, `assemble-apk.py`, `gen-seed.py`, `src/s2/kernel/` (15 kelas), `zone-seed/` (zona server — SUMBER TUNGGAL), `zone-static/` (shell + 14 JS asli + TS), `libs/` |
 
 ## ALUR 1:1 (buka APK → main) — ringkas
