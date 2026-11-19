@@ -331,83 +331,37 @@ setelah itu semua rebuild bisa install-over.
 
 ## 10. STRUKTUR FOLDER — ATURAN "1x REBUILD" [DESAIN FINAL]
 
-### 10.1 Repo (GitHub)
+### 10.1 Repo GitHub = BACKUP SAJA (keputusan owner)
+
+Repo tidak menjadi tempat operasi. Isinya hanya untuk cadangan: APK original
+(LFS), README, `tools/`, dan `local/` (kode kernel + patch + skrip build +
+keystore). Tidak ada proses di perangkat yang bergantung pada struktur repo.
+Struktur yang OPERASIONAL adalah struktur di perangkat — §10.2.
+
+### 10.2 Perangkat Anda — struktur operasional
 
 ```
-db-apk/
-├── db-local(Original-DO NOT DELETE!).apk    [LFS] ACUAN TUNGGAL — TIDAK PERNAH diedit
-├── log/com.Vanguard.twnthe.zip              [LFS] backup data asli (bukti server §5)
-├── README.md                                dokumen tunggal
-├── tools/
-│   ├── decrypt_onepiece.py                  dekriptor pack
-│   └── rpc-inventory.txt                    419 action RPC
-└── local/                                   FOLDER KERJA REBUILD — SATU-SATUNYA
-    ├── rebuild.sh                           SATU PERINTAH: dex → assemble → sign
-    ├── kernel/
-    │   ├── build.sh                         ECJ + d8 --min-api 21 → classes2.dex
-    │   └── src/s2/
-    │       ├── Boot.java                    entry boot (Application.onCreate)
-    │       ├── core/
-    │       │   ├── ServerCore.java          ServerSocket :4000 + thread pool + sniff
-    │       │   └── Session.java             abstraksi koneksi (HTTP/WS/polling)
-    │       ├── http/
-    │       │   ├── HttpParser.java          request parser (CL, 100-continue, keep-alive)
-    │       │   ├── HttpWriter.java          response + header miror (CORS, io, Egret-*)
-    │       │   ├── Router.java              tabel route
-    │       │   ├── HConfig.java             native_setting (XOR DragonBall)
-    │       │   ├── HHo.java                 /game/* versi-identik
-    │       │   ├── HStatic.java             /index-native.html, /static/**
-    │       │   ├── HError.java              /error/battle/client
-    │       │   └── HDash.java               /dash + /health
-    │       ├── ws/
-    │       │   ├── WsHandshake.java         RFC6455 accept
-    │       │   ├── WsFrame.java             frame codec (mask, len 125/65536/64bit)
-    │       │   ├── EngineIo.java            polling + websocket, open/heartbeat/probe
-    │       │   └── SocketIo.java            40/42/43 framing, ack id
-    │       ├── crypto/
-    │       │   ├── Xxtea.java               verify "verification"
-    │       │   ├── Xor.java                 DragonBall
-    │       │   └── LzString.java            UTF-16 compress (opsional)
-    │       ├── game/
-    │       │   ├── GameSession.java         state machine peran login/main/chat/dungeon
-    │       │   ├── Dispatcher.java          type+action → handler
-    │       │   ├── HVerify.java             challenge XXTEA
-    │       │   ├── HUser.java               loginGame, GetServerList, enterGame
-    │       │   ├── HChat.java               registChat (_chatServerUrl...), room chat
-    │       │   ├── HDungeon.java            team, _myTeamServerSocketUrl, battle
-    │       │   ├── HNotify.java             push Notify (Kickout, onlineBulletin)
-    │       │   └── HUnknown.java            ret:0 silent / ret:902 native (zone.json)
-    │       ├── store/
-    │       │   ├── Db.java                  SQLite (schema §8.2)
-    │       │   └── Zone.java                zone.json load/save atomic
-    │       ├── dash/
-    │       │   └── DashPage.java            dashboard owner
-    │       └── util/
-    │           └── Json.java                JSON minimal
-    ├── patch/
-    │   ├── config.properties                EDIT 2
-    │   ├── config_BS.properties             EDIT 1
-    │   └── application-oncreate.patch       EDIT 3 (2 instruksi smali)
-    ├── build/
-    │   ├── assemble.py                      original.apk + patch + classes2.dex → APK baru
-    │   ├── sign.sh                          zipalign + apksigner v1+v2
-    │   └── keystore/db-local.keystore       kunci rilis — sekali buat, SELAMANYA
-    └── dist/
-        └── DB-Local-Offline.apk             OUTPUT 1x rebuild
+/sdcard/Android/data/com.db.local/
+└── server/                    ← ZONA SERVER (dibuat kernel saat boot pertama)
+    ├── zone.json              config server, owner-EDITABLE tanpa rebuild:
+    │                          serverlist seed, jumlah entri serverList,
+    │                          unknownAction (silent/native902), compress,
+    │                          multiPort (default: 1 port 4000)
+    ├── db.sqlite              DATABASE SQLite — players/kv/chat/records/serverlist
+    │                          (schema §8.2); bisa dibuka SQLite browser di HP
+    ├── www/                   (opsional) halaman web owner, dilayani /static/**
+    └── log/
+        ├── boot.log           timeline boot: bind :4000, error bind, zona load
+        ├── http.log           setiap request HTTP (route, status, durasi)
+        ├── rpc.log            setiap action RPC + payload UNKNOWN (bahan handler baru)
+        └── error.log          error report client (/error/battle/client)
 ```
 
-### 10.2 Device
-
-```
-/sdcard/Android/data/com.db.local/server/     ← zona server (LUAR APK)
-├── zone.json                                  config owner-editable
-├── db.sqlite                                  DATABASE (schema §8.2)
-└── log/
-    ├── boot.log                               timeline boot
-    ├── http.log                               request HTTP
-    ├── rpc.log                                419 action + payload unknown (bahan handler)
-    └── error.log                              error report client (/error/battle/client)
-```
+- Semua di LUAR APK → edit file = update server TANPA rebuild.
+- Dashboard owner: browser HP → `http://127.0.0.1:4000/dash` — status,
+  jumlah pemain, 100 baris rpc.log terakhir, tombol reload zone / wipe.
+- `/data/data/com.db.local/` (area internal client: SharedPreferences
+  setting, unzip pack) = milik client, TIDAK disentuh.
 
 ### 10.3 Matriks "kapan perlu rebuild?"
 
