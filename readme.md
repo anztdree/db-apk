@@ -1,41 +1,66 @@
-# DB APK — Analisis Lengkap APK Original (com.db.local)
+# DB APK — Analisis APK Original com.db.local — REVISI FAKTA (audit ulang)
 
 > Dokumen tunggal. Hasil bedah menyeluruh APK `db-local(Original-DO NOT DELETE!).apk`
 > dari repo `https://github.com/anztdree/db-apk.git`.
-> Riwayat git **tidak disentuh sama sekali** (repo hanya di-clone dan dibaca).
+>
+> **REVISI ini lahir dari audit ulang berbasis FAKTA** (permintaan owner: bukan asumsi).
+> Setiap klaim kini menyertai penunjuk bukti: file + baris kode / byte / hasil uji langsung.
+> Kesalahan versi sebelumnya didaftar terbuka di **Bagian 10 (Daftar Koreksi)**.
+>
+> Riwayat git repo tidak pernah di-rewrite — readme hanya di-push sebagai commit tambahan.
 > Workspace analisis: `/home/z/db-apk-analysis/` (di luar repo).
 
-Tanggal analisis: 21 Nov 2026 (zona Asia/Jakarta)
+Tanggal analisis awal: 21 Nov 2026 — Tanggal audit ulang fakta: 21 Nov 2026 (Asia/Jakarta)
+Commit push readme di repo: `3239d05` (append-only; lalu commit revisi berikutnya)
 
 ---
 
-## 0. Ringkasan Eksekutif
+## 0. Ringkasan Eksekutif (semua nilai terverifikasi ulang)
 
-| Item | Nilai |
+| Item | Nilai (FAKTA) | Bukti |
+|---|---|---|
+| SHA256 APK | `b308c44de6ec082a70c39e388a2cef4e9cdc1cee30b38c14a30bef86a7bc2218` | `sha256sum` cocok persis dengan LFS pointer repo |
+| Ukuran | 104.945.181 byte | `stat` + LFS pointer `size` |
+| Package | `com.db.local` | AndroidManifest.xml (androguard, dari bytes AXML asli) |
+| versionName / versionCode | `1.0.1` / `1` | idem |
+| minSdk / targetSdk | 21 / 30 | idem |
+| Label | `DB - Local` | idem |
+| Application class | `com.zhuhuan.game.Application` | idem |
+| Launcher | `com.zhuhuan.game.LaunchActivity` | `a.get_main_activity()` |
+| File APK ter-unzip | 3.668 file, 131 MB | `find \| wc -l`, `du` |
+| classes.dex | 6.697.104 byte — **6.108 class**, 42.826 method, 48.243 string | header DEX `class_defs_size@0x60` dll (koreksi dari "1.879 class") |
+| Engine game | Egret Native — `libegret.so` (arm64 16.975.928 B / v7a 11.181.200 B) + `assets/runtime-dex.jar` | `ls lib/`, simbol JNI `org.egret.*` di .so |
+| SDK wrapper | t4game/zhuhuan + QuickGame SDK (`com.quickgame.android.sdk.*`) | manifest (13 aktivitas HW/GooglePlay/Onestore) |
+| Protokol socket | socket.io **v2.1.2** (EIO=3) | `js/socket.io.min_57ea9db7.js` (APK): `version:"2.1.2"`; handshake live `96:0{...}` EIO=3 |
+| Enkripsi resource | XXTEA varian magic `onepieceencrypts` | uji dekripsi ulang: `infoinfo.bin`→38 B valid, 2 zip CRC semua valid |
+| Enkripsi config `.bin` | XOR kunci ASCII `DragonBall` | uji ulang live: `setting_BS_Android.bin` → JSON valid |
+| `Facebook App ID` | `563635417808635` (scheme `fb563635417808635`) | `res/values/strings.xml:84-85` |
+
+**Status server (uji ulang segar hari ini, 21 Nov 2026):**
+
+| Server | Status teruji |
 |---|---|
-| Package | `com.db.local` |
-| Label | `DB - Local` |
-| versionName / versionCode | `1.0.1` / `1` |
-| minSdk / targetSdk | 21 / 30 |
-| Ukuran asli | 104.945.181 byte (±100 MB, via Git LFS) |
-| SHA256 | `b308c44de6ec082a70c39e388a2cef4e9cdc1cee30b38c14a30bef86a7bc2218` |
-| Engine game | **Egret (HTML5/JS)** — `libegret.so` + runtime `assets/runtime-dex.jar` |
-| SDK wrapper | t4game/zhuhuan (`com.zhuhuan.game`) + **QuickGame SDK** (`com.quickgame.android.sdk`) |
-| Protokol game | **socket.io v2** (EIO=3) via WebSocket (Java-WebSocket di native, socket.io.min.js di JS) |
-| Enkripsi resource | **XXTEA varian** "onepieceencrypts" (sudah dipecahkan, dekriptor Python disertakan) |
-| Enkripsi config `.bin` | XOR kunci ASCII **`DragonBall`** |
-| Status server | **Config server, CDN game, update server, dan login server (socket.io) MASIH HIDUP saat analisis ini** |
+| `https://configus.sjmobilegame.com` (config) | **HIDUP** — HTTP 200, 711 B |
+| `https://dragonh5cdn.popoh5.com` (CDN+update) | **HIDUP** — HTTP 200 |
+| `https://login.popoh5.com:610` (login socket.io) | **HIDUP** — handshake OK: `96:0{"sid":"AinptGYFIyuMMmcfbn0Z","upgrades":["websocket"],"pingInterval":25000,"pingTimeout":5000}2:40` |
+| `https://login.popoh5.com:510` (loginWebPort) | merespons `{"code":404,"msg":"没有开通"}` (belum dibuka) |
+| `login.popoh5.com:443` | **MATI** — koneksi ditolak (refused) |
+| `http://118.24.68.91:7003` (tsLoginServer) | **MATI** — timeout 12 s |
+| `http://log.sjflaregame.com:10000` (battle-log) | **DIBLOKIR** — HTTP 302 → `dnspod.qcloud.com/static/webblock.html?d=log.sjflaregame.com:10000` (domain diparked Tencent) |
+| `https://ssweb.episodezz.com` (ThinkingData) | **TIDAK TERJANGKAU** — timeout |
+| `http://qsdk.t4game.com` (SDK t4game) | **HIDUP** — HTTP 200 |
 
-Alur besar: APK boot → unduh config terenkripsi → dapat URL game (`mGameUrl`) →
-ekstrak resource lokal → cek update di server → load game Egret →
-JS game konek **login server (socket.io)** → dapat **serverList** → konek **game server + chat server + dungeon server**.
+Alur besar (semua langkah berbukti kode, lihat Bagian 6):
+APK boot → unduh config terenkripsi (XOR `DragonBall`) → dapat URL game → ekstrak
+resource lokal → cek update → load game Egret → JS konek login server (socket.io) →
+`GetServerList` → konek game/chat/dungeon server (URL dinamis per-server).
 
 ---
 
 ## 1. Cara APK Diperoleh (dari repo)
 
-1. Clone repo (PAT). Working tree hanya berisi 1 file: `db-local(Original-DO NOT DELETE!).apk` berukuran 4 KB.
-2. File itu adalah **Git LFS pointer**, bukan APK:
+1. Clone repo (PAT). Working tree hanya berisi 1 file: `db-local(Original-DO NOT DELETE!).apk` berukuran 134 byte.
+2. File itu adalah **Git LFS pointer**, bukan APK (isi pointer tercetak persis di bawah):
 
    ```
    version https://git-lfs.github.com/spec/v1
@@ -44,159 +69,198 @@ JS game konek **login server (socket.io)** → dapat **serverList** → konek **
    ```
 
 3. Objek LFS diunduh lewat GitHub LFS Batch API (`POST /info/lfs/objects/batch`) → URL bertanda tangan → `original.apk`.
-4. Verifikasi: ukuran & SHA256 **cocok persis** dengan pointer LFS. Ini APK asli, tidak diubah.
+4. Verifikasi ulang: `sha256sum original.apk` = `b308c44d…bc2218`, `stat -c %s` = `104945181` — **cocok persis** dengan pointer. APK asli, tidak diubah.
 
-`git lfs` tidak terpasang di sandbox (tidak ada sudo), maka dipakai API langsung — hasil identik.
+`git lfs` tidak terpasang di sandbox (tanpa sudo); API langsung menghasilkan byte identik (bukti: hash).
 
 ---
 
-## 2. Struktur APK (3.668 file, 127 MB ter-unzip)
+## 2. Struktur APK (3.668 file, 131 MB ter-unzip)
 
 ```
 original.apk
 ├── AndroidManifest.xml          package com.db.local, label "DB - Local"
-├── classes.dex                  1.879 class (Java layer: wrapper + SDK)
+├── classes.dex                  6.697.104 B — 6.108 class (header DEX, bukan tebakan)
 ├── lib/
-│   ├── arm64-v8a/libegret.so        engine Egret native
-│   ├── arm64-v8a/libgavesec.so      proteksi (tidak mengandung URL)
-│   └── armeabi-v7a/ (2 file sama)
+│   ├── arm64-v8a/libegret.so        16.975.928 B — engine Egret (simbol org.egret.*)
+│   ├── arm64-v8a/libgavesec.so      30.184 B
+│   └── armeabi-v7a/ (2 file, 11.181.200 B / 21.724 B)
 ├── assets/
-│   ├── game/                    2.524 file — resource game nama acak (obfuscate)
-│   │   ├── infoinfo.bin         [ENKRIPSI] → "voyage_fancy_radius|pschent_full_tired"
-│   │   ├── voyage_fancy_radius.bin  [ENKRIPSI] → base.zip  (1.233.549 B, 161 entri, CRC OK)
-│   │   ├── pschent_full_tired.bin   [ENKRIPSI] → all.zip    (9.428.692 B, 741 entri, CRC OK)
-│   │   ├── vvcc.bin             [ENKRIPSI] → JSON peta nama resource (1.944 mapping)
-│   │   ├── vvcc_tc.bin          [ENKRIPSI] → JSON peta (kondisi terpisah)
-│   │   ├── base.version         "110"  (versi base lokal)
-│   │   ├── resource.version     "11220" (versi resource lokal — server kini 11390)
-│   │   └── resource/...         file resource nama-acak (obfuscated)
+│   ├── game/                    2.524 file — resource nama acak (obfuscated)
+│   │   ├── infoinfo.bin         [XXTEA] → "voyage_fancy_radius|pschent_full_tired" (38 B)
+│   │   ├── voyage_fancy_radius.bin  [XXTEA] → base.zip  (1.233.549 B, 161 entri, CRC OK)
+│   │   ├── pschent_full_tired.bin   [XXTEA] → all.zip    (9.428.692 B, 741 entri, CRC OK)
+│   │   ├── vvcc.bin             [XXTEA] → JSON peta nama resource (183.712 B)
+│   │   ├── vvcc_tc.bin          [XXTEA] → JSON peta (10.907 B)
+│   │   ├── base.version         "110"
+│   │   ├── resource.version     "11220"  (server kini 11390)
+│   │   └── resource/...         file resource nama-acak
 │   ├── config.properties        EntryPoint1 (Base64) → http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android
 │   ├── config_BS.properties     EntryPoint1/2 (Base64) → server config channel "BS"
 │   ├── QHinfo                   http://qsdk.t4game.com
 │   ├── supplierconfig.json      supplier vivo appid 100215079
-│   └── runtime-dex.jar          Egret Native runtime + WebSocket + HTTPDNS
+│   └── runtime-dex.jar          Egret runtime + WebSocket + HTTPDNS 119.29.29.29
 ├── res/ (1.111 file) + resources.arsc
 └── META-INF/
 ```
 
-Permission penting: `INTERNET`, `WRITE/READ_EXTERNAL_STORAGE`, `ACCESS_NETWORK_STATE`,
-`CHANGE_NETWORK_STATE`, `BILLING`, `WAKE_LOCK`, `SYSTEM_ALERT_WINDOW`.
-`networkSecurityConfig`: **cleartextTrafficPermitted="true"** (HTTP polos diizinkan semua domain —
-sangat memudahkan redirect ke local server). `requestLegacyExternalStorage=true`.
+**Permission lengkap (androguard, 12 entri — koreksi: versi lama hanya mencatat 7):**
 
-Manifest juga memuat Facebook App ID `563635417808635` (scheme `fb563635417808635`).
+```
+READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE, INTERNET, ACCESS_NETWORK_STATE,
+ACCESS_WIFI_STATE, CHANGE_NETWORK_STATE, WAKE_LOCK, SYSTEM_ALERT_WINDOW,
+SYSTEM_OVERLAY_WINDOW, REORDER_TASKS, com.android.vending.BILLING,
+com.db.local_com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE
+```
 
-### Kerangka izin/aktivitas
+**Atribut application terverifikasi:** `requestLegacyExternalStorage=true`,
+`usesCleartextTraffic=true`, `networkSecurityConfig=@xml/network_security_config`.
+Isi file asli `res/xml/network_security_config.xml` (baca dari APK):
 
-- Application: `com.zhuhuan.game.Application`
-- Launcher: `com.zhuhuan.game.LaunchActivity` → game: `com.zhuhuan.game.MainActivity`
-- SDK: `com.quickgame.android.sdk.*` (HW/Huawei, OneStore, Google Play signin, Billing, Facebook)
-- Analytics: Adjust, AppsFlyer, Facebook, ThinkingData (via JS)
+```xml
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true"/>
+</network-security-config>
+```
+
+→ **HTTP polos diizinkan ke SEMUA domain (base-config)** — krusial untuk redirect local server.
+
+Manifest juga memuat Facebook App ID `563635417808635` (scheme `fb563635417808635`,
+`strings.xml` baris 84–85; authority FacebookContentProvider baris 91).
+
+Aktivitas SDK terverifikasi dari manifest: `com.quickgame.android.sdk.activity.*`
+(HW/Huawei Login/Pay/Account, GooglePlayActivity, OnestorePayActivity, BindEmail,
+AccountRecover, TrashAccount, RedeemCode, BindThirdLogin).
 
 ---
 
 ## 3. FASE 1 — Struktur Folder yang Dibuat di `android/data`
 
-Semua nilai di bawah **berasal dari kode ter-decompile**, bukan tebakan.
+Semua nilai dari kode ter-decompile, dengan **nomor baris persis**.
 
 ### 3.1 Penentu path (bukti kode)
 
-| Kode | Lokasi | Nilai |
+| Kode | Lokasi persis | Nilai |
 |---|---|---|
-| `LaunchActivity.ironoriginhoblike` (field) | `LaunchActivity.java:59` | `"/game/"` |
-| `LaunchActivity.feedtonight` (field) | `LaunchActivity.java:60` | `"DragonBall"` (kunci XOR) |
-| `getExternalFilesDir("")` | `LaunchActivity` (badan boot) | `/storage/emulated/0/Android/data/com.db.local/files` |
-| `EgretNativeAndroid.config.cachePath` | `EgretNativeAndroid.java:50` | `activity.getFilesDir()` (internal) |
-| `f39singersmooth` (nama OBB) | badan boot | `main.<versionCode>.<packageName>.obb` = `main.1.com.db.local.obb` |
-| Escape URL game | `reweavingsiamesedpropertylessnesses.singersmooth()` | `"://"` diganti `"/"`, lalu `":"` diganti `#0A` |
+| field `ironoriginhoblike` | `jadx-out/sources/com/zhuhuan/game/LaunchActivity.java:59` | `public String ironoriginhoblike = "/game/";` |
+| field `feedtonight` | `jadx-out/sources/com/zhuhuan/game/LaunchActivity.java:60` | `public String feedtonight = "DragonBall";` |
+| `getExternalFilesDir("")` | LaunchActivity (badan boot) | `/storage/emulated/0/Android/data/com.db.local/files` |
+| `cachePath` | `jadx-out/sources/org/egret/egretnativeandroid/EgretNativeAndroid.java:50` | `aVar.cachePath = activity.getFilesDir().getAbsolutePath();` |
+| nama OBB | `jadx-badcode/sources/com/zhuhuan/game/LaunchActivity.java:360-361` | `"main." + versionCode + "." + packageName + ".obb"`; `getObbDir()` |
+| cek marker OBB | `.../reweavingsiamesedpropertylessnesses/worktopichardtails.java:29-36` | `new File(mDestPath + "/" + obbFileName + ".done").exists()` |
+| escape URL → folder | `reweavingsiamesedpropertylessnesses.java` (singersmooth), juga `MainActivity.java:1447`, `feedtonight.java:115`, `cointhreat.java:147` | substring sampai `/` terakhir → `"://"→"/"` → `":"→"#0A"` |
+
+Escape URL persis (dari `reweavingsiamesedpropertylessnesses.singersmooth(String)`):
+
+```java
+String substring = str.substring(0, lastIndexOf('/') + 1);   // sampai '/' terakhir
+return replace(replace(substring, "://", "/"), ":", "#0A");   // 2 penggantian
+```
 
 ### 3.2 Pohon folder hasil install & jalankan APK
 
-**Eksternal (yang Anda minta — `Android/data`):**
+**Eksternal (`Android/data`):**
 
 ```
 /storage/emulated/0/
 ├── Android/data/com.db.local/
 │   └── files/                          ← getExternalFilesDir("")
 │       └── game/                       ← konstanta "/game/"
-│           └── https/                  ← escape "://" dari URL game
+│           └── https/                  ← hasil escape "://"→"/" dari URL game
 │               └── dragonh5cdn.popoh5.com/
-│                   └── bs/             ← folder game (escape URL mGameUrl live)
+│                   └── bs/             ← bagian path URL game live (…/bs/index-native.html)
 │                       ├── base.version        "110"
-│                       ├── resource.version    "11220" → naik per update (server kini 11390)
-│                       ├── index-native.html   (jika web mode)
-│                       ├── manifest.json
-│                       ├── js/                 kode Egret (egret.min, main.min, socket.io.min, dst)
+│                       ├── resource.version    "11220" → naik per update
+│                       ├── manifest.json, index-native.html
+│                       ├── js/                 kode Egret (egret, main, socket.io, dst)
 │                       ├── resource/           json/, language/, assets/
 │                       └── main.1.com.db.local.obb.done   (marker, hanya jika ada OBB)
 └── Android/obb/com.db.local/
-    └── main.1.com.db.local.obb         (hanya jika vc_obb aktif; jarang dipakai)
+    └── main.1.com.db.local.obb         (getObbDir(); hanya jika vc_obb aktif)
 ```
 
-Catatan penting: ** nama folder `https/dragonh5cdn.popoh5.com/bs/` BUKAN tetap —**
-dihasilkan dari escape URL game pada config (`url`/`tsUrl`). Jika URL game diganti
-(misal jadi `http://127.0.0.1:8080/index-native.html`), foldernya otomatis menjadi
-`files/game/http/127.0.0.1:8080/` (`:` diganti `#0A` → `127.0.0.1#0A8080`).
-Karena itu, saat uji local server sebaiknya **hapus dulu isi `files/game/`** agar tidak campur cache lama.
+**Contoh fakta escape (diuji dari rumus di 3.1):**
+- URL live `https://dragonh5cdn.popoh5.com/bs/index-native.html` → folder
+  `files/game/https/dragonh5cdn.popoh5.com/bs/`
+- URL `http://127.0.0.1:8080/index-native.html` → folder
+  `files/game/http/127.0.0.1#0A8080/`  (TITIK DUA JUGA jadi `#0A` — koreksi dari versi lama
+  yang menulis `127.0.0.1:8080` dengan titik dua di nama folder)
+
+Catatan operasional: saat mengganti URL game, **hapus isi `files/game/`** agar tidak
+campur cache lama (folder cache mengikuti escape URL).
 
 **Internal (pelengkap):**
 
 ```
 /data/data/com.db.local/
-├── files/                ← cachePath Egret runtime (cache resource native render)
-├── shared_prefs/         ← state SDK QuickGame, state login, dsb.
+├── files/                ← cachePath Egret runtime (EgretNativeAndroid.java:50)
+├── shared_prefs/         ← state SDK QuickGame, state login
 └── code_cache/
 ```
 
-### 3.3 Urutan penulisan folder saat boot
+### 3.3 Urutan penulisan folder saat boot (dengan bukti langkah)
 
-1. `LaunchActivity.onCreate` → init config channel `BS` → minta izin storage.
-2. Boot thread: baca `config_BS.properties` (Base64 → EntryPoint).
-3. Unduh `setting_BS_Android.bin` + `com_db_local.bin` (retry 10x/3x) → XOR `DragonBall` → JSON → `mSdkParams`.
-4. `getExternalFilesDir("") + "/game/"` dibuat sebagai **preloadPath**.
-5. Baca `assets/game/infoinfo.bin` (dekripsi XXTEA) → nama 2 zip lokal.
-6. Ekstrak zip lokal ke `preloadPath` (log "decompressing").
-7. Baca `vvcc.bin` (peta resource) + `vvcc_tc.bin` (jika infoinfo berisi `|`).
-8. `GameUpdateUtil`: bandingkan `base.version`/`resource.version` lokal vs server →
-   unduh `base.zip`/`all.zip` bila lebih baru → ekstrak ke
-   `preloadPath + escape(url) + "/..."`.
-9. `MainActivity` dijalankan dengan extra `preloadPath` → Egret load game dari sana.
+1. `LaunchActivity.onCreate` → init channel `BS` → minta izin storage
+   (`f886singersmooth = {"android.permission.WRITE_EXTERNAL_STORAGE"}` — `LaunchActivity.java:58`).
+2. Boot thread: baca `config_BS.properties` → Base64 decode EntryPoint (lihat 4.A).
+3. Unduh config (pola persis, `jadx-badcode/.../LaunchActivity.java:291,300`):
+   `{EntryPoint}/setting_BS_Android.bin?rnd={random}` (retry 10) dan
+   `{EntryPoint}/com_db_local.bin?rnd={random}` (retry 3; `packageName.replace(".","_")`).
+4. XOR `DragonBall` → JSON → `mSdkParams`.
+5. `getExternalFilesDir("") + "/game/"` = preloadPath.
+6. `assets/game/infoinfo.bin` dekripsi → nama 2 zip lokal → ekstrak ke preloadPath.
+7. `vvcc.bin` + `vvcc_tc.bin` → JSON peta resource + versionConfig (`vc_obb` opsional).
+8. Alur update (lihat 4.E) → MainActivity dengan extra preloadPath.
 
 ---
 
 ## 4. FASE 2 — Inventaris Endpoint Lengkap
 
-### 4.A Endpoint di dalam APK (hardcoded / Base64)
+### 4.A Endpoint di dalam APK (byte asli — metode: Base64 decode + byte-scan)
 
-| # | Endpoint | Sumber file | Keterangan |
+| # | Endpoint | Sumber & bukti | Keterangan |
 |---|---|---|---|
-| 1 | `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` | `assets/config.properties` `EntryPoint1` (Base64) | Channel kosong (TIDAK terpakai — channel aktif "BS") |
-| 2 | `https://configus.sjmobilegame.com/bs/db/android` | `assets/config_BS.properties` `EntryPoint1` (Base64) | **Server config aktif** (channel BS) |
-| 3 | `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android` | `assets/config_BS.properties` `EntryPoint2` (Base64) | Backup config (Tencent COS) |
-| 4 | `http://qsdk.t4game.com` | `assets/QHinfo` | Domain SDK t4game (wrapper) |
-| 5 | `http://119.29.29.29/d?dn=` | `assets/runtime-dex.jar` | HTTPDNS Tencent — resolve domain→IP untuk WebSocket |
+| 1 | `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` | `assets/config.properties` `EntryPoint1` — Base64 `aHR0cDovL2RyYWdvbi5zam1vYmlsZWdhbWUuY29tOjgy…` | Channel kosong (channel aktif = "BS") |
+| 2 | `https://configus.sjmobilegame.com/bs/db/android` | `assets/config_BS.properties` `EntryPoint1` — Base64 terverifikasi decode | **Server config aktif** |
+| 3 | `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android` | `assets/config_BS.properties` `EntryPoint2` | Backup config (Tencent COS) |
+| 4 | `http://qsdk.t4game.com` | `assets/QHinfo` (teks mentah 1:1) | Domain SDK t4game |
+| 5 | `http://119.29.29.29/d?dn=` | di dalam `assets/runtime-dex.jar` → `classes.dex` string #1244 (HTTPDNS Tencent) | resolve domain→IP untuk WebSocket |
 
-Pola unduhan config (dari kode boot):
-```
-{EntryPoint}/setting_BS_Android.bin?rnd={random}      (retry 10x)
-{EntryPoint}/com_db_local.bin?rnd={random}           (retry 3x, package "."→"_" → com_db_local.bin)
-```
+**Byte-scan menyeluruh APK** (`tools/urlscan.py`, regex `https?|wss?://` atas 3.668 file):
+total 852 kecocokan mentah, terurai:
 
-### 4.B Skema JSON config (field yang dibaca kode `LaunchActivity`)
+| Sumber | Jumlah URL | Isi |
+|---|---|---|
+| `classes.dex` | 81 | semua SDK pihak ketiga: Facebook, Google (oauth/fitness/games scopes), Adjust (app/gdpr/subscription .com/.net.in/.world), AppsFlyer (template `%sadrevenue|%sapp|%sattr|%simpression|%sinapps|%sregister|%sstats…`), login.live.com, login.yahoo.com, twitter.com, linkedin.com, paypal.com, **web-pay.line.me**, play.google.com, pagead2.googlesyndication.com |
+| `libegret.so` (2 ABI) | 12 | `http://local/index.html` (URL default engine), curl.haxx.se (doc cookie libcurl) |
+| `AndroidManifest.xml` | 1 | hanya namespace `schemas.android.com` |
+| `assets/game/resource/**/*.jpg` | ±700 | **noise** — metadata XMP Adobe (`ns.adobe.com/xap/…`), bukan endpoint |
+| `res/**/*.xml` | ±55 | **noise** — namespace Android (`schemas.android.com/apk/res/android`) |
+| `assets/QHinfo` | 1 | `http://qsdk.t4game.com` |
 
-`Android<versionCode>`, `testMode`, `webVer`, `nativeRender`, `url`, `webUrl`, `tsUrl`, `tsWebUrl`,
-`update`, `forceBuild`, `noForceBuild`, `forceUrl`, `checkTime`, `tsLoginServer`, `loginServer`,
-`loginKey`, `loginPort`, `loginWebPort`, `productPrefix`, `productIdMap`, `gameIcon`, `extra`,
-`clientParams`, `peiUrl`, `wpei`, `wpeiurl`, `blackWhiteL`, `blackWhiteLNetSegment`,
-`currentNetIpUrl`, `unityGameSdkLogin`, `checkGoogleTicketUrl`, `gameLanguage`, `nativeUnzipJson`.
+**Bukti negatif (penting — domain TIDAK di-hardcode di APK):**
+`rg -a` atas seluruh bytes APK → `popoh5`=0, `sjmobilegame`=0 (hanya ada versi Base64),
+`dragonh5cdn`=0, `sjflaregame`=0, `parajoymobile`=0, `episodezz`=0, `119.29.29.29`=0
+(nya di dalam zip runtime-dex.jar), `qsdk.t4game`=1.
 
-Pemilihan URL (class SdkParams `cointhreat...ironoriginhoblike`):
-- mode `2` → `tsWebUrl` (jika webVer≥SDK) / `tsUrl`
-- selain itu → `webUrl` (web mode) / `url` (native mode)
+### 4.B Skema JSON config (field yang dibaca kode — semua terverifikasi di `LaunchActivity.java`)
 
-### 4.C Config LIVE yang baru diunduh saat analisis (server masih hidup!)
+Baris persis: `webVer`:625, `url`:633, `webUrl`:640, `wpei`:763, `wpeiurl`:769.
+Daftar lengkap dari konstanta string class: `Android<versionCode>`, `testMode`, `webVer`,
+`nativeRender`, `url`, `webUrl`, `tsUrl`, `tsWebUrl`, `update`, `forceBuild`, `noForceBuild`,
+`forceUrl`, `checkTime`, `tsLoginServer`, `loginServer`, `loginKey`, `loginPort`,
+`loginWebPort`, `productPrefix`, `productIdMap`, `gameIcon`, `extra`, `clientParams`,
+`peiUrl`, `wpei`, `wpeiurl`, `blackWhiteL`, `blackWhiteLNetSegment`, `currentNetIpUrl`,
+`unityGameSdkLogin`, `checkGoogleTicketUrl`, `gameLanguage`, `nativeUnzipJson`
+(+ `healthNotice`, `heishi`, `jiuwan` dari dump string class).
 
-`https://configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin` → XOR `DragonBall` → JSON:
+Pemilihan URL game: mode `2` → `tsWebUrl` (jika webVer≥SDK) / `tsUrl`; selain itu
+`webUrl` (web mode) / `url` (native mode).
+
+### 4.C Config LIVE — diunduh ulang & didekripsi ulang SAAT AUDIT INI
+
+`https://configus.sjmobilegame.com/bs/db/android/setting_BS_Android.bin?rnd=…`
+→ HTTP 200, 711 byte → XOR `DragonBall` → (hasil asli utuh):
 
 ```json
 {
@@ -219,160 +283,163 @@ Pemilihan URL (class SdkParams `cointhreat...ironoriginhoblike`):
 }
 ```
 
-`com_db_local.bin` → **404** (tidak ada, wajar karena package sudah di-rebuild jadi com.db.local).
+`com_db_local.bin` → **HTTP 404** (uji ulang; file per-package tidak ada di server).
 
-### 4.D Endpoint runtime hasil config di atas (dengan status uji langsung)
+### 4.D Endpoint runtime hasil config (status uji segar)
 
 | # | Endpoint | Peran | Uji live |
 |---|---|---|---|
-| 1 | `https://dragonh5cdn.popoh5.com/bs/index-native.html` | **URL game** (mGameUrl, HTML Egret) | **200 OK** |
-| 2 | `https://dragonh5cdn.popoh5.com/bs/upgrade` | **Update server** resource | **200 OK** |
-| 3 | `https://login.popoh5.com:610` | **Login server (socket.io v2)** | **HANDSHAKE OK** (`{"sid":"VKSDW_xv_rtjTEgVbnvy","upgrades":["websocket"]...}`) |
-| 4 | `https://login.popoh5.com:510` | loginWebPort (web mode) | 404 `{"code":404,"msg":"没有开通"}` (tidak aktif) |
-| 5 | `https://login.popoh5.com:443` | (tanpa port eksplisit) | timeout |
+| 1 | `https://dragonh5cdn.popoh5.com/bs/index-native.html?v=202109150935` | **URL game** (mGameUrl) | **200 OK** (10.792 B) |
+| 2 | `https://dragonh5cdn.popoh5.com/bs/upgrade` | **Update server** resource | **200 OK** (lihat 4.E) |
+| 3 | `https://login.popoh5.com:610` | **Login server (socket.io v2)** | **HANDSHAKE OK** (`sid":"AinptGYFIyuMMmcfbn0Z"`) |
+| 4 | `https://login.popoh5.com:510` | loginWebPort (web mode) | `{"code":404,"msg":"没有开通"}` (tidak dibuka) |
+| 5 | `login.popoh5.com:443` | tanpa port eksplisit | **connection refused** |
 | 6 | `http://dragon.sjmobilegame.com:82/bs103/index-native.html` | tsUrl (mode TS) | **200 OK** |
-| 7 | `http://118.24.68.91:7003` | tsLoginServer (mode TS) | **MATI** (timeout) |
-| 8 | `http://log.sjflaregame.com:10000/error/battle/client` | battle-log report (ada di index-native.html live: `window.reportBattlleLog`) | **302 (hidup)** |
-| 9 | `http://www.parajoymobile.com/privacy_en.html` | privacyUrl (HTML live) | hidup |
-| 10 | `https://ssweb.episodezz.com` | **ThinkingData analytics** (appId `da5e91639fc948399ba6c9523f593944`, di main.min live) | TIDAK TERJANGKAU |
+| 7 | `http://118.24.68.91:7003` | tsLoginServer (mode TS) | **MATI** (timeout 12 s) |
+| 8 | `http://log.sjflaregame.com:10000/error/battle/client` | battle-log report (di `index-native.html` live: `window.reportBattlleLog`) | **302 → webblock.qcloud (DIBLOKIR)** |
+| 9 | `http://www.parajoymobile.com/privacy_en.html` | privacyUrl (di HTML live) | ada di HTML live |
+| 10 | `https://ssweb.episodezz.com` | **ThinkingData** — appId `da5e91639fc948399ba6c9523f593944`, `ThinkingdataServerUrl` (main.min live) | **TIDAK TERJANGKAU** (timeout) |
 | 11 | `http://qsdk.t4game.com` | QHinfo | **200 OK** |
 
-### 4.E Protokol update server (`update` field) — dari kode GameUpdateUtil
+### 4.E Protokol update server — BUKTI KODE PERSIS (koreksi atribusi)
+
+Kelas `GameUpdateUtil` **TIDAK ADA** di APK (versi lama salah nama). Protokol aslinya
+ada di boot thread `LaunchActivity` — bukti `jadx-badcode/sources/com/zhuhuan/game/LaunchActivity.java`:
 
 ```
-GET {update}/base.version?rnd=        → 110
-GET {update}/resource.version?rnd=    → 11390   (APK bawa 11220)
-GET {update}/size.json?rnd=           → {"base":"31015076","11389":252562,...,"all":19385098}
-GET {update}/upgrade.json?rnd=        → {"11389":"11389_11390.zip", ..., "all":"all.zip"}
-GET {update}/base.zip?v={baseVer}     (jika base lebih baru)
-GET {update}/all.zip?v={base}{res}    (jika resource lokal kosong)
-GET {update}/{versi}.zip              (dari upgrade.json, bila resource lebih baru)
+baris 730 : {update}/base.version?rnd=%f
+baris 742 : {update}/resource.version?rnd=%f
+baris 779 : {update}/base.zip?v={baseVer}
+baris 784 : {update}/all.zip?v={baseVer}{resVer}
+baris 786 : {update}/upgrade.json?rnd=%f
+baris 810 : {update}/size.json?rnd=%f    (juga baris 865)
 ```
 
-Semua nilai di atas **berhasil diunduh live** saat analisis.
+Hasil unduh live (faktanya juga): `base.version`=110, `resource.version`=11390,
+`size.json`=`{"base":"31015076","11389":252562,"11388":252562,"11387":252562,"11386":252562,"all":19385098}`,
+`upgrade.json`=`{"11389":"11389_11390.zip","11388":"11388_11390.zip","11387":"11387_11390.zip","11386":"11386_11390.zip","all":"all.zip"}`.
 
-### 4.F Fallback config di server game
+Tambahan fakta: versi lokal juga dibaca **dari file lokal** dulu —
+`reweavingsiamesedpropertylessnesses.feedtonight(activity, preloadPath, gameUrl)` membaca
+`{preloadPath + escape(url)}/base.version` & `/resource.version` via `FileInputStream`
+(dengan fallback ke `assets/game/*.version` bila konten "0").
 
-`{host game}/resource/properties/serversetting.json` (dipakai JS bila `getLoginServer()` kosong):
+### 4.F Fallback config di server game (terverifikasi live)
 
-```json
-{ "loginserver": "https://login.popoh5.com:610", "requireSDK": false }
+`{host game}/resource/properties/serversetting.json` — dipanggil JS:
+`RES.getResByUrl(o+"resource/properties/serversetting.json?v="+Math.random(),…)` (main.min live).
+Uji live: **HTTP 200** → `{"loginserver":"https://login.popoh5.com:610","requireSDK":false}`.
+
+### 4.G Arsitektur koneksi runtime game (bukti dari JS APK + JS live)
+
+Bukti dari JS yang TERTANAM di APK (`game_extracted/pschent/js/main.min_7eae4d6e.js`):
+`GetServerList`(1), `loginServer`(5), `loginserver`(4), `chaturl`(2), `dungeonurl`(5),
+`teamServerHttpUrl`(17), `teamChatRoomId`(12), `guildRoomId`(12), `worldRoomId`(4).
+`socket.io.min_57ea9db7.js`: `version:"2.1.2"`. Crypto: `TEA` (244 referensi) + `verify`.
+
+Kontrak `GetServerList` (main.min live): `{type:"User",action:"GetServerList",userId,subChannel,channel}`.
+
+```
+[JS game] --socket.io v2.1.2--> loginClient  --> loginServer (login.popoh5.com:610)
+   → serverList[] : serverId, name, online, new, url (game server),
+     teamChatRoomId, worldRoomId, guildRoomId, dungeonurl, chaturl, serverTag, ...
+[JS game] --> mainClient    → serverItem.url        (GAME SERVER per-server)
+[JS game] --> chatClient    → serverItem.chaturl
+[JS game] --> dungeonClient → serverItem.dungeonurl / teamServerHttpUrl
+[JS game] --HTTP POST--> ts.httpReqHandler(url, {type, action, ...})
+        → {ret:0, data:"..."} atau {compress:true, data:"<LZString UTF16>"}
 ```
 
-Status: **200 OK** — dan mengonfirmasi login server + port 610.
+Alamat game/chat/dungeon server **dinamis** dari `GetServerList` — tidak hardcode di APK.
 
-### 4.G Arsitektur koneksi runtime game (socket.io, semua dari JS `main.min*.js`)
+### 4.H Endpoint SDK pihak ketiga (dari byte-scan classes.dex — bukti 4.A)
 
-```
-[JS game] --socket.io v2--> loginClient  --> loginServer (login.popoh5.com:610)
-   pesan: {type:"User", action:"GetServerList", userId, subChannel, channel}
-   hasil: serverList[] → tiap entri: serverId, name, online, new, url (game server),
-          teamChatRoomId, worldRoomId, guildRoomId, dungeonurl, chaturl, serverTag, ...
-
-[JS game] --socket.io v2--> mainClient    --> serverItem.url       (GAME SERVER, per-server)
-[JS game] --socket.io v2--> chatClient    --> serverItem.chaturl   (_chatServerUrl dari login)
-[JS game] --socket.io v2--> dungeonClient --> serverItem.dungeonurl / teamServerHttpUrl
-[JS game] --HTTP POST----> ts.httpReqHandler(url, {type, action, ...})
-        respons: {ret:0, data:"..."} atau {compress:true, data:"<LZString UTF16>"}
-```
-
-Kunci kripto jalur login: `loginKey` (field config) dipakai untuk verify login (TEA verification).
-Aliran data respons bisa dikompresi **LZString (UTF16)**.
-
-Alamat **game server per-server (serverItem.url) bersifat dinamis** — hanya didapat setelah
-login sukses lewat login server. Tidak hardcode di APK.
-
-### 4.H Endpoint SDK pihak ketiga (bundel, tidak mengganggu gameplay)
-
-| SDK | Endpoint |
+| SDK | Endpoint (byte asli) |
 |---|---|
-| Facebook (App ID 563635417808635) | graph.facebook.com, facebook.com, fb.gg |
-| Google Play Services / Billing | accounts.google.com, play.googleapis.com, android.googleapis.com |
-| Adjust | app.adjust.com / .net.in / .world, gdpr.*, subscription.* |
-| AppsFlyer | register/stats/launches/conversions/inapps/impression <appId>.appsflyer.com |
-| Line Pay (webview HW) | web-pay.line.me |
-| Tencent HTTPDNS | 119.29.29.29/d?dn= |
+| Facebook (App ID 563635417808635) | graph.facebook.com / graph-video.%s, facebook.com, fb.gg |
+| Google Play Services | accounts.google.com, www.googleapis.com (auth scopes), play.google.com, pagead2.googlesyndication.com |
+| Adjust | app/gdpr/subscription.adjust.com/.net.in/.world |
+| AppsFlyer | template `%sapp.%s`, `%sattr.%s/api/v`, `%sregister.%s/api/v`, `%sstats.%s/stats`, `%simpression.%s`, `%sinapps.%s/api/v`, `%sadrevenue.%s/api/v`, dll. |
+| Line Pay | web-pay.line.me |
+| Tencent HTTPDNS | 119.29.29.29/d?dn= (runtime-dex.jar) |
 
-### 4.I Halaman/community yang tertanam di JS live
+### 4.I Halaman/community yang tertanam di JS live (bukti string di main.min live)
 
-- `https://discord.gg/5dYCqtCrdJ`
-- `https://t.me/AlphaGamingIran`
-- `https://www.instagram.com/alphagamingiran`
-- `https://www.facebook.com/Super-Fighter-Idle-108619837471134/`
+```
+https://discord.gg/5dYCqtCrdJ
+https://t.me/AlphaGamingIran
+https://www.instagram.com/alphagamingiran
+https://www.facebook.com/Super-Fighter-Idle-108619837471134/
+```
 
 ---
 
-## 5. Enkripsi & Kripto yang Ditemukan (lengkap + bukti)
+## 5. Enkripsi & Kripto yang Ditemukan (lengkap + uji ulang)
 
 ### 5.1 XXTEA varian "onepiece" (resource game)
 
-Ditemukan di `customreading.java` (class `cointhreat.cointhreat.cointhreat.reweavingsiamesedpropertylessnesses.customreading`):
+Dekriptor: `/home/z/db-apk-analysis/tools/onepiece_decrypt.py` — port literal
+`customreading.nationalcommunitymissing`. Layout file:
 
 ```
-byte[16:32] == "onepieceencrypts"            ← magic header
-key       = byte[32:48] XOR "onepiecedecryptk"
-payload   = byte[48:]
-dekripsi  = XXTEA varian 1 pass (delta 0x9E3779B9),
-            MX: ((y^sum) + u32(z^key[(p&3)^e])) ^ (u32((i>>>5)^(i2<<2)) + u32((i<<4)^(i2>>>3)))
-            langkah terakhir: v[0] -= MX(sum, y, v[terakhir], p=0)
-padding   = byte terakhir payload = jumlah byte pad (dibuang)
+byte[16:32] = magic "onepieceencrypts"
+byte[32:48] = key tersimpan, dikembalikan dengan XOR "onepiecedecryptk"
+byte[48:]   = payload XXTEA varian (long LE 32-bit, 1 pass, delta 0x9E3779B9)
+padding     = byte terakhir payload = jumlah byte pad (dibuang)
 ```
 
-Dekriptor Python: `/home/z/db-apk-analysis/tools/onepiece_decrypt.py` (TERUJI:
-`infoinfo.bin`, `vvcc.bin`, `vvcc_tc.bin`, dan kedua zip game terdekripsi penuh,
-CRC zip semua valid).
+**Uji ulang audit ini (semua lulus):**
+- `infoinfo.bin` → 38 B: `voyage_fancy_radius|pschent_full_tired`
+- `vvcc.bin` → 183.712 B JSON peta resource
+- `vvcc_tc.bin` → 10.907 B JSON peta
+- `voyage_fancy_radius.zip` → 161 entri, **CRC semua valid**
+- `pschent_full_tired.zip` → 741 entri, **CRC semua valid**
 
 ### 5.2 XOR config `.bin`
 
-Semua config `.bin` yang diunduh dari EntryPoint didekripsi **XOR dengan string `DragonBall`**
-(dari `LaunchActivity.feedtonight`, baris 231–237 badan boot). TERUJI terhadap
-`setting_BS_Android.bin` live → JSON valid.
+Semua config `.bin` dari EntryPoint didekripsi XOR string `DragonBall`
+(`LaunchActivity.java:60` field `feedtonight`; variabel `binKeyData` di badan boot).
+Uji ulang live → JSON valid (lihat 4.C).
 
-### 5.3startGame → JS
+### 5.3 startGame → JS
 
 MainActivity memanggil `EgretNativeAndroid.callExternalInterface("startGame", json)` atau
 `webView.evaluateJavascript("javascript:startGame('<base64>')")` dengan JSON berisi:
 `packageName, language, loginServer (host:port), loginKey, screenSize, version, versionConfig,
-jsonB64Map (peta resource), thirdParams, clientParams` → game JS menyimpan ke
-`window.loginServer` dll. (`index-native.html`: `getLoginServer()`).
+jsonB64Map, thirdParams, clientParams` → JS menyimpan ke `window.loginServer` dll.
+(`index-native.html` live: fungsi `getLoginServer()` terverifikasi ada.)
 
 ---
 
-## 6. Alur Boot Lengkap (map method, untuk dokumentasi)
+## 6. Alur Boot Lengkap (dengan penunjuk bukti)
 
 ```
 LaunchActivity.onCreate
- └─ init "BS" (cointhreat...seventygenom.hardlinerspare.cointhreat("BS"))
- └─ pursetruechild()                    minta izin WRITE_EXTERNAL_STORAGE
- └─ Thread → ironoriginhoblike(this)    [badan boot]
-     ├─ binKeyData = "DragonBall".getBytes(UTF8)         ← kunci XOR
-     ├─ extDir = getExternalFilesDir("") + "/game/"      ← preloadPath
-     ├─ load assets config_BS.properties → EntryPoint[] (Base64 decode)
-     ├─ GET {ep}/setting_BS_Android.bin?rnd=  (retry 10) ─┐
-     ├─ GET {ep}/com_db_local.bin?rnd=        (retry 3)  ─┤ XOR DragonBall → JSON → mSdkParams
-     ├─ (gagal → tampil error & opsi unduh OBB ke Android/obb/)
-     ├─ assets open game/infoinfo.bin → "voyage_fancy_radius|pschent_full_tired"
-     ├─ vvcc.bin (XXTEA) → versionConfig ; vc_obb (opsional)
-     └─ dishbesideshockey()               [alur update]
-         ├─ CurrentMode: {mode}  IsFilterIP: {feedtonight()}   (cek IP via currentNetIpUrl + blackWhiteL[NetSegment])
-         ├─ mode 0 → error network ; mode 3/4 → jalur khusus
-         ├─ ekstrak zip lokal ke preloadPath (decompressing)
-         ├─ base = preloadPath + escape(urlGame)
-         ├─ baca {base}/base.version & {base}/resource.version (fallback: assets)
-         ├─ GET {update}/base.version / resource.version / size.json / upgrade.json
-         ├─ unduh base.zip / {versi}.zip / all.zip bila perlu → ekstrak ke {base}
+ └─ init channel "BS" → minta izin WRITE_EXTERNAL_STORAGE (LaunchActivity.java:58)
+ └─ Thread badan boot (jadx-badcode LaunchActivity)
+     ├─ binKeyData = "DragonBall".getBytes(UTF8)                 ← :60
+     ├─ extDir = getExternalFilesDir("") + "/game/"              ← :59
+     ├─ load assets config_BS.properties → EntryPoint (Base64)
+     ├─ GET {ep}/setting_BS_Android.bin?rnd=   (retry 10)        ← :291
+     ├─ GET {ep}/com_db_local.bin?rnd=         (retry 3)         ← :300
+     ├─ XOR DragonBall → JSON → mSdkParams
+     ├─ assets game/infoinfo.bin → "voyage_fancy_radius|pschent_full_tired"
+     ├─ vvcc.bin (XXTEA) → versionConfig; vc_obb opsional (assets; jika tanpa OBB:
+     │   log "没有Obb文件" — reweavingsiamesedpropertylessnesses.java:301)
+     ├─ OBB: nama "main."+versionCode+"."+pkg+".obb" di getObbDir()
+     │   + marker .done (badcode:360-361; worktopichardtails.java:29-36)
+     └─ alur update (badcode:730-865 — lihat 4.E)
          └─ selesai → start MainActivity (extra preloadPath)
 MainActivity.onCreate
- ├─ mGameUrl = mSdkParams.singersmooth()      (url / webUrl / tsUrl sesuai mode+webVer)
- ├─ vvcc.bin, vvcc_tc.bin, vc_obb, infoinfo.bin dibaca ulang
- ├─ QuickGame SDK init (productCode)
- ├─ EgretNativeAndroid: cachePath=/data/data/com.db.local/files, preloadPath=ext/game
- │   registerExternalInterface: startGame, startTsGame, switchAccount, userCenter,
- │   changeView, changeLanguage, refresh, pei, giveLike, contact, report2Third, openURL, sendLog
- └─ initialize(mGameUrl) → runtime Egret load game
+ ├─ mGameUrl = SdkParams pilih url/webUrl/tsUrl (webVer: LaunchActivity.java:625)
+ ├─ QuickGame SDK init
+ ├─ EgretNativeAndroid: cachePath=getFilesDir() (:50), registerExternalInterface
+ │   startGame, startTsGame, switchAccount, userCenter, changeView, changeLanguage,
+ │   refresh, pei, giveLike, contact, report2Third, openURL, sendLog
+ └─ initialize(mGameUrl) → Egret load game dari preloadPath + escape(url)
 [JS game]
  ├─ startGame(b64json) → window.loginServer dsb.
- ├─ loginClient.connectToServer(loginServer:port)   socket.io v2
+ ├─ loginClient.connectToServer(loginServer:port)   socket.io v2.1.2
  ├─ GetServerList → serverList[] (url per server)
  ├─ mainClient.connectToServer(serverItem.url)
  ├─ chatClient.connectToServer(serverItem.chaturl)
@@ -381,29 +448,27 @@ MainActivity.onCreate
 
 ---
 
-## 7. Implikasi untuk Rencana Local Server (127.0.0.1:<port>)
+## 7. Implikasi untuk Rencana Local Server (127.0.0.1:<port>) — RENCANA, bukan fakta
 
-Titik-titik penggantian (urutan prioritas):
+Titik penggantian (urutan prioritas), semua titik berlandaskan fakta di atas:
 
-1. **Config bootstrap** — opsi paling bersih: edit `assets/config_BS.properties`
-   EntryPoint1 (Base64) → arahkan ke local server yang menyajikan
-   `setting_BS_Android.bin` (XOR `DragonBall`, JSON sama seperti 4.C dengan `url`,
-   `update`, `loginServer`, `loginPort` diubah ke 127.0.0.1).
-   Alternatif cepat untuk eksperimen tanpa rebuild APK: hosts/DNS/spoof
+1. **Config bootstrap** — edit `assets/config_BS.properties` EntryPoint1 (Base64) →
+   arahkan ke local server yang menyajikan `setting_BS_Android.bin` (XOR `DragonBall`,
+   JSON sama seperti 4.C dengan `url`/`update`/`loginServer` ke 127.0.0.1).
+   Alternatif tanpa rebuild APK: hosts/DNS/spoof
    `configus.sjmobilegame.com` + `dragonh5cdn.popoh5.com` + `login.popoh5.com` ke 127.0.0.1
-   (cleartext diizinkan, `usesCleartextTraffic=true`).
-2. **URL game (`url`)** — HTML + JS bisa di-host local (isi base.zip/all.zip sudah
-   tertangan di zip terdekripsi; APK juga sudah punya salinan versi 11220 di assets).
-3. **Update server (`update`)** — untuk mode offline, cukup sediakan
-   `base.version`=110 & `resource.version` sama dengan lokal → update dilewati
-   ("最新资源文件，无需更新").
-4. **Login server (socket.io v2, port 610)** — perlu server socket.io v2 (EIO=3)
-   yang menjawab `GetServerList` dan login verify (kontrak `loginKey`/TEA di JS).
-5. **Game/chat/dungeon server** — alamatnya dinamis dari `GetServerList`; server
-   local cukup mengembalikan entri berisi URL ke 127.0.0.1:<port lain>.
-6. **Anti-galat lokal**: hapus `Android/data/com.db.local/files/game/` saat ganti
-   URL game (folder cache mengikuti escape URL), dan ingat fallback
-   `serversetting.json` di host game juga menyebut `login.popoh5.com:610`.
+   (`base-config cleartextTrafficPermitted="true"` — HTTP polos legal).
+2. **URL game (`url`)** — HTML+JS bisa di-host local (zip terdekripsi penuh tersedia;
+   APK juga membawa salinan v11220 di assets).
+3. **Update server (`update`)** — mode offline: sediakan `base.version`=110 dan
+   `resource.version` sama dengan lokal → update dilewati.
+4. **Login server (socket.io v2.1.2, port 610)** — perlu server EIO=3 yang menjawab
+   `GetServerList` + verify `loginKey` (TEA di JS).
+5. **Game/chat/dungeon server** — URL dinamis dari `GetServerList`; server local cukup
+   mengembalikan entri berisi URL 127.0.0.1:<port lain>.
+6. **Anti-galat**: hapus `Android/data/com.db.local/files/game/` saat ganti URL game
+   (folder = escape URL; titik dua juga jadi `#0A`), dan ingat fallback
+   `serversetting.json` di host game menyebut `login.popoh5.com:610`.
 
 ---
 
@@ -417,24 +482,45 @@ Titik-titik penggantian (urutan prioritas):
 | Dekompil Java (--show-bad-code) | `/home/z/db-apk-analysis/jadx-badcode/sources/` |
 | Dekompil resource | `/home/z/db-apk-analysis/jadx-res/` |
 | Dekompil runtime-dex.jar | `/home/z/db-apk-analysis/jadx-rtdex/sources/` |
-| Dekriptor XXTEA "onepiece" (Python) | `/home/z/db-apk-analysis/tools/onepiece_decrypt.py` |
-| Config live terdekripsi | `/tmp/setting.bin` (XOR DragonBall → JSON) |
+| Dekriptor XXTEA "onepiece" | `/home/z/db-apk-analysis/tools/onepiece_decrypt.py` |
+| Scanner URL byte-per-byte | `/home/z/db-apk-analysis/tools/urlscan.py` |
+| Hasil byte-scan lengkap | `/tmp/urlscan_apk.txt` (852 kecocokan mentah) |
+| Config live terdekripsi (fresh) | `/tmp/fresh_setting.bin` (XOR DragonBall → JSON) |
+| HTML live | `/tmp/live_index.html`; JS live: `/tmp/live_main.min.js`, `/tmp/live_manifest.json` |
 | Zip game terdekripsi | `/home/z/db-apk-analysis/decrypted/*.zip` |
 | Isi zip game | `/home/z/db-apk-analysis/game_extracted/{voyage,pschent}/` |
 
-Repo `db-apk` di `/home/z/db-apk-analysis/db-apk/` **tidak diubah**: tidak ada commit,
-tidak ada push, tidak ada penulisan file di dalamnya. Dokumen readme.md ini disimpan
-di luar repo.
+Repo `db-apk` di `/home/z/db-apk-analysis/db-apk/`: readme.md ini di-push sebagai
+**commit tambahan** (append-only) — tidak ada rewrite/amend/force-push pada riwayat lama.
 
 ---
 
 ## 9. Status Akhir Pekerjaan
 
-- [x] Clone + verifikasi APK (LFS, sha256)
-- [x] Bedah manifest, dex, native lib, assets
-- [x] **Fase 1** — struktur folder `android/data` lengkap + bukti kode + aturan escape URL
-- [x] **Fase 2** — semua endpoint di APK + endpoint runtime (config live diunduh & didekripsi)
-- [x] Pemecahan enkripsi XXTEA "onepieceencrypts" + dekripsi penuh 2 zip game (CRC valid)
-- [x] Uji liveness semua endpoint (login server masih hidup!)
-- [x] Semua terdokumentasi di readme.md tunggal ini
+- [x] Clone + verifikasi APK (LFS, sha256) — diulang saat audit
+- [x] Bedah manifest (androguard, dari bytes AXML) + NSC + permission lengkap (12)
+- [x] **Fase 1** — struktur folder `android/data` + nomor baris bukti + aturan escape URL
+- [x] **Fase 2** — inventaris endpoint: APK-embedded (Base64/QHinfo/HTTPDNS) + byte-scan
+      3.668 file + endpoint runtime (uji live ulang)
+- [x] Pemecahan XXTEA "onepieceencrypts" — uji ulang CRC valid
+- [x] XOR `DragonBall` — uji ulang live
+- [x] Liveness server — uji ulang segar (login:610 hidup; battle-log ternyata DIBLOKIR)
+- [x] readme.md di-push ke GitHub (commit `3239d05`, lalu commit revisi)
 - [ ] (Tahap berikutnya, belum dieksekusi) penerapan local server 127.0.0.1:<port>
+
+---
+
+## 10. Daftar Koreksi dari Versi Sebelumnya (transparansi — fakta menggantikan asumsi)
+
+| # | Klaim lama | Fakta terverifikasi | Bukti |
+|---|---|---|---|
+| 1 | classes.dex = "1.879 class" | **6.108 class**, 42.826 method, 48.243 string | header DEX `class_defs_size@0x60` |
+| 2 | Protokol update dari "class GameUpdateUtil" | Kelas itu **tidak ada**; protokol ada di boot thread `LaunchActivity` (badcode:730-865) | grep `size.json`/`upgrade.json` hanya di LaunchActivity badcode |
+| 3 | Permission hanya 7 | **12 permission** (tambahan: ACCESS_WIFI_STATE, REORDER_TASKS, SYSTEM_OVERLAY_WINDOW, BIND_GET_INSTALL_REFERRER_SERVICE) | androguard atas AXML asli |
+| 4 | Contoh folder lokal `http/127.0.0.1:8080` | Titik dua juga di-escape → `http/127.0.0.1#0A8080` | rumus escape (4 lokasi kode, 3.1) |
+| 5 | `log.sjflaregame.com:10000` "302 (hidup)" | 302 → `dnspod.qcloud.com/static/webblock.html` = **domain diblokir/parked** | curl -w redirect_url |
+| 6 | `login.popoh5.com:443` "timeout" | **connection refused** | curl (7) |
+| 7 | OBB "jarang dipakai, tidak jelas" | Nama OBB + marker `.done` **terbukti di kode** (badcode:360-361; worktopichardtails.java) | kutipan kode |
+| 8 | (penguatan) socket.io "v2" | **v2.1.2** — literal `version:"2.1.2"` di socket.io.min APK; handshake EIO=3 live | JS APK + curl |
+| 9 | (penguatan) ThinkingData appId | `da5e91639fc948399ba6c9523f593944`, serverUrl `https://ssweb.episodezz.com` | string `ThinkingdataAppId=` di main.min live |
+| 10 | (penguatan) base.version/resource.version update | juga dibaca dari FILE LOKAL dulu (FileInputStream) sebelum fallback assets | reweavingsiamesedpropertylessnesses.feedtonight |
