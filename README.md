@@ -1,13 +1,13 @@
-# 📋 LAPORAN ANALISIS APK db-local (Original) — REVISI 2
+# 📋 LAPORAN ANALISIS APK db-local (Original) — REVISI 3
 
 > Laporan tunggal hasil bedah penuh APK asli + data runtime asli dari perangkat.
 > Sumber: `db-local-original.apk` (104.945.181 bytes) + hasil ekstrak data perangkat asli di `log/extracted/`.
-> Tanggal analisis: 2026-11-21 (revisi 2) · Status proyek: **FASE 1 (analisis) SELESAI**
+> Tanggal analisis: 2026-11-21 (revisi 3) · Status proyek: **FASE 1 (analisis) SELESAI**
 >
-> **REVISI 2** — koreksi besar atas revisi 1:
-> 1. Struktur **`Android/data/<PACKAGE>/` (eksternal)** kini didasarkan pada **bedah kode APK** (`getExternalFilesDir` → `files/game/`, DecodeUtil `.bin`, update `base.zip`/`all.zip`). Revisi 1 salah menampilkan isi `data/data` (internal) sebagai `android/data`.
-> 2. Daftar endpoint kini **LENGKAP 1:1 tanpa dipotong**: 100 server game (1 login + 99 battle) ditampilkan satu per satu, plus seluruh endpoint update/resource/log/SDK.
-> 3. Isi `data/data` (internal) tetap dilampirkan di §2.6 sebagai referensi terpisah — **itu BUKAN android/data**.
+> **REVISI 3** — koreksi kategori endpoint:
+> 1. **§3.1 = endpoint yang BENAR-BENAR ADA DI DALAM APK** (hasil scan byte-per-byte seluruh isi APK: **85 URL unik di 4 file** + 3 file konfigurasi Base64). Ini yang bisa diedit.
+> 2. **§3.2 = endpoint yang TIDAK ADA di dalam APK** (`pksilo.com` dll.) — sumbernya data runtime perangkat. Revisi 2 menyajikannya seolah bagian dari APK — **salah**. String `pksilo`, `pigres`, `xgogaming`, `sjflaregame` tidak ada satu pun di APK.
+> 3. Struktur `Android/data/<PACKAGE>/` (eksternal) tetap berdasarkan bedah kode (`getExternalFilesDir` → `files/game/`, DecodeUtil `.bin`, update `base.zip`/`all.zip`). Isi `data/data` (internal) dilampirkan di §2.6 sebagai referensi terpisah — **itu BUKAN android/data**.
 
 ---
 
@@ -22,9 +22,9 @@
 | minSdk / targetSdk | 21 / 30 · `requestLegacyExternalStorage="true"` · `usesCleartextTraffic="true"` · `networkSecurityConfig` ada | AndroidManifest.xml |
 | Launcher / Game Activity | `com.zhuhuan.game.LaunchActivity` / `com.zhuhuan.game.MainActivity` | AndroidManifest.xml |
 | Engine game | **Egret Engine** (HTML5/TS dijalankan runtime native `libegret.so` + WebView) | `lib/*/libegret.so` |
-| Proteksi resource | **libgavesec.so** — JS/konfig game di `assets/game/` terenkripsi (file `.bin`), didekripsi saat first-run | `lib/*/libgavesec.so` |
+| Proteksi resource | **libgavesec.so** — kode JS game di `assets/game/` terenkripsi (file `.bin`), didekripsi saat first-run | `lib/*/libgavesec.so` |
 | Hot-load DEX | `assets/runtime-dex.jar` (classes.dex 183.948 bytes) | unzip APK |
-| SDK akun | **QuickGame SDK** (`com.quickgame.android.sdk.*`, 21 Activity) + backend **HaoChenHudong / xgogaming** | manifest + `shared_prefs/PREFERENCE_HAOCHENHUDONG.xml` |
+| SDK akun | **QuickGame SDK** (`com.quickgame.android.sdk.*`, 21 Activity) | manifest |
 | Versi paket dasar game | `assets/game/base.version` = **110** · `assets/game/resource.version` = **11220** | isi file asset |
 | ABI | arm64-v8a, armeabi-v7a | folder `lib/` |
 
@@ -84,7 +84,7 @@
 └── cache/                                            ← dibuat OS, kosong (tidak ada kode app yang menulis di sini)
 ```
 
-**Catatan jujur soal isi `files/game/`:** daftar **nama folder/file di atas = struktur game Egret** yang terverifikasi dari mirror CDN di cache perangkat (pigres.pksilo.com, §3.5) + titik tulis yang terverifikasi di kode. Nama file `.bin` asli tidak bisa dilist per-file dari APK karena terenkripsi gavesec (dekripsi hanya terjadi di runtime — fasa berikutnya bisa didump).
+**Catatan jujur soal isi `files/game/`:** daftar **nama folder/file di atas = struktur game Egret** yang terverifikasi dari mirror CDN di cache perangkat (pigres.pksilo.com, §3.2) + titik tulis yang terverifikasi di kode. Nama file `.bin` asli tidak bisa dilist per-file dari APK karena terenkripsi gavesec (dekripsi hanya terjadi di runtime — fasa berikutnya bisa didump).
 
 ### 2.4 Yang dibuat saat first-run vs saat update
 
@@ -126,18 +126,36 @@ Ini dump asli dari perangkat (`log/extracted/com.Vanguard.twnthe`, 4.816 folder 
 
 ## 3. BAGIAN 2 — Inventaris endpoint (LENGKAP 1:1, dengan bukti)
 
-### 3.1 Layer A — Endpoint di dalam APK (file assets, Base64)
+### 3.1 ENDPOINT YANG BENAR-BENAR ADA DI DALAM APK — hasil scan byte-per-byte
 
-| # | File | Key | Nilai ter-decode | Status server (dicek 2026-11-21) |
+Metode: seluruh isi APK di-scan byte-per-byte (AndroidManifest.xml, semua file `assets/`, `res/`, `resources.arsc`, `classes.dex`, `lib/*.so`, `META-INF/`, file properti Google) dengan regex URL, lalu noise XML/EXIF (namespace Adobe/W3C di metadata gambar) dibuang. Hasil mentah: **85 URL unik, hanya di 4 file**: `classes.dex`, `lib/arm64-v8a/libegret.so`, `lib/armeabi-v7a/libegret.so`, `assets/QHinfo`. Plus **3 file konfigurasi yang URL-nya Base64-encoded** (tidak tertangkap regex, didecode manual).
+
+**⚠️ FAKTA PENTING:** string `pksilo.com`, `pigres`, `sjmobilegame.com` (plaintext), `sjflaregame.com`, `xgogaming.com`, `sdkapi` — **NOL kecocokan di seluruh isi APK**. Endpoint game ada di level RUNTIME (dijawab server config / respons login / JS terenkripsi), bukan hardcode plaintext di APK.
+
+#### 3.1.1 Endpoint aplikasi — YANG DIEDIT UNTUK REDIRECT (3 file kecil)
+
+| # | File di dalam APK | Isi mentah | Ter-decode | Status server |
 |---|---|---|---|---|
-| A1 | `assets/config.properties` | `EntryPoint1` / `EntryPoint1_debug` | `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` | ❌ 301 → mati |
-| A2 | `assets/config_BS.properties` | `EntryPoint1` / `EntryPoint1_debug` | `https://configus.sjmobilegame.com/bs/db/android` | ❌ 404 `NoSuchKey` (Tencent COS) |
-| A3 | `assets/config_BS.properties` | `EntryPoint2` / `EntryPoint2_debug` | `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android` | ❌ (fallback COS) |
-| A4 | `assets/QHinfo` | (isi file) | `http://qsdk.t4game.com` | ✅ 200 — API base QuickGame SDK |
+| APK1 | `assets/config.properties` | `EntryPoint1=` + `EntryPoint1_debug=` (Base64, 2 baris) | `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` | ❌ 301 → mati |
+| APK2 | `assets/config_BS.properties` | `EntryPoint1=` + `EntryPoint1_debug=` (Base64, 2 baris) | `https://configus.sjmobilegame.com/bs/db/android` | ❌ 404 COS `NoSuchKey` |
+| APK3 | `assets/config_BS.properties` | `EntryPoint2=` + `EntryPoint2_debug=` (Base64, 2 baris) | `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android` | ❌ fallback |
+| APK4 | `assets/QHinfo` | plaintext 1 baris | `http://qsdk.t4game.com` | ✅ 200 — API base QuickGame SDK |
 
-**Endpoint turunan dari server update (dibaca dari konfigurasi `native_setting` yang diunduh dari A1/A2; dipanggil `GameUpdateUtil` di `LaunchActivity`):**
+**Rantai runtime setelah edit 3 file ini** (dibaca dari kode `LaunchActivity` + `MainActivity`):
 
-| # | Path yang dipanggil | Fungsi |
+```
+APK1/2/3 (EntryPoint, Base64) → GET native_setting/Android → respons JSON = config runtime
+   (channel, gameUrl, nativeUnzipJson, URL server update, dsb.)
+APK4 (QHinfo) → QuickGame SDK init/login → respons SDK berisi "gameUrl" (Base64)
+   — bukti bytecode: log "gameUrl: " + "Base64.decode(gameUrlTs.…, Base64.DEFAULT)" di MainActivity
+→ wrapper memuat game (Egret/WebView) → JS game menghubungi server login/battle/CDN (§3.2)
+```
+
+→ **Dengan mengedit APK1–APK4, seluruh alur config + gameUrl diambil alih local server.**
+
+**Endpoint turunan yang URL-nya diturunkan dari config native_setting** (dipanggil `GameUpdateUtil` di `LaunchActivity`; bukan string mandiri di APK):
+
+| # | Path yang dipanggil di server update | Fungsi |
 |---|---|---|
 | A5 | `<updateServer>/base.version?rnd=<acak>` | versi paket dasar (lokal=110) |
 | A6 | `<updateServer>/resource.version?rnd=<acak>` | versi resource (lokal=11220) |
@@ -146,42 +164,40 @@ Ini dump asli dari perangkat (`log/extracted/com.Vanguard.twnthe`, 4.816 folder 
 | A9 | `<updateServer>/base.zip?v=<versi>` | paket dasar (kode H5) |
 | A10 | `<updateServer>/all.zip?v=<versi>` | paket resource lengkap |
 
-### 3.2 Layer B — Backend SDK akun (xgogaming / HaoChenHudong)
+#### 3.1.2 URL SDK pihak ketiga yang hardcode di classes.dex (bukan game — tidak perlu diedit)
 
-Ditemukan di `shared_prefs/PREFERENCE_HAOCHENHUDONG.xml` → field `INIT` (`gc":"lz"` = channel lz):
+Ini semua bagian dari SDK vendor yang di-bundle (AppsFlyer, Adjust, Facebook, Google, dll.), template `%s` diisi runtime oleh SDK:
 
-| # | Endpoint | Fungsi |
-|---|---|---|
-| B1 | `https://log.sdkapi.xgogaming.com` | log host SDK |
-| B2 | `https://chat.sdkapi.xgogaming.com/chat/index?...group_id=1&ext={"gc":"lz"}...` | customer service in-app |
-| B3 | `https://cw.sdkapi.xgogaming.com` | widget Chatwoot (WebView — ada Cookies + Local Storage) |
-| B4 | `https://policy.cdnres.xgogaming.com/terms.html` | halaman Terms of Service |
-| B5 | `https://www.facebook.com/groups/1395815103915846/` | komunitas FB (link saja) |
+| Kelompok | URL di classes.dex (1:1) |
+|---|---|
+| AppsFlyer (17) | `https://%sapp.%s`, `https://%sadrevenue.%s/api/v`, `https://%sattr.%s/api/v`, `https://%sconversions.%s/api/v`, `https://%sdlsdk.%s/v1.0/android/`, `https://%sgcdsdk.%s/install_data/v4.0/`, `https://%simpression.%s`, `https://%sinapps.%s/api/v`, `https://%slaunches.%s/api/v`, `https://%smonitorsdk.%s/remote-debug?app_id=`, `https://%sonelink.%s/shortlink-sdk/v1`, `https://%sregister.%s/api/v`, `https://%ssdk-services.%s/validate-android-signature`, `https://%sstats.%s/stats`, `https://%svalidate.%s/api/v`, `https://%s/%s`, `https://.facebook.com` |
+| Adjust (9) | `https://app.adjust.com`, `https://app.adjust.net.in`, `https://app.adjust.world`, `https://gdpr.adjust.com`, `https://gdpr.adjust.net.in`, `https://gdpr.adjust.world`, `https://subscription.adjust.com`, `https://subscription.adjust.net.in`, `https://subscription.adjust.world` |
+| Facebook (9+) | `https://www.facebook.com`, `https://facebook.com`, `https://facebook.com/device?user_code=%1$s&qr=1`, `https://graph.%s`, `https://graph-video.%s`, `https://fb.gg/me/community/`, `https://fb.gg/me/friendfinder/`, `https://fb.gg/me/media_asset/`, `https://developers.facebook.com/docs/android/getting-started`, `https://developers.facebook.com/docs/sharing/android`, `https://developers.facebook.com/docs/app-events/getting-started-app-events-android#disable-auto-events` |
+| Google/Play (30) | `https://accounts.google.com`, `https://accounts.google.com/o/oauth2/revoke?token=`, `https://pagead2.googlesyndication.com/pagead/gen_204?id=gmob-apps`, `https://play.google.com/store/apps/details?id=`, `http://play.google.com/store/apps/details?id=com.facebook.orca`, `https://plus.google.com/`, + 24 scope `https://www.googleapis.com/auth/*`: `appstate`, `datastoremobile`, `drive`, `drive.appdata`, `drive.apps`, `drive.file`, `fitness.activity.read/write`, `fitness.blood_glucose.read/write`, `fitness.blood_pressure.read/write`, `fitness.body.read/write`, `fitness.body_temperature.read/write`, `fitness.location.read/write`, `fitness.nutrition.read/write`, `fitness.oxygen_saturation.read/write`, `fitness.reproductive_health.read/write`, `games`, `games.firstparty`, `games_lite`, `plus.login`, `plus.me` |
+| Lain-lain (6) | `https://login.live.com`, `https://login.yahoo.com`, `https://twitter.com`, `https://web-pay.line.me`, `https://www.linkedin.com`, `https://www.paypal.com`, `https://www.example.com` |
 
-### 3.3 Layer C — Endpoint game inti (pksilo.com) — di dalam JS Egret terenkripsi
+#### 3.1.3 URL di libegret.so (noise, bukan konfigurasi)
 
-Bukti dari cache runtime perangkat (`data/data/.../files/games/`, 483 file cache berisi URL asli). Semua koneksi game memakai **socket.io** (cookie `io=…`, Content-Encoding deflate). Tidak ada satupun dari endpoint ini dalam teks polos di APK — hardcode di JS terenkripsi libgavesec.
+`http://local/index.html` (fallback internal runtime Egret) · `http://www.ibm.com/data/dtd/v11/ibmxhtml1-transitional.dtd` · `https://curl.haxx.se/docs/http-cookies.html` · `https://www.openssl.org/support/faq.html` — dokumen/teks, tidak dipanggil sebagai endpoint game.
 
-| # | Endpoint | Fungsi | Bukti |
+### 3.2 ENDPOINT YANG TIDAK ADA DI DALAM APK — sumbernya data RUNTIME perangkat
+
+⚠️ Ini **BUKAN string di APK** (bukti: scan §3.1 nol kecocokan). Sumbernya: cache runtime Egret di perangkat (`data/data/…/files/games/`, 483 file cache berisi URL asli) + `shared_prefs/PREFERENCE_HAOCHENHUDONG.xml`. Dilist karena **local server harus meniru semuanya**, bukan karena bisa diedit di APK:
+
+| # | Endpoint | Fungsi | Bukti (runtime) |
 |---|---|---|---|
 | C1 | `https://login.pksilo.com:18110` | Login + `getServerList` (socket.io) | cache `login.pksilo.com#0A18110` |
-| C2 | `https://s<N>-zd.pksilo.com:<PORT>` | Server battle/game per-world (socket.io) — **99 host:port, tabel penuh di §3.4** | cache perangkat |
-| C3 | `http://pigres.pksilo.com` | CDN resource Egret: `client/resource/…`, `client/properties/clientversion.json`, `activity_en/…` — di belakang Tencent EdgeOne (header `EO-*`) | cache `files/games/http/` |
-| C4 | `http://log.sjflaregame.com:10000/error/battle/client` | error-reporting client game | cache pigres `client/resource` |
+| C2 | `https://s<N>-zd.pksilo.com:<PORT>` — 99 host:port (tabel §3.3) | Server battle/game per-world (socket.io) | cache perangkat |
+| C3 | `http://pigres.pksilo.com` | CDN resource Egret: `client/resource/…`, `client/properties/clientversion.json`, `activity_en/…` — di belakang Tencent EdgeOne | cache `files/games/http/` |
+| C4 | `http://log.sjflaregame.com:10000/error/battle/client` | error-reporting client game | cache pigres |
 | C5 | `http://www.parajoymobile.com/privacy_en.html` | halaman privacy (WebView) | cache resource |
+| B1 | `https://log.sdkapi.xgogaming.com` | log host SDK | PREFERENCE_HAOCHENHUDONG.xml |
+| B2 | `https://chat.sdkapi.xgogaming.com/chat/index?...group_id=1&ext={"gc":"lz"}…` | customer service in-app | idem |
+| B3 | `https://cw.sdkapi.xgogaming.com` | widget Chatwoot (Cookies + Local Storage) | app_webview + pref |
+| B4 | `https://policy.cdnres.xgogaming.com/terms.html` | halaman Terms | idem |
+| B5 | `https://www.facebook.com/groups/1395815103915846/` | komunitas FB (link) | idem |
 
-**Format respons `getServerList` (tertangkap utuh dari cache login):**
-
-```
-<panjang>:430[{"ret":0,"data":"{\"serverList\":[{\"serverId\":\"436\",\"new\":true,
-\"online\":true,\"hot\":false,\"url\":\"https://s436-zd.pksilo.com:10900\",
-\"name\":\"Server 436\",\"offlineReason\":\"Sever offline,  please wait....\"}, …]}"}]
-```
-
-→ JSON di dalam JSON (field `data` berupa string). Ini **kontrak wajib** yang harus ditiru local server.
-**Format `clientversion.json`:** `{"clientVersion":"20260929_180158-EN"}`.
-
-### 3.4 Tabel LENGKAP 100 server game (1:1, tanpa dipotong) — dari cache perangkat
+### 3.3 Tabel LENGKAP 100 server game (1:1, dari runtime perangkat — bukan dari APK)
 
 | No | Host:Port | Fungsi |
 |---|---|---|
@@ -286,34 +302,33 @@ Bukti dari cache runtime perangkat (`data/data/.../files/games/`, 483 file cache
 | 99 | `s436-zd.pksilo.com`, port `10900` | Server battle/game (socket.io) |
 | 100 | `s49931-zd.pksilo.com`, port `10507` | Server event khusus |
 
-Sumber: `login.pksilo.com#0A18110` (respons `getServerList`) + struktur cache socket.io. Pola: `s<N>-zd.pksilo.com`, port 9000–11800, plus server event khusus `s49931-zd:10507`. Respons login hanya memuat server tertentu (mis. s436 aktif `new:true online:true`) — sisanya adalah kumpulan historis yang pernah tertangkap di cache.
+Sumber: `login.pksilo.com#0A18110` (respons `getServerList`) + struktur cache socket.io. Pola: `s<N>-zd.pksilo.com`, port 9000–11800, plus server event khusus `s49931-zd:10507`. Respons login hanya memuat server tertentu (mis. s436 aktif `new:true online:true`) — sisanya kumpulan historis yang tertangkap di cache.
 
-### 3.5 Layer D — Endpoint SDK pihak ketiga di classes.dex (tidak wajib diedit)
+### 3.4 Schema respons (kontrak untuk local server)
 
-| SDK | Host |
-|---|---|
-| AppsFlyer | pola `%s` runtime: `app./attr./conversions./inapps./launches./register./sdk-services./stats./validate./onelink./gcdsdk./dlsdk./monitorsdk./impression./adrevenue.` + domain vendor |
-| Adjust | `app.adjust.com/.net.in/.world`, `gdpr.*`, `subscription.*` |
-| Facebook | `graph.facebook.com`, `graph-video.facebook.com`, `facebook.com`, `fb.gg` |
-| Google | `accounts.google.com`, `www.googleapis.com/*`, `play.google.com`, `pagead2.googlesyndication.com` |
+```
+getServerList → <panjang>:430[{"ret":0,"data":"{\"serverList\":[{\"serverId\":\"436\",
+\"new\":true,\"online\":true,\"hot\":false,\"url\":\"https://s436-zd.pksilo.com:10900\",
+\"name\":\"Server 436\",\"offlineReason\":\"Sever offline,  please wait....\"}, …]}"}]
+```
+JSON di dalam JSON (field `data` berupa string). `clientversion.json` → `{"clientVersion":"20260929_180158-EN"}`.
 
 ---
 
 ## 4. BAGIAN 3 — Rencana edit endpoint ke LOCAL SERVER
 
-### 4.1 Mapping redirect (target)
+### 4.1 Mapping redirect
 
-| Endpoint asli | Redirect ke (contoh; sesuaikan IP/PORT lokal) |
-|---|---|
-| `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` | `http://192.168.1.100:8080/lzceshi/native_setting/Android` |
-| `https://configus.sjmobilegame.com/bs/db/android` | `http://192.168.1.100:8080/bs/db/android` |
-| `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android` | `http://192.168.1.100:8080/bs/db/android` |
-| `http://qsdk.t4game.com` | `http://192.168.1.100:8080/qsdk` *(opsional — hanya jika SDK akun juga di-mock)* |
-| `https://login.pksilo.com:18110` | `wss/ws atau https://192.168.1.100:18110` *(via JS — lihat 4.3)* |
-| `https://sNNN-zd.pksilo.com:PORT` (99 server, §3.4) | `https://192.168.1.100:PORT` *(via JS atau serverList yang dijawab local server)* |
-| `http://pigres.pksilo.com` | `http://192.168.1.100:8081` *(via JS atau DNS)* |
-| `http://log.sjflaregame.com:10000/error/battle/client` | `http://192.168.1.100:10000/error/battle/client` |
-| `<updateServer>/base.version|resource.version|upgrade.json|size.json|base.zip|all.zip` (A5–A10) | ikut menumpang di local server §4.2 — satu endpoint config mengendalikan semuanya |
+| Endpoint | Kategori | Cara redirect |
+|---|---|---|
+| APK1–APK3 (`dragon.sjmobilegame.com:82`, `configus.sjmobilegame.com`, `configus-…myqcloud.com`) | **DI DALAM APK (Base64)** | Edit Base64 di 2 file assets → tunjuk local server (§4.2) |
+| APK4 (`http://qsdk.t4game.com`) | **DI DALAM APK (plaintext)** | Edit `assets/QHinfo` → local server (jika SDK akun juga di-mock) |
+| A5–A10 (`base.version`, `resource.version`, `upgrade.json`, `size.json`, `base.zip`, `all.zip`) | turunan config native_setting | Ikut masuk — local server yang menjawab native_setting menentukan URL update ini |
+| C1 `login.pksilo.com:18110` | runtime (JS terenkripsi) | Opsi DNS/hosts+TLS (§4.3) ATAU dari `gameUrl`/config yang dijawab local server, ATAU dump JS (Fase 5) |
+| C2 99 server battle | runtime (JS terenkripsi) | Lewat respons `getServerList` yang dijawab local login server → field `url` menunjuk local battle server |
+| C3 `pigres.pksilo.com` | runtime (JS terenkripsi) | DNS/hosts + reverse-proxy (HTTP polos — mudah) |
+| C4 `log.sjflaregame.com:10000` | runtime (JS terenkripsi) | DNS/hosts (HTTP polos) |
+| SDK vendor dex (§3.1.2) | di dalam APK | Tidak perlu diedit (biarkan; traffic analytics tidak mengganggu game) |
 
 ### 4.2 Edit 1 — File native di APK (DAPAT diedit langsung, mudah)
 
@@ -333,23 +348,23 @@ Tiga file ini plaintext base64 — decode → ubah → encode ulang:
 echo -n "http://192.168.1.100:8080/bs/db/android" | base64
 ```
 
-Endpoint **A1–A4 + A5–A10 selesai dengan 3 edit file ini** (A5–A10 otomatis mengikuti karena URL-nya diambil dari respons `native_setting`/konfigurasi yang sama — local server tinggal menyediakan `base.version`, `resource.version`, `upgrade.json`, `size.json`, `base.zip`, `all.zip`).
+Endpoint **APK1–APK4 + A5–A10 selesai dengan 3 edit file ini** (A5–A10 otomatis mengikuti karena URL-nya diambil dari respons `native_setting`/konfigurasi yang sama — local server tinggal menyediakan `base.version`, `resource.version`, `upgrade.json`, `size.json`, `base.zip`, `all.zip`).
 
-### 4.3 Edit 2 — Endpoint game pksilo (SULIT — hardcode di JS terenkripsi)
+### 4.3 Edit 2 — Endpoint game pksilo (SULIT — tidak ada di APK, hidup di JS terenkripsi)
 
-Endpoint C1–C3 **tidak ada dalam teks polos di APK** (sudah diverifikasi scan penuh 16.254 file + dex): semuanya dikompilasi di dalam JS Egret yang dienkripsi `libgavesec.so`, lalu di-decrypt ke memori saat runtime. Opsi (urut prioritas):
+Endpoint C1–C3 **tidak ada dalam teks polos di APK** (diverifikasi scan §3.1): dikompilasi di dalam JS Egret yang dienkripsi `libgavesec.so`, di-decrypt ke memori saat runtime. Opsi (urut prioritas):
 
 - **Opsi 1 — DNS/hosts + TLS (tanpa menyentuh JS):** arahkan domain ke server lokal:
   - `pigres.pksilo.com` & `log.sjflaregame.com` = **HTTP polos** → cukup redirect DNS/hosts (root/emulator: edit `/etc/hosts`; tanpa root: app VPN DNS seperti Virtual Hosts) → reverse-proxy lokal melayani resource.
   - `login.pksilo.com` & `sNNN-zd.pksilo.com` = **HTTPS** → butuh sertifikat: repack APK dengan `network_security_config.xml` yang trust user CA + install CA lokal, ATAU install CA sebagai system cert di emulator rooted. Local server meniru sertifikat domain tsb (SAN lengkap).
-  - Mock server hanya perlu menjawab: `clientversion.json`, pohon resource, `manifest.json`, `index-native.html`, socket.io handshake + frame `getServerList` (schema §3.3), dan endpoint error-log.
+  - Mock server hanya perlu menjawab: `clientversion.json`, pohon resource, `manifest.json`, `index-native.html`, socket.io handshake + frame `getServerList` (schema §3.4), dan endpoint error-log.
 - **Opsi 2 — Dekripsi JS (kontrol penuh, fase lanjutan):** dump JS hasil decrypt dari memori (Frida pada emulator: hook `libgavesec`/WebView `loadUrl`/file cache plaintext), lalu cari-ganti string `pksilo.com` langsung di sumber JS, re-encrypt ATAU patch loader agar memuat JS plaintext. Ini membuka editing semua logika server.
 - **Opsi 3 — Proxy mitm transparan** (mitmproxy + CA) untuk debugging protokol socket.io sebelum membangun mock.
 
 ### 4.4 Edit 3 — Build ulang APK
 
 ```bash
-# ganti 3 file assets di atas, lalu re-zip (jangan lupa simpan META-INF lama = signature hilang)
+# ganti 3 file assets di atas, lalu re-zip (simpan META-INF lama = signature hilang)
 zip -r mod.apk AndroidManifest.xml assets/ res/ resources.arsc classes.dex lib/ …
 zipalign -p -f 4 mod.apk mod-aligned.apk
 apksigner sign --ks my.keystore --out db-local-mod.apk mod-aligned.apk
@@ -369,7 +384,7 @@ Risiko tercatat: `libgavesec` bisa memverifikasi integritas APK (signature/class
 
 ## 5. Roadmap proyek (panjang)
 
-- [x] **Fase 1** — Bedah APK + inventaris endpoint lengkap + struktur Android/data (laporan ini, revisi 2) ✅
+- [x] **Fase 1** — Bedah APK + inventaris endpoint (APK vs runtime) + struktur Android/data (laporan ini, revisi 3) ✅
 - [ ] **Fase 2** — Edit 3 file native (§4.2) + repack + uji install (apakah integrity check gavesec aktif)
 - [ ] **Fase 3** — Mock update+resource server (port 80) + redirect pigres → game bisa boot sampai layar login
 - [ ] **Fase 4** — Mock login server socket.io (18110) dengan schema serverList
@@ -378,11 +393,11 @@ Risiko tercatat: `libgavesec` bisa memverifikasi integritas APK (signature/class
 
 ---
 
-## 6. Metode & bukti (revisi 2)
+## 6. Metode & bukti (revisi 3)
 
-- Clone repo → unzip `db-local-original.apk` → parse manifest (androguard/pyaxmlparser) → scan URL 469 file (assets, dex, arsc, lib) → decode base64 config (`config.properties`, `config_BS.properties`, `QHinfo`).
+- Clone repo → unzip `db-local-original.apk` → parse manifest (androguard/pyaxmlparser) → **scan byte-per-byte seluruh isi APK** → 85 URL unik di 4 file (`classes.dex`, 2× `libegret.so`, `assets/QHinfo`) + decode manual 6 baris Base64 di 2 file config → **nol string pksilo/xgogaming/sjflaregame/sjmobilegame plaintext di APK**.
 - **Koreksi struktur:** dump perangkat `log/extracted/com.Vanguard.twnthe` terbukti adalah **`/data/data` (internal)** — bukti: ada `shared_prefs/`, `databases/`, `code_cache/`, `no_backup/`, `app_webview/`, `app_textures/` (= hasil `Context.getDir()`, prefix `app_`). Folder `Android/data` eksternal tidak ikut dalam dump, jadi strukturnya direkonstruksi dari **kode APK**: `LaunchActivity` → `getExternalFilesDir("")+"/game/"`, DecodeUtil (dekripsi `.bin` → unzip ke situ, pref `decode_bin/decodeBinFinish`), update `base.zip/all.zip/tmp.zip`, dan `EgretNativeAndroid.cachePath = getFilesDir()` (cache Egret = internal).
-- Endpoint game 1:1 dari cache header Egret di perangkat: **100 host:port** (tabel §3.4) + `getServerList` tertangkap utuh (schema JSON-in-JSON).
+- Endpoint game 1:1 dari cache header Egret di perangkat: **100 host:port** (tabel §3.3) + `getServerList` tertangkap utuh (schema JSON-in-JSON) — dikategorikan RUNTIME, bukan APK.
 - Status server langsung dicek: `configus` (COS NoSuchKey), `dragon:82` (301 mati), `qsdk.t4game.com` (200 hidup).
-- Semua string di `assets/game/` dicek: **tidak ada** endpoint plaintext (terenkripsi gavesec) — bukti dasar Opsi 2.
+- Semua string di `assets/game/` dicek: kode JS terenkripsi (file `.bin`); resource gambar/audio plaintext — tidak ada endpoint game plaintext.
 - Catatan keamanan: laporan ini sengaja TIDAK memuat token/credential akun yang ditemukan di data perangkat.
