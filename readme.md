@@ -2038,3 +2038,55 @@ Dibangun dari ORIGINAL `b308c44d…`. classes.dex = original + **HANYA starter 1
 4. Jika setelah login game masih tidak lanjut (titik mati antara `onLoginFinished` dan koneksi 5050 —
    kasus TERPISAH dari masalah di atas): jalankan → unduh arsip dashboard `:4000` → kirim lognya;
    patch berikutnya (jika benar-benar perlu) hanya **SATU**, di titik yang terbukti log.
+
+## 27. Uji device v11 → tombol Kode Migrasi + ckRegVistor → v12 server lengkap (23 Nov 2026)
+
+### 27.1 Hasil uji v11 (23 Nov 05:10 — 34 event dashboard)
+
+- **FIX v11 TERBUKTI BEKERJA**: tidak ada auto-register lagi. Logcat menunjukkan fragment UI login
+  `f/a.d` terbuka (`HWLoginActivity: com.quickgame.android.sdk.f.a.d`) — user memilih tombol sendiri.
+- Tombol yang di-tap = **Kode Migrasi** (`onCDKeyClicked`) → SDK POST `/v1/user/ckRegVistor` →
+  server lokal membalas envelope `result:false id:20000` (path belum dipetakan) → parser
+  `MSG_CHECK_REG_VISITOR` membaca `code`+`cdkey`, tidak ketemu → SDK diam → user tap berulang (3×).
+- Bukan bug UI SDK: fragment `f/a/d` original memang memuat tombol Kode Migrasi (`tv_useCdKey`)
+  untuk pemain lama; tombol **TAMU (Guest)** juga ada di layout yang sama dan SUDAH tampil
+  (`loginTypes:["12"]` → `e.psalmicvolleyball=true` → layout guest `rawturn` ditampilkan).
+
+### 27.2 Bukti respons asli (replay server hidup qsdk.t4game.com, 23 Nov)
+
+- POST `/v1/user/ckRegVistor` (body persis device) → **HTTP 200**
+  `{"result":true,"data":{"isReged":0},"error":{"id":0,"message":""}}` — request TIDAK membawa kode;
+  artinya endpoint = cek apakah device sudah terdaftar (alur tombol Kode Migrasi), device baru →
+  `isReged:0`, tanpa `code`/`cdkey` → SDK diam (perilaku original, bukan error).
+
+### 27.3 v12 — server lengkap + dashboard berbahasa manusia (hanya classes2.dex)
+
+classes.dex **byte-identik v11** (SDK tetap 100% original). Perubahan HANYA server (classes2.dex):
+1. **`/v1/user/ckRegVistor` di-map** — mirror PERSIS respons server asli (`isReged:0`) → tombol
+   Kode Migrasi tidak lagi menghasilkan error diam-diam; perilaku = persis original.
+2. **Fallback envelope lebih informatif** — extra menyebut endpoint belum tersedia + saran pakai tombol TAMU.
+3. **Dashboard (MONITOR SERVER)**:
+   - `ckRegVistor` deskripsinya sendiri: "Cek pendaftaran (tombol Kode Migrasi) — device belum
+     terdaftar, respons = persis server asli — untuk mulai main: tekan tombol TAMU".
+   - Respons SDK `result:false` kini **ditandai MERAH** (sebelumnya HTTP 200 hijau → terkesan normal).
+   - `LOGCAT` punya deskripsi ("diagnostik otomatis — aman diabaikan").
+   - Fallback endpoint tidak dikenal: label kuning "Endpoint SDK belum tersedia".
+   - **Panel "Panduan login"** (tombol baru) berisi langkah login yang benar + alur normal.
+
+| Item | Hasil |
+|---|---|
+| classes.dex | 6.697.176 B — **sha256 identik v11** (1df64d91…) = original + starter saja |
+| classes2.dex | 84.316 B (v8: 82.352 B) — server v12 (SdkHandler +ckRegVistor; dashboard +panduan/red-flag) |
+| Entri zip vs original | 3.662 identik; diganti 4; hapus 2; tambah 2.761 — pola sama v11 |
+| Sign | zipalign + v1/v2/v3 verified, keystore sama exp 2056 (install-over OK) |
+| APK final | `release-mod/db-local(MOD-LOCALSERVER-v12).apk` — **202.658.676 B**, sha256 **`ef43ef3f38d445a05af0dacd726d4091eb779e4a3f55cfd102b2798717fe4010`** |
+| Source | `rebuild-src/javasrc/.../SdkHandler.java` + `LoggerHandler.java` disinkronkan (smali = sumber biner) |
+
+### 27.4 Uji device v12 (Langkah C ulang)
+
+1. Install-over v12 → jalankan → layar login SDK muncul.
+2. **Tekan tombol TAMU (Guest)** — BUKAN Kode Migrasi → registerVisitor (instan) → masuk game.
+3. Tombol Kode Migrasi sekarang aman disentuh (respons = server asli), tapi hanya berguna kalau
+   punya kode migrasi akun lama.
+4. Dashboard `:4000` kini: tombol **Panduan login**, penandaan merah untuk jawaban SDK yang gagal,
+   dan setiap event punya deskripsi bahasa manusia.

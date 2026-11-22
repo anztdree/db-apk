@@ -41,6 +41,10 @@ public final class SdkHandler implements HttpWorker.Handler {
     /** Sukses kosong — getNotice/dmsg/onNewToken/getAgreement (tidak ada isi untuk ditampilkan). */
     public static final String OK_EMPTY = "{\"result\":true,\"data\":\"\"}";
 
+    /** Bagian 27 — cek pendaftaran kode migrasi: mirror PERSIS respons live server asli. */
+    public static final String CKREG_OK =
+            "{\"result\":true,\"data\":{\"isReged\":0},\"error\":{\"id\":0,\"message\":\"\"}}";
+
     @Override
     public boolean handle(HttpWorker.Request req, OutputStream out, Socket sock) throws IOException {
         long t0 = System.currentTimeMillis();
@@ -94,14 +98,25 @@ public final class SdkHandler implements HttpWorker.Handler {
             body = OK_EMPTY;
             extra = "SET-GAME-ROLE 21 | laporan role game (cointhreat.smali setGameRoleInfo) "
                     + "-> result:true kosong | respCT=application/json";
+        } else if (p.equals("/v1/user/ckRegVistor")) {
+            // Bagian 27 — tombol Kode Migrasi (onCDKeyClicked -> MSG_CHECK_REG_VISITOR).
+            // Mirror PERSIS server asli (replay 23 Nov: result:true, data:{isReged:0}).
+            // Parser SDK baca code+cdkey; respons asli TANPA code -> SDK diam (perilaku original).
+            // Untuk main: tekan tombol TAMU (Guest) di layar login, BUKAN Kode Migrasi.
+            body = CKREG_OK;
+            extra = "CK-REG-VISITOR (tombol KODE MIGRASI) | mirror PERSIS server asli "
+                    + "(replay 23 Nov: result:true isReged:0) | respons asli tanpa code -> SDK diam "
+                    + "= perilaku original | INFO: untuk main, tekan tombol TAMU (Guest), "
+                    + "BUKAN Kode Migrasi | respCT=application/json";
         } else if (p.equals("/v1/user/getServerAgreement")) {
             body = OK_EMPTY;
             extra = "agreement kosong (dishbesideshockey/dishbesideshockey) | "
                     + "respCT=application/json";
         } else {
             body = ENVELOPE;
-            extra = "envelope capture live 14.A#8 (result:false — TIDAK dikarang) | "
-                    + "path belum dipetakan — direkam untuk iterasi berikutnya | respCT=application/json";
+            extra = "endpoint BELUM tersedia di server lokal (result:false, SDK tidak mendapat "
+                    + "jawaban valid) | SDK memanggil tombol/fitur yang belum dipetakan | "
+                    + "SARAN: gunakan tombol TAMU (Guest) di layar login | respCT=application/json";
         }
 
         Map<String, String> h = HttpWorker.baseHeaders("application/json");
