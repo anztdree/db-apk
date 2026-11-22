@@ -550,3 +550,113 @@ Repo `db-apk` di `/home/z/db-apk-analysis/db-apk/`: readme.md ini di-push sebaga
 | 11 | (penguatan) HTTPDNS "untuk WebSocket" | HTTPDNS HANYA jalur retry POST pelaporan data: `VersionController.a(host)` = GET `119.29.29.29/d?dn={domain}` (timeout 5 s); dari `b(url,body,flag)` — flag 0 = POST langsung, flag 1 = resolve→POST ke IP + header `Host:`; jika resolve kosong → POST gagal; pemanggil `VersionController$2.run()` = POST pertama flag 0, retry flag 1. WebSocket game = Java-WebSocket langsung, tanpa HTTPDNS | dekompilasi `org.egret.launcher.versioncontroller1_0.VersionController` (+ inner class $2) dari runtime-dex.jar |
 | 12 | (baru) `com_db_local.bin` "retry 3x" | Jika download gagal: tampil dialog `unknown_error` TAPI boot TIDAK berhenti — kode lanjut baca `mSdkParams.webVer` (`Float.parseFloat`) dst. Menjelaskan kenapa live 404 namun game tetap boot | `LaunchActivity` (androguard): cabang `if ((v7_9 == null) \|\| (v6_8 == null))` tanpa `return`, dilanjut `Float.parseFloat(...webVer)` |
 | 13 | (baru) downloader config | `LaunchActivity.worktopichardtails(String,int)` = loop retry timeout tumbuh (5×i detik) → GET → XOR `DragonBall` per-byte (`srcData[i] ^ keyData[i % len]`) → parse JSON → return sukses/gagal | dekompilasi `LaunchActivity.worktopichardtails` |
+
+---
+
+## 11. FAKTA BARU SDK t4game (audit kode-level, 22 Nov 2026 — sesi lanjutan)
+
+Pertanyaan owner: "apakah qsdk.t4game.com benar-benar dipakai, dan jalur apa saja?" — dijawab
+dengan bedah bytecode `classes.dex` (androguard `AnalyzeDex` + xref string/field/method).
+
+### 11.1 Rantai bukti QHinfo → URL
+
+| Langkah | Fakta | Bukti |
+|---|---|---|
+| 1 | `assets/QHinfo` = 22 byte `http://qsdk.t4game.com` — **tanpa trailing slash** | `wc -c` + `cat` byte asli |
+| 2 | Dibaca di `QuickGameManager.initThirdDataSDK()` → disimpan ke `bindcommunist.cointhreat.seventygenom[0]` | xref string `"QHinfo"` → 1 pemakai saja |
+| 3 | Field `seventygenom` hanya punya **1 pembaca** di seluruh DEX: `bindcommunist.cointhreat.cointhreat(String action, Map params)` | xref field read = 1 (write = `<clinit>` saja; isi elemen array ditulis initThirdDataSDK) |
+| 4 | URL dibangun: `String.format("%s%s", domain[0], action)` → **domain + path digabung langsung** | dekompilasi `connect()` baris format (tools/qsdk/bindcommunist_cointhreat_connect.java) |
+| 5 | Semua request SDK = **POST**, `Content-Type: application/x-www-form-urlencoded`, body JSON params, respons **JSON**, timeout 8000 ms, retry ≤2 putaran array domain | dekompilasi `connect()` |
+| 6 | Cabang khusus: bila action mengandung `postGooglePlayVerify` **DAN** domain mengandung `springgame`/`topgame`/`summertimegame` → jalur verifikasi billing terpisah. Domain local `127.0.0.1` **tidak mengandung** string itu → cabang TIDAK aktif (dipakai jalur POST normal) | dekompilasi `connect()` cabang `contains()` |
+| 7 | Dispatcher contoh: `QuickGameSdkService.cointhreat(String,Message)` memanggil `connect("/v1/user/autoLogin", …)` | dekompilasi dispatcher (tools/qsdk/QuickGameSdkService_dispatcher.txt) |
+
+**Kesimpulan tegas:** `qsdk.t4game.com` DIPAKAI dan adalah server API utama SDK t4game
+(login, register, bind, order/verify, event FB, notice). Rencana lama "TIDAK PERLU DIUBAH"
+pada tabel 7.2 #10 adalah KESALAHAN — dikoreksi atas instruksi owner (game native Android;
+SDK ini jalur utama di dalam APK). Koreksi ini mencabut baris 7.2 #10 dan menggantinya
+menjadi WAJIB diganti.
+
+### 11.2 Daftar lengkap 33 path action API SDK (semua POST; regex string `^/(v\d|api|…)/` di DEX)
+
+| Grup | Path | Jumlah |
+|---|---|---|
+| `/v1/system` | `init`, `getNotice`, `getAgreement`, `dmsg`, `onNewToken` | 5 |
+| `/v1/user` | `autoLogin`, `registerVisitor`, `ckRegVistor`, `registerUser`, `loginByName`, `findPassByEmail`, `sendCodeByEmail`, `actCdKey`, `getServerAgreement`, `postGooglePlayVerify`, `userLoginByOtherSdk` | 11 |
+| `/v1/auth` | `bindMail`, `cUserTrash`, `changePassword`, `cksnslogin`, `createOrder`, `fbActInit`, `fbInviteEvent`, `fbLikeEvent`, `fbShareEvent`, `fbUserClaimEvent`, `getUserInfo`, `jianchaLayLx`, `setGameRoleInfo`, `unBindOtherInfo`, `userBindOtherSdk`, `viewMigCode` | 16 |
+| `/v2` | `purchase` | 1 |
+
+Artefak dekompilasi disimpan tahan-reset di `tools/qsdk/` (4 file).
+
+---
+
+## 12. KEPUTUSAN FINAL RENCANA LOCAL (owner disepakati — port, root folder, 6 endpoint)
+
+### 12.1 Skop yang disepakati owner
+
+1. **HANYA endpoint DI DALAM APK** (plus field config yang disajikan server local kita).
+   URL dinamis game/chat/dungeon dari `GetServerList` (tabel 7.2 #6) **TIDAK termasuk**
+   — owner: "yang di luar APK ya biarin aja".
+2. `qsdk.t4game.com` **WAJIB diganti** (koreksi owner; lihat 11.1).
+3. HTTPDNS `119.29.29.29` **TIDAK diubah** (fakta 7.2 #9 / koreksi #11: hanya retry POST
+   pelaporan, bukan gameplay; bukan server game).
+
+### 12.2 Hasil: tepat 6 endpoint yang diganti (konfirmasi hitungan owner)
+
+| # | Endpoint asli (FAKTA) | Sumber di APK/server local | Nilai BARU |
+|---|---|---|---|
+| 1 | `https://configus.sjmobilegame.com/bs/db/android` | `assets/config_BS.properties` EntryPoint1 (Base64) — config AKTIF; EntryPoint2 backup Tencent COS dalam file asset yang SAMA (1 paket edit, keduanya diarahkan ke local) | `http://127.0.0.1:9527/sdk/bs/db/android` |
+| 2 | `https://dragonh5cdn.popoh5.com/bs/index-native.html?v=202109150935` | field `url` di JSON `setting_BS_Android.bin` (disajikan server kita) | `http://127.0.0.1:9527/sdk/bs/index-native.html` |
+| 3 | `https://dragonh5cdn.popoh5.com/bs/upgrade` | field `update` di JSON yang sama | `http://127.0.0.1:9527/sdk/bs/upgrade` |
+| 4 | `https://login.popoh5.com` + `loginPort` 610 (socket.io v2.1.2 EIO=3) | field `loginServer`+`loginPort` di JSON yang sama | `http://127.0.0.1` + `loginPort` 9527 |
+| 5 | fallback `{host game}/bs/resource/properties/serversetting.json` (`login.popoh5.com:610`) | file statis di host game local (fakta 4.F) | isi file: `{"loginserver":"http://127.0.0.1:9527"}` — di-serve di `…/sdk/bs/resource/properties/serversetting.json` |
+| 6 | `http://qsdk.t4game.com` (22 byte, tanpa slash) | `assets/QHinfo` | `http://127.0.0.1:9527/sdk` — **tanpa trailing slash** (mirror asli; concat `%s%s` → `/sdk/v1/…`) |
+
+**Tidak diganti (dengan bukti):** config.properties EntryPoint1 `dragon.sjmobilegame.com:82/lzceshi/…`
+(channel kosong; channel aktif = "BS"); HTTPDNS (11.2/7.2 #9); `tsUrl`/`tsLoginServer` (mode TS
+opsional); `loginWebPort` 510 (native tidak pakai); SDK pihak ketiga (Facebook/Google/Adjust/
+AppsFlyer/Line/ThinkingData — bukan gameplay).
+
+### 12.3 PORT: 9527 — satu port untuk SEMUA
+
+| Keputusan | Nilai | Alasan (fakta) |
+|---|---|---|
+| Port tunggal | **9527** | (a) >1024 → bind tanpa root (Termux/emulator non-root); (b) <32768 → di luar range port ephemeral Linux/Android; (c) bukan port umum tool (8080/8000/3000/8888/1080/5555 dihindari); (d) `cleartextTrafficPermitted="true"` → HTTP polos ke 127.0.0.1 LEGAL tanpa ubah manifest (fakta res/xml/network_security_config.xml) |
+| Satu layanan | HTTP statis + config bin + API SDK + **socket.io v2.1.2 (EIO=3) login** | socket.io v2 = HTTP server + upgrade; hidup di port yang sama dengan file statis |
+| `loginPort` | 9527 | field dibaca dari JSON config yang KITA sajikan — bebas ditentukan |
+| `loginServer` | `http://127.0.0.1` | klien io → `http://127.0.0.1:9527` |
+| Cadangan (reserved, belum dibuat) | 9528/9529/9530 | bila suatu saat perlu server game/chat/dungeon terpisah untuk isi `GetServerList` (di luar skop saat ini) |
+
+### 12.4 ROOT FOLDER: `files/server/` — di-serve pada path `/sdk/` (pilihan owner)
+
+```
+files/server/                              ← root owner; URL http://127.0.0.1:9527/sdk/
+├─ bs/
+│  ├─ db/
+│  │  └─ android/
+│  │     ├─ setting_BS_Android.bin         ← JSON config local di-XOR "DragonBall" (fakta 4.C)
+│  │     └─ com_db_local.bin               ← opsional; boot tetap jalan bila 404 (koreksi #12)
+│  ├─ index-native.html                    ← salinan dari zip terdekripsi / CDN v202109150935
+│  ├─ manifest.json                        ← satu paket dengan html game
+│  ├─ js/                                  ← seluruh JS game
+│  ├─ resource/
+│  │  ├─ …                                 ← seluruh resource game
+│  │  └─ properties/
+│  │     └─ serversetting.json             ← fallback loginserver (fakta 4.F)
+│  └─ upgrade/
+│     ├─ base.version                      ← "110"
+│     ├─ resource.version                  ← "11220" (offline penuh) / "11390" (resource baru)
+│     ├─ size.json
+│     ├─ upgrade.json
+│     └─ (paket .zip bila ada update)
+└─ (API SDK t4game: 33 rute POST di bawah /sdk/v1/…, /sdk/v2/purchase — di-handle kode server,
+   bukan file statis; daftar path di 11.2)
+```
+
+### 12.5 Konsekuensi wajib setelah penggantian
+
+1. Hapus `Android/data/com.db.local/files/game/` di device — folder cache mengikuti escape
+   URL; URL baru menghasilkan folder escape baru (`http/127.0.0.1#0A9527/…`) (fakta 3.1–3.2).
+2. `QHinfo` baru harus TANPA trailing slash (mirror asli 22 byte) — concat `%s%s` memang
+   menyambung langsung; action sudah diawali `/v1/`.
+3. Server local harus menjawab handshake socket.io v2 (EIO=3) di port 9527 + 33 route POST
+   JSON (format respons 1:1 akan dicapture saat field-test — checkpoint 7.4 tetap berlaku).
