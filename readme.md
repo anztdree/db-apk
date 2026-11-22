@@ -1724,3 +1724,98 @@ Teks log `REGISTER-VISITOR 21` → `REGISTER-VISITOR 22` (dokumentasi akar menye
 - APK dipulihkan dari blob Git LFS (pointer 134 B selamat di history; download via LFS
   batch API PAT): v6 `cbbc04f2…` (202.658.676 B) ✓ sha256 cocok; original `b308c44d…`
   (104.945.181 B) ✓ sha256 cocok — keduanya kembali terverifikasi byte-per-byte.
+
+## Bagian 23 — v8: v7 GAGAL di device -> diagnosis ulang dari NOL + patch 0009 (penguatan login + diagnostik logcat otomatis) (2026-11-22)
+
+### 23.1 FAKTA DEVICE (log 23 event, v7 diakui jalan dari teks REGISTER-VISITOR 22)
+
+1. Semua jalur jaringan hijau: 6 port AKTIF -> 2 config bin (9527) -> upgrade penuh
+   (110 / 11390 / all.zip 19.385.098 B, 9528) -> init SUCCESS -> getNotice kosong ->
+   registerVisitor 200 (isNewUser=0) -> EXTRACT bs/ 2758 file (02:48:52.874).
+2. **SETELAH registerVisitor TIDAK ADA SATU PUN request lagi ke semua port lokal**:
+   port 5050 tidak pernah dihubungi (loginchecknative tidak pernah dikirim),
+   index-native.html tidak pernah dimuat (9528). Rantai putus DI ANTARA respons
+   registerVisitor dan enterGame — di layer SDK, bukan jaringan.
+3. AKUN-BARU Guest5494 (bukan Guest1392): `AccountStore.loadOrCreate()` TERBUKTI reuse
+   akun JIKA `server/data/account.json` ada (read() -> isNewUser=false); AKUN-BARU hanya
+   terjadi jika file TIDAK ADA. Pola ini konsisten dengan INSTALASI ULANG / clear data
+   (Android menghapus `Android/data/com.db.local` seluruhnya saat uninstall — account.json
+   dan prefs `qg_Users` ikut hilang; bukan bug server). Konsekuensi: klaim "uid tetap antar
+   restart" HANYA berlaku untuk restart, TIDAK untuk reinstall.
+
+### 23.2 PENELUSURAN SMALI BARU (belum tertulis di Bagian 21/22)
+
+- Callback registerVisitor (`dishbesideshockey$nationalcommunitymissing$seventygenom.run()`):
+  parser `psalmicvolleyball.cointhreat.cointhreat(data)` hanya WAJIB `authToken` (getString)
+  + `userData` (getJSONObject); `QGUserData.generateFromJson` wajib username/uid/displayUid/
+  token/isGuest — semua dikirim v7 -> parse SEHARUSNYA sukses. Event
+  `com.quickgame.android.sdk.LOGIN_RAND` **SELALU di-post** (sukses / result:false /
+  exception) — SATU-SATUNYA jalur "event terkirim sebagai GAGAL" = exception dilempar DI
+  DALAM `QuickGameSdkService.seventygenom(0xe)` karena method itu dipanggil SEBELUM flag
+  sukses event diset (run() line 112 -> 117 -> post 140).
+- `seventygenom(0xe)` (dibaca utuh): dengan isNewUser=0 blok tracking memang di-skip
+  (teori Bagian 21 benar), PERSIS: `if-eqz isNewUser -> :cond_1b return`. Tapi ada SATU
+  blok lain **TANPA try-catch** sebelum flag sukses: Facebook
+  `pursetruechild()` -> `AppEventsLogger.newLogger(ctx).logEvent(...)`. `pursetruechild()`
+  = true karena manifest memuat meta-data `com.facebook.sdk.ApplicationId`
+  (+ FacebookInitProvider, FacebookContentProvider 5636354178086351815) — normalnya aman
+  (provider auto-init FB SDK), tapi TIDAK ADA JAMINAN dan ini satu-satunya titik tanpa
+  proteksi sebelum event.
+- `HWLoginActivity.onLoginEvent` LOGIN_RAND (:cond_9): `hoboismrelationbelow()` (dismiss
+  waiting tertunda 1s) -> sukses `hardlinerspare()`; gagal -> fragment error (ironoriginhoblike()
+  memilih f/a/h|e|f|g|d sesuai flag login) + pesan. Sukses guest: lastLoginType=0xe ->
+  pswitch_2 -> `singersmooth()` "checkGuestByisQuest" -> `timidcompletely==true` ->
+  `gangclothing()` "enterGame" -> QGUserHolder state 1 -> finish.
+- **GAME (com.zhuhuan.game) pasca-login**: `onLoginFinished` -> showFloatView ->
+  `MainActivity.feedtonight(false)` -> thread `pursetruechild/nationalcommunitymissing`:
+  `GET {config.seventygenom()}/loginchecknative?uid=...&token=...&os=Android&sdk=...`
+  dengan retry timeout menaik (5s,10s,15s); SEMUA gagal -> `getString(R.string.check_network)`
+  -> **popup "cek jaringan" via runOnUiThread** = kandidat popup yang tidak bisa di-close.
+  Chooser `config.seventygenom()`: testMode==2 -> tsLoginServer (118.24.68.91:7003);
+  selain itu loginServer+loginWebPort = **http://127.0.0.1:5050 (BENAR untuk testMode=1)**.
+  Karena loginchecknative TIDAK ada di log -> thread game tidak pernah jalan -> onLoginFinished
+  tidak pernah terpanggil -> kegagalan 100% di SDK sebelum enterGame.
+- Pemilih URL game `config.singersmooth()`: testMode==2 -> tsUrl; selain itu `url`
+  (127.0.0.1:9528) — menjelaskan kenapa upgrade jalan ke 9528 tapi game web tidak pernah
+  mulai (belum sampai).
+- Inventaris dialog/layar non-closable SDK (semua BACK di-block di onKeyDown utk d/m, d/k,
+  d/l): d/m=qg_fg_load_update, d/k=play store, d/l=qg_dialog_update, d/e=qg_view_waitting_auto
+  (hanya tampil bila ada sesi tersimpan — run pertama tidak), hoboismrelationbelow/cointhreat
+  (AlertDialog). f/a/n waiting: v7 cancelable (0008) — BACK menutupnya.
+
+### 23.3 KESIMPULAN
+
+Statis semua jalur benar dengan respons kita; titik mati persis hanya bisa dibuktikan
+dengan logcat device (SDK mencatat: "login auth success/fail", "enterGame", "WaitingDialog",
+exception via System.err, dsb). Embedded server berjalan di PROSES YANG SAMA dengan
+aplikasi -> `logcat -d` dari proses itu membaca log proses sendiri (termasuk System.err
+dan AndroidRuntime) TANPA adb.
+
+### 23.4 PATCH v8 (0009) — 2 patch + 1 file baru
+
+| # | File | Perubahan | Efek |
+|---|------|-----------|------|
+| A | `smali/.../service/QuickGameSdkService.smali` (seventygenom(I)) | blok Facebook diapit `:try_start_d1..:try_end_d1` `.catch Exception :catch_d1` (log `DBLocalDiag` + printStackTrace, login LANJUT) | satu-satunya titik tanpa proteksi sebelum event sukses ditutup; JIKA FB penyebabnya -> flow tamu selesai -> enterGame -> game lanjut (popup hilang) |
+| B | `smali_classes2/.../LogcatDumper.smali` (BARU) + kick() di cabang `/v1/system/init` & `/v1/user/registerVisitor` SdkHandler | sekali per proses: sleep 8s -> `logcat -d -v time -s <20 tag> *:S` -> chunk <=750 char (maks 30) -> NDJSON **kind LOGCAT** port 4000 | tanpa adb: logcat SDK masuk arsip logger yang sudah dikenal owner |
+
+- 0008 TETAP: isNewUser=0 (const/4 v2, 0x0) + WaitingDialog setCancelable(0x1).
+- Teks log REGISTER-VISITOR 22 -> **REGISTER-VISITOR 23**.
+
+### 23.5 VERIFIKASI v8
+
+- Rebuild `apktool b` OK (smali 2 folder); sign uber-apk-signer + `dblocal-mod.keystore`
+  -> **zipalign verified + signature verified [v1, v2, v3]**, sertifikat CN=DB Local Mod
+  exp 2056 (SAMA v1-v7; install-over OK).
+- Baksmali APK TER-SIGN: 0009A try-catch + teks `0009A: FB logEvent throw...` ada;
+  `LogcatDumper.smali` ada di classes2; kick() di 2 cabang (line 165 & 193); teks
+  REGISTER-VISITOR 23 ada; 0008 tetap (const/4 v2,0x0; setCancelable 0x1).
+- APK `release-mod/db-local(MOD-LOCALSERVER-v8).apk`: **203.084.660 B** (kebetulan sama
+  dgn v7 — isi dex beda), sha256 **`3d2f9008cebe383877a5abf58933506749a05d199cd4537658c97565d959f993`**,
+  **6427 entri** (= v6/v7; LogcatDumper terkompilasi di dalam classes2.dex, bukan file baru).
+  sha256 v8 != v7 `a733c8be…` (dibedakan). Baksmali: jar lama ternyata placeholder
+  (9-2266 B — "jar TIDAK di-commit"); verifikasi pakai `apktool d -f --no-res` (apktool
+  2.9.3 bawaan tools/, asli).
+- APA YANG DILAKUKAN OWNER: pasang v8 (install-over), buka app, tunggu popup muncul,
+  TUNGGU ±10 detik, lalu kirim isi log ke assistant — entri **kind LOGCAT** memuat titik
+  mati persis (login auth fail / exception / enterGame). Jika flow jalan (berkat 0009A):
+  popup hilang, game lanjut, dan entri LOGCAT tetap terkirim sebagai bukti.
