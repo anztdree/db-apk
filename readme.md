@@ -729,3 +729,96 @@ APK modifikasi com.db.local
 ```
 
 Rencana lama 12.4 (`files/server/`) dan penyebutan Termux (12.3) DIBATALKAN oleh koreksi ini.
+
+---
+
+## 14. PETA 1:1 ENDPOINT & PORT — VERIFIKASI ULANG TOTAL (22 Nov 2026, sesi pasca-reset)
+
+Semua fakta DIVERIFIKASI ULANG dari nol di workspace baru (sandbox lama hilang; APK
+diunduh ulang dari LFS repo, identitas dicek). Artefak verifikasi: `tools/verify/`.
+
+### 14.A Log verifikasi ulang total (perintah fresh, hasil nyata)
+
+| # | Item | Hasil verifikasi ulang |
+|---|---|---|
+| 1 | APK sha256 | `b308c44de6ec082a70c39e388a2cef4e9cdc1cee30b38c14a30bef86a7bc2218`, 104.945.181 B — **identik** dengan LFS pointer |
+| 2 | `assets/QHinfo` | 22 byte `http://qsdk.t4game.com` — **tanpa trailing slash** |
+| 3 | `assets/config.properties` | EntryPoint1 + EntryPoint1_debug (Base64) → `http://dragon.sjmobilegame.com:82/lzceshi/native_setting/Android` (channel non-aktif) |
+| 4 | `assets/config_BS.properties` | **4 kunci**: EntryPoint1, EntryPoint1_debug, EntryPoint2, EntryPoint2_debug (Base64) → `https://configus.sjmobilegame.com/bs/db/android` + `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android` |
+| 5 | Config live fresh | HTTP 200, 711 B, XOR `DragonBall` → JSON persis (14.B) |
+| 6 | `com_db_local.bin` live | HTTP 404 (boot tetap lanjut — koreksi #12) |
+| 7 | Handshake login:610 | `96:0{"sid":…,"upgrades":["websocket"],"pingInterval":25000,"pingTimeout":5000}2:40` — EIO=3 HIDUP |
+| 8 | POST `qsdk.t4game.com/v1/system/init` (body `{}`, CT urlencoded) | **HTTP 200** → `{"result":false,"data":[],"error":{"id":20000,"message":"Params error"}}` — ENVELOPE respons SDK tertangkap 1:1 (artefak `tools/verify/`) |
+| 9 | Xref string `QHinfo` | 1 pemakai: `QuickGameManager.initThirdDataSDK` |
+| 10 | Xref field `seventygenom` (domain) | 1 pembaca: `connect(String,Map)` |
+| 11 | Path API `^/(v\d)/` | **33 path — daftar identik** dengan 11.2 |
+| 12 | `connect()` | `String.format("%s%s", …)` + `setRequestMethod("POST")` + `application/x-www-form-urlencoded` — dua cabang (timeout 5000/8000) |
+| 13 | Template config | string `config_%s.properties` + `getChannelId` (QuickGameManager) — file dibaca = config_ + channel |
+| 14 | NSC | `<base-config cleartextTrafficPermitted="true"/>` — HTTP ke 127.0.0.1 legal |
+| 15 | Literal `#0A` (escape cache) | ada; dipakai di ≥6 titik, termasuk `singersmooth(String)String` & `seventygenom(String)String` (rumus 3.1 terkonfirmasi) |
+| 16 | `loginServer`/`loginPort` | DIBACA di Java: `LaunchActivity.worktopichardtails(String,int)Z` + `hardlinerspare(...)` |
+| 17 | `loginserver`/`serversetting.json` | **TIDAK ada di Java** → 100% jalur JS (sesuai 4.F) |
+| 18 | HTTPDNS di runtime-dex.jar | `http://119.29.29.29/d?dn=` DITEMUKAN ulang (scan bytes jar) |
+
+### 14.B Peta 1:1 — 6 endpoint yang diganti (lama → baru)
+
+| # | Komponen | LAMA (verifikasi 14.A) | BARU | Perubahan port |
+|---|---|---|---|---|
+| 1a | Config AKTIF — `config_BS.properties` EntryPoint1 (+ EntryPoint1_debug) | `https://configus.sjmobilegame.com:443/bs/db/android` | `http://127.0.0.1:9527/sdk/bs/db/android` | 443 → **9527**, https→http |
+| 1b | Config BACKUP — EntryPoint2 (+ EntryPoint2_debug), file asset SAMA | `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com:443/bs/db/android` | `http://127.0.0.1:9527/sdk/bs/db/android` (sama dgn 1a) | 443 → **9527** |
+| 2 | Game URL — field `url` di JSON config | `https://dragonh5cdn.popoh5.com:443/bs/index-native.html?v=202109150935` | `http://127.0.0.1:9527/sdk/bs/index-native.html?v=202109150935` (query dipertahankan; server abaikan query saat match file) | 443 → **9527** |
+| 3 | Update server — field `update` | `https://dragonh5cdn.popoh5.com:443/bs/upgrade` | `http://127.0.0.1:9527/sdk/bs/upgrade` | 443 → **9527** |
+| 4 | Login socket.io — field `loginServer` + `loginPort` (dibaca Java, 14.A#16) | `https://login.popoh5.com:443` + port 610 → efektif `https://login.popoh5.com:610` | `http://127.0.0.1` + `loginPort` 9527 → efektif `http://127.0.0.1:9527` | 610 → **9527** |
+| 4b | `loginWebPort` = 510 | efektif `https://login.popoh5.com:510` | diubah menjadi 9527 demi konsistensi (native TIDAK memakainya — fakta 7.2 #5; bisa juga dibiarkan) | 510 → **9527** |
+| 5 | Fallback serversetting.json — dipanggil JS dari HOST GAME (4.F) | URL `https://dragonh5cdn.popoh5.com:443/bs/resource/properties/serversetting.json?v=<random>`; isi `{"loginserver":"https://login.popoh5.com:610","requireSDK":false}` | URL `http://127.0.0.1:9527/sdk/bs/resource/properties/serversetting.json`; isi `{"loginserver":"http://127.0.0.1:9527","requireSDK":false}` | 443 → **9527** |
+| 6 | SDK t4game — `assets/QHinfo` (22 B, tanpa slash) + 33 path (11.2) | `http://qsdk.t4game.com:80` → concat: `…/v1/system/init` dst. | `http://127.0.0.1:9527/sdk` (tanpa slash) → concat: `/sdk/v1/system/init` dst. | 80 → **9527** |
+
+### 14.C Tabel port 1:1
+
+| Layanan | Port lama | Port baru | Status |
+|---|---|---|---|
+| Config server (https) | 443 | **9527** (http) | DIGANTI |
+| CDN game + update (https) | 443 | **9527** (http) | DIGANTI |
+| Login socket.io v2.1.2 | 610 | **9527** | DIGANTI |
+| loginWebPort (tidak dipakai native) | 510 | **9527** (konsistensi) | DIGANTI (opsional) |
+| API SDK t4game (http) | 80 | **9527** | DIGANTI |
+| HTTPDNS Tencent | 80 | 80 | TIDAK diubah (hanya retry POST pelaporan — fakta 7.2 #9) |
+| `dragon.sjmobilegame.com:82` (config channel non-aktif; tsUrl mode TS) | 82 | 82 | TIDAK diubah |
+| `tsLoginServer` mode TS | 7003 | 7003 | TIDAK diubah (biarkan nilai asli) |
+| game/chat/dungeon dinamis (GetServerList) | dinamis | dinamis | DI LUAR SKOP (keputusan owner) |
+
+### 14.D Field JSON config — 1:1 field per field
+
+| Field | Nilai asli (fresh 14.A#5) | Nilai di `server/bs/db/android/setting_BS_Android.bin` (XOR DragonBall) | Status |
+|---|---|---|---|
+| `testMode` | 1 | 1 (biarkan) | sama |
+| `url` | `https://dragonh5cdn.popoh5.com/bs/index-native.html?v=202109150935` | `http://127.0.0.1:9527/sdk/bs/index-native.html?v=202109150935` | DIGANTI |
+| `tsUrl` | `http://dragon.sjmobilegame.com:82/bs103/index-native.html` | biarkan asli (mode TS tidak aktif) | sama |
+| `update` | `https://dragonh5cdn.popoh5.com/bs/upgrade` | `http://127.0.0.1:9527/sdk/bs/upgrade` | DIGANTI |
+| `checkTime` | 300 | 300 | sama |
+| `loginServer` | `https://login.popoh5.com` | `http://127.0.0.1` | DIGANTI |
+| `tsLoginServer` | `http://118.24.68.91:7003` | biarkan asli | sama |
+| `loginPort` | 610 | 9527 | DIGANTI |
+| `loginWebPort` | 510 | 9527 | DIGANTI (opsional) |
+| `clientParams` | hideList/supportLang/showCurChannel | salin 1:1 | sama |
+
+### 14.E Folder cache client (rumus escape 3.1 — terkonfirmasi ulang 14.A#15)
+
+Rumus: `substring(0, lastIndexOf('/')+1)` → `"://"`→`"/"` → `":"`→`"#0A"`.
+
+| URL baru | Folder cache di `files/game/` (dibuat SENDIRI oleh client — server tidak menulis di files/) |
+|---|---|
+| #2 game + #3 update | `http/127.0.0.1#0A9527/sdk/bs/` — SATU folder untuk keduanya (substring sampai `/` terakhir; live lama: `https/dragonh5cdn.popoh5.com/bs/`) |
+| Cache lama yang di-wipe sekali | `files/game/https/dragonh5cdn.popoh5.com/bs/` (plus semua isi `files/game/`) |
+
+#1 config bin, #5 serversetting.json, #6 API SDK = request HTTP biasa (bukan path downloader
+Egret) — tidak menghasilkan folder escape; tidak ada bukti mereka di-cache via rumus 3.1.
+
+### 14.F Ringkasan satu kalimat
+
+Enam penggantian: config (443→9527, dua EntryPoint×2 varian dalam 1 file asset), CDN game
+(443→9527), update (443→9527), login socket.io (610→9527 + loginWebPort 510→9527 opsional),
+serversetting.json (443→9527, isi loginserver ikut diubah), QHinfo SDK (80→9527, 33 path
+POST `/sdk/v1/…` `/sdk/v2/purchase`); port tunggal 9527; HTTPDNS + TS + channel non-aktif +
+SDK pihak ketiga tidak disentuh; root server `com.db.local/server/` SEBELAH `files/`;
+mini-server embedded di APK.
