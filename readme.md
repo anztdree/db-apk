@@ -1899,3 +1899,83 @@ di SdkHandler init+registerVisitor — keduanya DI SERVER, bukan bedah smali gam
 4. `uber-apk-signer` + keystore → zipalign + sign v1/v2/v3.
 5. Verifikasi ulang dari APK TER-SIGN: baksmali diff = 2 file; entri original lain identik;
    server_root/classes2 identik v8; cert CN=DB Local Mod exp 2056.
+
+
+## Bagian 25 — INVESTIGASI AKAR SDK + v10 BASELINE "SDK ORIGINAL, SERVER MENGENDALIKAN" (2026-11-22)
+
+### 25.1 Keputusan owner
+
+Owner menyetujui Langkah B: **"Kembalikan dulu sdk ke originalnya, lalu edit lalu ke local endpoint..
+saya ingin sdk ini berfungsi layaknya seperti aslinya. bukan asal bekerja. sdk CONFIG sepenuhnya
+ada di tangan kita."** — SDK smali murni original; perilaku digerakkan lewat konfigurasi server.
+
+### 25.2 INVESTIGASI smali original (bukti, bukan tebakan)
+
+**Temuan 1 — kontrak parser sesi registerVisitor/autoLogin.** Parser
+`com/quickgame/android/sdk/psalmicvolleyball/cointhreat.smali` (method `cointhreat(String)`):
+`data` WAJIB non-kosong & bukan `[]`/`{}`; field **WAJIB** (getString — hilang → JSONException →
+parser return null → event LOGIN_RAND dikirim sebagai GAGAL DIAM-DIAM tanpa pesan):
+`authToken`, `userData{uid, username, displayUid, token, isGuest}`. Field opsional (opt*):
+`tips`, `checkRealName`, `userData.openType`, `isNewUser` (optInt), `isTrash`, `userData.bindInfo`.
+→ Respons `AccountStore.sessionJson()` server v8/v10 memenuhi SEMUA field wajib. Teori
+"parser null" GUGUR.
+
+**Temuan 2 — tracking DIGATE oleh isNewUser (kunci).** Di
+`QuickGameSdkService.smali` `seventygenom(I)` kasus `0xe` (registerVisitor), SEBELUM semua
+panggilan AppsFlyer ("registerSuccess") / Adjust / Facebook-event:
+```
+invoke-virtual {p1}, Lcom/quickgame/android/sdk/bean/QGUserData;->isNewUser()Z
+move-result p1
+if-eqz p1, :cond_20b      ← isNewUser=false → SDK MELOMPATI SELURUH blok tracking
+```
+`QGUserData.generateFromJson` membaca `isNewUser` dengan `optInt(...,0)`; server mengirim angka
+`0` → `isNewUser()==false` → **SDK menonaktifkan tracking-nya SENDIRI tanpa patch apa pun**.
+→ Karena server v7/v8 sudah mengirim `isNewUser=0`, patch 0008B (`setCancelable`) dan 0009A
+(try-catch FB) menyerang LAPISAN YANG SALAH — tracking yang ditakuti sudah tidak jalan.
+
+**Implikasi:** dua patch smali game itu batal; penyebab "stuck setelah registerVisitor" di v7
+masih perlu logcat device untuk dipastikan (alat perekamnya — LogcatDumper kick di
+init+registerVisitor SdkHandler — ada DI SERVER, aktif di v10 tanpa menyentuh smali game).
+
+### 25.3 PETA KONTRAK SDK ↔ SERVER LOCAL (CONFIG sepenuhnya di tangan kita)
+
+| Endpoint (dilayani server local) | Yang diminta parser SDK (dari smali) | Yang kirim server | Status |
+|---|---|---|---|
+| `POST /v1/system/init` (9530) | `result:true` + `data.payTypes` WAJIB; `loginTypes` menentukan UI login; `version` TIDAK boleh (popup update); `nodes` tidak wajib | `{"result":true,"data":{"payTypes":[],"loginTypes":["12"]}}` (v5, Bagian 20.3) | OK |
+| `POST /v1/user/registerVisitor` (9530) | 25.2 Temuan 1 (semua field wajib ada) + `isNewUser` angka | session JSON, `isNewUser:0` → tracking otomatis dilewati SDK | OK |
+| `POST /v1/user/autoLogin` (9530) | kontrak sesi sama, `isNewUser=0` | session JSON `isNewUser:0` | OK |
+| `POST /v1/system/getNotice` (9530) | `data` ≤2 char → notice dilewati | `{"result":true,"data":""}` | OK |
+| `onNewToken / dmsg / getAgreement` (9530) | sukses kosong | `{"result":true,"data":""}` | OK |
+| `POST /v1/auth/setGameRoleInfo`, `/v1/user/getServerAgreement` (9530) | fire-and-forget | sukses kosong | OK |
+| `POST /loginchecknative` (5050) | JS `getInt("code")==0` + userid/loginToken | `{"code":0,...}` (Bagian 21.2) | OK |
+| socket.io `GetServerList`/`enterGame` (5050→5051) | ACK `43<id>` + serverList 1 server `http://127.0.0.1:5051`; payload enterGame lengkap (Bagian 21.2) | SocketIoHandler v6 | OK |
+| Config bin `bs/db/android` (9527) | XOR `DragonBall` → JSON `url`/`update`/`loginServer`/`loginPort` | `setting_BS_Android.bin` di server_root (Bagian 17) | OK |
+| CDN/upgrade (9527/9528) | `base.version`/`resource.version`/`upgrade.json`/`size.json`/`all.zip` + index-native.html | mirror 1:1 live capture (2.758 file) | OK |
+
+### 25.4 v10 — build + verifikasi (persis pola Bagian 24, ditandai sebagai BASELINE DISETUJUI)
+
+Dibangun dari ORIGINAL `b308c44d…`. Perubahan HANYA: config_BS.properties + QHinfo (byte-identik
+v8), classes2.dex + server_root 2.758 file (byte-identik v8), classes.dex = original + 2 patch
+minimal (starter 17.5 + 1 baris feedtonight login tamu). `f/a/n.smali` dan
+`QuickGameSdkService.smali` **100% original**.
+
+| Item | Hasil |
+|---|---|
+| classes.dex | 6.697.176 B (+72 B); baksmali-diff vs original = **tepat 2 file** (Application +2 baris; feedtonight 1 baris) |
+| Entri original lain | byte-identik (cek entri-per-entri) |
+| Entri total | 6427 |
+| Sign | uber-apk-signer + keystore `dblocalmod` → **zipalign verified + signature verified [v1, v2, v3]**, CN=DB Local Mod exp 2056 (install-over OK) |
+| APK final | `release-mod/db-local(MOD-LOCALSERVER-v10).apk` — **202.658.676 B**, sha256 **`679fa173a0dd836b41651b876f931a589ea54065932f3465c533365078379486`** |
+| Script | `rebuild-src/scripts/repack_v10.py` |
+
+**v9 DITARIK** dari `release-mod/` atas keputusan owner ("tidak saya terima") — isi byte dex v9
+dan v10 identik secara semantik (tree smali sama; assembler mem-embed timestamp), tapi yang
+disetujui dan dipasang adalah **v10**.
+
+### 25.5 Langkah device (Langkah C rencana)
+
+1. Pasang v10 (install-over dari v8/v9 mana pun — sertifikat sama, exp 2056).
+2. Jalankan. Skenario normal: tanpa layar kode migrasi → dialog "Logging in…" sebentar → masuk.
+3. Jika macet: buka dashboard `http://127.0.0.1:4000` → **Unduh arsip** → kirim ke assistant.
+   Arsip memuat request/respons server + logcat SDK (LogcatDumper) = titik mati persis.
+   PATCH BERIKUTNYA (jika benar-benar perlu) hanya akan dibuat SATU, di titik yang terbukti log.
