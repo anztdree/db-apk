@@ -1979,3 +1979,62 @@ disetujui dan dipasang adalah **v10**.
 3. Jika macet: buka dashboard `http://127.0.0.1:4000` → **Unduh arsip** → kirim ke assistant.
    Arsip memuat request/respons server + logcat SDK (LogcatDumper) = titik mati persis.
    PATCH BERIKUTNYA (jika benar-benar perlu) hanya akan dibuat SATU, di titik yang terbukti log.
+
+## 26. Uji device v10 → diagnosis akar masalah → v11 SDK 100% ORIGINAL (23 Nov 2026)
+
+### 26.1 Bukti dari dashboard (uji device v10, 23 Nov 04:54 — 31 event)
+
+- Server lokal bekerja penuh: BOOT 7 port AKTIF → config 9527 (687 B XOR terdecode benar) → CDN 9528
+  (all.zip 19 MB) → SDK 9530 `init` + `getNotice` + `registerVisitor` — semua HTTP 200.
+- LogcatDumper 0009B (8 s setelah registerVisitor) menangkap alur SDK:
+  `HWLoginActivity onResume → 游客模式 → 游客登录 → WaitingDialog create → POST registerVisitor (≈6 ms)
+  → loginRole / lastLoginType 14 / checkGuestByisQuest / enterGame → onLoginFinished → AppsFlyer loginSuccess`
+- Keluhan owner: popup spinner "tidak jelas" + akun Guest dibuat OTOMATIS tanpa layar login.
+
+### 26.2 Diagnosis smali — TERTUTUP dengan bukti baseline ORIGINAL
+
+- `com/quickgame/android/sdk/feedtonight.smali:485` pada v10 masih merupakan patch
+  `ACTION_LOGIN` → `ACTION_AUTO_REGISTER_AND_LOGIN` (warisan "1 baris login tamu" v9).
+- Router original `HWLoginActivity$singersmooth.onServiceConnected`:
+  - `ACTION_LOGIN` → `ironoriginhoblike()` → fragment UI login **f/a/d** — tombol Guest
+    (`fl_guest` / `ib_guest` / `ll_guest_login_new`) tampil bila `model/e.psalmicvolleyball==true`
+    (loginTypes mengandung "12") → **user memilih sendiri**.
+  - `ACTION_AUTO_REGISTER_AND_LOGIN` → log `游客模式`; tanpa user tersimpan → log `游客登录` →
+    `registerVisitor` + WaitingDialog **tanpa UI** ← urutan ini PERSIS logcat device.
+- Kesimpulan: auto-register + popup = efek patch feedtonight, **BUKAN config server**.
+  (v10 dilabeli "SDK 100% original" namun feedtonight masih 1 baris patch — koreksi di v11.)
+
+### 26.3 Bukti server original masih hidup (replay `init`, 23 Nov)
+
+- POST `qsdk.t4game.com/v1/system/init` (body persis dari device) → **HTTP 200**:
+  `loginTypes:["1","13"]`, `version:{versionName/versionNo/versionUrl/updateTime/isMust/updateTips = "empty"}`,
+  `productConfig{guestShowBind:1, …}`, `first_install:1`, `countryCode:"HK"`.
+- Server asli TIDAK menawarkan guest di daftar login → pilihan `loginTypes:["12"]` pada server lokal
+  adalah **keputusan CONFIG owner** (tombol Guest untuk main offline) — sah dan dikendalikan penuh.
+- `tsUrl`/`tsWebUrl`/`tsLoginServer` di config bin **hanya dibaca bila `testMode==2`** (getter config
+  `singersmooth()`); lokal berjalan di `testMode:1` → nilai ts* tidak pernah tersentuh (dead config;
+  dipertahankan apa adanya, bisa dilokalkan kapan pun atas permintaan owner).
+
+### 26.4 v11 — build + verifikasi (1 langkah = 1 commit = 1 APK)
+
+Dibangun dari ORIGINAL `b308c44d…`. classes.dex = original + **HANYA starter 17.5**
+(`feedtonight` KEMBALI ORIGINAL — patch login tamu dibatalkan).
+
+| Item | Hasil |
+|---|---|
+| classes.dex | 6.697.176 B (+72 B); baksmali-diff vs original = **tepat 1 file** (Application starter) |
+| feedtonight / f/a/n / QuickGameSdkService | **byte-identik original** |
+| Entri zip vs original | 3.662 identik; diganti 4 (MANIFEST.MF, QHinfo, config_BS.properties, classes.dex); hapus 2 (CERT.RSA/SF); tambah 2.761 (DBLOCALM + classes2.dex + server_root 2.758) |
+| Sign | zipalign + signature verified [v1, v2, v3], keystore sama exp 2056 (install-over OK) |
+| APK final | `release-mod/db-local(MOD-LOCALSERVER-v11).apk` — **202.658.676 B**, sha256 **`47977e410870eec483a94d712d86aa1a2326f8693e5739debd41544d2efe2a53`** |
+| Script | `rebuild-src/scripts/repack_v11.py` |
+
+### 26.5 Perilaku yang diharapkan di device (Langkah C dengan v11)
+
+1. Install-over v11 (sertifikat sama — akun lama tidak hilang).
+2. **Layar login SDK muncul** (tombol Guest saja, sesuai `loginTypes` server) → tap Guest →
+   `registerVisitor` lokal (instan) → WaitingDialog sebentar → masuk game.
+3. Tidak ada auto-register diam-diam; popup hanya muncul sebagai proses login yang diminta sendiri.
+4. Jika setelah login game masih tidak lanjut (titik mati antara `onLoginFinished` dan koneksi 5050 —
+   kasus TERPISAH dari masalah di atas): jalankan → unduh arsip dashboard `:4000` → kirim lognya;
+   patch berikutnya (jika benar-benar perlu) hanya **SATU**, di titik yang terbukti log.
