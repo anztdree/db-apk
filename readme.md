@@ -1819,3 +1819,83 @@ dan AndroidRuntime) TANPA adb.
   TUNGGU ±10 detik, lalu kirim isi log ke assistant — entri **kind LOGCAT** memuat titik
   mati persis (login auth fail / exception / enterGame). Jika flow jalan (berkat 0009A):
   popup hilang, game lanjut, dan entri LOGCAT tetap terkirim sebagai bukti.
+
+
+## Bagian 24 — REBUILD BERSIH v9 "ENDPOINT-ONLY": SDK smali 100% orisinal (2026-11-22)
+
+### 24.1 Laporan owner (latar)
+
+Owner: **"apk original.. di ubah endpoint ke local. PADAHAL itu cuma saya suruh ubah endpoint..
+malah dia rusak bagian sdk"**. Permintaan owner sejak awal HANYA satu: ubah endpoint ke local.
+Yang terjadi pada v7/v8: selain endpoint, smali SDK game ikut dibedah (0008B membalik
+`setCancelable`, 0009A membungkus blok Facebook dengan try-catch) — perubahan perilaku SDK yang
+TIDAK diminta dan di device justru memperparah (popup macet, rantai login putus).
+
+### 24.2 Prinsip v9 — dari APK ORIGINAL, hanya yang benar-benar wajib
+
+Dibangun ulang dari `db-local(Original-DO NOT DELETE!).apk` (sha256 `b308c44d…`), BUKAN dari v8.
+Aturan: setiap byte di luar daftar wajib = byte asli original.
+
+| # | Komponen | Perubahan | Alasan |
+|---|----------|-----------|--------|
+| 1 | `assets/config_BS.properties` | REPLACE — byte-identik v8 (256 B): EntryPoint1/2 = `http://127.0.0.1:9527/bs/db/android` | endpoint config → local (permintaan owner) |
+| 2 | `assets/QHinfo` | REPLACE — byte-identik v8 (21 B): `http://127.0.0.1:9530` | endpoint SDK → local (permintaan owner) |
+| 3 | `classes.dex` | REPLACE — original + **HANYA 2 patch minimal** (lihat 24.3) | #a wajib agar server local hidup; #a/b = seleksi mode bawaan SDK |
+| 4 | `classes2.dex` | ADD — **byte-identik v8** (82.352 B, sha256 `e49061d4…`) | mini-server local (menjawab endpoint); TIDAK dikompilasi ulang |
+| 5 | `assets/server_root/**` | ADD — **byte-identik v8** (2.758 file) | isi yang disajikan server local |
+| 6 | META-INF | buang signature lama, sign ulang keystore `dblocalmod` | wajib karena isi berubah |
+
+**Patch classes.dex hanya 2 (bukti diff baksmali 24.5):**
+
+| # | File | Isi | Status |
+|---|------|-----|--------|
+| a | `com/zhuhuan/game/Application.smali` | sisip `invoke-static {p0}, Lcom/db/local/server/LocalServerStarter;->start(Landroid/content/Context;)V` sebelum invoke-super (pola 17.5) | WAJIB — starter server local; `start()` menelan semua exception (boot app tidak bisa kena crash) |
+| b | `com/quickgame/android/sdk/feedtonight.smali` | 1 baris: `"…ACTION_LOGIN"` → `"…ACTION_AUTO_REGISTER_AND_LOGIN"` (1 kemunculan) | seleksi mode TAMU bawaan SDK (jalur auto-register yang sudah ada di SDK, bukan logika baru); langsung menjawab keluhan lama owner "menu kok masukin kode migrasi" |
+
+**Yang sengaja TIDAK diubah (di-revert ke original, batal dari v7/v8):**
+
+| Patch lama | File SDK | v9 |
+|------------|----------|-----|
+| 0008B: `setCancelable 0x0 → 0x1` | `com/quickgame/android/sdk/f/a/n.smali` | **KEMBALI 0x0 — byte-identik original** |
+| 0009A: blok Facebook dibungkus try-catch | `com/quickgame/android/sdk/service/QuickGameSdkService.smali` | **KEMBALI original — byte-identik (8 blok try asli, tanpa try-catch FB)** |
+
+Catatan: proteksi yang dulu dilakukan 0008B/0009A di sisi GAME kini cukup dari sisi SERVER
+(classes2.dex v8 tetap memuat `isNewUser=0` pada registerVisitor = jalur tracking SDK
+AppsFlyer/Adjust/FB tidak masuk, akar macetnya popup v6; LogcatDumper tetap aktif via kick
+di SdkHandler init+registerVisitor — keduanya DI SERVER, bukan bedah smali game).
+
+### 24.3 VERIFIKASI v9 (semua angka nyata di sandbox, 22 Nov 2026)
+
+| Item | Hasil |
+|------|-------|
+| Smali assembler | smali 2.5.2 (jar asli dari Maven `org.smali:smali:2.5.2` + deps — jar bitbucket terbukti placeholder 2.266 B, dihindari) |
+| classes.dex hasil assemble | **6.697.176 B** = original 6.697.104 B **+72 B** (persis pola v6 terdokumentasi 17.5) |
+| Baksmali APK TER-SIGN vs baksmali ORIGINAL — diff pohon smali penuh (6.108 class) | **HANYA 2 file beda**: `Application.smali` (diff: +2 baris starter) dan `feedtonight.smali` (diff: 1 baris string action). SEMUA file smali lain byte-identik original — termasuk `f/a/n.smali` dan `QuickGameSdkService.smali` |
+| Entri original lainnya (zip) | **byte-identik original** (dibandingkan entri-per-entri; hanya 3 REPLACE di daftar 24.2 #1–3) |
+| `assets/server_root/` | 2.758 file, beda vs v8 = 0 |
+| `classes2.dex` | byte-identik v8 |
+| Entri total | **6427** (= v6/v7/v8) |
+| Sign | uber-apk-signer 1.3.0 + `dblocal-mod.keystore` → **zipalign success + verified**, sertifikat **CN=DB Local Mod, O=Owner, C=ID, valid s.d. 2056** (keystore SAMA — install-over OK) |
+| APK final | `release-mod/db-local(MOD-LOCALSERVER-v9).apk` — **202.658.676 B**, sha256 **`c7ed6049a0faa34386f513ed7b5678748969cafa3b5c4b9bea4718892f4a9e7b`** |
+| Script | `rebuild-src/scripts/repack_v9.py` (di-commit; asersi byte-identik v8 untuk config_BS/QHinfo tercantum di dalamnya) |
+
+### 24.4 Perbedaan perilaku v9 vs v8 (jujur)
+
+- v9 TIDAK memuat fallback `setCancelable(true)` dan TIDAK memuat try-catch Facebook di smali
+  game. Jika di device v9 macet di popup: popup kembali perilaku aslinya (tidak bisa di-close
+  saat menunggu) — TAPI kini server mengirim `isNewUser=0` sehingga jalur tracking yang menjadi
+  akar macet v6 dilewati sejak awal; kemungkinan besar popup hilang begitu login tamu sukses.
+- v9 TIDAK diuji di device (sandbox tidak punya device Android). Jika masih macet, arsip logger
+  (port 4000) + LogcatDumper (server-side) tetap merekam untuk diagnosis lanjutan.
+- v8 TETAP disimpan di `release-mod/` sebagai referensi diagnostik (TIDAK dihapus).
+
+### 24.5 Alur kerja v9 (reproducible)
+
+1. `git lfs pull` → original.apk + v8.apk (sha256 dicek `b308c44d…` / `3d2f9008…`).
+2. baksmali classes.dex original → smali (6.108 class) → terapkan patch a+b (24.2) →
+   smali assemble → classes.dex (+72 B).
+3. `python3 rebuild-src/scripts/repack_v9.py` — repack dari ORIGINAL (3 REPLACE + 2 ADD,
+   asersi byte-identik v8).
+4. `uber-apk-signer` + keystore → zipalign + sign v1/v2/v3.
+5. Verifikasi ulang dari APK TER-SIGN: baksmali diff = 2 file; entri original lain identik;
+   server_root/classes2 identik v8; cert CN=DB Local Mod exp 2056.
