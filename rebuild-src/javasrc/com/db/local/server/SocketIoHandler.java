@@ -8,6 +8,7 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayDeque;
+import java.util.HashMap;
 
 import java.util.Map;
 import java.util.Random;
@@ -174,19 +175,32 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         if (qi >= 0) pNoQ = pNoQ.substring(0, qi);
 
         // ===== v6: /loginchecknative — hanya mode LOGIN (5050) =====
+        // Bagian 28: query params SDK (uid/username/token/usermode) = akun
+        // yang BENAR-BENAR login (tamu atau email) — bukti smali
+        // pursetruechild/feedtonight/singersmooth.onLoginFinished memetakan
+        // getUid()/getUserName()/getToken()/isGuest(). Respons thirdParams
+        // memakai nilai tsb, dan disimpan sebagai AKUN AKTIF untuk enterGame.
         if (!gameMode && pNoQ.equals("/loginchecknative")) {
-            byte[] bb = SdkHandler.loginCheckNativeBody();
+            // req.rawPath = path?query (req.path SUDAH tanpa query!) — parse dari rawPath
+            Map<String, String> qp = parseQuery(req.rawPath);
+            String uid = qp.get("uid");
+            String uname = qp.get("username");
+            String tok = qp.get("token");
+            String umode = qp.get("usermode");
+            AccountStore.setCurrent(uid, uname, tok, umode);
+            byte[] bb = HttpWorker.text(AccountStore.loginCheckNativeOf(uid, uname, tok,
+                    umode == null || umode.isEmpty() ? "1" : umode));
             Map<String, String> h = HttpWorker.baseHeaders("application/json");
             h.put("Access-Control-Allow-Origin", "*");
             HttpWorker.writeResponse(out, 200, "OK", h, bb);
             e.status = 200;
             e.respLen = bb.length;
             e.respPreview = new String(bb, StandardCharsets.UTF_8);
-            e.extra = "LOGINCHECK-NATIVE 21 | GET HttpURLConnection dari "
-                    + "pursetruechild/feedtonight/singersmooth.onLoginFinished (uid/username/"
-                    + "token/usermode+os=Android&sdk=..); body RAW = thirdParams JS; "
-                    + "getInt(code)==0 -> MainActivity.customreading() -> WebView lanjut "
-                    + "| respCT=application/json";
+            e.extra = "LOGINCHECK-NATIVE 28 | uid=" + uid + " username=" + uname
+                    + " usermode=" + umode + " (dari query params SDK = akun yang login"
+                    + ("0".equals(umode) ? ": EMAIL" : ": tamu") + ") | body RAW = thirdParams JS "
+                    + "(getSdkLoginInfo pakai securityCode); getInt(code)==0 -> "
+                    + "MainActivity.customreading() -> WebView lanjut | respCT=application/json";
             e.durMs = System.currentTimeMillis() - t0;
             LoggerCore.log(e);
             return true;
@@ -444,6 +458,25 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         return b.toString();
     }
 
+    /** Bagian 28 — parse query string ?a=1&b=2 (URLDecoder utf-8). */
+    static Map<String, String> parseQuery(String raw) {
+        Map<String, String> out = new HashMap<String, String>();
+        int qi = raw == null ? -1 : raw.indexOf('?');
+        if (qi < 0) return out;
+        String qs = raw.substring(qi + 1);
+        String[] parts = qs.split("&");
+        for (int i = 0; i < parts.length; i++) {
+            String p = parts[i];
+            if (p.isEmpty()) continue;
+            int eq = p.indexOf('=');
+            String k = eq < 0 ? p : p.substring(0, eq);
+            String v = eq < 0 ? "" : p.substring(eq + 1);
+            try { v = java.net.URLDecoder.decode(v, "UTF-8"); } catch (Throwable t) { /* raw */ }
+            out.put(k, v);
+        }
+        return out;
+    }
+
     /** routing event → isi respons {ret,data,compress} */
     static String routeEvent(EventMsg m) {
         String type = m.type == null ? "" : m.type;
@@ -465,7 +498,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             return ack(GameData.serverListJson());
         }
         if (low.equals("user") && act.equals("logingame")) {
-            AccountStore a = AccountStore.loadOrCreate();
+            AccountStore a = AccountStore.currentOrDefault();   // Bagian 28: akun aktif
             String uid = extractStr(m.raw, "userId");
             if (uid == null || uid.isEmpty()) uid = a.uid;
             String ch = extractStr(m.raw, "fromChannel");
@@ -516,7 +549,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
          *  curMainTask ({} wajib — Object.keys), scheduleInfo (_* dibaca initData),
          *  dragonEquiped ({} wajib — for-in), backpackLevel, newUser, language. */
         static String enterGameResponse() {
-            AccountStore a = AccountStore.loadOrCreate();
+            AccountStore a = AccountStore.currentOrDefault();   // Bagian 28: akun aktif
             long now = System.currentTimeMillis() / 1000L;
             StringBuilder b = new StringBuilder(2048);
             b.append("{");

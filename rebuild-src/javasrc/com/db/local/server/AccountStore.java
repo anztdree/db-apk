@@ -35,6 +35,43 @@ public final class AccountStore {
     public long createTime;
     public boolean isNewUser;
 
+    /* ====================================================================
+     * Bagian 28 — AKUN AKTIF SAAT INI (untuk lapisan game).
+     * Diisi dari query params loginchecknative (uid/username/token yang
+     * dikirim SDK = PERSIS akun yang login: tamu ATAU email). enterGame /
+     * loginGame memakai ini supaya payload game sesuai akun yang benar.
+     * Single-device: statik volatile cukup; fallback = akun tamu.
+     * ==================================================================== */
+    public static volatile String curUid      = null;
+    public static volatile String curUsername = null;
+    public static volatile String curToken    = null;
+    public static volatile String curUsermode = null;   // "1"=tamu, "0"=email
+    public static volatile long   curAt       = 0L;
+
+    /** set akun aktif dari param loginchecknative (params boleh kosong). */
+    public static void setCurrent(String uid, String username, String token, String usermode) {
+        if (uid == null || uid.isEmpty()) return;
+        curUid = uid;
+        curUsername = (username == null || username.isEmpty()) ? uid : username;
+        curToken = (token == null || token.isEmpty()) ? "" : token;
+        curUsermode = (usermode == null || usermode.isEmpty()) ? "1" : usermode;
+        curAt = System.currentTimeMillis();
+    }
+
+    /** akun aktif, fallback ke akun tamu bila belum ada. */
+    public static AccountStore currentOrDefault() {
+        AccountStore g = loadOrCreate();
+        if (curUid == null || curUid.equals(g.uid)) return g;
+        // akun email yang aktif
+        AccountStore a = new AccountStore();
+        a.uid = curUid;
+        a.username = curUsername;
+        a.token = curToken == null || curToken.isEmpty() ? g.token : curToken;
+        a.createTime = 0L;
+        a.isNewUser = false;
+        return a;
+    }
+
     private static final Object LOCK = new Object();
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
@@ -159,14 +196,32 @@ public final class AccountStore {
 
     /** Session JSON — PERSIS kontrak parser psalmicvolleyball/cointhreat. */
     public String sessionJson(boolean newUser) {
-        return "{\"authToken\":\"" + JsonUtil.esc(token) + "\",\"tips\":\"\","
+        return sessionJsonOf(uid, username, token, "12", "1", newUser);
+    }
+
+    /**
+     * Bagian 28 — session untuk akun APA PUN.
+     * isGuest: "1"=tamu (openType 12) | "0"=email (openType 1).
+     * isNewUser SELALU 0 (flag tracking SDK — jalur AppsFlyer/Adjust/FB
+     * dilewati SDK sendiri; terbukti v8: isNewUser=1 offline = popup stuck).
+     */
+    public static String sessionJsonOf(String uidX, String uname, String tok,
+                                       String openType, String isGuest, boolean newUser) {
+        return "{\"authToken\":\"" + JsonUtil.esc(tok) + "\",\"tips\":\"\","
                 + "\"checkRealName\":\"0\",\"userData\":{"
-                + "\"uid\":\"" + JsonUtil.esc(uid) + "\","
-                + "\"username\":\"" + JsonUtil.esc(username) + "\","
-                + "\"displayUid\":\"" + JsonUtil.esc(uid) + "\","
-                + "\"token\":\"" + JsonUtil.esc(token) + "\","
-                + "\"isGuest\":\"1\",\"openType\":\"12\","
+                + "\"uid\":\"" + JsonUtil.esc(uidX) + "\","
+                + "\"username\":\"" + JsonUtil.esc(uname) + "\","
+                + "\"displayUid\":\"" + JsonUtil.esc(uidX) + "\","
+                + "\"token\":\"" + JsonUtil.esc(tok) + "\","
+                + "\"isGuest\":\"" + isGuest + "\",\"openType\":\"" + openType + "\","
                 + "\"isNewUser\":" + (newUser ? 1 : 0) + ",\"isTrash\":0}}";
+    }
+
+    /** Respons SDK standar utk akun apa pun: {result:true, data:"<session string>"}. */
+    public static String sessionResponse(String uidX, String uname, String tok,
+                                         String openType, String isGuest) {
+        String inner = sessionJsonOf(uidX, uname, tok, openType, isGuest, false);
+        return "{\"result\":true,\"data\":\"" + JsonUtil.esc(inner) + "\"}";
     }
 
     /** Respons SDK standar: {result:true, data:"<session string>"}
@@ -184,15 +239,31 @@ public final class AccountStore {
      * code:0 WAJIB (getInt("code")==0 → customreading() → WebView lanjut).
      */
     public String loginCheckNative() {
+        return loginCheckNativeOf(uid, username, token, "1");
+    }
+
+    /**
+     * Bagian 28 — thirdParams utk akun APA PUN. uid/username/token datang
+     * dari QUERY PARAMS SDK (pursetruechild/feedtonight/singersmooth
+     * .onLoginFinished mengirim PERSIS userData akun yang login — bukti smali
+     * cointhreat/cointhreat/cointhreat/pursetruechild/feedtonight/singersmooth
+     * : uid=getUid(), username=getUserName(), token=getToken(),
+     * usermode = isGuest()?"1":"0").
+     */
+    public static String loginCheckNativeOf(String uidX, String uname, String tok, String usermode) {
+        if (uidX == null || uidX.isEmpty()) { AccountStore g = loadOrCreate(); uidX = g.uid; }
+        if (uname == null || uname.isEmpty()) uname = uidX;
+        if (tok == null || tok.isEmpty()) tok = "local";
+        if (usermode == null || usermode.isEmpty()) usermode = "1";
         return "{\"code\":0,\"sdk\":\"quick\","
-                + "\"userid\":\"" + JsonUtil.esc(uid) + "\","
-                + "\"userId\":\"" + JsonUtil.esc(uid) + "\","
-                + "\"nickname\":\"" + JsonUtil.esc(username) + "\","
-                + "\"nickName\":\"" + JsonUtil.esc(username) + "\","
-                + "\"securityCode\":\"" + JsonUtil.esc(token) + "\","
-                + "\"security\":\"" + JsonUtil.esc(token) + "\","
-                + "\"loginToken\":\"" + JsonUtil.esc(token) + "\","
-                + "\"sign\":\"local\",\"usermode\":\"1\",\"osType\":\"android\"}";
+                + "\"userid\":\"" + JsonUtil.esc(uidX) + "\","
+                + "\"userId\":\"" + JsonUtil.esc(uidX) + "\","
+                + "\"nickname\":\"" + JsonUtil.esc(uname) + "\","
+                + "\"nickName\":\"" + JsonUtil.esc(uname) + "\","
+                + "\"securityCode\":\"" + JsonUtil.esc(tok) + "\","
+                + "\"security\":\"" + JsonUtil.esc(tok) + "\","
+                + "\"loginToken\":\"" + JsonUtil.esc(tok) + "\","
+                + "\"sign\":\"local\",\"usermode\":\"" + usermode + "\",\"osType\":\"android\"}";
     }
 
     private static void log(String msg) {

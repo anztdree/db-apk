@@ -2090,3 +2090,77 @@ classes.dex **byte-identik v11** (SDK tetap 100% original). Perubahan HANYA serv
    punya kode migrasi akun lama.
 4. Dashboard `:4000` kini: tombol **Panduan login**, penandaan merah untuk jawaban SDK yang gagal,
    dan setiap event punya deskripsi bahasa manusia.
+
+---
+
+## Bagian 28 — v13: SDK FULL-FITUR (tamu + DAFTAR + LOGIN email, tanpa konfirmasi email)
+
+**Trigger**: uji device v12 23 Nov — "Layar login muncul → tekan TAMU (Guest) → registerVisitor instan
+→ masuk game" + arah owner: *"saya rencananya mau sdk ini full fitur. tidak hanya login by guest
+tapi juga register login bekerja sempurna. walaupun emang gak perlu konfirmasi email saat registrasi."*
+
+### 28.1 Analisis smali (bukti, bukan karangan)
+
+| Temuan | Bukti |
+|---|---|
+| `loginTypes` menggate layar login | `model/e.cointhreat(String)`: `contains("12")` → `rawturn=true` → `email_password_layout`+`tv_login`+`ll_forgot_regist` GONE (f/a/d :goto_242) dan `cdkey_edit_layout` VISIBLE (:cond_27b) = layar v11/v12 (TAMU + Kode Migrasi, TANPA form email); `contains("\"1\"")` → `influencecomparisonrestore=true` → tombol TAMU tidak disembunyikan (:cond_2d1) |
+| Config server ASLI = `["1","13"]` | replay qsdk.t4game.com/v1/system/init 22 Nov — "1" = config produksi asli game ini |
+| Form email = include terpisah | `hw_view_login_email_with_password_a`: `email_password_layout` default VISIBLE, berisi `et_email`+`et_password` |
+| Kode Migrasi default GONE | `hw_view_login_cdkey`: `cdkey_edit_layout` vis=2 — hanya `"12"` yang menampilkannya |
+| DAFTAR (register) | fragment `f/a/j` (layout `hw_fragment_register`, `tv_signUp`, `cb_agree`, `tv_user_agreement`) → klik `tv_register` di login fragment; submit = `navyshop.onClick` → validasi email (regex `(\w*)[A-Z]` = tolak huruf besar) + sandi (`feedtonight$singersmooth.ironoriginhoblike`) + checkbox persetujuan → `dishbesideshockey$ironoriginhoblike` → POST `/v1/user/registerUser` params `{vcode?, username(EMAIL), password(MD5)}` |
+| vcode TIDAK wajib | `f/a/j.<init>`: `gangclothing = metaData("isNeedVerify")` — meta-data TIDAK ada di AndroidManifest → false → kolom kode verifikasi tidak diwajibkan = **tanpa konfirmasi email** (permintaan owner) |
+| LOGIN email | klik `tv_login` → `timidcompletely.onClick` → `dishbesideshockey$gangclothing` → POST `/v1/user/loginByName` params `{username, password(MD5)}` |
+| Sandi = MD5 hex lowercase | `unnecessarysperrylites.seventygenom.singersmooth(String)`: MessageDigest MD5 + pad 0x0 (32 char) |
+| Respons register/login | `getBoolean("result")` → `getString("data")` → parser session `psalmicvolleyball/cointhreat` (authToken+userData wajib) — SAMA dengan registerVisitor; gagal → event berisi JSON respons (pesan error server tampil di UI SDK) |
+| Format request SDK | `bindcommunist/singersmooth.singersmooth()`: body POST form-urlencoded `sv=v2&data=<URLEncoder(Base64(JSON params))>&sign=<…>`; HTTP client `bindcommunist/cointhreat` POST `application/x-www-form-urlencoded` |
+| autoLogin | `QuickGameSdkService` POST `/v1/user/autoLogin` params `{authToken}` (token tersimpan klien) |
+| usermode | `cointhreat/…/singersmooth.onLoginFinished`: `usermode = isGuest()?"1":"0"` dikirim ke `/loginchecknative` bersama uid/username/token = akun yang BENAR-BENAR login |
+| Pusat Akun | `/v1/auth/bindMail` params `{uid,email,code,password(MD5)}` (GUEST_REGIST_EMAIL), `/v1/auth/changePassword` params `{uid,oldPassword,newPassword(MD5)}` (MODIYF_PASSWORD), `/v1/auth/getUserInfo` params `{uid}` (GET_USERINFO) |
+
+### 28.2 Perubahan v13 — HANYA classes2.dex (classes.dex byte-identik v11)
+
+1. **init `loginTypes ["12"] → ["1"]`** (mirror server asli `["1","13"]`; "13" tidak diparse `model/e`
+   — tidak berefek). Efek: form email+sandi + tombol LOGIN + link LUPA/DAFTAR muncul; tombol TAMU tetap;
+   **Kode Migrasi hilang** (default GONE, tidak lagi membingungkan).
+2. **`/v1/user/registerUser`** — daftar email+sandi; duplikat → error 20001 "Email sudah terdaftar —
+   silakan LOGIN…"; sukses → session `isGuest:"0"` `openType:"1"` `isNewUser:0` (jalur tracking SDK
+   tetap dilewati — pelajaran v8). Tanpa konfirmasi email (vcode diabaikan).
+3. **`/v1/user/loginByName`** — verifikasi email+sandi; belum terdaftar → 20001 dengan saran DAFTAR;
+   sandi salah → 20002.
+4. **`/v1/user/autoLogin`** — match `authToken`: akun tamu (`account.json`) ATAU akun email
+   (`accounts.json`); tidak cocok → fallback akun tamu (jalur lama).
+5. **Multi-akun `server/data/accounts.json`** (class baru `UserAccounts`): email/uid/token/passMd5/
+   createTime, atomic tmp+rename (pola `AccountStore`), uid = timestamp unik, token = 32 hex acak.
+6. **`loginchecknative` (5050) pakai query params SDK** (uid/username/token/usermode) → thirdParams
+   sesuai akun yang login + disimpan sebagai AKUN AKTIF; **`enterGame`/`loginGame` (5050/5051) ikut
+   akun aktif** (fallback akun tamu) — data karakter per-akun.
+7. **Pusat Akun**: `/v1/auth/bindMail` (tambah email+sandi ke akun AKTIF — uid/token TIDAK berubah,
+   progres game aman), `/v1/auth/changePassword` (verifikasi sandi lama; akun tamu diarahkan ke
+   Bind Email), `/v1/auth/getUserInfo`, `/v1/user/sendCodeByEmail` (sukses — kode tak diperlukan),
+   `/v1/user/findPassByEmail` (pesan jujur: tidak ada email keluar offline).
+8. **Dashboard**: panduan login diperbarui (LOGIN/DAFTAR/TAMU + Pusat Akun), deskripsi bahasa-manusia
+   untuk 8 endpoint baru, init menyebut `loginTypes ["1"]`.
+
+### 28.3 Verifikasi
+
+| Item | Hasil |
+|---|---|
+| Smoke desktop **16/16 PASS** | init loginTypes ["1"]; registerVisitor guest persisten; registerUser sukses/duplikat/salah-sandi/belum-daftar; autoLogin tamu/email/tak-dikenal; loginchecknative uid+usermode=0 (email) → `userid` = uid email; loginGame ACK echo userId email; enterGame `user._id` = uid email; bindMail guest → login email baru **uid+token sama** (progres aman); changePassword salah/benar→login sandi baru; getUserInfo GET+POST; dashboard 4000; GetServerList 5051 |
+| classes.dex | **byte-identik v11** (sha256 1df64d91…) — SDK 100% original + starter |
+| classes2.dex | **97.316 B** (v12: 84.316 B) — baksmali roundtrip IDENTIK; class lama tak-sentuh byte-identik v12 (termasuk LogcatDumper), +8 class baru/diubah (AccountStore, SdkHandler, SocketIoHandler×4, UserAccounts×2) |
+| Entri zip vs v12 | 6.427 = 6.427; beda HANYA `classes2.dex` + 3 META-INF signature |
+| Toolchain | ECJ 3.33.0 + D8 8.3.37 (dl.google.com) + stub android.jar (kompilasi) + smali/baksmali 2.5.2 |
+| Sign | zipalign + signature verified [v1, v2, v3], keystore sama exp 2056 (install-over OK) |
+| APK final | `release-mod/db-local(MOD-LOCALSERVER-v13).apk` — **202.666.868 B**, sha256 **`3055855a9adc06022d096a7f175753ea2f35d250ceda72e73ba3622d1e85c1fd`** |
+| Source | `rebuild-src/javasrc/` +12 class (baru: `UserAccounts.java`), `rebuild-src/scripts/repack_v13.py` |
+
+### 28.4 Uji device v13 (Langkah C ulang)
+
+1. Install-over v13 → jalankan → layar login SDK **penuh**: kolom email+sandi + tombol **LOGIN**,
+   link **DAFTAR/LUPA**, dan tombol **TAMU (Guest)**.
+2. **TAMU** → registerVisitor (instan) → masuk game — jalur lama tetap utuh (akun tamu lama tidak hilang).
+3. **DAFTAR** → isi email + kata sandi (min. sesuai validasi SDK) → centang persetujuan → langsung
+   masuk game dengan akun email itu.
+4. Keluar, buka lagi → **autoLogin** (akun terakhir) tanpa layar login.
+5. **LOGIN** → email+sandi yang terdaftar → masuk sebagai akun itu (data karakter per-akun).
+6. Dashboard `:4000` → panel **Panduan login** (baru) + deskripsi tiap endpoint baru.
