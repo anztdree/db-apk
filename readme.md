@@ -224,7 +224,7 @@ campur cache lama (folder cache mengikuti escape URL).
 | 2 | `https://configus.sjmobilegame.com/bs/db/android` | `assets/config_BS.properties` `EntryPoint1` — Base64 terverifikasi decode | **Server config aktif** |
 | 3 | `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com/bs/db/android` | `assets/config_BS.properties` `EntryPoint2` | Backup config (Tencent COS) |
 | 4 | `http://qsdk.t4game.com` | `assets/QHinfo` (teks mentah 1:1) | Domain SDK t4game |
-| 5 | `http://119.29.29.29/d?dn=` | di dalam `assets/runtime-dex.jar` → `classes.dex` string #1244 (HTTPDNS Tencent) | resolve domain→IP untuk WebSocket |
+| 5 | `http://119.29.29.29/d?dn=` | di dalam `assets/runtime-dex.jar` → `classes.dex` string #1244 (HTTPDNS Tencent) | HANYA untuk retry POST pelaporan data — bukan WebSocket game (lihat Baris 10 #11) |
 
 **Byte-scan menyeluruh APK** (`tools/urlscan.py`, regex `https?|wss?://` atas 3.668 file):
 total 852 kecocokan mentah, terurai:
@@ -264,22 +264,22 @@ Pemilihan URL game: mode `2` → `tsWebUrl` (jika webVer≥SDK) / `tsUrl`; selai
 
 ```json
 {
-	"testMode": 1,
-	"url": "https://dragonh5cdn.popoh5.com/bs/index-native.html?v=202109150935",
-	"tsUrl": "http://dragon.sjmobilegame.com:82/bs103/index-native.html",
-	"update": "https://dragonh5cdn.popoh5.com/bs/upgrade",
-	"checkTime": 300,
-	"loginServer": "https://login.popoh5.com",
-	"tsLoginServer": "http://118.24.68.91:7003",
-	"loginPort": 610,
-	"loginWebPort": 510,
-	"clientParams": {
-		"hideList": ["1.99","2.99","14.99","59.99","89.99"],
-		"supportLang": [ {"languageName":"English","lang":"en"},
-		                 {"languageName":"Français","lang":"fr"},
-		                 {"languageName":"한국인","lang":"kr"} ],
-		"showCurChannel": "toFacebook"
-	}
+        "testMode": 1,
+        "url": "https://dragonh5cdn.popoh5.com/bs/index-native.html?v=202109150935",
+        "tsUrl": "http://dragon.sjmobilegame.com:82/bs103/index-native.html",
+        "update": "https://dragonh5cdn.popoh5.com/bs/upgrade",
+        "checkTime": 300,
+        "loginServer": "https://login.popoh5.com",
+        "tsLoginServer": "http://118.24.68.91:7003",
+        "loginPort": 610,
+        "loginWebPort": 510,
+        "clientParams": {
+                "hideList": ["1.99","2.99","14.99","59.99","89.99"],
+                "supportLang": [ {"languageName":"English","lang":"en"},
+                                 {"languageName":"Français","lang":"fr"},
+                                 {"languageName":"한국인","lang":"kr"} ],
+                "showCurChannel": "toFacebook"
+        }
 }
 ```
 
@@ -448,27 +448,50 @@ MainActivity.onCreate
 
 ---
 
-## 7. Implikasi untuk Rencana Local Server (127.0.0.1:<port>) — RENCANA, bukan fakta
+## 7. DAFTAR PERUBAHAN ENDPOINT KE LOCAL (rencana — setiap baris berlandaskan fakta Bagian 3–6)
 
-Titik penggantian (urutan prioritas), semua titik berlandaskan fakta di atas:
+### 7.1 Prinsip (fakta pendukung)
 
-1. **Config bootstrap** — edit `assets/config_BS.properties` EntryPoint1 (Base64) →
-   arahkan ke local server yang menyajikan `setting_BS_Android.bin` (XOR `DragonBall`,
-   JSON sama seperti 4.C dengan `url`/`update`/`loginServer` ke 127.0.0.1).
-   Alternatif tanpa rebuild APK: hosts/DNS/spoof
-   `configus.sjmobilegame.com` + `dragonh5cdn.popoh5.com` + `login.popoh5.com` ke 127.0.0.1
-   (`base-config cleartextTrafficPermitted="true"` — HTTP polos legal).
-2. **URL game (`url`)** — HTML+JS bisa di-host local (zip terdekripsi penuh tersedia;
-   APK juga membawa salinan v11220 di assets).
-3. **Update server (`update`)** — mode offline: sediakan `base.version`=110 dan
-   `resource.version` sama dengan lokal → update dilewati.
-4. **Login server (socket.io v2.1.2, port 610)** — perlu server EIO=3 yang menjawab
-   `GetServerList` + verify `loginKey` (TEA di JS).
-5. **Game/chat/dungeon server** — URL dinamis dari `GetServerList`; server local cukup
-   mengembalikan entri berisi URL 127.0.0.1:<port lain>.
-6. **Anti-galat**: hapus `Android/data/com.db.local/files/game/` saat ganti URL game
-   (folder = escape URL; titik dua juga jadi `#0A`), dan ingat fallback
-   `serversetting.json` di host game menyebut `login.popoh5.com:610`.
+- `base-config cleartextTrafficPermitted="true"` → HTTP polos ke `127.0.0.1` LEGAL,
+  tanpa perlu mengubah manifest/security config (Bukti: `res/xml/network_security_config.xml`).
+- Satu port HTTP (contoh 8080) cukup untuk config + CDN game + update;
+  satu port socket.io (contoh 610) untuk login; game/chat/dungeon port bebas —
+  URL-nya datang dari respons `GetServerList` (kontrak 4.G).
+- Folder cache device mengikuti escape URL → setelah mengganti URL, WAJIB hapus
+  `Android/data/com.db.local/files/game/` (Bukti: 3.1–3.2).
+
+### 7.2 Tabel perubahan endpoint (list yang diminta)
+
+| # | Endpoint / field asli (FAKTA) | Nilai BARU untuk local | Cara ubah (bukti lokasi) | Server local harus menyediakan |
+|---|---|---|---|---|
+| 1 | `assets/config_BS.properties` EntryPoint1 = `https://configus.sjmobilegame.com/bs/db/android` | `http://127.0.0.1:8080/bs/db/android` | Edit asset (Base64 re-encode) → rebuild APK; ATAU spoof hosts/domain ke 127.0.0.1 | `GET /bs/db/android/setting_BS_Android.bin` → JSON (4.C dengan field diubah) di-XOR `DragonBall`; `GET /bs/db/android/com_db_local.bin` → opsional (JSON override/kosong di-XOR `DragonBall`) — boot tetap jalan bila 404 (Baris 10 #12) |
+| 2 | field `url` = `https://dragonh5cdn.popoh5.com/bs/index-native.html?v=202109150935` | `http://127.0.0.1:8080/bs/index-native.html` | Di dalam JSON `setting_BS_Android.bin` | Static file: `index-native.html` + `manifest.json` + `js/*` + `resource/*` (salinan dari zip terdekripsi; atau unduh v11390 sekali dari CDN lama) |
+| 3 | field `update` = `https://dragonh5cdn.popoh5.com/bs/upgrade` | `http://127.0.0.1:8080/bs/upgrade` | idem | `GET base.version` (=110), `GET resource.version` (=11220 untuk offline penuh; =11390 bila pakai resource baru), `GET size.json`, `GET upgrade.json`, `GET *.zip` (protokol 4.E; bila versi == lokal, update dilewati) |
+| 4 | `loginServer` = `https://login.popoh5.com` + `loginPort` = 610 | `http://127.0.0.1` + `loginPort` = 610 | idem | Server socket.io **v2.1.2 (EIO=3)** di port 610: handshake (`96:0{...}`) + event login + `GetServerList` (kontrak 4.G) + verify `loginKey` (TEA) |
+| 5 | `loginWebPort` = 510 | 510 (opsional) | idem | Web-mode login — native tidak memakainya (uji live: belum dibuka) |
+| 6 | `serverItem.url` / `.chaturl` / `.dungeonurl` (dinamis dari GetServerList — tidak ada di APK) | `http://127.0.0.1:<port_game>` / `<port_chat>` / `<port_dungeon>` | Isi respons `GetServerList` dari server local kita | Server socket.io per layanan game/chat/dungeon |
+| 7 | Fallback `{host game}/resource/properties/serversetting.json` = `login.popoh5.com:610` | `loginserver`: `http://127.0.0.1:610` | File statis di host game local (Bukti 4.F) | `GET /bs/resource/properties/serversetting.json` |
+| 8 | `tsUrl` / `tsLoginServer` (mode TS) | opsional → local atau biarkan mati | idem JSON config | Tidak perlu untuk mode normal |
+| 9 | HTTPDNS `http://119.29.29.29/d?dn=` | **TIDAK PERLU DIUBAH** | Baris 10 #11 — hanya dipakai retry POST pelaporan data | — |
+| 10 | `QHinfo` (qsdk.t4game.com) + SDK Facebook/Google/Adjust/AppsFlyer/Line | **TIDAK PERLU DIUBAH** untuk gameplay | byte-scan 4.A | Opsional di-stub untuk offline penuh |
+
+### 7.3 Urutan eksekusi (mengikuti urutan boot fakta, Bagian 6)
+
+1. Static HTTP 8080: host salinan file game (dari zip terdekripsi / CDN).
+2. Config bin: buat `setting_BS_Android.bin` (JSON local di-XOR `DragonBall`) + opsional `com_db_local.bin`.
+3. Socket.io v2.1.2 (EIO=3) port 610: handshake + `GetServerList` + verify login.
+4. Edit `config_BS.properties` EntryPoint1 (Base64) → rebuild APK (atau spoof hosts).
+5. Hapus `Android/data/com.db.local/files/game/` → install → uji boot.
+6. `GetServerList` dari local mengembalikan `url`/`chaturl`/`dungeonurl` 127.0.0.1:<port> → uji koneksi game/chat/dungeon.
+
+### 7.4 Checkpoint field-test (BELUM terverifikasi — ditandai jujur, bukan asumsi)
+
+- Format persis payload login verify (`loginKey`/TEA) JS ↔ login server: perlu capture
+  login live untuk kontrak 1:1 sebelum ditiru.
+- Perilaku HTTPDNS retry saat POST pelaporan ke 127.0.0.1 gagal: resolve "127.0.0.1"
+  via HTTPDNS belum diketahui hasilnya (pelaporan bukan gameplay-critical).
+- Batasan/handshake lanjutan socket.io v2 (polling→websocket upgrade) perlu dicek
+  di server local buatan sendiri.
 
 ---
 
@@ -524,3 +547,6 @@ Repo `db-apk` di `/home/z/db-apk-analysis/db-apk/`: readme.md ini di-push sebaga
 | 8 | (penguatan) socket.io "v2" | **v2.1.2** — literal `version:"2.1.2"` di socket.io.min APK; handshake EIO=3 live | JS APK + curl |
 | 9 | (penguatan) ThinkingData appId | `da5e91639fc948399ba6c9523f593944`, serverUrl `https://ssweb.episodezz.com` | string `ThinkingdataAppId=` di main.min live |
 | 10 | (penguatan) base.version/resource.version update | juga dibaca dari FILE LOKAL dulu (FileInputStream) sebelum fallback assets | reweavingsiamesedpropertylessnesses.feedtonight |
+| 11 | (penguatan) HTTPDNS "untuk WebSocket" | HTTPDNS HANYA jalur retry POST pelaporan data: `VersionController.a(host)` = GET `119.29.29.29/d?dn={domain}` (timeout 5 s); dari `b(url,body,flag)` — flag 0 = POST langsung, flag 1 = resolve→POST ke IP + header `Host:`; jika resolve kosong → POST gagal; pemanggil `VersionController$2.run()` = POST pertama flag 0, retry flag 1. WebSocket game = Java-WebSocket langsung, tanpa HTTPDNS | dekompilasi `org.egret.launcher.versioncontroller1_0.VersionController` (+ inner class $2) dari runtime-dex.jar |
+| 12 | (baru) `com_db_local.bin` "retry 3x" | Jika download gagal: tampil dialog `unknown_error` TAPI boot TIDAK berhenti — kode lanjut baca `mSdkParams.webVer` (`Float.parseFloat`) dst. Menjelaskan kenapa live 404 namun game tetap boot | `LaunchActivity` (androguard): cabang `if ((v7_9 == null) \|\| (v6_8 == null))` tanpa `return`, dilanjut `Float.parseFloat(...webVer)` |
+| 13 | (baru) downloader config | `LaunchActivity.worktopichardtails(String,int)` = loop retry timeout tumbuh (5×i detik) → GET → XOR `DragonBall` per-byte (`srcData[i] ^ keyData[i % len]`) → parse JSON → return sukses/gagal | dekompilasi `LaunchActivity.worktopichardtails` |
