@@ -926,3 +926,119 @@ Logger = komponen BARU milik APK modifikasi — bukan fakta APK asli (jujur dita
 
 CATATAN push: commit Bagian 15 dibuat lokal; push GitHub menunggu PAT tersedia kembali
 (sandbox reset menghapus kredensial; tidak ada token tersimpan di workspace).
+
+---
+
+## 16. PETA FINAL TERKONFIRMASI OWNER + HASIL REBUILD APK (22 Nov 2026)
+
+Owner konfirmasi "cocok" atas peta di bawah ini (22 Nov 2026). Revisi tunggal dari Bagian 15:
+**port login socket.io 9529 → 5050** — alasan owner: `login.popoh5.com:610` adalah bagian dari
+**CONFIG UTAMA GAMEPLAY** (sumber `GetServerList`), jadi masuk keluarga port 5050. Sub-bagian
+15.2/15.3 digantikan oleh 16.2/16.3. Struktur folder 13.1 TIDAK berubah. Peta 12.2 dan 14.B–14.D
+digantikan oleh peta ini.
+
+### 16.1 Kutipan keputusan owner (22 Nov 2026)
+
+1. "login.popoh5.com:610 ini karena sudah masuk config utama gameplay port jadi 5050".
+2. "selebihnya bagus" (peta Opsi B multi-port disetujui).
+3. "cocok" atas peta final lengkap; perintah: "rebuild apk lalu push juga ke github".
+
+### 16.2 Peta port FINAL (terkonfirmasi)
+
+| Layanan (mirror domain asli) | Port FINAL | Port asli | Status |
+|---|---|---|---|
+| Config bin — mirror `configus.sjmobilegame.com:443` | **9527** | 443 → 9527 | listener mini-server |
+| CDN game + upgrade + serversetting.json — mirror `dragonh5cdn.popoh5.com:443` | **9528** | 443 → 9528 | listener mini-server |
+| Login socket.io v2.1.2 EIO=3 — mirror `login.popoh5.com:610` — CONFIG UTAMA GAMEPLAY | **5050** | 610 → 5050 | listener mini-server |
+| API SDK 33 path — mirror `qsdk.t4game.com:80` | **9530** | 80 → 9530 | listener mini-server |
+| Logger/monitoring — **KOMPONEN BARU** (bukan dari APK) | **4000** (fallback 4001) | — | listener mini-server |
+| Cadangan masa depan: chat | **5051** | — | reserved (belum dibuat) |
+| Cadangan masa depan: dungeon | **5052** | — | reserved |
+| HTTPDNS `119.29.29.29:80`; TS `:82`/`:7003`; channel non-aktif; SDK pihak ketiga | tak berubah | tak berubah | TIDAK diubah |
+| game/chat/dungeon dinamis (`GetServerList`) | dinamis — berasal dari login 5050 | dinamis | di luar skop saat ini |
+
+Semua port lolos aturan: >1024 (bind tanpa root), <32768 (di luar ephemeral), bukan port tool
+umum (8080/8000/3000/8888/1080/5555), cleartext HTTP ke 127.0.0.1 legal via NSC (14.A#14).
+
+### 16.3 Peta endpoint FINAL (path identik asli, TANPA prefix /sdk)
+
+| # | Komponen | LAMA | BARU (FINAL) |
+|---|---|---|---|
+| 1a | `config_BS.properties` EntryPoint1 (+debug) | `https://configus.sjmobilegame.com:443/bs/db/android` | `http://127.0.0.1:9527/bs/db/android` |
+| 1b | EntryPoint2 (+debug) — file asset sama | `https://configus-1257066086.cos.na-siliconvalley.myqcloud.com:443/bs/db/android` | `http://127.0.0.1:9527/bs/db/android` |
+| 2 | field `url` | `https://dragonh5cdn.popoh5.com:443/bs/index-native.html?v=202109150935` | `http://127.0.0.1:9528/bs/index-native.html?v=202109150935` |
+| 3 | field `update` | `https://dragonh5cdn.popoh5.com:443/bs/upgrade` | `http://127.0.0.1:9528/bs/upgrade` |
+| 4 | `loginServer` + `loginPort` | `https://login.popoh5.com` + 610 → efektif `https://login.popoh5.com:610` | `http://127.0.0.1` + **5050** → efektif `http://127.0.0.1:5050` |
+| 4b | `loginWebPort` | 510 | **5050** (opsional, konsistensi; native tidak memakainya) |
+| 5 | `serversetting.json` | URL `https://dragonh5cdn.popoh5.com:443/bs/resource/properties/serversetting.json?v=<random>`; isi `{"loginserver":"https://login.popoh5.com:610","requireSDK":false}` | URL `http://127.0.0.1:9528/bs/resource/properties/serversetting.json`; isi `{"loginserver":"http://127.0.0.1:5050","requireSDK":false}` |
+| 6 | `assets/QHinfo` | `http://qsdk.t4game.com` (22 B, tanpa slash) | `http://127.0.0.1:9530` (21 B, tanpa slash) |
+
+Fetch config tetap 1:1 asli: `{EntryPoint}/setting_BS_Android.bin?rnd=…` (retry 10) +
+`{EntryPoint}/com_db_local.bin?rnd=…` (retry 3). Field JSON lain TIDAK berubah (1:1 asli):
+`testMode`=1, `tsUrl` asli, `checkTime`=300, `tsLoginServer` asli, `clientParams` asli.
+Envelope SDK tetap 14.A#8; handshake tetap 14.A#7 (EIO=3, pingInterval 25000, pingTimeout 5000).
+
+### 16.4 Folder cache client (rumus escape 3.1)
+
+| URL baru | Folder cache di `files/game/` (dibuat sendiri oleh client) |
+|---|---|
+| game (9528) + update (9528) | `http/127.0.0.1#0A9528/bs/` — SATU folder untuk keduanya |
+
+### 16.5 Arsitektur mini-server FINAL
+
+Satu proses embedded di APK, 5 listener, semua bind `127.0.0.1`, event bus internal ke logger;
+start di jalur boot app SEBELUM downloader config jalan:
+
+| Listener | Tugas |
+|---|---|
+| 9527 | config bin (XOR `DragonBall`) — path asli 1:1 |
+| 9528 | HTTP statis game + upgrade + serversetting.json — path asli 1:1 |
+| 5050 | login socket.io v2.1.2 EIO=3 — config utama gameplay |
+| 9530 | 33 rute POST API SDK — path asli 1:1 |
+| 4000 | logger/monitoring 2 mode (16.6) |
+
+### 16.6 Logger/monitoring 2 MODE (usulan owner dikonfirmasi)
+
+| Mode | Tujuan | Endpoint |
+|---|---|---|
+| ALL (alur) | kronologis menyeluruh lintas 4 port layanan — urutan boot: config → download → login → SDK | `GET /logs?mode=all&limit=N` |
+| PORT (rincian) | detail mendalam satu port: header, body req/resp (preview), status, durasi, error — diagnosis config error di port itu sendiri | `GET /logs?mode=port&port=9527|9528|5050|9530&limit=N` |
+| Dashboard / Stats / Health | status listener + switch mode / counter per layanan / status bind | `GET /`, `GET /stats`, `GET /health` |
+
+Ring buffer in-memory per port + index gabungan; preview body dibatasi 2 KB; khusus port 9527
+log menyertakan JSON config TER-DECODE (pasca-XOR `DragonBall`). Logger = komponen BARU
+milik APK modifikasi — bukan fakta APK asli.
+
+### 16.7 HASIL REBUILD APK (dilakukan 22 Nov 2026 — perubahan asset endpoint saja)
+
+| Item | Nilai |
+|---|---|
+| Sumber | `db-local(Original-DO NOT DELETE!).apk` — sha256 `b308c44d…2218` (LFS pull ulang, identik 14.A#1) |
+| Perubahan | TEPAT 2 entry, selebihnya byte utuh: (a) `assets/config_BS.properties` — 4 kunci Base64 EntryPoint1/1_debug/2/2_debug semuanya → `http://127.0.0.1:9527/bs/db/android` (396 B → 256 B, tanpa trailing newline, format persis asli); (b) `assets/QHinfo` — `http://qsdk.t4game.com` (22 B) → `http://127.0.0.1:9530` (21 B, tanpa slash, tanpa newline) |
+| Metode | zip-swap 2 entry → zipalign (bawaan uber-apk-signer 1.3.0) → re-sign v1+v2+v3 |
+| Keystore | `dblocal-mod.keystore` (alias `dblocalmod`, CN=DB Local Mod,O=Owner,C=ID, RSA 2048, valid s.d. 2056, storepass/keypass `dblocalmod123`) — ikut di-commit di `release-mod/` agar APK update berikutnya WAJIB di-sign pakai keystore yang sama (kalau hilang: uninstall dulu di device sebelum pasang APK sign baru) |
+| Hasil | `release-mod/db-local(MOD-LOCALSERVER).apk` — 105.035.407 byte, sha256 `79d78e7d7db70abb75cd7c2f42818de453cc491b3ae4eea7e0c436cceaa03d65` |
+| Verifikasi | zipalign verified; signature verified [v1,v2,v3]; 2 asset di-extract ulang dari APK final → `cmp` byte-identik dengan sumber modifikasi; jumlah file 3.668 (= asli); META-INF baru `DBLOCALM.SF`/`DBLOCALM.RSA`/`MANIFEST.MF` |
+| TIDAK ada di rebuild ini | mini-server embedded (16.9 #4 — langkah terpisah berikutnya); isi folder `server/`; file `setting_BS_Android.bin` (disajikan server, bukan di APK — fakta 4.C) |
+| Cara instal | sideload; jika APK asli sudah terpasang → UNINSTALL dulu (sertifikat beda), lalu wipe `Android/data/com.db.local/files/game/` sekali setelah pertama jalan |
+
+### 16.8 Status push (22 Nov 2026)
+
+- Commit `87649bc` (Bagian 14 RE-CREATE) + `f73d375` (Bagian 15 RE-CREATE) dibuat ulang dari
+  backup karena dua commit asli (`6b4944a`, `c77c1d6`) hilang saat reset sandbox dan TIDAK
+  pernah sampai GitHub (remote sempat masih di `c03a18f` = Bagian 13; readme backup terbukti
+  prefix persis sehingga re-create aman).
+- Bagian 16 + APK rebuild (LFS `release-mod/`) di-push bersamaan dalam satu rangkaian push.
+- PAT owner dipakai sementara via credential store lokal — TIDAK ditulis di readme.
+
+### 16.9 Urutan implementasi setelah push ini
+
+1. [SELESAI — 16.7] Edit 2 asset APK + rebuild + sign.
+2. Generate `server/bs/db/android/setting_BS_Android.bin` (JSON versi final 16.3, XOR
+   `DragonBall`) + opsional `com_db_local.bin`.
+3. Isi `server/bs/` (index-native.html + manifest.json + js/ + resource/ + upgrade/) dari zip
+   terdekripsi / CDN.
+4. Tulis mini-server (5 listener + logger 2 mode) dan tautkan ke jalur boot app SEBELUM
+   downloader config jalan.
+5. Field-test: capture handshake 5050, envelope SDK 9530, config bin 9527 → kalibrasi 1:1
+   (checkpoint jujur; acuan awal = 14.A#7–8).
