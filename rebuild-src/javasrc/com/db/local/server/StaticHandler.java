@@ -15,6 +15,10 @@ import java.util.concurrent.TimeUnit;
  * Khusus 9527: /bs/db/android/*.bin dilayani LANGSUNG dari assets (fallback cepat,
  * anti-race dengan ekstraksi pertama) dan log menyertakan JSON ter-decode pasca-XOR
  * "DragonBall" (readme 15.6/16.6).
+ * v4 (Bagian 19) — ANTI-RACE EKSTRAKSI TOTAL (akar popup "Server base.version is
+ * Not Exist" — smali LaunchActivity memetakan HTTP 404 → string "404" lalu popup):
+ * SEMUA file yang belum terekstrak ke server/ dilayani LANGSUNG dari assets
+ * (fallback generik: disk dulu → assets). Dua listener kini punya AssetsSource.
  * Log v3 (Bagian 18): teks (js/json/html/…) preview s.d. 2048 B; file biner DILOG
  * KOMPAK "[bin N B]" + respCT (ribuan file resource tidak membanjiri buffer dengan
  * hex — metadata ukuran/status/durasi tetap utuh, arsip NDJSON disk tetap lengkap);
@@ -85,17 +89,30 @@ public final class StaticHandler implements HttpWorker.Handler {
         }
 
         byte[] data = null;
+        String fromAssets = null;
 
         // FAST PATH 9527: bin config langsung dari assets (sebelum ekstraksi selesai)
         if (assets != null && req.path.startsWith("/bs/db/android/")
                 && req.path.endsWith(".bin")) {
             data = assets.read("server_root" + req.path);
+            if (data != null) fromAssets = "fast";   // fast-path 9527 (selalu assets dulu)
         }
 
         File f = resolve(req.path);
         if (data == null) {
             if (f != null && f.isFile() && safe(f)) {
                 data = readAll(f);
+            }
+        }
+
+        // v4 (Bagian 19): fallback generik — file belum terekstrak? ambil dari assets.
+        // Membunuh seluruh race ekstraksi (base.version/resource.version/upgrade.json/
+        // size.json/all.zip/html/js — apa pun yang diminta saat ekstraksi masih jalan).
+        if (data == null && assets != null) {
+            byte[] ad = assets.read("server_root" + req.path);
+            if (ad != null && ad.length > 0) {
+                data = ad;
+                fromAssets = "race";   // file belum terekstrak → anti-race 19.1
             }
         }
 
@@ -122,6 +139,9 @@ public final class StaticHandler implements HttpWorker.Handler {
         e.respLen = data.length;
         e.durMs = System.currentTimeMillis() - t0;
         StringBuilder extra = new StringBuilder(64);
+        if (fromAssets != null) extra.append("sumber=ASSETS (")
+                .append(fromAssets.equals("fast") ? "fast-path 9527" : "file belum terekstrak — anti-race 19.1")
+                .append(") | ");
         extra.append("respCT=").append(ct);
         if (head) extra.append(" (HEAD, tanpa body)");
 

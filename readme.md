@@ -1306,3 +1306,125 @@ nyata sandbox (desktop JVM + browser), bukan rencana.
 - Bagian 18 + `rebuild-src/javasrc/` (10 java: + DiskWriter) + `rebuild-src/scripts/repack_v3.py`
   + APK v3 (LFS) di-commit dan di-push bersamaan.
 - README append-only: Bagian 1–17 TIDAK diubah sedikit pun.
+
+---
+
+## 19. ANTI-RACE POPUP (APK v4) + DASHBOARD LOGGER v4 — jawaban owner "teks sampah / kurang rinci / gak bisa copy" (22 Nov 2026)
+
+Laporan owner setelah uji APK v3 (22 Nov 2026), disertai paste 15 entri log pertama dari dashboard:
+<b>"banyak teks sampah keterangan yg gak perlu . kurang rinci kurang jelas juga, gak bisa copy teks .
+dan ada error itu di apk mohon di benahi"</b>. Dua pekerjaan: (A) akar popup error dibuktikan dari
+smali dan DIPERBAIKI (bukan lagi "perilaku terdokumentasi" — ini bug server kita sendiri);
+(B) dashboard logger v4 ditulis total. Semua angka = hasil uji nyata sandbox.
+
+### 19.1 AKAR POPUP ERROR — BUKTI SMALI (bukan tebakan)
+
+Urutan log owner (paste, 22:08:02–22:08:06):
+
+| t | port | event |
+|---|---|---|
+| 22:08:02.196 | 9527 | setting_BS_Android.bin 200 (687 B) |
+| 22:08:02.262 | 9527 | com_db_local.bin 200 (2 B) |
+| 22:08:03.336 | 9528 | **GET /bs/upgrade/base.version?rnd=… → 404** |
+| 22:08:03.342 | 9528 | **GET /bs/upgrade/resource.version?rnd=… → 404** |
+| 22:08:06.832 | 4000 | EXTRACT "ekstraksi server_root/bs selesai (2758 file)" |
+
+= request version check datang SEBELUM ekstraksi folder upgrade/ selesai (race).
+Bukti konsekuensi 404 di smali `com/zhuhuan/game/LaunchActivity.smali` (protokol update,
+badcode 730–865): helper HTTP memetakan HTTP 404 → string literal `"404"`; kemudian
+`cointhreat(v7,"404")` → `runOnUiThread(new ironoriginhoblike("Server base.version is Not Exist"))`
+→ `goto end` (game berhenti; tidak pernah memuat index-native.html — cocok: log owner TIDAK
+memiliki request html/js sama sekali). Idem `"Server resource.version is Not Exist"`.
+JADI popup error owner = 404 version check buatan server kita sendiri, bukan GetServerList.
+
+Fakta pendukung:
+- File upgrade/ SEMUA ada di mirror (capture live 17.2): base.version=`110`,
+  resource.version=`11390`, upgrade.json, size.json, all.zip 19.385.098 B, base.zip 31.015.076 B.
+  Yang 404 bukan karena hilang — karena BELUM TEREKSTRAK (upgrade/ diekstrak paling akhir,
+  readyEarly v3 dilepas setelah js/ selesai).
+- Urutan versi setelah fix (dibaca dari APK asli): assets/game/base.version=`110`,
+  assets/game/resource.version=`11220` → baseVersionRemote(110) == local(110) = TANPA update
+  base; resVersionRemote(11390) > local(11220) = game menjalankan update resource: fetch
+  upgrade.json → 11220 bukan kunci → fallback `/all.zip?v=…` (19 MB dari 127.0.0.1 — lokal,
+  cepat) → PERILAKU ASLI 1:1 (smali: kunci tidak cocok → `/all.zip?v=`; size.json ikut
+  di-404-check dan ada).
+- Zip inkremental (11386_11390.zip dst) juga TIDAK ADA di CDN live (folder live hanya
+  berisi all/base) — mirror konsisten 1:1.
+
+### 19.2 FIX POPUP — 3 PERUBAHAN KODE
+
+1. **StaticHandler — fallback generik disk→assets (anti-race total)**: bila file tidak ada di
+   server/, dilayani LANGSUNG dari assets APK. Kedua listener kini membawa AssetsSource
+   (ServerCore: cdnHandler juga). Penanda di extra log: `sumber=ASSETS (fast-path 9527)` bila
+   lewat jalur cepat .bin, `sumber=ASSETS (file belum terekstrak — anti-race 19.1)` bila lewat
+   fallback generik — owner bisa lihat persis kapan race terjadi.
+2. **LocalServerStarter — reorder ekstraksi**: `upgrade/` naik ke rank 3 (sebelum `resource/`
+   rank 4) → base.version/resource.version/upgrade.json/size.json terekstrak paling awal
+   sesudah db/+html/js.
+3. **copyAsset ATOMIK**: tulis ke `<nama>.extracting.tmp` lalu `renameTo` — file yang sudah
+   tampak di server/ dijamin UTUH (tidak ada partial file yang dilayani); fallback bila rename
+   gagal = salin byte manual (java.io murni — java.nio.file = API 26+ TIDAK dipakai demi minSdk 21).
+
+Uji anti-race (desktop JVM; docroot sengaja DIKURANGI — folder upgrade/ DIHAPUS — assets
+simulasi lengkap; kondisi persis device saat ekstraksi berjalan):
+
+| Request ke 9528 | Hasil |
+|---|---|
+| /bs/upgrade/base.version | **200** `110` (4 B) — extra "file belum terekstrak" |
+| /bs/upgrade/resource.version | **200** `11390` (5 B) |
+| /bs/upgrade/upgrade.json | **200** 130 B (isi penuh) |
+| /bs/upgrade/size.json | **200** 105 B (isi penuh) |
+| /bs/upgrade/all.zip (HEAD) | **200** |
+| 9527 setting_BS_Android.bin | 200 687 B (fast-path) |
+| 404 tersisa | TIDAK ADA (semua endpoint game terlayani) |
+
+### 19.3 DASHBOARD LOGGER v4 — jawaban 3 keluhan owner
+
+| Keluhan owner | Jawaban v4 |
+|---|---|
+| "banyak teks sampah keterangan yg gak perlu" | seksi "Cara baca (Bagian 18)" + semua paragraf penjelasan DIHAPUS TOTAL; dashboard kini = header 1 baris (LOGGER v4 :port + uptime/seq/counter/arsip) + kontrol 1 baris + tabel. Tanpa teks lain. |
+| "kurang rinci kurang jelas" | klik baris → blok TERSTRUKTUR: **REQUEST** (method + URL penuh `http://127.0.0.1:<port><path>` + header per-baris + body), **RESPON** (status + body), **EXTRA**, **ERROR**, **SEMUA (teks polos)**. JSON otomatis di-pretty (JSON config XOR ter-decode ikut pretty — indent 2). Filter: Mode ALL/PORT, Port, Kind, Status (2xx/3xx/4xx/5xx/error), Cari subset, Limit s.d. semua buffer. Kolom tabel: # / waktu / port / kind / method / path / st / dur / req / resp. |
+| "gak bisa copy teks" | `user-select:text` seluruh halaman + tombol **salin** per-baris (kolom terakhir) dan per-blok detail + **Salin TSV** (kolom tabel bersih, tab-separated) + **Salin JSON** (array entri UTUH: headers/req/resp/extra/error). Rantai clipboard: navigator.clipboard → execCommand('copy') → modal "Salin manual — Ctrl+C" dengan teks otomatis terpilih (untuk browser HTTP biasa) + toast konfirmasi "tersalin N karakter". |
+
+Uji browser nyata (agent-browser, dashboard dari server desktop):
+| Uji | Hasil |
+|---|---|
+| Desktop 1280 px | tabel bersih live, tanpa teks sampah (screenshot `rebuild/work/dashboard-v4-desktop.png`) |
+| Mobile 390 px | kontrol wrap rapi, tabel scroll horizontal (screenshot `dashboard-v4-mobile.png`) |
+| Klik baris base.version | blok REQUEST/RESPON/EXTRA/SEMUA tampil; EXTRA = `sumber=ASSETS (file belum terekstrak — anti-race 19.1) \| respCT=text/plain` |
+| Klik baris 9527 bin | EXTRA: DECODED-XOR di-pretty (JSON indent 2, `loginServer: http://127.0.0.1`, `update: http://127.0.0.1:9528/bs/upgrade`) |
+| Tombol salin | headless tanpa izin clipboard → modal fallback terbuka, teks terpilih 295 char (rantai fallback bekerja) |
+| Salin TSV | modal berisi TSV 11 kolom bersih (seq/waktu/port/kind/method/path/status/durMs/reqLen/respLen/error) |
+| Filter Status=error | 0 visible / 11 hidden (semua entri 200 — benar) |
+| **Banjir 6.000 req / 1,3 dtk (4.644 req/s)** | seq 6.008; **droppedGlobal 0; droppedPort semua 0**; arsip NDJSON **6.008 baris == seq (100% utuh)** |
+
+### 19.4 HASIL APK v4 + verifikasi menyeluruh
+
+| Item | Nilai |
+|---|---|
+| Sumber | APK asli (sha256 b308c44d…2218) — BUKAN v2/v3 |
+| Replaced | `classes.dex` (starter — byte-identik v2/v3), `assets/config_BS.properties` (256 B identik artefak), `assets/QHinfo` (21 B identik) |
+| Added | `classes2.dex` **63.120 B** (10 class — baksmali verifikasi di APK ter-sign: string "anti-race 19.1", "LOGGER v4", `extracting.tmp`/`renameTo`, rank `upgrade` ada), `assets/server_root/**` 2.758 file (byte-identik v2/v3) |
+| Entri | 6.427 (= v2/v3) |
+| Sign | keystore SAMA `dblocalmod` (CN=DB Local Mod, O=Owner, C=ID, exp 2056) — **zipalign verified; signature verified [v1, v2, v3]** |
+| File | `release-mod/db-local(MOD-LOCALSERVER-v4).apk` — **202.650.484 B** (kebetulan sama dengan v3 — terbukti konten beda: dex v4 214f1c94… vs v3 9f1c0bd7…; 63.120 vs 57.384 B), sha256 **e1a4f3b5c32d2a4b3e1321076c3a5dc3e87b5872c00f73f714a940645d803535** |
+| Tool | ECJ 3.33.0 + D8 8.3.37 (r8) + baksmali 2.5.2 (fat) + uber-apk-signer 1.3.0 (di /home/z/my-project — jar TIDAK di-commit) |
+
+### 19.5 Perilaku yang diharapkan di device setelah v4 (jujur)
+
+1. Popup "Server base.version is Not Exist" / "Server resource.version is Not Exist" HILANG —
+   version check selalu 200 (fallback assets menutup seluruh race ekstraksi).
+2. Setelah itu game berlanjut: update resource (11390 > 11220) → download all.zip 19 MB dari
+   9528 lokal → ekstraksi oleh game sendiri → load index-native.html → socket.io 5050.
+3. **Jika kemudian muncul popup pada TAHAP LOGIN (GetServerList)** — itu batasan 17.7#2 yang
+   TIDAK berubah (balasan daftar server game/chat/dungeon TIDAK dikarang tanpa keputusan
+   owner). Log 5050 di dashboard v4 kini memperlihatkan event `42[…GetServerList…]` tepat
+   yang dikirim game — dasar putusan berikutnya.
+4. Dashboard: `http://127.0.0.1:4000/` — semua log bisa disalin (per-baris/per-blok/TSV/JSON);
+   arsip penuh tetap di `/download?latest=1` dan `Android/data/com.db.local/server/logs/`.
+
+### 19.6 Status push
+
+- Bagian 19 + `rebuild-src/javasrc/` (10 java) + `rebuild-src/scripts/repack_v4.py` + APK v4
+  (LFS) di-commit dan di-push bersamaan.
+- README append-only: Bagian 1–18 TIDAK diubah sedikit pun.

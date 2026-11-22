@@ -37,7 +37,10 @@ public final class ServerCore {
                                     final StaticHandler.AssetsSource assets,
                                     final CountDownLatch readyEarly) {
         final StaticHandler configHandler = new StaticHandler(docroot, assets, null, LoggerCore.PORT_CONFIG);
-        final StaticHandler cdnHandler = new StaticHandler(docroot, null, readyEarly, LoggerCore.PORT_CDN);
+        // v4 (Bagian 19): CDN handler JUGA dapat AssetsSource — fallback generik
+        // anti-race ekstraksi (base.version dkk. dilayani dari assets saat ekstraksi
+        // belum selesai → popup "Server base.version is Not Exist" tidak pernah terjadi)
+        final StaticHandler cdnHandler = new StaticHandler(docroot, assets, readyEarly, LoggerCore.PORT_CDN);
         final SdkHandler sdk = new SdkHandler();
         final SocketIoHandler login = new SocketIoHandler();
 

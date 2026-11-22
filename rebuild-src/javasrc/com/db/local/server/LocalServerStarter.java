@@ -143,26 +143,53 @@ public final class LocalServerStarter {
     }
 
     private static int rank(String name) {
+        // v4 (Bagian 19): upgrade/ DINAIKKAN ke rank 3 (sebelum resource/) —
+        // base.version/resource.version/upgrade.json/size.json tersedia paling awal;
+        // resource/ (3.239 file) paling akhir karena paling lama
         if ("db".equals(name)) return 0;
         if ("index-native.html".equals(name) || "manifest.json".equals(name)
                 || "index.html".equals(name) || "manifest_ts.json".equals(name)
                 || "base.version".equals(name) || "resource.version".equals(name)) return 1;
         if ("js".equals(name)) return 2;
-        if ("resource".equals(name)) return 3;
-        return 4;
+        if ("upgrade".equals(name)) return 3;
+        if ("resource".equals(name)) return 4;
+        return 5;
     }
 
     private static void copyAsset(AssetManager am, String assetPath, File target) {
         InputStream in = null;
         OutputStream out = null;
+        File tmp = new File(target.getParentFile(), target.getName() + ".extracting.tmp");
         try {
             File parent = target.getParentFile();
             if (parent != null && !parent.exists()) parent.mkdirs();
             in = am.open(assetPath);
-            out = new FileOutputStream(target);
+            // v4 (Bagian 19): tulis ke nama sementara lalu RENAME ATOMIK — file yang
+            // sudah tampak di server/ dijamin UTUH (tidak ada yang dilayani setengah)
+            out = new FileOutputStream(tmp);
             byte[] buf = new byte[65536];
             int r;
             while ((r = in.read(buf)) > 0) out.write(buf, 0, r);
+            out.flush();
+            out.close(); out = null;
+            if (!tmp.renameTo(target)) {
+                // rename gagal (target ada?) — salin byte manual (java.io murni,
+                // java.nio.file = API 26+ dilarang demi minSdk 21)
+                java.io.FileInputStream fin = new java.io.FileInputStream(tmp);
+                try {
+                    java.io.FileOutputStream fout = new java.io.FileOutputStream(target);
+                    try {
+                        byte[] buf2 = new byte[65536];
+                        int r2;
+                        while ((r2 = fin.read(buf2)) > 0) fout.write(buf2, 0, r2);
+                    } finally {
+                        fout.close();
+                    }
+                } finally {
+                    fin.close();
+                }
+                tmp.delete();
+            }
         } catch (IOException ioe) {
             LoggerCore.Entry e = new LoggerCore.Entry();
             e.port = LoggerCore.PORT_LOGGER;
@@ -175,6 +202,7 @@ public final class LocalServerStarter {
         } finally {
             try { if (in != null) in.close(); } catch (IOException ignored) {}
             try { if (out != null) out.close(); } catch (IOException ignored) {}
+            if (tmp.exists()) tmp.delete();
         }
     }
 }
