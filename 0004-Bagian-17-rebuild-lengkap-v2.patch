@@ -1,0 +1,2194 @@
+From 4dd3bc9350ef844c657992a3b846a51a2ca9e54e Mon Sep 17 00:00:00 2001
+From: Z User <z@container>
+Date: Sun, 22 Nov 2026 13:03:30 +0000
+Subject: [PATCH] =?UTF-8?q?REBUILD=20LENGKAP=20v2=20(Bagian=2017):=2016.9?=
+ =?UTF-8?q?=20#2/#3/#4=20selesai=20=E2=80=94=20setting=5FBS=5FAndroid.bin?=
+ =?UTF-8?q?=20(XOR=20DragonBall,=20port=205050,=20roundtrip=20valid),=20se?=
+ =?UTF-8?q?rver/bs/=20mirror=20LIVE=20CDN=201:1=20(index-native.html=20107?=
+ =?UTF-8?q?92B=20byte-identik,=20js=2025,=20resource=203239,=20upgrade=20l?=
+ =?UTF-8?q?engkap=20+=20zips=20asli=2031015076/19385098),=20mini-server=20?=
+ =?UTF-8?q?embedded=20classes2.dex=205=20listener=20(9527=20config+decode?=
+ =?UTF-8?q?=20log=20/=209528=20CDN=20/=205050=20socket.io=20EIO=3D3=20hand?=
+ =?UTF-8?q?shake=20103=20byte=201:1=20capture=20live=20/=209530=20envelope?=
+ =?UTF-8?q?=20/=204000=20logger=202=20mode)=20+=20smali=20patch=20Applicat?=
+ =?UTF-8?q?ion.onCreate=20(+72B);=20sign=20v1v2v3=20keystore=20sama;=20sha?=
+ =?UTF-8?q?256=20bf403c4d=E2=80=A6,=206427=20entri?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ readme.md                                     | 142 +++++
+ .../com/db/local/server/HttpWorker.java       | 180 +++++++
+ .../javasrc/com/db/local/server/JsonUtil.java |  54 ++
+ .../db/local/server/LocalServerStarter.java   | 165 ++++++
+ .../com/db/local/server/LoggerCore.java       | 190 +++++++
+ .../com/db/local/server/LoggerHandler.java    | 143 +++++
+ .../com/db/local/server/SdkHandler.java       |  42 ++
+ .../com/db/local/server/ServerCore.java       | 114 ++++
+ .../com/db/local/server/SocketIoHandler.java  | 505 ++++++++++++++++++
+ .../com/db/local/server/StaticHandler.java    | 198 +++++++
+ rebuild-src/scripts/capture_login.py          |  63 +++
+ rebuild-src/scripts/capture_login2.py         |  76 +++
+ rebuild-src/scripts/onepiece_decrypt.py       |  75 +++
+ rebuild-src/scripts/repack.py                 |  98 ++++
+ release-mod/db-local(MOD-LOCALSERVER-v2).apk  |   3 +
+ 15 files changed, 2048 insertions(+)
+ create mode 100644 rebuild-src/javasrc/com/db/local/server/HttpWorker.java
+ create mode 100644 rebuild-src/javasrc/com/db/local/server/JsonUtil.java
+ create mode 100644 rebuild-src/javasrc/com/db/local/server/LocalServerStarter.java
+ create mode 100644 rebuild-src/javasrc/com/db/local/server/LoggerCore.java
+ create mode 100644 rebuild-src/javasrc/com/db/local/server/LoggerHandler.java
+ create mode 100644 rebuild-src/javasrc/com/db/local/server/SdkHandler.java
+ create mode 100644 rebuild-src/javasrc/com/db/local/server/ServerCore.java
+ create mode 100644 rebuild-src/javasrc/com/db/local/server/SocketIoHandler.java
+ create mode 100644 rebuild-src/javasrc/com/db/local/server/StaticHandler.java
+ create mode 100644 rebuild-src/scripts/capture_login.py
+ create mode 100644 rebuild-src/scripts/capture_login2.py
+ create mode 100644 rebuild-src/scripts/onepiece_decrypt.py
+ create mode 100644 rebuild-src/scripts/repack.py
+ create mode 100644 release-mod/db-local(MOD-LOCALSERVER-v2).apk
+
+diff --git a/readme.md b/readme.md
+index 68587f6..5e0132c 100644
+--- a/readme.md
++++ b/readme.md
+@@ -1042,3 +1042,145 @@ milik APK modifikasi — bukan fakta APK asli.
+    downloader config jalan.
+ 5. Field-test: capture handshake 5050, envelope SDK 9530, config bin 9527 → kalibrasi 1:1
+    (checkpoint jujur; acuan awal = 14.A#7–8).
++
++---
++
++## 17. REBUILD LENGKAP v2 — 16.9 #2/#3/#4 SELESAI (22 Nov 2026)
++
++Bagian ini menjawab protes owner ("rebuild setengah-setengah"): hasil 16.7 hanya menyelesaikan
++16.9 #1 (2 asset). Bagian 17 menyelesaikan #2 (bin config), #3 (isi `server/bs/`), #4 (mini-server
++embedded + patch boot) — SEMUA ke dalam satu APK baru `db-local(MOD-LOCALSERVER-v2).apk`.
++Semua angka di bawah hasil uji nyata di sandbox (bukan rencana).
++
++### 17.1 Port literal XXTEA "onepiece" dibaca ULANG dari smali (koreksi spesifikasi 5.1)
++
++Spesifikasi 5.1 tidak menyebut satu perbedaan kunci yang hanya terlihat dari smali class
++`cointhreat/cointhreat/cointhreat/reweavingsiamesedpropertylessnesses/customreading`
++(= `customreading.nationalcommunitymissing` di jadx; port lama hilang saat reset sandbox):
++
++| Aspek | Spesifikasi 5.1 (lengkapnya di sini) |
++|---|---|
++| `sum` | **KONSTAN = delta 0x9E3779B9** (`mul-long 1 * 0x9e3779b9`) — BUKAN `rounds*delta` yang turun per round. "1 pass" artinya SATU pass p = n-1 → 0 |
++| `e` | **KONSTAN = (delta >> 2) & 3** (dihitung sekali sebelum loop) |
++| `y` iterasi | y awal = v[0]; setiap selesai update v[p], y BERIKUTNYA = v[p] yang baru di-update (= v[p'+1]) |
++| p = 0 | y = v[1] (sudah ter-update), z = v[n-1] (sudah ter-update) |
++| aritmetika | long 64-bit dengan mask32 di tiap komponen MX — hasil modulo 2^32 identik int 32-bit |
++| MX | `mask32(y^sum) + mask32(z^key[(p&3)^e])) ^ (mask32((z>>>5)^(y<<2)) + mask32((z<<4)^(y>>>3))` |
++| pad | byte terakhir = jumlah pad, dibuang TANPA clamp (uji nyata: pad all.zip = 4) |
++| infoinfo.bin | [16:32] ≠ magic → dikembalikan apa adanya (isi "voyage_fancy_radius\|pschent_full_tired" 38 B plaintext) |
++
++Uji ulang dengan port baru — SEMUA CRC VALID dan ukuran PERSIS sama dengan audit:
++`base.zip` 1.233.549 B (161 entri), `all.zip` 9.428.692 B (741 entri), `vvcc.json` 183.712 B
++(1.944 entri peta), `vvcc_tc.json` 10.907 B. Port baru: `rebuild-src/scripts/onepiece_decrypt.py`.
++
++### 17.2 CDN ASLI MASIH HIDUP — isi server/bs/ = salinan LIVE 1:1 (bukan tebakan)
++
++Uji live 22 Nov 2026: `dragonh5cdn.popoh5.com` masih 200 OK untuk SEMUA file. Unduhan nyata:
++
++| File CDN | Ukuran | Keterangan |
++|---|---|---|
++| `/bs/index-native.html` | 10.792 B | identik angka 4.D#1; referensi eksternal hanya privacy parajoymobile + battle-log (di luar skop) |
++| `/bs/manifest.json` | 533 B | 15 js (`initial` 7 + `game` 8) |
++| `/bs/upgrade/base.version` | `110\n` | = assets APK `base.version` (110) |
++| `/bs/upgrade/resource.version` | `11390\n` | = assets APK `resource.version` (11390) |
++| `/bs/upgrade/size.json` | 105 B | `{"base":"31015076",…,"all":19385098}` — persis 4.E |
++| `/bs/upgrade/upgrade.json` | 130 B | persis 4.E |
++| `/bs/upgrade/base.zip` | 31.015.076 B | = angka size.json; 2.616 entri, CRC valid |
++| `/bs/upgrade/all.zip` | 19.385.098 B | = angka size.json; 652 entri, CRC valid |
++| `/bs/resource/properties/serversetting.json` | 73 B | asli `{"loginserver":"https://login.popoh5.com:610","requireSDK":false}` |
++
++FAKTA PENTING (jujur): js di zip APK LEBIH LAMA dari CDN — APK memuat `main.min_7eae4d6e.js`
++(fakta 4.G), CDN `manifest.json` sekarang mereferensikan `main.min_777039fc.js`. Karena itu
++isi `server/bs/js/**` + `resource/**` diambil dari UNION ekstrak CDN `base.zip` + `all.zip`
++(versi v110/11390 yang masih dilayani asli) — BUKAN dari zip dalam APK. Verifikasi: 15 js
++manifest SEMUA ada di pohon; `index-native.html` byte-identik disajikan kembali oleh mini-server.
++
++### 17.3 Pohon `assets/server_root/**` dalam APK v2 (= isi server/ setelah ekstraksi)
++
++```
++server/                          ← Android/data/com.db.local/server/ (SEBELAH files/, 13.1)
++└─ bs/
++   ├─ db/android/setting_BS_Android.bin   687 B  ← JSON final 16.3, XOR "DragonBall", ROUNDTRIP valid
++   ├─ db/android/com_db_local.bin         2 B    ← "{}" XOR (live asli = 404; {} = tanpa override, boot lanjut)
++   ├─ index-native.html                   10.792 B  ← salinan byte-identik CDN
++   ├─ manifest.json                       533 B     ← salinan byte-identik CDN
++   ├─ js/                                 25 file (11,3 MB) ← union CDN
++   ├─ resource/                           3.239 file (118,3 MB) ← union CDN, termasuk
++   │    └─ properties/serversetting.json  66 B ← format tab 1:1, loginserver → http://127.0.0.1:5050
++   └─ upgrade/                            base.version, resource.version, size.json, upgrade.json,
++                                          base.zip (31.015.076 B), all.zip (19.385.098 B) ← byte CDN asli
++```
++
++`setting_BS_Android.bin` di-generate dari `setting_BS_Android_live_fresh.bin` (backup) — decode
++XOR → TEPAT 5 penggantian kontekstual (`url`, `update`, `loginServer`, `loginPort` 610→5050,
++`loginWebPort` 510→5050) → format tab, field lain (testMode=1, tsUrl, checkTime=300,
++tsLoginServer, clientParams) byte-identik → encode ulang. 711 B → 687 B.
++
++### 17.4 Mini-server embedded (16.9 #4) — 9 class Java → `classes2.dex` (37.696 B)
++
++Sumber: `rebuild-src/javasrc/com/db/local/server/` (HttpWorker, JsonUtil, LocalServerStarter,
++LoggerCore, LoggerHandler, SdkHandler, ServerCore, SocketIoHandler, StaticHandler).
++Build: ECJ 3.33.0 (`-source/-target 8`) → D8 8.3.37 (`--min-api 21`, minSdk=21 → ART memuat
++classes2.dex native). `java.util.Base64` TIDAK dipakai (Android API 26+) — encoder sendiri.
++
++| Listener (bind 127.0.0.1) | Perilaku teruji (curl/WS di sandbox) |
++|---|---|
++| 9527 config bin | `/bs/db/android/setting_BS_Android.bin?rnd=…` → 687 B 200; decode XOR valid, `loginPort` 5050; dilayani LANGSUNG dari assets (anti-race ekstraksi); log menyertakan JSON TER-DECODE (16.6); `com_db_local.bin` → `{}` |
++| 9528 CDN | `index-native.html` 10.792 B byte-identik sumber; `serversetting.json` isi baru; `upgrade/*` lengkap; anti-race: tunggu latch ekstraksi tahap awal (db→root→js) maks 60 s |
++| 5050 login socket.io | **PERILAKU 1:1 CAPTURE LIVE** (server asli login.popoh5.com:610 masih hidup, dicapture 22 Nov 2026 — script `rebuild-src/scripts/capture_login2.py`): poll pertama → body PERSIS 103 byte `96:0{"sid":"…20char","upgrades":["websocket"],"pingInterval":25000,"pingTimeout":5000}2:40` (uji: 103 byte ✓), header `Access-Control-Allow-Origin: *` + `Set-Cookie io=<sid>; Path=/; HttpOnly` ✓; POST → `ok` (text/html, 2 B) ✓; long-poll di-hold ✓; sid bodoh → 400 `{"code":1,"message":"Session ID unknown"}` ✓; `2probe`→`3probe`, `2`→`3` ✓; WebSocket upgrade 101 + Sec-WebSocket-Accept ✓ (uji frame nyata: `2probe`→`3probe`, ping `2`→`3`, close `41` di-log). Event `42[...]` di-log APAPA ADANYA — server asli juga tidak membalas event sintetis tanpa login valid, dan mini-server TIDAK mengarang data game (jujur 16.6) |
++| 9530 API SDK | semua path POST/GET → 200 envelope capture live `{"result":false,"data":[],"error":{"id":20000,"message":"Params error"}}` ✓ (kontrak 14.A#8, backup verify-artifacts) |
++| 4000 logger (fallback 4001) | `/` dashboard HTML; `/stats` counter per port; `/health` status bind (uji: 5 listener AKTIF); `/logs?mode=all&limit=N` kronologis naik; `/logs?mode=port&port=9527|9528|5050|9530&limit=N` — 9527 menyertakan `extra` = JSON ter-decode (uji: tampil) ✓; preview body ≤ 2 KB; ring buffer global 2.000 + per-port 400 |
++
++Ekstraksi pertama boot: `assets/server_root/**` → `Android/data/com.db.local/server/**`
++(2.758 file, ±156 MB — device butuh ruang; cache client `files/game/http/127.0.0.1#0A9528/bs/`
++dibuat SENDIRI oleh client, 14.F/16.4 — files/ tidak disentuh server).
++
++### 17.5 Patch boot (16.9 #4b) — smali `Application.onCreate`
++
++`com/zhuhuan/game/Application.smali` (hasil baksmali classes.dex) — sisipan SEBELUM
++`invoke-super`:
++
++```smali
++invoke-static {p0}, Lcom/db/local/server/LocalServerStarter;->start(Landroid/content/Context;)V
++```
++
++classes.dex re-assemble (smali 2.5.2): 6.697.104 → **6.697.176 B** (+72 B instruksi starter).
++`start()` menelan SEMUA exception (boot app TIDAK bisa kena crash oleh mini-server).
++
++### 17.6 HASIL APK v2 + verifikasi menyeluruh
++
++| Item | Nilai |
++|---|---|
++| Sumber | `db-local(Original-DO NOT DELETE!).apk` (sha256 b308c44d…2218) |
++| Entri | asli 3.668 − 3 META-INF lama + classes2.dex + 2.758 server_root + 3 META-INF baru = **6.427** |
++| Replaced | `classes.dex` (+72 B starter), `assets/config_BS.properties` (396→256 B, identik artefak 16.7 byte), `assets/QHinfo` (22→21 B identik) |
++| resources.arsc | tetap STORED (compress=0) — wajib targetSdk 30 |
++| Sign | keystore `dblocalmod` SAMA (CN=DB Local Mod, O=Owner, C=ID, exp 2056) — **APK v1 (79d78e7d…) HARUS DI-UNINSTALL dulu bila terpasang** |
++| Verifikasi | zipalign verified; signature verified **[v1, v2, v3]**; 2.758 file server_root di-extract dari APK → cmp vs pohon sumber = **0 beda**; bin decode JSON valid; starter call terkonfirmasi di `Application.smali` hasil baksmali ULANG dari dex dalam APK; 9 class server ada di classes2.dex |
++| File | `release-mod/db-local(MOD-LOCALSERVER-v2).apk` — **202.638.196 B**, sha256 **bf403c4d9fbfc60b85119212bd1f019b9068954b93684eb5ffa865354fa01bb8** |
++| Tool | baksmali/smali 2.5.2 (classpath Maven), D8/r8 8.3.37, ECJ 3.33.0, uber-apk-signer 1.3.0, git-lfs 3.5.1 (semua di-download ulang di `tools/` — jar TIDAK di-commit) |
++
++### 17.7 Batasan jujur ( checkpoint 16.9 #5 sebagian — yang belum bisa diuji di sandbox)
++
++1. Uji di sandbox = JVM desktop (perilaku HTTP/WS/socket.io 1:1 terkonfirmasi). **Uji device
++   (instal APK, boot game) belum dilakukan** — perlu device/emulator Android, bukan bagian
++   dari lingkungan ini. Checkpoint 16.9 #5 tinggal ini.
++2. GetServerList: mini-server hanya HANDSHAKE + LOG. Balasan daftar server (game/chat/dungeon,
++   16.2 "di luar skop saat ini") TIDAK dikarang — game akan berhenti di login dengan log lengkap
++   di 4000. Kapan pun owner siap, port 5051/5052 (reserved) tinggal ditambah sebagai listener.
++3. Semua request SDK 9530 dijawab envelope "Params error" (yang benar-benar tertangkap live).
++   Respons path spesifik lain TIDAK dikarang.
++4. Battle-log (`log.sjflaregame.com:10000`, 4.D#8) dan privacy page — di luar skop, tidak
++   dimirror (battle-log memang diblokir qcloud di live).
++5. APK membesar 105 MB → 202 MB karena CDN mirror lengkap (js 11 MB + resource 118 MB
++   uncompressed + zips upgrade 50 MB). Alternative penghematan (buang zips upgrade — versi
++   lokal=server sehingga tak pernah diunduh) TIDAK diambil demi 1:1 penuh.
++6. `index-native.html` asli memuat 2 URL pihak ketiga (privacy parajoymobile, battle-log
++   sjflaregame) — tetap apa adanya (mirror 1:1), tidak dimodifikasi.
++
++### 17.8 Status push
++
++- Bagian 17 + `rebuild-src/` (9 java + 4 script) + APK v2 (LFS) di-commit dan di-push bersamaan.
++- README append-only: Bagian 1–16 TIDAK diubah sedikit pun.
++- git-lfs 3.5.1 dipasang lokal (`~/.local/bin`) — sandbox reset sebelumnya menghapus binary;
++  objek LFS lama (APK v1 105 MB) terverifikasi MASIH ADA di GitHub LFS (uji batch API 22 Nov).
+diff --git a/rebuild-src/javasrc/com/db/local/server/HttpWorker.java b/rebuild-src/javasrc/com/db/local/server/HttpWorker.java
+new file mode 100644
+index 0000000..2411e99
+--- /dev/null
++++ b/rebuild-src/javasrc/com/db/local/server/HttpWorker.java
+@@ -0,0 +1,180 @@
++package com.db.local.server;
++
++import java.io.BufferedInputStream;
++import java.io.IOException;
++import java.io.InputStream;
++import java.io.OutputStream;
++import java.net.Socket;
++import java.net.SocketTimeoutException;
++import java.nio.charset.StandardCharsets;
++import java.util.HashMap;
++import java.util.Map;
++
++/**
++ * Satu koneksi HTTP: parse request line + header + body (Content-Length, cap 8 MB),
++ * dispatch ke handler per port, tulis respons. Keep-alive HTTP/1.1 sederhana
++ * (loop baca berikutnya bila client minta keep-alive).
++ */
++public final class HttpWorker implements Runnable {
++    public static final int MAX_BODY = 8 * 1024 * 1024;
++    public static final int MAX_HEADER = 64 * 1024;
++
++    public static final class Request {
++        public String method, rawPath, path, query;
++        public Map<String, String> headers = new HashMap<>();
++        public byte[] body = new byte[0];
++
++        public String header(String name) {
++            return headers.get(name.toLowerCase());
++        }
++        public String q(String name) {
++            if (query == null) return null;
++            String[] parts = query.split("&");
++            for (String p : parts) {
++                int eq = p.indexOf('=');
++                if (eq > 0 && p.substring(0, eq).equals(name)) return p.substring(eq + 1);
++            }
++            return null;
++        }
++    }
++
++    public interface Handler {
++        /** tulis respons ke out; kembalikan true bila respons terkirim dan keep-alive boleh lanjut */
++        boolean handle(Request req, OutputStream out, Socket sock) throws IOException;
++    }
++
++    private final Socket sock;
++    private final Handler handler;
++    private final int listenerPort;
++
++    public HttpWorker(Socket sock, Handler handler, int listenerPort) {
++        this.sock = sock;
++        this.handler = handler;
++        this.listenerPort = listenerPort;
++    }
++
++    @Override
++    public void run() {
++        try {
++            sock.setSoTimeout(8000);
++            InputStream in = new BufferedInputStream(sock.getInputStream());
++            OutputStream out = sock.getOutputStream();
++            while (true) {
++                Request req;
++                try {
++                    req = readRequest(in);
++                } catch (SocketTimeoutException ste) {
++                    break; // idle timeout keep-alive
++                }
++                if (req == null) break;
++                req.headers.put("__listenerport", String.valueOf(listenerPort));
++                boolean keep = !"close".equalsIgnoreCase(req.header("connection"))
++                        && !"HTTP/1.0".equalsIgnoreCase(req.header("__proto"));
++                boolean ok;
++                try {
++                    ok = handler.handle(req, out, sock);
++                } catch (IOException ioe) {
++                    break;
++                } catch (Throwable t) {
++                    LoggerCore.Entry e = new LoggerCore.Entry();
++                    e.port = sock.getLocalPort();
++                    e.method = req.method; e.path = req.rawPath;
++                    e.status = 500; e.error = "handler: " + t;
++                    LoggerCore.log(e);
++                    ok = false;
++                }
++                if (!ok || !keep) break;
++            }
++        } catch (Throwable ignored) {
++        } finally {
++            try { sock.close(); } catch (IOException ignored) {}
++        }
++    }
++
++    /** null = koneksi ditutup / EOF; lempar SocketTimeoutException bila idle */
++    private Request readRequest(InputStream in) throws IOException {
++        // baca sampai CRLFCRLF
++        StringBuilder head = new StringBuilder(512);
++        int c;
++        int total = 0;
++        boolean sawAny = false;
++        while ((c = in.read()) != -1) {
++            sawAny = true;
++            head.append((char) c);
++            if (++total > MAX_HEADER) return null;
++            int len = head.length();
++            if (len >= 4 && head.charAt(len - 1) == '\n' && head.charAt(len - 2) == '\r'
++                    && head.charAt(len - 3) == '\n' && head.charAt(len - 4) == '\r') {
++                break;
++            }
++        }
++        if (!sawAny) return null;
++        if (head.length() < 4) return null;
++
++        String headStr = head.toString();
++        String[] lines = headStr.split("\r\n");
++        String[] rl = lines[0].split(" ");
++        if (rl.length < 2) return null;
++        Request req = new Request();
++        req.method = rl[0];
++        req.rawPath = rl[1];
++        int qi = rl[1].indexOf('?');
++        req.path = qi >= 0 ? rl[1].substring(0, qi) : rl[1];
++        req.query = qi >= 0 ? rl[1].substring(qi + 1) : null;
++        for (int i = 1; i < lines.length; i++) {
++            int ci = lines[i].indexOf(':');
++            if (ci > 0) {
++                req.headers.put(lines[i].substring(0, ci).trim().toLowerCase(),
++                        lines[i].substring(ci + 1).trim());
++            }
++        }
++        long cl = 0;
++        String clen = req.header("content-length");
++        if (clen != null) {
++            try { cl = Long.parseLong(clen.trim()); } catch (NumberFormatException nfe) { cl = 0; }
++        }
++        if (cl > MAX_BODY) cl = MAX_BODY; // batasi; sisanya diabaikan (dilaporkan di log)
++        if (cl > 0) {
++            byte[] body = new byte[(int) cl];
++            int off = 0;
++            while (off < body.length) {
++                int r = in.read(body, off, body.length - off);
++                if (r < 0) break;
++                off += r;
++            }
++            req.body = body;
++            req.headers.put("__reqLen", String.valueOf(cl));
++        }
++        return req;
++    }
++
++    /* ---------- penulis respons ---------- */
++
++    public static void writeResponse(OutputStream out, int status, String statusText,
++                                     Map<String, String> headers, byte[] body) throws IOException {
++        StringBuilder h = new StringBuilder(256);
++        h.append("HTTP/1.1 ").append(status).append(' ').append(statusText).append("\r\n");
++        if (headers != null) {
++            for (Map.Entry<String, String> e : headers.entrySet()) {
++                h.append(e.getKey()).append(": ").append(e.getValue()).append("\r\n");
++            }
++        }
++        h.append("Content-Length: ").append(body == null ? 0 : body.length).append("\r\n");
++        h.append("\r\n");
++        out.write(h.toString().getBytes(StandardCharsets.ISO_8859_1));
++        if (body != null && body.length > 0) out.write(body);
++        out.flush();
++    }
++
++    public static Map<String, String> baseHeaders(String contentType) {
++        Map<String, String> m = new HashMap<>();
++        if (contentType != null) m.put("Content-Type", contentType);
++        m.put("Connection", "keep-alive");
++        m.put("Server", "db-local-mini");
++        return m;
++    }
++
++    public static byte[] text(String s) {
++        return s.getBytes(StandardCharsets.UTF_8);
++    }
++}
+diff --git a/rebuild-src/javasrc/com/db/local/server/JsonUtil.java b/rebuild-src/javasrc/com/db/local/server/JsonUtil.java
+new file mode 100644
+index 0000000..dde536f
+--- /dev/null
++++ b/rebuild-src/javasrc/com/db/local/server/JsonUtil.java
+@@ -0,0 +1,54 @@
++package com.db.local.server;
++
++/**
++ * Utilitas JSON kecil tanpa dependensi (org.json tidak dipakai agar class bisa
++ * diuji di desktop JVM sebelum di-dex). Hanya untuk membangun respons JSON logger.
++ */
++public final class JsonUtil {
++    private JsonUtil() {}
++
++    public static String esc(String s) {
++        if (s == null) return "";
++        StringBuilder b = new StringBuilder(s.length() + 16);
++        for (int i = 0; i < s.length(); i++) {
++            char c = s.charAt(i);
++            switch (c) {
++                case '"':  b.append("\\\""); break;
++                case '\\': b.append("\\\\"); break;
++                case '\n': b.append("\\n");  break;
++                case '\r': b.append("\\r");  break;
++                case '\t': b.append("\\t");  break;
++                default:
++                    if (c < 0x20) b.append(String.format("\\u%04x", (int) c));
++                    else b.append(c);
++            }
++        }
++        return b.toString();
++    }
++
++    /** nama file → Content-Type HTTP (peta minimum untuk isi game egret) */
++    public static String contentType(String path) {
++        String p = path.toLowerCase();
++        if (p.endsWith(".html") || p.endsWith(".htm")) return "text/html; charset=utf-8";
++        if (p.endsWith(".js"))   return "application/javascript; charset=utf-8";
++        if (p.endsWith(".json")) return "application/json; charset=utf-8";
++        if (p.endsWith(".css"))  return "text/css; charset=utf-8";
++        if (p.endsWith(".png"))  return "image/png";
++        if (p.endsWith(".jpg") || p.endsWith(".jpeg")) return "image/jpeg";
++        if (p.endsWith(".gif"))  return "image/gif";
++        if (p.endsWith(".webp")) return "image/webp";
++        if (p.endsWith(".bmp"))  return "image/bmp";
++        if (p.endsWith(".svg"))  return "image/svg+xml";
++        if (p.endsWith(".mp3"))  return "audio/mpeg";
++        if (p.endsWith(".wav"))  return "audio/wav";
++        if (p.endsWith(".ogg"))  return "audio/ogg";
++        if (p.endsWith(".mp4"))  return "video/mp4";
++        if (p.endsWith(".ttf"))  return "font/ttf";
++        if (p.endsWith(".fnt"))  return "text/plain; charset=utf-8";
++        if (p.endsWith(".xml"))  return "text/xml; charset=utf-8";
++        if (p.endsWith(".txt") || p.endsWith(".version")) return "text/plain; charset=utf-8";
++        if (p.endsWith(".zip"))  return "application/zip";
++        if (p.endsWith(".bin"))  return "application/octet-stream";
++        return "application/octet-stream";
++    }
++}
+diff --git a/rebuild-src/javasrc/com/db/local/server/LocalServerStarter.java b/rebuild-src/javasrc/com/db/local/server/LocalServerStarter.java
+new file mode 100644
+index 0000000..ec40495
+--- /dev/null
++++ b/rebuild-src/javasrc/com/db/local/server/LocalServerStarter.java
+@@ -0,0 +1,165 @@
++package com.db.local.server;
++
++import android.content.Context;
++import android.content.res.AssetManager;
++
++import java.io.File;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.io.InputStream;
++import java.io.OutputStream;
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.List;
++import java.util.concurrent.CountDownLatch;
++
++/**
++ * Titik masuk mini-server di APK modifikasi — dipanggil dari
++ * Application.onCreate (patch smali com/zhuhuan/game/Application.smali)
++ * SEBELUM jalur boot downloader config jalan (peta 16.5).
++ *
++ * - ekstraksi assets/server_root/**  →  Android/data/com.db.local/server/**
++ *   (root SEBELAH files/, fakta 13.1; files/ milik client — TIDAK disentuh)
++ *   urutan ekstraksi: db/ → file kecil root → js/ → resource/ → upgrade/;
++ *   latch readyEarly dilepas setelah js/ selesai (anti-blokir boot CDN 9528)
++ * - 9527 melayani /bs/db/android/*.bin LANGSUNG dari assets (anti-race boot)
++ * - 5 listener bind 127.0.0.1: 9527/9528/5050/9530/4000 (fallback 4001)
++ * - SEMUA exception ditelan (dilaporkan ke logger) — jangan pernah crash app
++ */
++public final class LocalServerStarter {
++    private static volatile boolean started = false;
++
++    private LocalServerStarter() {}
++
++    public static void start(final Context ctx) {
++        if (started) return;
++        started = true;
++        try {
++            final File extBase = ctx.getExternalFilesDir(null);
++            final File base = extBase != null ? extBase.getParentFile() : null;
++            final File serverRoot = new File(base != null ? base : ctx.getFilesDir(), "server");
++            LoggerCore.serverRootPath = serverRoot.getAbsolutePath();
++
++            final CountDownLatch readyEarly = new CountDownLatch(1);
++            final Thread extractor = new Thread(() -> {
++                try {
++                    long n = extractRec(ctx.getAssets(), "server_root", serverRoot, readyEarly, 0);
++                    LoggerCore.extracted = true;
++                    LoggerCore.extractedFiles = n;
++                    readyEarly.countDown(); // jaga-jaga bila folder js/ tidak ditemukan
++                } catch (Throwable t) {
++                    logBoot("ekstraksi gagal: " + t);
++                    readyEarly.countDown();
++                }
++            }, "server-extract");
++            extractor.setDaemon(true);
++            extractor.start();
++
++            final StaticHandler.AssetsSource assets = rel -> {
++                try {
++                    InputStream in = ctx.getAssets().open(rel);
++                    try {
++                        java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
++                        byte[] buf = new byte[8192];
++                        int r;
++                        while ((r = in.read(buf)) > 0) b.write(buf, 0, r);
++                        return b.toByteArray();
++                    } finally {
++                        in.close();
++                    }
++                } catch (IOException ioe) {
++                    return null;
++                }
++            };
++
++            ServerCore.StartResult res = ServerCore.start(serverRoot, assets, readyEarly);
++            logBoot("mini-server aktif; logger di port " + res.loggerPort
++                    + (res.loggerFallback ? " (fallback)" : "") + "; serverRoot=" + serverRoot);
++        } catch (Throwable t) {
++            logBoot("start gagal: " + t);
++        }
++    }
++
++    private static void logBoot(String msg) {
++        LoggerCore.Entry e = new LoggerCore.Entry();
++        e.port = LoggerCore.PORT_LOGGER;
++        e.method = "BOOT";
++        e.path = msg;
++        e.status = 0;
++        LoggerCore.log(e);
++    }
++
++    /** ekstraksi rekursif; latch dilepas setelah folder js/ pada bs/ selesai */
++    static long extractRec(AssetManager am, String assetPath, File targetDir,
++                           CountDownLatch early, long count) throws IOException {
++        String[] list;
++        try {
++            list = am.list(assetPath);
++        } catch (IOException ioe) {
++            return count;
++        }
++        if (list == null || list.length == 0) {
++            copyAsset(am, assetPath, targetDir);
++            return count + 1;
++        }
++        if (!targetDir.exists()) targetDir.mkdirs();
++        List<String> sorted = new ArrayList<>();
++        Collections.addAll(sorted, list);
++        Collections.sort(sorted, (a, b) -> rank(a) - rank(b));
++        for (String name : sorted) {
++            String childAsset = assetPath + "/" + name;
++            File childTarget = new File(targetDir, name);
++            String[] sub;
++            try {
++                sub = am.list(childAsset);
++            } catch (IOException ioe) {
++                sub = null;
++            }
++            if (sub != null && sub.length > 0) {
++                count = extractRec(am, childAsset, childTarget, early, count);
++            } else {
++                copyAsset(am, childAsset, childTarget);
++                count++;
++            }
++        }
++        if ("js".equals(targetDir.getName()) && "bs".equals(targetDir.getParentFile().getName())) {
++            early.countDown();
++        }
++        return count;
++    }
++
++    private static int rank(String name) {
++        if ("db".equals(name)) return 0;
++        if ("index-native.html".equals(name) || "manifest.json".equals(name)
++                || "index.html".equals(name) || "manifest_ts.json".equals(name)
++                || "base.version".equals(name) || "resource.version".equals(name)) return 1;
++        if ("js".equals(name)) return 2;
++        if ("resource".equals(name)) return 3;
++        return 4;
++    }
++
++    private static void copyAsset(AssetManager am, String assetPath, File target) {
++        InputStream in = null;
++        OutputStream out = null;
++        try {
++            File parent = target.getParentFile();
++            if (parent != null && !parent.exists()) parent.mkdirs();
++            in = am.open(assetPath);
++            out = new FileOutputStream(target);
++            byte[] buf = new byte[65536];
++            int r;
++            while ((r = in.read(buf)) > 0) out.write(buf, 0, r);
++        } catch (IOException ioe) {
++            LoggerCore.Entry e = new LoggerCore.Entry();
++            e.port = LoggerCore.PORT_LOGGER;
++            e.method = "EXTRACT";
++            e.path = assetPath;
++            e.status = 500;
++            e.error = String.valueOf(ioe);
++            LoggerCore.log(e);
++        } finally {
++            try { if (in != null) in.close(); } catch (IOException ignored) {}
++            try { if (out != null) out.close(); } catch (IOException ignored) {}
++        }
++    }
++}
+diff --git a/rebuild-src/javasrc/com/db/local/server/LoggerCore.java b/rebuild-src/javasrc/com/db/local/server/LoggerCore.java
+new file mode 100644
+index 0000000..074e921
+--- /dev/null
++++ b/rebuild-src/javasrc/com/db/local/server/LoggerCore.java
+@@ -0,0 +1,190 @@
++package com.db.local.server;
++
++import java.util.ArrayDeque;
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.Map;
++import java.util.concurrent.atomic.AtomicLong;
++
++/**
++ * Logger/monitoring 2 MODE (readme 15.6 / 16.6 — komponen BARU, bukan fakta APK asli):
++ *  - mode ALL  : kronologis lintas port layanan (ring buffer global, cap 2000)
++ *  - mode PORT : ring buffer per port (cap 400/port) — header, preview body req/resp
++ *                (dibatasi 2048 byte), status, durasi, error; khusus 9527 menyertakan
++ *                JSON config TER-DECODE pasca-XOR "DragonBall".
++ * Event bus = in-memory singleton (satu proses — tanpa HTTP hop antar layanan).
++ */
++public final class LoggerCore {
++    public static final int PORT_CONFIG = 9527;
++    public static final int PORT_CDN    = 9528;
++    public static final int PORT_LOGIN  = 5050;
++    public static final int PORT_SDK    = 9530;
++    public static final int PORT_LOGGER = 4000;
++    public static final int PORT_FALLBACK = 4001;
++    public static final int BODY_PREVIEW_MAX = 2048;
++    public static final int GLOBAL_CAP = 2000;
++    public static final int PORT_CAP = 400;
++
++    public static final class Entry {
++        public long seq;
++        public long ts;
++        public int port;
++        public String method;
++        public String path;
++        public int status;
++        public long durMs;
++        public long reqLen;
++        public long respLen;
++        public String reqPreview;
++        public String respPreview;
++        public String extra;     // mis. JSON config ter-decode (9527) / event socket.io
++        public String error;
++
++        String esc(String s) { return s == null ? "" : JsonUtil.esc(s); }
++
++        public String toJson() {
++            StringBuilder b = new StringBuilder(512);
++            b.append("{\"seq\":").append(seq)
++             .append(",\"ts\":").append(ts)
++             .append(",\"time\":\"").append(esc(fmtTime(ts)))
++             .append("\",\"port\":").append(port)
++             .append(",\"method\":\"").append(esc(method))
++             .append("\",\"path\":\"").append(esc(path))
++             .append("\",\"status\":").append(status)
++             .append(",\"durMs\":").append(durMs)
++             .append(",\"reqLen\":").append(reqLen)
++             .append(",\"respLen\":").append(respLen);
++            if (reqPreview != null)  b.append(",\"reqPreview\":\"").append(esc(reqPreview)).append('"');
++            if (respPreview != null) b.append(",\"respPreview\":\"").append(esc(respPreview)).append('"');
++            if (extra != null)       b.append(",\"extra\":\"").append(esc(extra)).append('"');
++            if (error != null)       b.append(",\"error\":\"").append(esc(error)).append('"');
++            b.append('}');
++            return b.toString();
++        }
++
++        static String fmtTime(long ms) {
++            // ISO lokal sederhana tanpa dependensi kalender eksternal
++            java.util.Calendar c = java.util.Calendar.getInstance();
++            c.setTimeInMillis(ms);
++            return String.format("%04d-%02d-%02d %02d:%02d:%02d.%03d",
++                    c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH) + 1,
++                    c.get(java.util.Calendar.DAY_OF_MONTH), c.get(java.util.Calendar.HOUR_OF_DAY),
++                    c.get(java.util.Calendar.MINUTE), c.get(java.util.Calendar.SECOND),
++                    c.get(java.util.Calendar.MILLISECOND));
++        }
++
++        public String time() { return fmtTime(ts); }
++    }
++
++    public static final class Counter {
++        public long requests, bytesIn, bytesOut, errors;
++        public String toJson() {
++            return "{\"requests\":" + requests + ",\"bytesIn\":" + bytesIn
++                    + ",\"bytesOut\":" + bytesOut + ",\"errors\":" + errors + "}";
++        }
++    }
++
++    private static final Object LOCK = new Object();
++    private static final ArrayDeque<Entry> GLOBAL = new ArrayDeque<>();
++    @SuppressWarnings("unchecked")
++    private static final ArrayDeque<Entry>[] PER_PORT = new ArrayDeque[6];
++    private static final Map<Integer, Counter> COUNTERS = new LinkedHashMap<>();
++    private static final AtomicLong SEQ = new AtomicLong();
++    public static final long STARTED_AT = System.currentTimeMillis();
++    /** status bind per port (diisi ServerCore) */
++    public static final Map<String, String> BINDS = new LinkedHashMap<>();
++    public static volatile boolean fallbackLogger = false;
++    public static volatile String serverRootPath = "";
++    public static volatile boolean extracted = false;
++    public static volatile long extractedFiles = 0;
++
++    static {
++        for (int i = 0; i < PER_PORT.length; i++) PER_PORT[i] = new ArrayDeque<>();
++        for (int p : new int[]{PORT_CONFIG, PORT_CDN, PORT_LOGIN, PORT_SDK, PORT_LOGGER})
++            COUNTERS.put(p, new Counter());
++    }
++
++    private static int slot(int port) {
++        switch (port) {
++            case PORT_CONFIG: return 0;
++            case PORT_CDN:    return 1;
++            case PORT_LOGIN:  return 2;
++            case PORT_SDK:    return 3;
++            case PORT_LOGGER: return 4;
++            default:          return 5;
++        }
++    }
++
++    public static void log(Entry e) {
++        e.seq = SEQ.incrementAndGet();
++        if (e.ts == 0) e.ts = System.currentTimeMillis();
++        Counter c = COUNTERS.get(e.port);
++        synchronized (LOCK) {
++            if (c != null) {
++                c.requests++;
++                c.bytesIn += e.reqLen;
++                c.bytesOut += e.respLen;
++                if (e.status >= 400 || e.error != null) c.errors++;
++            }
++            GLOBAL.addLast(e);
++            while (GLOBAL.size() > GLOBAL_CAP) GLOBAL.pollFirst();
++            ArrayDeque<Entry> q = PER_PORT[slot(e.port)];
++            q.addLast(e);
++            while (q.size() > PORT_CAP) q.pollFirst();
++        }
++    }
++
++    /** mode ALL — kronologis naik, entri N terakhir */
++    public static ArrayList<Entry> latestGlobal(int limit) {
++        synchronized (LOCK) {
++            ArrayList<Entry> all = new ArrayList<>(GLOBAL);
++            int from = Math.max(0, all.size() - Math.max(1, limit));
++            return new ArrayList<>(all.subList(from, all.size()));
++        }
++    }
++
++    /** mode PORT — kronologis naik, entri N terakhir untuk port tsb */
++    public static ArrayList<Entry> latestPort(int port, int limit) {
++        synchronized (LOCK) {
++            ArrayList<Entry> all = new ArrayList<>(PER_PORT[slot(port)]);
++            int from = Math.max(0, all.size() - Math.max(1, limit));
++            return new ArrayList<>(all.subList(from, all.size()));
++        }
++    }
++
++    public static String statsJson() {
++        StringBuilder b = new StringBuilder(256);
++        b.append("{\"startedAt\":").append(STARTED_AT)
++         .append(",\"uptimeMs\":").append(System.currentTimeMillis() - STARTED_AT)
++         .append(",\"ports\":{");
++        boolean first = true;
++        synchronized (LOCK) {
++            for (Map.Entry<Integer, Counter> en : COUNTERS.entrySet()) {
++                if (!first) b.append(',');
++                first = false;
++                b.append('"').append(en.getKey()).append("\":").append(en.getValue().toJson());
++            }
++        }
++        b.append("}}");
++        return b.toString();
++    }
++
++    public static String healthJson() {
++        StringBuilder b = new StringBuilder(256);
++        b.append("{\"serverRoot\":\"").append(JsonUtil.esc(serverRootPath)).append('"')
++         .append(",\"extracted\":").append(extracted)
++         .append(",\"extractedFiles\":").append(extractedFiles)
++         .append(",\"fallbackLogger\":").append(fallbackLogger)
++         .append(",\"binds\":{");
++        boolean first = true;
++        synchronized (LOCK) {
++            for (Map.Entry<String, String> e : BINDS.entrySet()) {
++                if (!first) b.append(',');
++                first = false;
++                b.append('"').append(e.getKey()).append("\":\"").append(JsonUtil.esc(e.getValue())).append('"');
++            }
++        }
++        b.append("}}");
++        return b.toString();
++    }
++}
+diff --git a/rebuild-src/javasrc/com/db/local/server/LoggerHandler.java b/rebuild-src/javasrc/com/db/local/server/LoggerHandler.java
+new file mode 100644
+index 0000000..0b61a00
+--- /dev/null
++++ b/rebuild-src/javasrc/com/db/local/server/LoggerHandler.java
+@@ -0,0 +1,143 @@
++package com.db.local.server;
++
++import java.io.IOException;
++import java.io.OutputStream;
++import java.net.Socket;
++import java.util.ArrayList;
++import java.util.Map;
++
++/**
++ * Listener 4000 (fallback 4001 bila bind gagal) — logger/monitoring 2 MODE (16.6):
++ *   GET /                             → dashboard HTML (status listener + cara pakai)
++ *   GET /stats                        → JSON counter per layanan
++ *   GET /health                       → JSON status bind semua port + info ekstraksi
++ *   GET /logs?mode=all&limit=N        → mode ALL: kronologis lintas port layanan
++ *   GET /logs?mode=port&port=P&limit=N → mode PORT: rincian satu port
++ *                                       (9527 menyertakan extra = JSON config ter-decode)
++ * Body preview dibatasi 2 KB (LoggerCore.BODY_PREVIEW_MAX).
++ */
++public final class LoggerHandler implements HttpWorker.Handler {
++    private final int port;
++
++    public LoggerHandler(int port) { this.port = port; }
++
++    @Override
++    public boolean handle(HttpWorker.Request req, OutputStream out, Socket sock) throws IOException {
++        long t0 = System.currentTimeMillis();
++        LoggerCore.Entry e = new LoggerCore.Entry();
++        e.port = port;
++        e.method = req.method;
++        e.path = req.rawPath;
++        e.reqLen = req.body.length;
++
++        String p = req.path;
++        Map<String, String> h;
++        byte[] body;
++        int status;
++
++        if ("/".equals(p) || "".equals(p)) {
++            status = 200;
++            h = HttpWorker.baseHeaders("text/html; charset=utf-8");
++            body = HttpWorker.text(dashboardHtml());
++        } else if ("/stats".equals(p)) {
++            status = 200;
++            h = HttpWorker.baseHeaders("application/json");
++            body = HttpWorker.text(LoggerCore.statsJson());
++        } else if ("/health".equals(p)) {
++            status = 200;
++            h = HttpWorker.baseHeaders("application/json");
++            body = HttpWorker.text(LoggerCore.healthJson());
++        } else if ("/logs".equals(p)) {
++            String mode = req.q("mode") == null ? "all" : req.q("mode");
++            int limit = 200;
++            try {
++                if (req.q("limit") != null) limit = Integer.parseInt(req.q("limit"));
++            } catch (NumberFormatException nfe) { limit = 200; }
++            limit = Math.max(1, Math.min(limit, 2000));
++            int portFilter = 0;
++            try {
++                if (req.q("port") != null) portFilter = Integer.parseInt(req.q("port"));
++            } catch (NumberFormatException nfe) { portFilter = 0; }
++
++            ArrayList<LoggerCore.Entry> list;
++            if ("port".equals(mode)) {
++                if (portFilter != LoggerCore.PORT_CONFIG && portFilter != LoggerCore.PORT_CDN
++                        && portFilter != LoggerCore.PORT_LOGIN && portFilter != LoggerCore.PORT_SDK) {
++                    status = 400;
++                    h = HttpWorker.baseHeaders("application/json");
++                    body = HttpWorker.text("{\"error\":\"port harus 9527|9528|5050|9530\"}");
++                } else {
++                    status = 200;
++                    h = HttpWorker.baseHeaders("application/json");
++                    list = LoggerCore.latestPort(portFilter, limit);
++                    body = HttpWorker.text(entriesJson(mode, portFilter, list));
++                }
++            } else {
++                status = 200;
++                h = HttpWorker.baseHeaders("application/json");
++                list = LoggerCore.latestGlobal(limit);
++                body = HttpWorker.text(entriesJson(mode, 0, list));
++            }
++        } else {
++            status = 404;
++            h = HttpWorker.baseHeaders("application/json");
++            body = HttpWorker.text("{\"error\":\"gunakan / , /stats , /health , /logs?mode=all|port&port=..&limit=N\"}");
++        }
++
++        h.put("Access-Control-Allow-Origin", "*");
++        HttpWorker.writeResponse(out, status, status == 200 || status == 400 ? "OK" : "Not Found",
++                h, body);
++        e.status = status;
++        e.respLen = body.length;
++        if (body.length <= LoggerCore.BODY_PREVIEW_MAX) e.respPreview = new String(body, java.nio.charset.StandardCharsets.UTF_8);
++        else e.respPreview = new String(body, 0, LoggerCore.BODY_PREVIEW_MAX, java.nio.charset.StandardCharsets.UTF_8) + "…";
++        e.durMs = System.currentTimeMillis() - t0;
++        LoggerCore.log(e);
++        return true;
++    }
++
++    private String entriesJson(String mode, int port, ArrayList<LoggerCore.Entry> list) {
++        StringBuilder b = new StringBuilder(64 + list.size() * 256);
++        b.append("{\"mode\":\"").append(mode).append('"');
++        if (port > 0) b.append(",\"port\":").append(port);
++        b.append(",\"count\":").append(list.size())
++         .append(",\"order\":\"kronologis naik (lama → baru)\",\"entries\":[");
++        for (int i = 0; i < list.size(); i++) {
++            if (i > 0) b.append(',');
++            b.append(list.get(i).toJson());
++        }
++        b.append("]}");
++        return b.toString();
++    }
++
++    private String dashboardHtml() {
++        LoggerCore.Entry[] all = LoggerCore.latestGlobal(50)
++                .toArray(new LoggerCore.Entry[0]);
++        StringBuilder rows = new StringBuilder();
++        for (int i = all.length - 1; i >= 0; i--) {
++            LoggerCore.Entry x = all[i];
++            rows.append("<tr><td>").append(x.time()).append("</td><td>").append(x.port)
++                .append("</td><td>").append(x.method).append(" ").append(x.path)
++                .append("</td><td>").append(x.status).append("</td><td>").append(x.durMs)
++                .append("ms</td></tr>");
++        }
++        StringBuilder b = new StringBuilder(2048);
++        b.append("<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>db-local mini-server logger</title>")
++         .append("<style>body{font-family:monospace;background:#111;color:#ddd;padding:16px}")
++         .append("table{border-collapse:collapse;width:100%}td,th{border:1px solid #444;padding:4px 8px;font-size:12px}")
++         .append("h2{color:#9c9}code{color:#fc6}</style></head><body>")
++         .append("<h2>db-local mini-server — logger (komponen BARU, bukan fakta APK asli)</h2>")
++         .append("<p>Listener: 9527 config bin · 9528 CDN game · 5050 login socket.io EIO=3 · 9530 API SDK · ")
++         .append("port ini = logger (").append(port).append(LoggerCore.fallbackLogger ? ", FALLBACK dari 4000" : "").append(")</p>")
++         .append("<p>Mode 2 arah (readme 16.6):<br>")
++         .append("mode ALL (alur lintas port): <code>GET /logs?mode=all&amp;limit=200</code><br>")
++         .append("mode PORT (rincian satu port): <code>GET /logs?mode=port&amp;port=9527&amp;limit=200</code> — ")
++         .append("9527 menyertakan JSON config ter-decode (XOR DragonBall)</p>")
++         .append("<p><a href=\"/stats\">/stats</a> · <a href=\"/health\">/health</a></p>")
++         .append("<h3>50 request terakhir (baru → lama)</h3>")
++         .append("<table><tr><th>waktu</th><th>port</th><th>request</th><th>status</th><th>durasi</th></tr>")
++         .append(rows)
++         .append("</table></body></html>");
++        return b.toString();
++    }
++}
+diff --git a/rebuild-src/javasrc/com/db/local/server/SdkHandler.java b/rebuild-src/javasrc/com/db/local/server/SdkHandler.java
+new file mode 100644
+index 0000000..cb58437
+--- /dev/null
++++ b/rebuild-src/javasrc/com/db/local/server/SdkHandler.java
+@@ -0,0 +1,42 @@
++package com.db.local.server;
++
++import java.io.IOException;
++import java.io.OutputStream;
++import java.net.Socket;
++import java.util.Map;
++
++/**
++ * Listener 9530 — mirror qsdk.t4game.com:80 (API SDK t4game: 33 path /v1/* + /v2/purchase,
++ * kontrak 14.A#8). Respons = envelope asli hasil capture live (backup verify-artifacts):
++ *   {"result":false,"data":[],"error":{"id":20000,"message":"Params error"}}  (HTTP 200)
++ * Request yang masuk SEMUA di-log (mode PORT menampilkan header/body) untuk diagnosis.
++ * Tidak ada data game yang dikarang — hanya envelope yang benar-benar tertangkap.
++ */
++public final class SdkHandler implements HttpWorker.Handler {
++    public static final String ENVELOPE =
++            "{\"result\":false,\"data\":[],\"error\":{\"id\":20000,\"message\":\"Params error\"}}";
++
++    @Override
++    public boolean handle(HttpWorker.Request req, OutputStream out, Socket sock) throws IOException {
++        long t0 = System.currentTimeMillis();
++        LoggerCore.Entry e = new LoggerCore.Entry();
++        e.port = LoggerCore.PORT_SDK;
++        e.method = req.method;
++        e.path = req.rawPath;
++        e.reqLen = req.body.length;
++        if (req.body.length > 0) e.reqPreview = StaticHandler.preview(req.body);
++
++        Map<String, String> h = HttpWorker.baseHeaders("application/json");
++        h.put("Access-Control-Allow-Origin", "*");
++        byte[] body = HttpWorker.text(ENVELOPE);
++        int status = 200;
++        HttpWorker.writeResponse(out, status, "OK", h, body);
++
++        e.status = status;
++        e.respLen = body.length;
++        e.respPreview = ENVELOPE;
++        e.durMs = System.currentTimeMillis() - t0;
++        LoggerCore.log(e);
++        return true;
++    }
++}
+diff --git a/rebuild-src/javasrc/com/db/local/server/ServerCore.java b/rebuild-src/javasrc/com/db/local/server/ServerCore.java
+new file mode 100644
+index 0000000..39b816d
+--- /dev/null
++++ b/rebuild-src/javasrc/com/db/local/server/ServerCore.java
+@@ -0,0 +1,114 @@
++package com.db.local.server;
++
++import java.io.IOException;
++import java.net.InetAddress;
++import java.net.InetSocketAddress;
++import java.net.ServerSocket;
++import java.net.Socket;
++import java.util.concurrent.CountDownLatch;
++
++/**
++ * Inti mini-server: SATU proses, 5 listener, SEMUA bind 127.0.0.1 (peta 16.5):
++ *   9527 → StaticHandler (config bin, XOR DragonBall decode di log)
++ *   9528 → StaticHandler (CDN game + upgrade + serversetting.json)
++ *   5050 → SocketIoHandler (socket.io v2.1.2 EIO=3 — config utama gameplay)
++ *   9530 → SdkHandler (33 path API SDK, envelope capture live)
++ *   4000 → LoggerHandler (fallback 4001 bila bind gagal — 15.2/16.2)
++ * Murni java.* (tanpa import android.*) agar bisa diuji di desktop JVM sebelum
++ * di-dex ke classes2.dex.
++ */
++public final class ServerCore {
++
++    public static final class StartResult {
++        public final int loggerPort;
++        public final boolean loggerFallback;
++        public StartResult(int loggerPort, boolean loggerFallback) {
++            this.loggerPort = loggerPort; this.loggerFallback = loggerFallback;
++        }
++    }
++
++    /**
++     * @param docroot        folder server/ hasil ekstraksi (isi = bs/…)
++     * @param assets         sumber asset fallback (null pada desktop) untuk 9527
++     * @param readyEarly     latch ekstraksi tahap awal (db/ + html + manifest + js)
++     */
++    public static StartResult start(final java.io.File docroot,
++                                    final StaticHandler.AssetsSource assets,
++                                    final CountDownLatch readyEarly) {
++        final StaticHandler configHandler = new StaticHandler(docroot, assets, null, LoggerCore.PORT_CONFIG);
++        final StaticHandler cdnHandler = new StaticHandler(docroot, null, readyEarly, LoggerCore.PORT_CDN);
++        final SdkHandler sdk = new SdkHandler();
++        final SocketIoHandler login = new SocketIoHandler();
++
++        int loggerPort = LoggerCore.PORT_LOGGER;
++        boolean fallback = false;
++        ServerSocket loggerSock = tryBind(LoggerCore.PORT_LOGGER);
++        if (loggerSock == null) {
++            loggerSock = tryBind(LoggerCore.PORT_FALLBACK);
++            fallback = true;
++            loggerPort = LoggerCore.PORT_FALLBACK;
++        }
++        final int fLoggerPort = loggerPort;
++        final ServerSocket fLoggerSock = loggerSock;
++        final LoggerHandler fLoggerHandler = new LoggerHandler(fLoggerPort);
++
++        bindAndServe(LoggerCore.PORT_CONFIG, configHandler, "config bin (mirror configus…:443)");
++        bindAndServe(LoggerCore.PORT_CDN, cdnHandler, "CDN game (mirror dragonh5cdn…:443)");
++        bindAndServe(LoggerCore.PORT_LOGIN, login, "login socket.io v2.1.2 EIO=3 (mirror login…:610)");
++        bindAndServe(LoggerCore.PORT_SDK, sdk, "API SDK t4game (mirror qsdk.t4game.com:80)");
++
++        LoggerCore.fallbackLogger = fallback;
++        if (fLoggerSock != null) {
++            Thread t = new Thread(() -> serveLoop(fLoggerSock, fLoggerHandler, fLoggerPort),
++                    "logger-" + fLoggerPort);
++            t.setDaemon(true);
++            t.start();
++            LoggerCore.BINDS.put(String.valueOf(fLoggerPort),
++                    "logger 2 mode" + (fallback ? " (fallback)" : "") + " — AKTIF");
++        } else {
++            LoggerCore.BINDS.put("4000", "GAGAL bind (4000 dan 4001)");
++        }
++        return new StartResult(loggerPort, fallback);
++    }
++
++    private static void bindAndServe(int port, HttpWorker.Handler handler, String label) {
++        ServerSocket ss = tryBind(port);
++        if (ss == null) {
++            LoggerCore.BINDS.put(String.valueOf(port), label + " — GAGAL bind (port dipakai?)");
++            return;
++        }
++        Thread t = new Thread(() -> serveLoop(ss, handler, port), "listener-" + port);
++        t.setDaemon(true);
++        t.start();
++        LoggerCore.BINDS.put(String.valueOf(port), label + " — AKTIF");
++    }
++
++    private static ServerSocket tryBind(int port) {
++        try {
++            ServerSocket ss = new ServerSocket();
++            ss.setReuseAddress(true);
++            ss.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port), 64);
++            return ss;
++        } catch (IOException ioe) {
++            return null;
++        }
++    }
++
++    private static void serveLoop(final ServerSocket ss, final HttpWorker.Handler handler, final int port) {
++        while (true) {
++            try {
++                final Socket sock = ss.accept();
++                sock.setTcpNoDelay(true);
++                Thread w = new Thread(() -> new HttpWorker(sock, handler, port).run(), "conn-" + port);
++                w.setDaemon(true);
++                w.start();
++            } catch (IOException ioe) {
++                LoggerCore.BINDS.put(String.valueOf(port),
++                        "serveLoop berhenti: " + ioe.getMessage());
++                break;
++            } catch (Throwable t) {
++                // jangan pernah matikan listener karena 1 koneksi error
++            }
++        }
++    }
++}
+diff --git a/rebuild-src/javasrc/com/db/local/server/SocketIoHandler.java b/rebuild-src/javasrc/com/db/local/server/SocketIoHandler.java
+new file mode 100644
+index 0000000..58bb683
+--- /dev/null
++++ b/rebuild-src/javasrc/com/db/local/server/SocketIoHandler.java
+@@ -0,0 +1,505 @@
++package com.db.local.server;
++
++import java.io.BufferedInputStream;
++import java.io.IOException;
++import java.io.InputStream;
++import java.io.OutputStream;
++import java.net.Socket;
++import java.nio.charset.StandardCharsets;
++import java.security.MessageDigest;
++import java.util.ArrayDeque;
++
++import java.util.Map;
++import java.util.Random;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.locks.ReentrantLock;
++
++/**
++ * Listener 5050 — login socket.io v2.1.2 (EIO=3) mirror login.popoh5.com:610,
++ * CONFIG UTAMA GAMEPLAY (peta 16.2). Perilaku 1:1 hasil capture live server asli
++ * (22 Nov 2026, backup logs):
++ *   - poll pertama (tanpa sid)  : 200 text/plain; charset=UTF-8, Access-Control-Allow-Origin: *,
++ *                                 Set-Cookie io=<sid>; Path=/; HttpOnly,
++ *                                 body = 96:0{"sid":"…20char","upgrades":["websocket"],
++ *                                        "pingInterval":25000,"pingTimeout":5000}2:40  (103 byte)
++ *   - POST (sid valid)          : 200 text/html "ok"
++ *   - GET poll (sid valid)      : long-poll di-hold s.d. ada packet / timeout, body kosong bila sunyi
++ *   - sid tidak dikenal         : 400 application/json {"code":1,"message":"Session ID unknown"}
++ *   - sesi ditutup              : poll berikut → 1:1 (close), lalu sesi dihapus
++ *   - 2probe → 3probe; 2 → 3; 42[event] → HANYA di-log (tidak ada data game dikarang);
++ *     41 → tutup sesi.
++ *   - transport=websocket: upgrade 101 (Sec-WebSocket-Accept), frame text EIO=3,
++ *     ping WS (0x9) → pong (0xA), close (0x8) → tutup.
++ */
++public final class SocketIoHandler implements HttpWorker.Handler {
++    public static final int PING_INTERVAL = 25000;
++    public static final int PING_TIMEOUT = 5000;
++    private static final String WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
++
++    public static final class Session {
++        public final String sid;
++        public final long createdAt = System.currentTimeMillis();
++        public final ArrayDeque<String> queue = new ArrayDeque<>();
++        public final ReentrantLock lock = new ReentrantLock();
++        public volatile boolean closed = false;
++        public volatile boolean closePendingNotified = false;
++        public volatile boolean upgraded = false;
++
++        Session(String sid) { this.sid = sid; }
++
++        void offer(String pkt) {
++            lock.lock();
++            try {
++                queue.addLast(pkt);
++                if (queue.size() > 64) queue.pollFirst();
++            } finally {
++                lock.unlock();
++            }
++        }
++
++        String drain(long waitMs) {
++            long deadline = System.currentTimeMillis() + waitMs;
++            StringBuilder b = new StringBuilder();
++            while (System.currentTimeMillis() < deadline) {
++                String p = null;
++                lock.lock();
++                try {
++                    p = queue.pollFirst();
++                } finally {
++                    lock.unlock();
++                }
++                if (p != null) {
++                    b.append(frame(p));
++                    // kumpulkan packet lain yang sudah tersedia tanpa menunggu
++                    lock.lock();
++                    try {
++                        String q;
++                        while ((q = queue.pollFirst()) != null) b.append(frame(q));
++                    } finally {
++                        lock.unlock();
++                    }
++                    return b.toString();
++                }
++                try { Thread.sleep(10); } catch (InterruptedException ie) { break; }
++            }
++            return "";
++        }
++    }
++
++    static String frame(String pkt) {
++        byte[] b = pkt.getBytes(StandardCharsets.UTF_8);
++        return String.valueOf(b.length) + ":" + pkt;
++    }
++
++    private static final Map<String, Session> SESSIONS = new ConcurrentHashMap<>();
++    private static final Random RND = new Random();
++
++    static Session createSession() {
++        StringBuilder sb = new StringBuilder(20);
++        String al = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
++        for (int i = 0; i < 20; i++) sb.append(al.charAt(RND.nextInt(al.length())));
++        String sid = sb.toString();
++        Session s = new Session(sid);
++        SESSIONS.put(sid, s);
++        // buang sesi tua bila kelebihan kapasitas
++        if (SESSIONS.size() > 256) {
++            Session oldest = null;
++            for (Session x : SESSIONS.values()) {
++                if (oldest == null || x.createdAt < oldest.createdAt) oldest = x;
++            }
++            if (oldest != null) SESSIONS.remove(oldest.sid);
++        }
++        return s;
++    }
++
++    static String openJson(String sid) {
++        // PERSIS format capture live: {"sid":"..20..","upgrades":["websocket"],
++        // "pingInterval":25000,"pingTimeout":5000} → 96 char dengan sid 20 char
++        return "{\"sid\":\"" + sid + "\",\"upgrades\":[\"websocket\"],\"pingInterval\":"
++                + PING_INTERVAL + ",\"pingTimeout\":" + PING_TIMEOUT + "}";
++    }
++
++    @Override
++    public boolean handle(HttpWorker.Request req, OutputStream out, Socket sock) throws IOException {
++        long t0 = System.currentTimeMillis();
++        LoggerCore.Entry e = new LoggerCore.Entry();
++        e.port = LoggerCore.PORT_LOGIN;
++        e.method = req.method;
++        e.path = req.rawPath;
++        e.reqLen = req.body.length;
++        if (req.body.length > 0) e.reqPreview = StaticHandler.preview(req.body);
++
++        boolean isWs = "websocket".equalsIgnoreCase(req.header("upgrade"));
++
++        if ("OPTIONS".equals(req.method)) {
++            Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=utf-8");
++            h.put("Access-Control-Allow-Origin", "*");
++            h.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
++            h.put("Access-Control-Allow-Headers", "*");
++            HttpWorker.writeResponse(out, 204, "No Content", h, new byte[0]);
++            e.status = 204; e.durMs = System.currentTimeMillis() - t0;
++            LoggerCore.log(e);
++            return true;
++        }
++
++        if (isWs) {
++            return handleWebSocket(req, out, sock, e, t0);
++        }
++
++        String transport = req.q("transport");
++        String sid = req.q("sid");
++
++        if (!"polling".equals(transport)) {
++            byte[] b = HttpWorker.text("{\"code\":0,\"message\":\"Transport unknown\"}");
++            Map<String, String> h = HttpWorker.baseHeaders("application/json");
++            h.put("Access-Control-Allow-Origin", "*");
++            HttpWorker.writeResponse(out, 400, "Bad Request", h, b);
++            e.status = 400; e.respLen = b.length; e.durMs = System.currentTimeMillis() - t0;
++            LoggerCore.log(e);
++            return true;
++        }
++
++        // --- POLLING ---
++        if ("GET".equals(req.method)) {
++            Session s = sid == null ? null : SESSIONS.get(sid);
++            if (s == null && sid == null) {
++                // OPEN — persis capture live: open + socket.io CONNECT 40 dalam body sama
++                s = createSession();
++                String body = frame("0" + openJson(s.sid)) + frame("40");
++                Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=UTF-8");
++                h.put("Access-Control-Allow-Origin", "*");
++                h.put("Set-Cookie", "io=" + s.sid + "; Path=/; HttpOnly");
++                byte[] bb = body.getBytes(StandardCharsets.UTF_8);
++                HttpWorker.writeResponse(out, 200, "OK", h, bb);
++                e.status = 200; e.respLen = bb.length;
++                e.extra = "OPEN sid=" + s.sid + " (open+40, 1:1 capture live)";
++                e.durMs = System.currentTimeMillis() - t0;
++                LoggerCore.log(e);
++                return true;
++            }
++            if (s == null) {
++                byte[] b = HttpWorker.text("{\"code\":1,\"message\":\"Session ID unknown\"}");
++                Map<String, String> h = HttpWorker.baseHeaders("application/json");
++                h.put("Access-Control-Allow-Origin", "*");
++                HttpWorker.writeResponse(out, 400, "Bad Request", h, b);
++                e.status = 400; e.respLen = b.length; e.extra = "sid unknown";
++                e.durMs = System.currentTimeMillis() - t0;
++                LoggerCore.log(e);
++                return true;
++            }
++            // poll — hold s.d. ada packet / timeout (1:1 long-poll server asli)
++            String payload;
++            if (s.closed && !s.closePendingNotified) {
++                s.closePendingNotified = true;
++                payload = frame("1");           // 1:1 capture live: close packet
++            } else if (s.closed) {
++                SESSIONS.remove(s.sid);
++                byte[] b = HttpWorker.text("{\"code\":1,\"message\":\"Session ID unknown\"}");
++                Map<String, String> h = HttpWorker.baseHeaders("application/json");
++                h.put("Access-Control-Allow-Origin", "*");
++                HttpWorker.writeResponse(out, 400, "Bad Request", h, b);
++                e.status = 400; e.respLen = b.length; e.extra = "sesi sudah ditutup → dihapus";
++                e.durMs = System.currentTimeMillis() - t0;
++                LoggerCore.log(e);
++                return true;
++            } else {
++                payload = s.drain(10000);
++            }
++            Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=UTF-8");
++            h.put("Access-Control-Allow-Origin", "*");
++            h.put("Set-Cookie", "io=" + s.sid + "; Path=/; HttpOnly");
++            byte[] bb = payload.getBytes(StandardCharsets.UTF_8);
++            HttpWorker.writeResponse(out, 200, "OK", h, bb);
++            e.status = 200; e.respLen = bb.length;
++            if (payload.isEmpty()) e.extra = "poll kosong (long-poll hold)";
++            else e.respPreview = payload;
++            e.durMs = System.currentTimeMillis() - t0;
++            LoggerCore.log(e);
++            return true;
++        }
++
++        if ("POST".equals(req.method)) {
++            Session s = sid == null ? null : SESSIONS.get(sid);
++            if (s == null || s.closed) {
++                byte[] b = HttpWorker.text("{\"code\":1,\"message\":\"Session ID unknown\"}");
++                Map<String, String> h = HttpWorker.baseHeaders("application/json");
++                h.put("Access-Control-Allow-Origin", "*");
++                HttpWorker.writeResponse(out, 400, "Bad Request", h, b);
++                e.status = 400; e.respLen = b.length; e.extra = "sid unknown";
++                e.durMs = System.currentTimeMillis() - t0;
++                LoggerCore.log(e);
++                return true;
++            }
++            boolean dead = false;
++            StringBuilder seen = new StringBuilder();
++            for (String pkt : parseFramed(new String(req.body, StandardCharsets.UTF_8))) {
++                if (seen.length() > 0) seen.append(" | ");
++                if (seen.length() < 1800) seen.append(pkt);
++                if ("41".equals(pkt)) { s.closed = true; dead = true; }
++                else if ("2probe".equals(pkt)) s.offer("3probe");
++                else if ("2".equals(pkt)) s.offer("3");
++                else if ("5".equals(pkt)) { /* upgrade ack — tidak perlu balasan */ }
++                else if ("40".equals(pkt)) { /* connect namespace — open sudah mengirim 40 */ }
++                else if (pkt.startsWith("42")) {
++                    e.extra = "EVENT: " + pkt;   // di-log apa adanya; TIDAK ada data dikarang
++                } else if (pkt.startsWith("2")) {
++                    s.offer("3");
++                }
++            }
++            // 1:1 capture live: POST selalu "ok" (text/html, 2 byte)
++            Map<String, String> h = HttpWorker.baseHeaders("text/html; charset=utf-8");
++            h.put("Access-Control-Allow-Origin", "*");
++            byte[] ok = HttpWorker.text("ok");
++            HttpWorker.writeResponse(out, 200, "OK", h, ok);
++            e.status = 200; e.respLen = 2;
++            e.respPreview = "ok";
++            if (e.extra == null && seen.length() > 0) e.extra = "PACKET: " + seen;
++            if (dead) e.extra = (e.extra == null ? "" : e.extra + " ") + "[sesi ditutup oleh client 41]";
++            e.durMs = System.currentTimeMillis() - t0;
++            LoggerCore.log(e);
++            return true;
++        }
++
++        byte[] b = HttpWorker.text("method not allowed");
++        HttpWorker.writeResponse(out, 405, "Method Not Allowed",
++                HttpWorker.baseHeaders("text/plain; charset=utf-8"), b);
++        e.status = 405; e.respLen = b.length; e.durMs = System.currentTimeMillis() - t0;
++        LoggerCore.log(e);
++        return true;
++    }
++
++    /** parse payload polling "<len>:<packet>..." → daftar packet */
++    static java.util.List<String> parseFramed(String body) {
++        java.util.List<String> out = new java.util.ArrayList<>();
++        int i = 0;
++        byte[] raw = body.getBytes(StandardCharsets.UTF_8);
++        while (i < raw.length) {
++            int colon = i;
++            while (colon < raw.length && raw[colon] != ':') colon++;
++            if (colon >= raw.length) break;
++            int len;
++            try {
++                len = Integer.parseInt(new String(raw, i, colon - i, StandardCharsets.UTF_8));
++            } catch (NumberFormatException nfe) {
++                break;
++            }
++            int start = colon + 1;
++            int end = Math.min(raw.length, start + len);
++            out.add(new String(raw, start, end - start, StandardCharsets.UTF_8));
++            i = end;
++        }
++        return out;
++    }
++
++    /* ---------- WebSocket (upgrade EIO=3) ---------- */
++
++    private boolean handleWebSocket(HttpWorker.Request req, OutputStream out, Socket sock,
++                                    LoggerCore.Entry e, long t0) throws IOException {
++        String key = req.header("sec-websocket-key");
++        if (key == null) {
++            HttpWorker.writeResponse(out, 400, "Bad Request",
++                    HttpWorker.baseHeaders("text/plain"), HttpWorker.text("missing Sec-WebSocket-Key"));
++            e.status = 400; e.durMs = System.currentTimeMillis() - t0;
++            LoggerCore.log(e);
++            return false;
++        }
++        Session s = null;
++        String qs = req.q("sid");
++        if (qs != null) s = SESSIONS.get(qs);
++        if (s == null) {
++            s = createSession();
++            s.upgraded = true;
++        } else {
++            s.upgraded = true;
++        }
++
++        String accept = wsAccept(key);
++        StringBuilder h = new StringBuilder(200);
++        h.append("HTTP/1.1 101 Switching Protocols\r\n")
++         .append("Upgrade: websocket\r\n")
++         .append("Connection: Upgrade\r\n")
++         .append("Sec-WebSocket-Accept: ").append(accept).append("\r\n")
++         .append("\r\n");
++        out.write(h.toString().getBytes(StandardCharsets.ISO_8859_1));
++        out.flush();
++
++        // bila sesi baru (tanpa polling sebelumnya) → kirim open packet sebagai frame pertama
++        if (qs == null) {
++            wsSendText(out, "0" + openJson(s.sid));
++        }
++
++        e.status = 101;
++        e.extra = "WS upgrade sid=" + s.sid;
++        e.durMs = System.currentTimeMillis() - t0;
++        LoggerCore.log(e);
++
++        // ambil alih socket — loop frame WS
++        sock.setSoTimeout(70000); // pingInterval 25 s; 70 s tanpa apa pun = mati
++        InputStream in = sock.getInputStream();
++        try {
++            while (true) {
++                int[] hdr = readWsHeader(in);
++                if (hdr == null) break;
++                int opcode = hdr[0];
++                boolean masked = hdr[1] != 0;
++                long len = hdr[2];
++                byte[] maskKey = null;
++                if (masked) {
++                    maskKey = new byte[4];
++                    if (!readFully(in, maskKey)) break;
++                }
++                byte[] payload = new byte[(int) Math.min(len, 4 * 1024 * 1024)];
++                // hati-hati bila len > cap: baca-buang sisanya
++                if (len > payload.length) {
++                    if (!readFully(in, payload)) break;
++                    long rest = len - payload.length;
++                    byte[] sink = new byte[65536];
++                    while (rest > 0) {
++                        int n = in.read(sink, 0, (int) Math.min(sink.length, rest));
++                        if (n < 0) break;
++                        rest -= n;
++                    }
++                } else if (!readFully(in, payload)) {
++                    break;
++                }
++                if (masked && maskKey != null) {
++                    for (int i = 0; i < payload.length; i++) payload[i] ^= maskKey[i & 3];
++                }
++                String text = new String(payload, StandardCharsets.UTF_8);
++
++                if (opcode == 0x8) { // close
++                    LoggerCore.Entry ce = new LoggerCore.Entry();
++                    ce.port = LoggerCore.PORT_LOGIN;
++                    ce.method = "WS";
++                    ce.path = "/socket.io ws close sid=" + s.sid;
++                    ce.status = 1000; ce.reqLen = payload.length;
++                    LoggerCore.log(ce);
++                    try { sock.close(); } catch (IOException ignored) {}
++                    s.closed = true;
++                    SESSIONS.remove(s.sid);
++                    return false;
++                } else if (opcode == 0x9) { // ping → pong
++                    wsSendControl(out, 0xA, payload);
++                } else if (opcode == 0xA) { // pong — abaikan
++                } else if (opcode == 0x1 || opcode == 0x2) { // text/binary = packet engine.io
++                    LoggerCore.Entry le = new LoggerCore.Entry();
++                    le.port = LoggerCore.PORT_LOGIN;
++                    le.method = "WS";
++                    le.path = "/socket.io ws sid=" + s.sid;
++                    le.reqLen = payload.length;
++                    le.reqPreview = text;
++                    if ("2probe".equals(text)) { wsSendText(out, "3probe"); le.respPreview = "3probe"; le.status = 200; }
++                    else if ("2".equals(text)) { wsSendText(out, "3"); le.respPreview = "3"; le.status = 200; }
++                    else if (text.startsWith("42")) { le.status = 200; le.extra = "EVENT: " + text; }
++                    else if ("41".equals(text)) {
++                        le.status = 200; le.extra = "client disconnect (41)";
++                        s.closed = true;
++                        SESSIONS.remove(s.sid);
++                        try { sock.close(); } catch (IOException ignored) {}
++                        LoggerCore.log(le);
++                        return false;
++                    } else { le.status = 200; le.extra = "PACKET: " + text; }
++                    le.durMs = 0;
++                    LoggerCore.log(le);
++                }
++            }
++        } catch (IOException ioe) {
++            // koneksi putus — normal saat game mati
++        } finally {
++            s.closed = true;
++            SESSIONS.remove(s.sid);
++            try { sock.close(); } catch (IOException ignored) {}
++        }
++        return false;
++    }
++
++    static String wsAccept(String key) {
++        try {
++            MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
++            byte[] hash = sha1.digest((key + WS_GUID).getBytes(StandardCharsets.ISO_8859_1));
++            return b64(hash);
++        } catch (Exception ex) {
++            throw new RuntimeException(ex);
++        }
++    }
++
++    /** Base64 standar (RFC 4648) — java.util.Base64 baru ada di Android API 26,
++     *  minSdk=21 → implementasi sendiri */
++    static String b64(byte[] data) {
++        char[] T = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
++        StringBuilder out = new StringBuilder(((data.length + 2) / 3) * 4);
++        for (int i = 0; i < data.length; i += 3) {
++            int b0 = data[i] & 0xff;
++            int b1 = (i + 1 < data.length) ? data[i + 1] & 0xff : 0;
++            int b2 = (i + 2 < data.length) ? data[i + 2] & 0xff : 0;
++            int n = (b0 << 16) | (b1 << 8) | b2;
++            out.append(T[(n >> 18) & 63]).append(T[(n >> 12) & 63]);
++            out.append((i + 1 < data.length) ? T[(n >> 6) & 63] : '=');
++            out.append((i + 2 < data.length) ? T[n & 63] : '=');
++        }
++        return out.toString();
++    }
++
++    /** kembalikan {opcode, masked, len} atau null bila EOF */
++    static int[] readWsHeader(InputStream in) throws IOException {
++        int b0 = in.read();
++        if (b0 == -1) return null;
++        int b1 = in.read();
++        if (b1 == -1) return null;
++        int opcode = b0 & 0x0f;
++        boolean masked = (b1 & 0x80) != 0;
++        long len = b1 & 0x7f;
++        if (len == 126) {
++            int hi = in.read(), lo = in.read();
++            if (lo == -1) return null;
++            len = ((hi & 0xff) << 8) | (lo & 0xff);
++        } else if (len == 127) {
++            len = 0;
++            for (int i = 0; i < 8; i++) {
++                int c = in.read();
++                if (c == -1) return null;
++                len = (len << 8) | (c & 0xff);
++            }
++        }
++        return new int[]{opcode, masked ? 1 : 0, (int) len};
++    }
++
++    static boolean readFully(InputStream in, byte[] buf) throws IOException {
++        int off = 0;
++        while (off < buf.length) {
++            int r = in.read(buf, off, buf.length - off);
++            if (r < 0) return false;
++            off += r;
++        }
++        return true;
++    }
++
++    static void wsSendText(OutputStream out, String text) throws IOException {
++        byte[] data = text.getBytes(StandardCharsets.UTF_8);
++        wsSendFrame(out, (byte) 0x81, data);
++    }
++
++    static void wsSendControl(OutputStream out, int opcode, byte[] data) throws IOException {
++        wsSendFrame(out, (byte) (0x80 | opcode), data);
++    }
++
++    static void wsSendFrame(OutputStream out, byte first, byte[] data) throws IOException {
++        java.io.ByteArrayOutputStream h = new java.io.ByteArrayOutputStream();
++        h.write(first & 0xff);
++        int len = data.length;
++        if (len < 126) {
++            h.write(len);
++        } else if (len < 65536) {
++            h.write(126);
++            h.write((len >> 8) & 0xff);
++            h.write(len & 0xff);
++        } else {
++            h.write(127);
++            for (int i = 7; i >= 0; i--) h.write((int) ((len >> (8 * i)) & 0xff));
++        }
++        out.write(h.toByteArray());
++        out.write(data);
++        out.flush();
++    }
++}
+diff --git a/rebuild-src/javasrc/com/db/local/server/StaticHandler.java b/rebuild-src/javasrc/com/db/local/server/StaticHandler.java
+new file mode 100644
+index 0000000..fb27171
+--- /dev/null
++++ b/rebuild-src/javasrc/com/db/local/server/StaticHandler.java
+@@ -0,0 +1,198 @@
++package com.db.local.server;
++
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.IOException;
++import java.io.OutputStream;
++import java.net.Socket;
++import java.util.Map;
++import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.TimeUnit;
++
++/**
++ * Listener 9527 (config bin mirror configus.sjmobilegame.com:443) dan 9528
++ * (CDN mirror dragonh5cdn.popoh5.com:443) — file statis dari docroot server/.
++ * Khusus 9527: /bs/db/android/*.bin dilayani LANGSUNG dari assets (fallback cepat,
++ * anti-race dengan ekstraksi pertama) dan log menyertakan JSON ter-decode pasca-XOR
++ * "DragonBall" (readme 15.6/16.6).
++ */
++public final class StaticHandler implements HttpWorker.Handler {
++    private final File docroot;
++    private final AssetsSource assets;   // null di desktop test
++    private final CountDownLatch readyEarly;
++    private final int xorLogPort;        // PORT_CONFIG bila log decode, -1 bila tidak
++
++    /** sumber asset Android (diabstraksi agar bisa dites di desktop) */
++    public interface AssetsSource {
++        /** kembalikan isi file asset "server_root/<rel>" atau null */
++        byte[] read(String rel);
++    }
++
++    public StaticHandler(File docroot, AssetsSource assets, CountDownLatch readyEarly, int xorLogPort) {
++        this.docroot = docroot;
++        this.assets = assets;
++        this.readyEarly = readyEarly;
++        this.xorLogPort = xorLogPort;
++    }
++
++    @Override
++    public boolean handle(HttpWorker.Request req, OutputStream out, Socket sock) throws IOException {
++        long t0 = System.currentTimeMillis();
++        LoggerCore.Entry e = new LoggerCore.Entry();
++        e.port = req.header("__listenerport") != null
++                ? Integer.parseInt(req.header("__listenerport")) : LoggerCore.PORT_CDN;
++        e.method = req.method;
++        e.path = req.rawPath;
++        e.reqLen = req.body.length;
++        if (req.body.length > 0) e.reqPreview = preview(req.body);
++
++        if ("OPTIONS".equals(req.method)) {
++            Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=utf-8");
++            h.put("Access-Control-Allow-Origin", "*");
++            h.put("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
++            h.put("Access-Control-Allow-Headers", req.header("access-control-request-headers") != null
++                    ? req.header("access-control-request-headers") : "*");
++            byte[] empty = new byte[0];
++            HttpWorker.writeResponse(out, 204, "No Content", h, empty);
++            e.status = 204; e.durMs = System.currentTimeMillis() - t0;
++            LoggerCore.log(e);
++            return true;
++        }
++        if (!"GET".equals(req.method) && !"HEAD".equals(req.method)) {
++            byte[] b = HttpWorker.text("method not allowed");
++            HttpWorker.writeResponse(out, 405, "Method Not Allowed",
++                    HttpWorker.baseHeaders("text/plain; charset=utf-8"), b);
++            e.status = 405; e.durMs = System.currentTimeMillis() - t0;
++            LoggerCore.log(e);
++            return true;
++        }
++
++        // anti-race: tunggu ekstraksi tahap awal (db/ + html + manifest + js) maks 60 s
++        if (readyEarly != null) {
++            try {
++                if (!readyEarly.await(60, TimeUnit.SECONDS) && !exists(resolve(req.path))) {
++                    // lanjut; kalau file tetap tidak ada akan 404 di bawah (ter-log)
++                }
++            } catch (InterruptedException ie) {
++                Thread.currentThread().interrupt();
++            }
++        }
++
++        byte[] data = null;
++
++        // FAST PATH 9527: bin config langsung dari assets (sebelum ekstraksi selesai)
++        if (assets != null && req.path.startsWith("/bs/db/android/")
++                && req.path.endsWith(".bin")) {
++            data = assets.read("server_root" + req.path);
++        }
++
++        File f = resolve(req.path);
++        if (data == null) {
++            if (f != null && f.isFile() && safe(f)) {
++                data = readAll(f);
++            }
++        }
++
++        if (data != null && e.port == LoggerCore.PORT_CONFIG && req.path.endsWith(".bin")) {
++            // khusus 9527 (16.6): log menyertakan JSON config TER-DECODE pasca-XOR DragonBall
++            String decodedJson = decodeXor(data);
++            e.extra = decodedJson.length() > 4096
++                    ? decodedJson.substring(0, 4096) : decodedJson;
++        }
++
++        if (data == null) {
++            byte[] b = HttpWorker.text("404 not found: " + req.path);
++            Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=utf-8");
++            HttpWorker.writeResponse(out, 404, "Not Found", h, b);
++            e.status = 404;
++            e.respLen = b.length;
++            e.error = "file tidak ada di server/";
++            e.respPreview = "404 not found: " + req.path;
++            e.durMs = System.currentTimeMillis() - t0;
++            LoggerCore.log(e);
++            return true;
++        }
++
++        Map<String, String> h = HttpWorker.baseHeaders(JsonUtil.contentType(req.path));
++        h.put("Cache-Control", "no-store");
++        h.put("Access-Control-Allow-Origin", "*");
++        HttpWorker.writeResponse(out, 200, "OK", h, data);
++        e.status = 200;
++        e.respLen = data.length;
++        e.respPreview = preview(data);
++        e.durMs = System.currentTimeMillis() - t0;
++        LoggerCore.log(e);
++        return true;
++    }
++
++    private File resolve(String urlPath) {
++        String p = urlPath;
++        int qi = p.indexOf('?');
++        if (qi >= 0) p = p.substring(0, qi);
++        while (p.startsWith("/")) p = p.substring(1);
++        if (p.isEmpty()) p = "index-native.html";
++        return new File(docroot, p);
++    }
++
++    private boolean exists(File f) { return f != null && f.isFile(); }
++
++    /** cegah path traversal keluar docroot */
++    private boolean safe(File f) {
++        try {
++            String root = docroot.getCanonicalPath() + File.separator;
++            return f.getCanonicalPath().startsWith(root);
++        } catch (IOException ioe) {
++            return false;
++        }
++    }
++
++    private static byte[] readAll(File f) throws IOException {
++        FileInputStream in = new FileInputStream(f);
++        try {
++            byte[] buf = new byte[(int) Math.min(f.length(), Integer.MAX_VALUE - 8)];
++            int off = 0;
++            while (off < buf.length) {
++                int r = in.read(buf, off, buf.length - off);
++                if (r < 0) break;
++                off += r;
++            }
++            if (off != buf.length) {
++                byte[] out = new byte[off];
++                System.arraycopy(buf, 0, out, 0, off);
++                return out;
++            }
++            return buf;
++        } finally {
++            in.close();
++        }
++    }
++
++    /** XOR kunci "DragonBall" — port literal LaunchActivity.java:60 (fakta 5.2) */
++    public static String decodeXor(byte[] data) {
++        byte[] key = "DragonBall".getBytes();
++        byte[] out = new byte[data.length];
++        for (int i = 0; i < data.length; i++) out[i] = (byte) (data[i] ^ key[i % key.length]);
++        return new String(out, java.nio.charset.StandardCharsets.UTF_8);
++    }
++
++    static String preview(byte[] data) {
++        int n = Math.min(data.length, LoggerCore.BODY_PREVIEW_MAX);
++        StringBuilder b = new StringBuilder(n * 2);
++        boolean binary = false;
++        for (int i = 0; i < n; i++) {
++            int c = data[i] & 0xff;
++            if (c == 0 || (c < 0x09) || (c > 0x0d && c < 0x20 && c != 0x1b)) { binary = true; break; }
++        }
++        if (binary) {
++            b.append("[bin ").append(data.length).append("B] ");
++            for (int i = 0; i < Math.min(n, 128); i++) {
++                b.append(String.format("%02x", data[i] & 0xff));
++                if ((i & 31) == 31) b.append(' ');
++            }
++        } else {
++            b.append(new String(data, 0, n, java.nio.charset.StandardCharsets.UTF_8));
++            if (data.length > n) b.append("…[+").append(data.length - n).append("B]");
++        }
++        return b.toString();
++    }
++}
+diff --git a/rebuild-src/scripts/capture_login.py b/rebuild-src/scripts/capture_login.py
+new file mode 100644
+index 0000000..d550b2d
+--- /dev/null
++++ b/rebuild-src/scripts/capture_login.py
+@@ -0,0 +1,63 @@
++#!/usr/bin/env python3
++# Simulasi klien engine.io v3 polling lengkap terhadap login.popoh5.com:610
++# untuk menangkap respons asli event GetServerList (kontrak 4.G)
++import http.client, ssl, json, re, threading, time, sys
++
++ctx = ssl.create_default_context()
++ctx.check_hostname = False
++ctx.verify_mode = ssl.CERT_NONE
++
++HOST, PORT = "login.popoh5.com", 610
++results = []
++poll_thread_active = True
++
++def req(method, path, body=None):
++    c = http.client.HTTPSConnection(HOST, PORT, timeout=30, context=ctx)
++    c.request(method, path, body=body,
++              headers={"Content-Type": "text/plain;charset=UTF-8", "Connection": "keep-alive"})
++    r = c.getresponse()
++    data = r.read()
++    c.close()
++    return r.status, dict(r.getheaders()), data
++
++def poller(sid, tcount):
++    global poll_thread_active
++    i = 0
++    while poll_thread_active and i < 8:
++        i += 1
++        try:
++            st, hd, body = req("GET", "/socket.io/?EIO=3&transport=polling&t=%d-p%d&sid=%s" % (tcount, i, sid))
++            results.append(("POLL", st, body))
++            if not body:
++                time.sleep(0.05)
++        except Exception as e:
++            results.append(("POLL-ERR", 0, str(e).encode()))
++            break
++
++tcount = int(time.time() * 1000)
++st, hd, body = req("GET", "/socket.io/?EIO=3&transport=polling&t=%d-0" % tcount)
++print("OPEN:", st, body[:140])
++m = re.search(rb'0\{.*?\}', body)
++sid = json.loads(m.group(0)[1:].decode())["sid"]
++print("SID:", sid)
++
++th = threading.Thread(target=poller, args=(sid, tcount), daemon=True)
++th.start()
++time.sleep(0.3)
++
++# POST connect 40
++st, hd, body = req("POST", "/socket.io/?EIO=3&transport=polling&t=%d-1&sid=%s" % (tcount, sid), "2:40")
++print("POST 40:", st, body)
++
++time.sleep(0.5)
++# kirim event GetServerList (socket.io v2: 42["<event>",<data>])
++payload = '60:42["User",{"type":"User","action":"GetServerList","userId":"audit123","subChannel":"BS","channel":"BS"}]'
++st, hd, body = req("POST", "/socket.io/?EIO=3&transport=polling&t=%d-2&sid=%s" % (tcount, sid), payload)
++print("POST event:", st, body)
++
++time.sleep(6)
++poll_thread_active = False
++time.sleep(0.5)
++print("\n=== HASIL POLL ===")
++for r in results:
++    print(r[0], r[1], r[2][:400] if isinstance(r[2], bytes) else r[2])
+diff --git a/rebuild-src/scripts/capture_login2.py b/rebuild-src/scripts/capture_login2.py
+new file mode 100644
+index 0000000..1fa3dd3
+--- /dev/null
++++ b/rebuild-src/scripts/capture_login2.py
+@@ -0,0 +1,76 @@
++#!/usr/bin/env python3
++# Capture ulang dengan prefix panjang terkomputasi otomatis
++import http.client, ssl, json, re, threading, time
++
++ctx = ssl.create_default_context()
++ctx.check_hostname = False
++ctx.verify_mode = ssl.CERT_NONE
++
++HOST, PORT = "login.popoh5.com", 610
++results = []
++active = True
++
++def req(method, path, body=None):
++    c = http.client.HTTPSConnection(HOST, PORT, timeout=30, context=ctx)
++    c.request(method, path, body=body,
++              headers={"Content-Type": "text/plain;charset=UTF-8", "Connection": "keep-alive"})
++    r = c.getresponse()
++    data = r.read()
++    c.close()
++    return r.status, data
++
++def frame(pkts):
++    # frame engine.io polling: <len>:<packet> digabung
++    out = b""
++    for p in pkts:
++        b = p.encode("utf-8") if isinstance(p, str) else p
++        out += str(len(b)).encode() + b":" + b
++    return out
++
++def poller(sid, tcount):
++    i = 0
++    while active and i < 10:
++        i += 1
++        try:
++            st, body = req("GET", "/socket.io/?EIO=3&transport=polling&t=%d-p%d&sid=%s" % (tcount, i, sid))
++            results.append(("POLL", st, body))
++            if not body:
++                time.sleep(0.05)
++        except Exception as e:
++            results.append(("POLL-ERR", 0, str(e).encode()))
++            break
++
++def event_pkt(name, obj):
++    s = json.dumps(obj, separators=(",", ":"))
++    pkt = '42["%s",%s]' % (name, s)
++    return frame([pkt])
++
++tcount = int(time.time() * 1000)
++st, body = req("GET", "/socket.io/?EIO=3&transport=polling&t=%d-0" % tcount)
++sid = json.loads(re.search(rb'0\{.*?\}', body).group(0)[1:].decode())["sid"]
++print("OPEN OK, sid =", sid)
++th = threading.Thread(target=poller, args=(sid, tcount), daemon=True)
++th.start()
++time.sleep(0.3)
++
++st, body = req("POST", "/socket.io/?EIO=3&transport=polling&t=%d-1&sid=%s" % (tcount, sid), frame(["40"]))
++print("POST 40:", st, body)
++time.sleep(0.5)
++
++variants = [
++    ("User", {"type": "User", "action": "GetServerList", "userId": "audit123", "subChannel": "BS", "channel": "BS"}),
++    ("GetServerList", {"type": "User", "action": "GetServerList", "userId": "audit123", "subChannel": "BS", "channel": "BS"}),
++]
++for i, (name, obj) in enumerate(variants):
++    st, body = req("POST", "/socket.io/?EIO=3&transport=polling&t=%d-e%d&sid=%s" % (tcount, i, sid), event_pkt(name, obj))
++    print("POST event '%s': %s %s" % (name, st, body[:60]))
++    time.sleep(3.0)
++    snap = [r for r in results if r[0] == "POLL"]
++    print("   poll terakhir:", snap[-1] if snap else "(kosong)")
++
++time.sleep(2)
++active = False
++time.sleep(0.3)
++print("\n=== SEMUA POLL ===")
++for r in results:
++    print(r[0], r[1], (r[2][:300] if isinstance(r[2], bytes) else r[2]))
+diff --git a/rebuild-src/scripts/onepiece_decrypt.py b/rebuild-src/scripts/onepiece_decrypt.py
+new file mode 100644
+index 0000000..b28bf89
+--- /dev/null
++++ b/rebuild-src/scripts/onepiece_decrypt.py
+@@ -0,0 +1,75 @@
++#!/usr/bin/env python3
++# Port LITERAL dari class smali:
++# cointhreat/cointhreat/cointhreat/reweavingsiamesedpropertylessnesses/customreading.smali
++# (asli jadx: customreading.nationalcommunitymissing) — dibaca ulang dari classes.dex APK.
++#
++# Layout file:
++#   byte[16:32] = magic "onepieceencrypts" (bila beda -> return input tanpa diubah)
++#   byte[32:48] = key tersimpan, XOR "onepiecedecryptk" (i % 16)
++#   byte[48:]   = payload, long LE 32-bit per word (4 byte per long)
++# Varian XXTEA (beda dari standar):
++#   sum  = delta KONSTAN 0x9E3779B9 (1 pass — bukan rounds*delta)
++#   e    = (delta >> 2) & 3 KONSTAN
++#   loop p = n-1 downto 1: z = v[p-1], y = v[p+1] (y awal = v[0]; y iterasi
++#          berikut = v[p] yang BARU di-update); v[p] -= MX(sum, y, z, p, e, k)
++#   final p = 0: y = v[1], z = v[n-1]; v[0] -= MX(...)
++#   MX = mask32((y^sum)) + mask32(z^key[(p&3)^e])) ^ (mask32((z>>>5)^(y<<2)) + mask32((z<<4)^(y>>>3)))
++#   padding: byte terakhir payload = jumlah pad (dibuang)
++import struct, sys
++
++DELTA = 0x9E3779B9
++M32 = 0xFFFFFFFF
++
++def mask32(x):
++    return x & M32
++
++def mx(s, y, z, p, e, k):
++    # port literal singersmooth(JJJJJ[J)J — semua operasi int 32-bit (low word)
++    y &= M32; z &= M32
++    t1 = mask32(((z >> 5) & M32) ^ ((y << 2) & M32))
++    t2 = mask32(((z << 4) & M32) ^ (y >> 3))
++    a = mask32(y ^ s)
++    b = mask32(z ^ k[(p & 3) ^ e])
++    return mask32((a + b) ^ (t1 + t2))
++
++def decrypt_words(v, k):
++    n = len(v)
++    s = DELTA                 # KONSTAN (mul-long 1 * 0x9e3779b9)
++    e = (s >> 2) & 3          # KONSTAN
++    y = v[0]
++    for p in range(n - 1, 0, -1):
++        z = v[p - 1]
++        v[p] = (v[p] - mx(s, y, z, p, e, k)) & M32
++        y = v[p]              # y iterasi berikut = v[p] barusan di-update
++    z = v[n - 1]
++    y = v[1]
++    v[0] = (v[0] - mx(s, y, z, 0, e, k)) & M32
++    return v
++
++def decrypt_file(path, out_path=None):
++    data = open(path, "rb").read()
++    if data[16:32] != b"onepieceencrypts":
++        out = data  # fakta smali: cond_f5 return-object p1 (input apa adanya)
++        if out_path:
++            open(out_path, "wb").write(out)
++        return out
++    keyb = bytearray(data[32:48])
++    xk = b"onepiecedecryptk"
++    for i in range(len(keyb)):
++        keyb[i] ^= xk[i % len(xk)]
++    k = list(struct.unpack("<4I", bytes(keyb)))
++    payload = data[48:]
++    n = len(payload) // 4
++    v = list(struct.unpack("<%dI" % n, payload[: n * 4]))
++    dec = decrypt_words(v, k)
++    out = struct.pack("<%dI" % n, *dec)
++    pad = out[-1]
++    out = out[: len(out) - pad]  # port literal: v1 -= v0 (tanpa clamp)
++    if out_path:
++        open(out_path, "wb").write(out)
++    return out
++
++if __name__ == "__main__":
++    src, dst = sys.argv[1], sys.argv[2]
++    out = decrypt_file(src, dst)
++    print("%s -> %s (%d bytes)" % (src, dst, len(out)))
+diff --git a/rebuild-src/scripts/repack.py b/rebuild-src/scripts/repack.py
+new file mode 100644
+index 0000000..102048e
+--- /dev/null
++++ b/rebuild-src/scripts/repack.py
+@@ -0,0 +1,98 @@
++#!/usr/bin/env python3
++# Repack APK lengkap MOD-LOCALSERVER v2 (Bagian 17)
++#  - replace : assets/config_BS.properties (4 kunci → 9527), assets/QHinfo (→9530),
++#              classes.dex (patch starter di Application.onCreate)
++#  - tambah  : classes2.dex (mini-server 5 listener), assets/server_root/** (isi server/)
++#  - buang   : META-INF signature lama (di-sign ulang uber-apk-signer)
++#  - pertahankan compress_type per entry (resources.arsc wajib STORED utk targetSdk 30)
++import zipfile, os, sys, base64, hashlib, time
++
++SRC = '/home/z/db-apk-analysis-ws/db-local(Original-DO NOT DELETE!).apk'
++OUT = '/home/z/db-apk-analysis-ws/rebuild/work/db-local(MOD-LOCALSERVER-v2)-unsigned.apk'
++PATCHED_DEX = '/home/z/db-apk-analysis-ws/rebuild/work/classes_patched.dex'
++SERVER_DEX = '/home/z/db-apk-analysis-ws/rebuild/work/dexout/classes.dex'
++SERVER_ROOT = '/home/z/db-apk-analysis-ws/rebuild/work/server_root'
++
++NEW_URL = 'http://127.0.0.1:9527/bs/db/android'
++new_cfg = (
++    'EntryPoint1=' + base64.b64encode(NEW_URL.encode()).decode() + '\n'
++    'EntryPoint1_debug=' + base64.b64encode(NEW_URL.encode()).decode() + '\n'
++    '\n'
++    'EntryPoint2=' + base64.b64encode(NEW_URL.encode()).decode() + '\n'
++    'EntryPoint2_debug=' + base64.b64encode(NEW_URL.encode()).decode()
++).encode('utf-8')
++QH = b'http://127.0.0.1:9530'
++
++# bandingkan dengan artefak sesi sebelumnya (harus identik byte)
++chk_cfg = open('/home/z/db-apk-analysis-ws/rebuild/check/assets/config_BS.properties', 'rb').read()
++chk_qh = open('/home/z/db-apk-analysis-ws/rebuild/check/assets/QHinfo', 'rb').read()
++assert new_cfg == chk_cfg, 'config_BS beda dari check/! (%d vs %d)' % (len(new_cfg), len(chk_cfg))
++assert QH == chk_qh, 'QHinfo beda dari check/!'
++print('config_BS.properties:', len(new_cfg), 'B — identik artefak sebelumnya')
++print('QHinfo              :', len(QH), 'B — identik artefak sebelumnya')
++
++def is_signature(name):
++    n = name.upper()
++    return (n.startswith('META-INF/') and (
++        n.endswith('.SF') or n.endswith('.RSA') or n.endswith('.DSA') or n.endswith('.EC')
++        or n == 'META-INF/MANIFEST.MF' or n.startswith('META-INF/COM/ANDROID/BUILD')))
++
++def server_files():
++    out = []
++    for root, dirs, files in os.walk(SERVER_ROOT):
++        dirs.sort()
++        for f in sorted(files):
++            full = os.path.join(root, f)
++            rel = 'assets/server_root/' + os.path.relpath(full, SERVER_ROOT).replace(os.sep, '/')
++            out.append((full, rel))
++    return out
++
++t0 = time.time()
++zin = zipfile.ZipFile(SRC)
++names = zin.namelist()
++print('entri asli:', len(names))
++
++zout = zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED, compresslevel=9)
++copied = 0
++replaced = []
++for name in names:
++    if is_signature(name):
++        continue
++    info = zin.getinfo(name)
++    if name == 'assets/config_BS.properties':
++        data = new_cfg; replaced.append((name, 'REPLACE'))
++    elif name == 'assets/QHinfo':
++        data = QH; replaced.append((name, 'REPLACE'))
++    elif name == 'classes.dex':
++        data = open(PATCHED_DEX, 'rb').read(); replaced.append((name, 'REPLACE (starter)'))
++    else:
++        data = zin.read(name); copied += 1
++    zi = zipfile.ZipInfo(name, date_time=info.date_time)
++    zi.compress_type = info.compress_type          # pertahankan (resources.arsc STORED)
++    zi.external_attr = info.external_attr
++    zout.writestr(zi, data)
++
++# classes2.dex (mini-server) — DEFLATED
++d2 = open(SERVER_DEX, 'rb').read()
++zi = zipfile.ZipInfo('classes2.dex', date_time=(2026, 11, 22, 13, 0, 0))
++zi.compress_type = zipfile.ZIP_DEFLATED
++zi.external_attr = 0o600 << 16
++zout.writestr(zi, d2)
++print('classes2.dex ditambah:', len(d2), 'B')
++
++# assets/server_root/** — .zip STORED, lain DEFLATED
++n_server = 0
++for full, rel in server_files():
++    data = open(full, 'rb').read()
++    zi = zipfile.ZipInfo(rel, date_time=(2026, 11, 22, 13, 0, 0))
++    zi.compress_type = zipfile.ZIP_STORED if rel.endswith('.zip') else zipfile.ZIP_DEFLATED
++    zi.external_attr = 0o600 << 16
++    zout.writestr(zi, data)
++    n_server += 1
++print('assets/server_root ditambah:', n_server, 'file')
++
++zout.close()
++sz = os.path.getsize(OUT)
++h = hashlib.sha256(open(OUT, 'rb').read()).hexdigest()
++print('unsigned APK:', sz, 'B, sha256', h[:16] + '…', '| waktu %.1fs' % (time.time() - t0))
++print('replaced:', replaced)
+diff --git a/release-mod/db-local(MOD-LOCALSERVER-v2).apk b/release-mod/db-local(MOD-LOCALSERVER-v2).apk
+new file mode 100644
+index 0000000..5c2f05d
+--- /dev/null
++++ b/release-mod/db-local(MOD-LOCALSERVER-v2).apk
+@@ -0,0 +1,3 @@
++version https://git-lfs.github.com/spec/v1
++oid sha256:bf403c4d9fbfc60b85119212bd1f019b9068954b93684eb5ffa865354fa01bb8
++size 202638196
+-- 
+2.47.3
+

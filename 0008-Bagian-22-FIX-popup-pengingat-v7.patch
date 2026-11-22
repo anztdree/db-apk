@@ -1,0 +1,39 @@
+# PATCH 0008 — Bagian 22: FIX popup "pengingat" tidak bisa di-close (APK v7)
+# Basis: APK v6 (sha256 cbbc04f2287030ddadddb4a073e5a1dcce0c177afe615be1a5b1acaccc4ddb06)
+#        -> v7  (sha256 a733c8bea634893024d7210d9f5cc78a1443cd7644133adae0145b9b1902d73a)
+# Detail diagnosis lengkap: readme.md Bagian 22.2; efek fix: Bagian 22.3.
+# Verifikasi: kedua hunk dibaca ulang dari baksmali APK TER-SIGN v7.
+#
+# AKAR (ringkas):
+#   registerVisitor mengirim isNewUser=1 -> QuickGameSdkService.seventygenom(0xe) menjalankan
+#   jalur tracking AppsFlyer/Adjust/Facebook (tanpa try/catch utk Adjust) -> di device tanpa
+#   internet jalur ini dapat gagal sebelum bus.post(LOGIN_RAND) -> WaitingDialog f/a/n
+#   (setCancelable(false)) macet selamanya = "popup pengingat tidak bisa di-close".
+
+--- a/smali_classes2/com/db/local/server/SdkHandler.smali   (registerVisitor, sekitar line 179-188)
++++ b/smali_classes2/com/db/local/server/SdkHandler.smali
+@@ -183,12 +183,10 @@
+     move-result-object p1
+
+     .line 72
+-    iget-boolean v2, p1, Lcom/db/local/server/AccountStore;->isNewUser:Z
+-
+-    invoke-virtual {p1, v2}, Lcom/db/local/server/AccountStore;->sdkDataResponse(Z)Ljava/lang/String;
++    const/4 v2, 0x0
++
++    invoke-virtual {p1, v2}, Lcom/db/local/server/AccountStore;->sdkDataResponse(Z)Ljava/lang/String;
+
+     move-result-object p1
+
+ (jalur /v1/user/autoLogin TIDAK diubah — memang sudah mengirim isNewUser=0 via v3=0)
+
+--- a/smali/com/quickgame/android/sdk/f/a/n.smali   (WaitingDialog.onCreateView, line 86)
++++ b/smali/com/quickgame/android/sdk/f/a/n.smali
+@@ -86,7 +86,7 @@
+-    const/4 p2, 0x0
++    const/4 p2, 0x1
+
+     .line 4
+     invoke-virtual {p0, p2}, Landroidx/fragment/app/DialogFragment;->setCancelable(Z)V
+
+ (onKeyListener f/a/n$cointhreat tidak diubah — hanya no-op callback c(), return false)

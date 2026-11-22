@@ -1637,3 +1637,90 @@ v5 yang dibaca manusia. Semua angka = hasil uji nyata sandbox.
   `rebuild-src/scripts/repack_v6.py` (baru) + APK v6 (LFS) di-commit & di-push bersamaan;
   `db-local(MOD-LOCALSERVER-v5).apk` dihapus dari repo (diganti v6 — pola sama v2→v3→v4→v5→v6).
 - README append-only: Bagian 1–20 TIDAK diubah sedikit pun.
+
+## 22. FIX POPUP "PENGINGAT" TIDAK BISA DI-CLOSE + PEMULIHAN REPO (22 Nov 2026)
+
+### 22.0 Laporan owner
+
+Setelah auto-register tamu sukses (log device 23 entri: `AKUN-BARU uid=1795371340521
+username=Guest1392`, `POST /v1/user/registerVisitor` 200, bind 6 port AKTIF termasuk 5051),
+yang muncul **popup pengingat yang TIDAK bisa di-close**; ekspektasi owner: layar
+login/Register. Prioritas owner: "ngpaain mikir enterGame .. Pondasi lebih penting ..".
+(PAT dikirim owner untuk push backup.)
+
+### 22.1 Bukti diagnosis (smali APK v6, dilacak hari ini)
+
+1. **Identitas popup**: `f/a/n.smali` — DialogFragment log `"WaitingDialog"`, layout
+   `hw_dialog_prompt_waiting`, teks = pesan loading (`hw_msg_login`),
+   **`setCancelable(false)` (const 0x0)** + `OnKeyListener` (`f/a/n$cointhreat`, callback
+   `c()` no-op) → tidak bisa ditutup dengan apa pun. Dibuat `HWLoginActivity.feedtonight(String)`
+   (line 271) SEBELUM registerVisitor; hanya ditutup `hoboismrelationbelow()` saat event
+   sukses tiba.
+2. **Rantai setelah registerVisitor 200**
+   (`dishbesideshockey$nationalcommunitymissing$seventygenom.run()`): parse `data`
+   (`psalmicvolleyball/cointhreat` — authToken+userData WAJIB; `QGUserData.generateFromJson`
+   wajib username/uid/token/isGuest-string; response kita memenuhi SEMUA) → simpan session →
+   `QuickGameSdkService.seventygenom(0xe)` → `bus.post("com.quickgame.android.sdk.LOGIN_RAND")`.
+3. **Jalur isNewUser di device** (`seventygenom(0xe)` line 1358-1628): `isNewUser()==1` →
+   AppsFlyer `af_complete_registration` (try/catch) + **Adjust `trackEvent`
+   `adj_complete_registration_token` TANPA try/catch** + Facebook `fb_mobile_complete_registration`
+   — AKTIF karena QHinfo asli (di-mirror di 9530) memuat token Adjust/AppsFlyer/Facebook →
+   di device TANPA internet (semua domain eksternal buntu) jalur ini dapat gagal sebelum
+   `bus.post` → event `LOGIN_RAND` TIDAK ter-emit → **WaitingDialog macet = popup pengingat
+   tidak bisa di-close**. Smoke desktop Bagian 21 tidak menampakkan ini karena tidak
+   menjalankan SDK tracking. (Bukti log device: TIDAK ada request setelah registerVisitor —
+   tidak ada autoLogin/loginchecknative/GetServerList.)
+4. **Bukan tersangka** (dipastikan agar tidak salah tuduh lagi): dialog konfirmasi kode
+   migrasi "使用迁移码会覆盖游客账号信息，确定继续吗？" (`MSG_CHECK_REG_VISITOR` what=0x13,
+   membaca `{isReged,cdkey}`, non-closable) — pemancarnya `/v1/user/ckRegVistor`
+   (`dishbesideshockey$feedtonight`) = dead code, tidak pernah di-instantiate.
+5. **Jalur sehat setelah event tiba**: `onLoginEvent` LOGIN_RAND (:cond_9) →
+   `hoboismrelationbelow()` dismiss dialog → `hardlinerspare()` "loginRole" → lastLoginType
+   0xE → pswitch_0 (hw_guest "游客") + pswitch_data_1 → pswitch_2 → `singersmooth()`
+   "checkGuestByisQuest" → `timidcompletely==true` (flag ACTION_AUTO_REGISTER_AND_LOGIN) →
+   `gangclothing()` "enterGame" → callback state 1 + finish. Real-name di `gangclothing()`
+   aman: `model/e.gangclothing:Z` hanya true bila loginTypes mengandung "17" + GMS (kita
+   kirim `["12"]`); `swamppropitiates()` aman utk bindInfo null (dibuatkan
+   `new QGUserBindInfo()`).
+6. **Server v6**: registerVisitor mengirim `isNewUser=1` (`AccountStore.isNewUser`),
+   autoLogin mengirim `isNewUser=0`.
+
+### 22.2 FIX v7 (2 patch — 0008)
+
+| # | File | Perubahan | Efek |
+|---|------|-----------|------|
+| A | `smali_classes2/com/db/local/server/SdkHandler.smali` | registerVisitor: `iget-boolean isNewUser` → **`const/4 v2, 0x0`** (persis jalur autoLogin) | jalur tracking AppsFlyer/Adjust/Facebook TIDAK dijalankan → `bus.post LOGIN_RAND` ter-emit → WaitingDialog di-dismiss → flow tamu lanjut natural ke enterGame |
+| B | `smali/com/quickgame/android/sdk/f/a/n.smali` | `setCancelable` **0x0 → 0x1** | WaitingDialog BISA di-close (BACK) — popup tidak pernah stuck lagi apapun yang macet di masa depan |
+
+Teks log `REGISTER-VISITOR 21` → `REGISTER-VISITOR 22` (dokumentasi akar menyertai log).
+
+### 22.3 Verifikasi v7
+
+- Rebuild apktool b (smali 2 folder) → sign `uber-apk-signer` + `dblocal-mod.keystore`
+  (alias `dblocalmod`, pass `dblocalmod123` — tercatat Bagian 16) → **zipalign verified +
+  signature verified [v1, v2, v3]**, sertifikat **CN=DB Local Mod, O=Owner, C=ID** exp 2056
+  (SAMA v1-v6; install-over OK).
+- Baksmali APK TER-SIGN: patch A terbaca `const/4 v2, 0x0` (line 184; autoLogin tetap
+  `v3=0` line 210); patch B terbaca `const/4 p2, 0x1`; teks `REGISTER-VISITOR 22` ada.
+- APK `release-mod/db-local(MOD-LOCALSERVER-v7).apk`: **203.084.660 B**, sha256
+  **`a733c8bea634893024d7210d9f5cc78a1443cd7644133adae0145b9b1902d73a`**, **6427 entri
+  (= v6)**, classes.dex 6.697.172 B (v6: 6.697.176), classes2.dex 81.088 B (v6: 80.876).
+- Perilaku diharapkan di device: registerVisitor → sesi tamu tersimpan → dialog loading
+  hilang → game lanjut natural; bila apapun macet → dialog bisa di-close BACK → layar
+  login/Register SDK tetap dapat diakses. (APK v6 dihapus dari repo, diganti v7 — pola sama
+  dgn v1→v2→…→v6.)
+
+### 22.4 PEMULIHAN REPO (fakta terkoreksi — aturan backup anti-reset)
+
+- **KOREKSI**: analisis awal "tree GitHub kosong" SALAH — itu error opsi `ls-tree -l -r`
+  yang diam-diam; verifikasi ulang 2x: `origin/main` = `4fff4b0` dengan **24 file LENGKAP**
+  (`.gitattributes`, original APK LFS, `readme.md` s.d. **Bagian 21 ASLI** (1639 baris —
+  recreate tidak diperlukan dan TIDAK dipakai), `rebuild-src/` s.d. repack_v6.py,
+  `release-mod/` v6 APK LFS + keystore).
+- Yang TIDAK ada di GitHub dan dipulihkan dari commit lokal `2c8fb27` (tree lengkap
+  Bagian 20): patch `0001`–`0007` + `verify-artifacts/` (10 file).
+- Yang BARU: patch `0008` + readme Bagian 22 + APK v7 (LFS, menggantikan v6).
+- Pemulihan = commit BARU di atas `4fff4b0` — history TIDAK disentuh.
+- APK dipulihkan dari blob Git LFS (pointer 134 B selamat di history; download via LFS
+  batch API PAT): v6 `cbbc04f2…` (202.658.676 B) ✓ sha256 cocok; original `b308c44d…`
+  (104.945.181 B) ✓ sha256 cocok — keduanya kembali terverifikasi byte-per-byte.

@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Server: nginx/1.16.0
+Date: Sun, 22 Nov 2026 12:51:24 GMT
+Content-Type: text/plain; charset=UTF-8
+Content-Length: 103
+Connection: keep-alive
+Access-Control-Allow-Origin: *
+Set-Cookie: io=aAdZEQ2ahmgjfEaybpjj; Path=/; HttpOnly
+
+96:0{"sid":"aAdZEQ2ahmgjfEaybpjj","upgrades":["websocket"],"pingInterval":25000,"pingTimeout":5000}2:40

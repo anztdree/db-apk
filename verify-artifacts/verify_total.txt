@@ -1,0 +1,56 @@
+=== A. RANTAI QHinfo ===
+  dipakai di: (<analysis.ClassAnalysis Lcom/quickgame/android/sdk/QuickGameManager;>, <analysis.MethodAnalysis Lcom/quickgame/android/sdk/QuickGameManager;->initThirdDataSDK(Landroid/app/Activity; Ljava/lang/String;)V [access_flags=private] @ 0x5c71ac>)
+=== B. PEMBACA FIELD seventygenom (domain) ===
+  READ: (<analysis.ClassAnalysis Lcom/quickgame/android/sdk/bindcommunist/cointhreat;>, <analysis.MethodAnalysis Lcom/quickgame/android/sdk/bindcommunist/cointhreat;->cointhreat(Ljava/lang/String; Ljava/util/Map;)Lorg/json/JSONObject; [access_flags=public] @ 0x5dacfc>)
+=== C. JUMLAH PATH API ^/(v\d)/ ===
+  jumlah: 33
+    /v1/auth/bindMail
+    /v1/auth/cUserTrash
+    /v1/auth/changePassword
+    /v1/auth/cksnslogin
+    /v1/auth/createOrder
+    /v1/auth/fbActInit
+    /v1/auth/fbInviteEvent
+    /v1/auth/fbLikeEvent
+    /v1/auth/fbShareEvent
+    /v1/auth/fbUserClaimEvent
+    /v1/auth/getUserInfo
+    /v1/auth/jianchaLayLx
+    /v1/auth/setGameRoleInfo
+    /v1/auth/unBindOtherInfo
+    /v1/auth/userBindOtherSdk
+    /v1/auth/viewMigCode
+    /v1/system/dmsg
+    /v1/system/getAgreement
+    /v1/system/getNotice
+    /v1/system/init
+    /v1/system/onNewToken
+    /v1/user/actCdKey
+    /v1/user/autoLogin
+    /v1/user/ckRegVistor
+    /v1/user/findPassByEmail
+    /v1/user/getServerAgreement
+    /v1/user/loginByName
+    /v1/user/postGooglePlayVerify 
+    /v1/user/registerUser
+    /v1/user/registerVisitor
+    /v1/user/sendCodeByEmail
+    /v1/user/userLoginByOtherSdk
+    /v2/purchase
+=== D. FORMAT URL di connect() ===
+2026-11-22 09:08:07.097 | ERROR    | androguard.decompiler.graph:construct:551 - Multiple exit nodes found !
+   int v0_38 = String.format("%s%s", v14_1);
+   v6_4.setRequestMethod("POST");
+   v6_4.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+   v6_0.setRequestMethod("POST");
+   v6_0.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+=== E. STRING KUNCI CONFIG DI DEX ===
+  EntryPoint: ['EntryPoint']
+  ^config_: ['config_%s.properties', 'config_showMenuShortcutsWhenKeyboardPresent', 'config_tooltipAnimTime']
+  ^\.properties$: []
+  getConfigProperties|getChannel: ['getChannel', 'getChannelId']
+=== F. NSC AXML ===
+<network-security-config>
+  <base-config cleartextTrafficPermitted="true"/>
+</network-security-config>
+

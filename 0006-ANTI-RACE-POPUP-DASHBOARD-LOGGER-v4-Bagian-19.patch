@@ -1,0 +1,713 @@
+diff --git a/readme.md b/readme.md
+index 8eab6b0..d9be72b 100644
+--- a/readme.md
++++ b/readme.md
+@@ -1306,3 +1306,125 @@ nyata sandbox (desktop JVM + browser), bukan rencana.
+ - Bagian 18 + `rebuild-src/javasrc/` (10 java: + DiskWriter) + `rebuild-src/scripts/repack_v3.py`
+   + APK v3 (LFS) di-commit dan di-push bersamaan.
+ - README append-only: Bagian 1–17 TIDAK diubah sedikit pun.
++
++---
++
++## 19. ANTI-RACE POPUP (APK v4) + DASHBOARD LOGGER v4 — jawaban owner "teks sampah / kurang rinci / gak bisa copy" (22 Nov 2026)
++
++Laporan owner setelah uji APK v3 (22 Nov 2026), disertai paste 15 entri log pertama dari dashboard:
++<b>"banyak teks sampah keterangan yg gak perlu . kurang rinci kurang jelas juga, gak bisa copy teks .
++dan ada error itu di apk mohon di benahi"</b>. Dua pekerjaan: (A) akar popup error dibuktikan dari
++smali dan DIPERBAIKI (bukan lagi "perilaku terdokumentasi" — ini bug server kita sendiri);
++(B) dashboard logger v4 ditulis total. Semua angka = hasil uji nyata sandbox.
++
++### 19.1 AKAR POPUP ERROR — BUKTI SMALI (bukan tebakan)
++
++Urutan log owner (paste, 22:08:02–22:08:06):
++
++| t | port | event |
++|---|---|---|
++| 22:08:02.196 | 9527 | setting_BS_Android.bin 200 (687 B) |
++| 22:08:02.262 | 9527 | com_db_local.bin 200 (2 B) |
++| 22:08:03.336 | 9528 | **GET /bs/upgrade/base.version?rnd=… → 404** |
++| 22:08:03.342 | 9528 | **GET /bs/upgrade/resource.version?rnd=… → 404** |
++| 22:08:06.832 | 4000 | EXTRACT "ekstraksi server_root/bs selesai (2758 file)" |
++
++= request version check datang SEBELUM ekstraksi folder upgrade/ selesai (race).
++Bukti konsekuensi 404 di smali `com/zhuhuan/game/LaunchActivity.smali` (protokol update,
++badcode 730–865): helper HTTP memetakan HTTP 404 → string literal `"404"`; kemudian
++`cointhreat(v7,"404")` → `runOnUiThread(new ironoriginhoblike("Server base.version is Not Exist"))`
++→ `goto end` (game berhenti; tidak pernah memuat index-native.html — cocok: log owner TIDAK
++memiliki request html/js sama sekali). Idem `"Server resource.version is Not Exist"`.
++JADI popup error owner = 404 version check buatan server kita sendiri, bukan GetServerList.
++
++Fakta pendukung:
++- File upgrade/ SEMUA ada di mirror (capture live 17.2): base.version=`110`,
++  resource.version=`11390`, upgrade.json, size.json, all.zip 19.385.098 B, base.zip 31.015.076 B.
++  Yang 404 bukan karena hilang — karena BELUM TEREKSTRAK (upgrade/ diekstrak paling akhir,
++  readyEarly v3 dilepas setelah js/ selesai).
++- Urutan versi setelah fix (dibaca dari APK asli): assets/game/base.version=`110`,
++  assets/game/resource.version=`11220` → baseVersionRemote(110) == local(110) = TANPA update
++  base; resVersionRemote(11390) > local(11220) = game menjalankan update resource: fetch
++  upgrade.json → 11220 bukan kunci → fallback `/all.zip?v=…` (19 MB dari 127.0.0.1 — lokal,
++  cepat) → PERILAKU ASLI 1:1 (smali: kunci tidak cocok → `/all.zip?v=`; size.json ikut
++  di-404-check dan ada).
++- Zip inkremental (11386_11390.zip dst) juga TIDAK ADA di CDN live (folder live hanya
++  berisi all/base) — mirror konsisten 1:1.
++
++### 19.2 FIX POPUP — 3 PERUBAHAN KODE
++
++1. **StaticHandler — fallback generik disk→assets (anti-race total)**: bila file tidak ada di
++   server/, dilayani LANGSUNG dari assets APK. Kedua listener kini membawa AssetsSource
++   (ServerCore: cdnHandler juga). Penanda di extra log: `sumber=ASSETS (fast-path 9527)` bila
++   lewat jalur cepat .bin, `sumber=ASSETS (file belum terekstrak — anti-race 19.1)` bila lewat
++   fallback generik — owner bisa lihat persis kapan race terjadi.
++2. **LocalServerStarter — reorder ekstraksi**: `upgrade/` naik ke rank 3 (sebelum `resource/`
++   rank 4) → base.version/resource.version/upgrade.json/size.json terekstrak paling awal
++   sesudah db/+html/js.
++3. **copyAsset ATOMIK**: tulis ke `<nama>.extracting.tmp` lalu `renameTo` — file yang sudah
++   tampak di server/ dijamin UTUH (tidak ada partial file yang dilayani); fallback bila rename
++   gagal = salin byte manual (java.io murni — java.nio.file = API 26+ TIDAK dipakai demi minSdk 21).
++
++Uji anti-race (desktop JVM; docroot sengaja DIKURANGI — folder upgrade/ DIHAPUS — assets
++simulasi lengkap; kondisi persis device saat ekstraksi berjalan):
++
++| Request ke 9528 | Hasil |
++|---|---|
++| /bs/upgrade/base.version | **200** `110` (4 B) — extra "file belum terekstrak" |
++| /bs/upgrade/resource.version | **200** `11390` (5 B) |
++| /bs/upgrade/upgrade.json | **200** 130 B (isi penuh) |
++| /bs/upgrade/size.json | **200** 105 B (isi penuh) |
++| /bs/upgrade/all.zip (HEAD) | **200** |
++| 9527 setting_BS_Android.bin | 200 687 B (fast-path) |
++| 404 tersisa | TIDAK ADA (semua endpoint game terlayani) |
++
++### 19.3 DASHBOARD LOGGER v4 — jawaban 3 keluhan owner
++
++| Keluhan owner | Jawaban v4 |
++|---|---|
++| "banyak teks sampah keterangan yg gak perlu" | seksi "Cara baca (Bagian 18)" + semua paragraf penjelasan DIHAPUS TOTAL; dashboard kini = header 1 baris (LOGGER v4 :port + uptime/seq/counter/arsip) + kontrol 1 baris + tabel. Tanpa teks lain. |
++| "kurang rinci kurang jelas" | klik baris → blok TERSTRUKTUR: **REQUEST** (method + URL penuh `http://127.0.0.1:<port><path>` + header per-baris + body), **RESPON** (status + body), **EXTRA**, **ERROR**, **SEMUA (teks polos)**. JSON otomatis di-pretty (JSON config XOR ter-decode ikut pretty — indent 2). Filter: Mode ALL/PORT, Port, Kind, Status (2xx/3xx/4xx/5xx/error), Cari subset, Limit s.d. semua buffer. Kolom tabel: # / waktu / port / kind / method / path / st / dur / req / resp. |
++| "gak bisa copy teks" | `user-select:text` seluruh halaman + tombol **salin** per-baris (kolom terakhir) dan per-blok detail + **Salin TSV** (kolom tabel bersih, tab-separated) + **Salin JSON** (array entri UTUH: headers/req/resp/extra/error). Rantai clipboard: navigator.clipboard → execCommand('copy') → modal "Salin manual — Ctrl+C" dengan teks otomatis terpilih (untuk browser HTTP biasa) + toast konfirmasi "tersalin N karakter". |
++
++Uji browser nyata (agent-browser, dashboard dari server desktop):
++| Uji | Hasil |
++|---|---|
++| Desktop 1280 px | tabel bersih live, tanpa teks sampah (screenshot `rebuild/work/dashboard-v4-desktop.png`) |
++| Mobile 390 px | kontrol wrap rapi, tabel scroll horizontal (screenshot `dashboard-v4-mobile.png`) |
++| Klik baris base.version | blok REQUEST/RESPON/EXTRA/SEMUA tampil; EXTRA = `sumber=ASSETS (file belum terekstrak — anti-race 19.1) \| respCT=text/plain` |
++| Klik baris 9527 bin | EXTRA: DECODED-XOR di-pretty (JSON indent 2, `loginServer: http://127.0.0.1`, `update: http://127.0.0.1:9528/bs/upgrade`) |
++| Tombol salin | headless tanpa izin clipboard → modal fallback terbuka, teks terpilih 295 char (rantai fallback bekerja) |
++| Salin TSV | modal berisi TSV 11 kolom bersih (seq/waktu/port/kind/method/path/status/durMs/reqLen/respLen/error) |
++| Filter Status=error | 0 visible / 11 hidden (semua entri 200 — benar) |
++| **Banjir 6.000 req / 1,3 dtk (4.644 req/s)** | seq 6.008; **droppedGlobal 0; droppedPort semua 0**; arsip NDJSON **6.008 baris == seq (100% utuh)** |
++
++### 19.4 HASIL APK v4 + verifikasi menyeluruh
++
++| Item | Nilai |
++|---|---|
++| Sumber | APK asli (sha256 b308c44d…2218) — BUKAN v2/v3 |
++| Replaced | `classes.dex` (starter — byte-identik v2/v3), `assets/config_BS.properties` (256 B identik artefak), `assets/QHinfo` (21 B identik) |
++| Added | `classes2.dex` **63.120 B** (10 class — baksmali verifikasi di APK ter-sign: string "anti-race 19.1", "LOGGER v4", `extracting.tmp`/`renameTo`, rank `upgrade` ada), `assets/server_root/**` 2.758 file (byte-identik v2/v3) |
++| Entri | 6.427 (= v2/v3) |
++| Sign | keystore SAMA `dblocalmod` (CN=DB Local Mod, O=Owner, C=ID, exp 2056) — **zipalign verified; signature verified [v1, v2, v3]** |
++| File | `release-mod/db-local(MOD-LOCALSERVER-v4).apk` — **202.650.484 B** (kebetulan sama dengan v3 — terbukti konten beda: dex v4 214f1c94… vs v3 9f1c0bd7…; 63.120 vs 57.384 B), sha256 **e1a4f3b5c32d2a4b3e1321076c3a5dc3e87b5872c00f73f714a940645d803535** |
++| Tool | ECJ 3.33.0 + D8 8.3.37 (r8) + baksmali 2.5.2 (fat) + uber-apk-signer 1.3.0 (di /home/z/my-project — jar TIDAK di-commit) |
++
++### 19.5 Perilaku yang diharapkan di device setelah v4 (jujur)
++
++1. Popup "Server base.version is Not Exist" / "Server resource.version is Not Exist" HILANG —
++   version check selalu 200 (fallback assets menutup seluruh race ekstraksi).
++2. Setelah itu game berlanjut: update resource (11390 > 11220) → download all.zip 19 MB dari
++   9528 lokal → ekstraksi oleh game sendiri → load index-native.html → socket.io 5050.
++3. **Jika kemudian muncul popup pada TAHAP LOGIN (GetServerList)** — itu batasan 17.7#2 yang
++   TIDAK berubah (balasan daftar server game/chat/dungeon TIDAK dikarang tanpa keputusan
++   owner). Log 5050 di dashboard v4 kini memperlihatkan event `42[…GetServerList…]` tepat
++   yang dikirim game — dasar putusan berikutnya.
++4. Dashboard: `http://127.0.0.1:4000/` — semua log bisa disalin (per-baris/per-blok/TSV/JSON);
++   arsip penuh tetap di `/download?latest=1` dan `Android/data/com.db.local/server/logs/`.
++
++### 19.6 Status push
++
++- Bagian 19 + `rebuild-src/javasrc/` (10 java) + `rebuild-src/scripts/repack_v4.py` + APK v4
++  (LFS) di-commit dan di-push bersamaan.
++- README append-only: Bagian 1–18 TIDAK diubah sedikit pun.
+diff --git a/rebuild-src/javasrc/com/db/local/server/LocalServerStarter.java b/rebuild-src/javasrc/com/db/local/server/LocalServerStarter.java
+index 27f9642..5d83ee2 100644
+--- a/rebuild-src/javasrc/com/db/local/server/LocalServerStarter.java
++++ b/rebuild-src/javasrc/com/db/local/server/LocalServerStarter.java
+@@ -143,26 +143,53 @@ public final class LocalServerStarter {
+     }
+ 
+     private static int rank(String name) {
++        // v4 (Bagian 19): upgrade/ DINAIKKAN ke rank 3 (sebelum resource/) —
++        // base.version/resource.version/upgrade.json/size.json tersedia paling awal;
++        // resource/ (3.239 file) paling akhir karena paling lama
+         if ("db".equals(name)) return 0;
+         if ("index-native.html".equals(name) || "manifest.json".equals(name)
+                 || "index.html".equals(name) || "manifest_ts.json".equals(name)
+                 || "base.version".equals(name) || "resource.version".equals(name)) return 1;
+         if ("js".equals(name)) return 2;
+-        if ("resource".equals(name)) return 3;
+-        return 4;
++        if ("upgrade".equals(name)) return 3;
++        if ("resource".equals(name)) return 4;
++        return 5;
+     }
+ 
+     private static void copyAsset(AssetManager am, String assetPath, File target) {
+         InputStream in = null;
+         OutputStream out = null;
++        File tmp = new File(target.getParentFile(), target.getName() + ".extracting.tmp");
+         try {
+             File parent = target.getParentFile();
+             if (parent != null && !parent.exists()) parent.mkdirs();
+             in = am.open(assetPath);
+-            out = new FileOutputStream(target);
++            // v4 (Bagian 19): tulis ke nama sementara lalu RENAME ATOMIK — file yang
++            // sudah tampak di server/ dijamin UTUH (tidak ada yang dilayani setengah)
++            out = new FileOutputStream(tmp);
+             byte[] buf = new byte[65536];
+             int r;
+             while ((r = in.read(buf)) > 0) out.write(buf, 0, r);
++            out.flush();
++            out.close(); out = null;
++            if (!tmp.renameTo(target)) {
++                // rename gagal (target ada?) — salin byte manual (java.io murni,
++                // java.nio.file = API 26+ dilarang demi minSdk 21)
++                java.io.FileInputStream fin = new java.io.FileInputStream(tmp);
++                try {
++                    java.io.FileOutputStream fout = new java.io.FileOutputStream(target);
++                    try {
++                        byte[] buf2 = new byte[65536];
++                        int r2;
++                        while ((r2 = fin.read(buf2)) > 0) fout.write(buf2, 0, r2);
++                    } finally {
++                        fout.close();
++                    }
++                } finally {
++                    fin.close();
++                }
++                tmp.delete();
++            }
+         } catch (IOException ioe) {
+             LoggerCore.Entry e = new LoggerCore.Entry();
+             e.port = LoggerCore.PORT_LOGGER;
+@@ -175,6 +202,7 @@ public final class LocalServerStarter {
+         } finally {
+             try { if (in != null) in.close(); } catch (IOException ignored) {}
+             try { if (out != null) out.close(); } catch (IOException ignored) {}
++            if (tmp.exists()) tmp.delete();
+         }
+     }
+ }
+diff --git a/rebuild-src/javasrc/com/db/local/server/LoggerHandler.java b/rebuild-src/javasrc/com/db/local/server/LoggerHandler.java
+index 50c7da8..5fe8f4c 100644
+--- a/rebuild-src/javasrc/com/db/local/server/LoggerHandler.java
++++ b/rebuild-src/javasrc/com/db/local/server/LoggerHandler.java
+@@ -9,10 +9,13 @@ import java.util.ArrayList;
+ import java.util.Map;
+ 
+ /**
+- * Listener 4000 (fallback 4001 bila bind gagal) — logger/monitoring v3 (Bagian 18):
+- *   GET /                    → dashboard HTML live (auto-refresh, filter port/kind/
+- *                              search/error-only, klik baris = detail lengkap, arsip
+- *                              NDJSON bisa diunduh, indikator gap + dropped)
++ * Listener 4000 (fallback 4001 bila bind gagal) — logger/monitoring v4 (Bagian 19):
++ *   GET /                    → dashboard HTML live v4 (TANPA teks penjelasan; tabel
++ *                              bersih; klik baris = blok detail terstruktur REQUEST/
++ *                              RESPON/EXTRA/ERROR + JSON auto-pretty; SEMUA teks bisa
++ *                              disalin: per-baris, per-blok, Salin TSV, Salin JSON;
++ *                              fallback clipboard untuk browser HTTP biasa; filter
++ *                              mode/port/kind/status/cari/limit; arsip NDJSON diunduh)
+  *   GET /stats               → JSON counter per port + dropped + status disk NDJSON
+  *   GET /health              → JSON status bind + ekstraksi + disk
+  *   GET /logs?mode=all|port&port=P&limit=N&since=SEQ
+@@ -179,63 +182,79 @@ public final class LoggerHandler implements HttpWorker.Handler {
+         return b.toString();
+     }
+ 
+-    /* ================= dashboard ================= */
++    /* ================= dashboard v4 (Bagian 19) =================
++     * Keluhan owner 22 Nov 2026: "banyak teks sampah keterangan yg gak perlu .
++     * kurang rinci kurang jelas juga, gak bisa copy teks". Jawaban v4:
++     *  - TANPA paragraf penjelasan — hanya tabel + kontrol (teks sampah dihapus).
++     *  - RINCI: klik baris → blok terstruktur REQUEST (URL penuh + header per
++     *    baris + body) / RESPON (status + body, JSON otomatis di-pretty) / EXTRA
++     *    (JSON config ter-decode ikut di-pretty) / ERROR / SEMUA (teks polos);
++     *    tiap blok punya tombol salin sendiri.
++     *  - BISA COPY: seluruh teks selectable (user-select:text) + tombol salin per
++     *    baris & per blok + Salin TSV + Salin JSON (array entri utuh) + fallback
++     *    clipboard (execCommand → modal pilih-manual Ctrl+C) untuk browser HTTP
++     *    biasa yang menolak navigator.clipboard.
++     */
+ 
+     private String dashboardHtml() {
+-        StringBuilder b = new StringBuilder(16384);
++        StringBuilder b = new StringBuilder(24576);
+         b.append("<!DOCTYPE html><html><head><meta charset='utf-8'>\n")
+          .append("<meta name='viewport' content='width=device-width,initial-scale=1'>\n")
+-         .append("<title>db-local logger v3</title>\n")
++         .append("<title>LOGGER v4</title>\n")
+          .append("<style>\n")
+-         .append("body{font-family:ui-monospace,Menlo,Consolas,monospace;background:#101418;color:#d7dde3;margin:0;padding:12px;font-size:13px}\n")
+-         .append("h2{color:#8fd48f;margin:4px 0}h3{color:#8fd48f;margin:10px 0 4px}\n")
+-         .append(".bar{background:#171d24;border:1px solid #2a333d;border-radius:6px;padding:8px 10px;margin:6px 0}\n")
+-         .append(".muted{color:#7d8894}.warn{color:#e8b34c}.err{color:#ef6a6a}.ok{color:#7fd17f}.ws{color:#6ec6d8}\n")
++         .append("body{font-family:Menlo,Consolas,monospace;background:#0e1216;color:#d7dde3;margin:0;padding:8px;font-size:12px;user-select:text;-webkit-user-select:text}\n")
++         .append("#top{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;margin-bottom:6px}\n")
++         .append("#title{color:#8fd48f;font-weight:bold;font-size:14px}\n")
++         .append("#statsbar{color:#7d8894;font-size:11px}\n")
++         .append("#ctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:#151b22;border:1px solid #2a333d;border-radius:6px;padding:6px;margin-bottom:6px}\n")
++         .append("label{color:#9fb0c0;font-size:11px}\n")
++         .append("select,input,button{background:#1b222b;color:#d7dde3;border:1px solid #2a333d;border-radius:4px;padding:3px 6px;font-family:inherit;font-size:11px}\n")
++         .append("button{cursor:pointer}button:hover{border-color:#4a5a6a}\n")
++         .append("#tblwrap{max-height:calc(100vh - 150px);overflow:auto;border:1px solid #2a333d;border-radius:6px}\n")
++         .append("#tblwrap::-webkit-scrollbar{width:10px;height:10px}#tblwrap::-webkit-scrollbar-thumb{background:#2a333d;border-radius:5px}\n")
+          .append("table{border-collapse:collapse;width:100%}\n")
+-         .append("th{background:#1b222b;color:#9fb0c0;text-align:left;padding:4px 8px;border:1px solid #2a333d;font-size:12px}\n")
+-         .append("td{padding:3px 8px;border:1px solid #232b34;font-size:12px;white-space:nowrap;max-width:520px;overflow:hidden;text-overflow:ellipsis}\n")
++         .append("th{position:sticky;top:0;background:#1b222b;color:#9fb0c0;text-align:left;padding:4px 6px;font-size:11px;border-bottom:1px solid #2a333d;z-index:2}\n")
++         .append("td{padding:2px 6px;border-bottom:1px solid #1c242d;font-size:11px;white-space:nowrap}\n")
++         .append("td.path{max-width:460px;overflow:hidden;text-overflow:ellipsis}\n")
+          .append("tr.row:hover{background:#1a2129;cursor:pointer}\n")
+-         .append("tr.det td{background:#0d1116;white-space:pre-wrap;max-width:none;font-size:12px}\n")
+-         .append("select,input,button{background:#1b222b;color:#d7dde3;border:1px solid #2a333d;border-radius:4px;padding:4px 8px;font-family:inherit;font-size:12px}\n")
+-         .append("button{cursor:pointer}button:hover{border-color:#4a5a6a}\n")
+-         .append("a{color:#6ec6d8}\n")
+-         .append("#tblwrap{max-height:60vh;overflow-y:auto;border:1px solid #2a333d;border-radius:6px}\n")
+-         .append("#tblwrap::-webkit-scrollbar{width:10px}#tblwrap::-webkit-scrollbar-thumb{background:#2a333d;border-radius:5px}\n")
++         .append("tr.det>td{background:#0b0f14;white-space:normal;max-width:none;padding:6px 10px}\n")
++         .append(".err{color:#ef6a6a}.warn{color:#e8b34c}.ok{color:#7fd17f}.ws{color:#6ec6d8}.mut{color:#7d8894}\n")
++         .append(".sec{margin:0 0 6px;border:1px solid #232b34;border-radius:4px}\n")
++         .append(".sech{background:#161c23;color:#8fd48f;padding:2px 8px;font-size:11px;display:flex;justify-content:space-between;align-items:center;gap:8px}\n")
++         .append(".sec pre{margin:0;padding:6px 8px;white-space:pre-wrap;word-break:break-word;max-height:320px;overflow:auto;font-size:11px;color:#c7d1da}\n")
++         .append(".cp{font-size:10px;padding:1px 7px}.cpy{font-size:10px;padding:1px 5px}\n")
++         .append("#notices{font-size:11px;margin:4px 0}\n")
++         .append("#toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#123a1f;color:#9fe6a8;border:1px solid #2f7a44;padding:6px 14px;border-radius:6px;display:none;z-index:50;font-size:12px}\n")
++         .append("#modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.72);display:none;z-index:40}\n")
++         .append("#modalbox{background:#12181f;border:1px solid #2a333d;border-radius:8px;max-width:760px;margin:40px auto;padding:10px}\n")
++         .append("#modalhead{display:flex;justify-content:space-between;color:#8fd48f;margin-bottom:6px;font-size:12px}\n")
++         .append("#modalpre{max-height:60vh;overflow:auto;white-space:pre-wrap;word-break:break-word;background:#0b0f14;padding:8px;font-size:11px;color:#c7d1da}\n")
+          .append("</style></head><body>\n")
+-         .append("<h2>db-local mini-server — LOGGER v3 (live, arsip NDJSON disk)</h2>\n")
++         .append("<div id=top><span id=title>LOGGER v4</span><span id=statsbar>memuat /stats …</span></div>\n")
+ 
+-         .append("<div class='bar' id='statsbar'>memuat /stats …</div>\n")
+-
+-         .append("<div class='bar'>\n")
+-         .append("<label>Mode <select id='mode'><option value='all'>ALL (lintas port)</option><option value='port'>PORT (satu port)</option></select></label> \n")
+-         .append("<label id='portsel'>Port <select id='port'>")
+-         .append("<option value='9527'>9527 config</option><option value='9528'>9528 CDN</option>")
+-         .append("<option value='5050'>5050 login</option><option value='9530'>9530 SDK</option>")
+-         .append("</select></label> \n")
+-         .append("<label>Kind <select id='kind'><option value=''>semua</option><option>HTTP</option><option>WS</option><option>BOOT</option><option>EXTRACT</option><option>SYS</option></select></label> \n")
+-         .append("<label>Cari <input id='q' size='18' placeholder='subset path/body'></label> \n")
+-         .append("<label><input type='checkbox' id='errs'> hanya error</label> \n")
+-         .append("<label>Limit <select id='limit'><option>200</option><option selected>500</option><option>2000</option><option value='0'>semua buffer</option></select></label> \n")
+-         .append("<button id='pause'>Jeda</button> <button id='reset'>Reset+Resync</button> \n")
+-         .append("<button onclick=\"fetch('/download').then(r=>r.json()).then(showFiles)\">Arsip NDJSON</button> \n")
+-         .append("<a href='/download?latest=1'>unduh terbaru</a> <a href='/stats'>/stats</a> <a href='/health'>/health</a>\n")
++         .append("<div id=ctl>\n")
++         .append("<label>Mode <select id=mode><option value=all>ALL (semua port)</option><option value=port>PORT (satu port)</option></select></label>\n")
++         .append("<label id=portsel style=display:none>Port <select id=port>")
++         .append("<option value=9527>9527 config</option><option value=9528>9528 CDN</option>")
++         .append("<option value=5050>5050 login</option><option value=9530>9530 SDK</option>")
++         .append("</select></label>\n")
++         .append("<label>Kind <select id=kind><option value=''>semua</option><option>HTTP</option><option>WS</option><option>BOOT</option><option>EXTRACT</option><option>SYS</option></select></label>\n")
++         .append("<label>Status <select id=st><option value=''>semua</option><option value=2>2xx</option><option value=3>3xx</option><option value=4>4xx</option><option value=5>5xx</option><option value=e>error</option></select></label>\n")
++         .append("<label>Cari <input id=q size=16 placeholder=subset></label>\n")
++         .append("<label>Limit <select id=limit><option>200</option><option selected>1000</option><option>5000</option><option value=0>semua buffer</option></select></label>\n")
++         .append("<button id=pause>Jeda</button> <button id=reset>Reset</button>\n")
++         .append("<button id=cpts>Salin TSV</button> <button id=cpjs>Salin JSON</button>\n")
++         .append("<button id=dl>Unduh NDJSON</button>\n")
+          .append("</div>\n")
+ 
+-         .append("<div class='bar' id='notices'></div>\n")
++         .append("<div id=notices></div>\n")
+ 
+-         .append("<div id='tblwrap'><table id='tbl'><thead><tr>")
+-         .append("<th>seq</th><th>waktu</th><th>port</th><th>kind</th><th>req</th><th>status</th><th>dur</th><th>reqLen</th><th>respLen</th>")
+-         .append("</tr></thead><tbody id='tb'></tbody></table></div>\n")
++         .append("<div id=tblwrap><table><thead><tr>")
++         .append("<th>#</th><th>waktu</th><th>port</th><th>kind</th><th>method</th><th>path</th><th>st</th><th>dur</th><th>req</th><th>resp</th><th></th>")
++         .append("</tr></thead><tbody id=tb></tbody></table></div>\n")
+ 
+-         .append("<div id='files' class='bar' style='display:none'></div>\n")
+-
+-         .append("<h3>Cara baca (Bagian 18)</h3>")
+-         .append("<div class='bar muted'>")
+-         .append("Alur boot game: <b>9527</b> setting_BS_Android.bin (extra=JSON ter-decode) → <b>9528</b> index-native.html + js + serversetting.json (loginserver=127.0.0.1:5050) → <b>5050</b> socket.io OPEN+login event → <b>9530</b> /v1/* SDK.<br>")
+-         .append("Popup error saat game berhenti di login = PERILAKU TERDOKUMENTASI 17.7#2 — GetServerList TIDAK dikarang (kesepakatan: tidak ada data game palsu); lihat entry terakhir 5050 sebelum popup untuk event tepatnya.<br>")
+-         .append("Semua entry juga TERTULIS di disk: <b>Android/data/com.db.local/server/logs/log-*.ndjson</b> (unduh via /download) — buffer penuh pun arsip tetap lengkap.<br>")
+-         .append("Klik baris = detail (headers/req/resp/extra/error). status>=400 merah; WS biru; 101 cyan.")
+-         .append("</div>\n")
++         .append("<div id=toast></div>\n")
++         .append("<div id=modal><div id=modalbox><div id=modalhead><span id=modaltitle></span><button id=modalx>Tutup</button></div><pre id=modalpre></pre></div></div>\n")
+ 
+          .append("<script>\n")
+          .append(Js())
+@@ -245,46 +264,151 @@ public final class LoggerHandler implements HttpWorker.Handler {
+     }
+ 
+     private static String Js() {
+-        StringBuilder s = new StringBuilder(6144);
+-        s.append("var S={since:0,mode:'all',port:9527,kind:'',q:'',errs:false,limit:500,auto:true};\n")
+-         .append("var MAXROWS=8000;\n")
++        StringBuilder s = new StringBuilder(12288);
++        s.append("var S={since:0,mode:'all',port:9527,kind:'',st:'',q:'',limit:1000,auto:true};\n")
++         .append("var ENT={},DET={};var MAXR=5000;var pollN=0;\n")
+          .append("function $(id){return document.getElementById(id)}\n")
+          .append("function esc(x){return (x==null?'':''+x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}\n")
+-         .append("function sync(){S.mode=$('mode').value;S.port=parseInt($('port').value);S.kind=$('kind').value;S.q=$('q').value.toLowerCase();S.errs=$('errs').checked;S.limit=parseInt($('limit').value);$('portsel').style.display=(S.mode=='port'?'inline':'none')}\n")
+-         .append("['mode','port','kind','limit'].forEach(function(id){$(id).onchange=function(){sync();reset()}});\n")
+-         .append("$('q').oninput=function(){sync();applyFilter()};$('errs').onchange=function(){sync();applyFilter()};\n")
++         .append("function attr(x){return esc(x).replace(/\"/g,'&quot;')}\n")
++         .append("function hdrLines(h){return h?(''+h).split('; ').join('\\n'):''}\n")
++         .append("function pretty(s){var t=(''+s).trim();var c=t.charAt(0);var e=t.charAt(t.length-1);\n")
++         .append(" if((c=='{'&&e=='}')||(c=='['&&e==']')){try{return JSON.stringify(JSON.parse(t),null,2)}catch(x){}}\n")
++         .append(" return ''+s}\n")
++         .append("function prettyExtra(x){var i=(''+x).indexOf('DECODED-XOR: ');\n")
++         .append(" if(i>=0){try{return x.substring(0,i+13)+'\\n'+JSON.stringify(JSON.parse(x.substring(i+13).trim()),null,2)}catch(y){}}\n")
++         .append(" return ''+x}\n")
++         .append("function allText(e){var L=[];\n")
++         .append(" L.push('#'+e.seq+'  '+e.time+'  port '+e.port+'  '+e.kind);\n")
++         .append(" if(e.kind=='HTTP')L.push((e.method||'')+' http://127.0.0.1:'+e.port+(e.path||''));else L.push(e.method||e.kind);\n")
++         .append(" L.push('status '+(e.status||0)+'  '+e.durMs+'ms  req '+(e.reqLen||0)+'B  resp '+(e.respLen||0)+'B');\n")
++         .append(" if(e.headers)L.push('headers:\\n'+hdrLines(e.headers));\n")
++         .append(" if(e.reqPreview)L.push('req:\\n'+e.reqPreview);\n")
++         .append(" if(e.respPreview)L.push('resp:\\n'+e.respPreview);\n")
++         .append(" if(e.extra)L.push('extra:\\n'+e.extra);\n")
++         .append(" if(e.error)L.push('error: '+e.error);\n")
++         .append(" return L.join('\\n')}\n")
++         .append("function detOf(e){var d=[];\n")
++         .append(" if(e.kind!='HTTP'){d.push({l:'INFO',t:(e.path||'')+(e.respPreview?'\\n'+e.respPreview:'')});}\n")
++         .append(" else{var t=(e.method||'')+' http://127.0.0.1:'+e.port+(e.path||'')+'\\n'+hdrLines(e.headers);\n")
++         .append("  if(e.reqPreview)t+='\\n[body '+(e.reqLen||0)+'B]\\n'+pretty(e.reqPreview);\n")
++         .append("  d.push({l:'REQUEST',t:t});\n")
++         .append("  if(e.respPreview!=null)d.push({l:'RESPON',t:'status '+(e.status||0)+'\\n'+pretty(e.respPreview)});}\n")
++         .append(" if(e.extra)d.push({l:'EXTRA',t:prettyExtra(e.extra)});\n")
++         .append(" if(e.error)d.push({l:'ERROR',t:e.error});\n")
++         .append(" d.push({l:'SEMUA (teks polos)',t:allText(e)});\n")
++         .append(" return d}\n")
++         .append("function cls(e){return e.status>=400?'err':(e.status>=300?'warn':'ok')}\n")
++         .append("function rowHtml(e){\n")
++         .append(" var r='<tr class=row data-seq='+e.seq+'>'\n")
++         .append("  +'<td class=mut>'+e.seq+'</td><td class=mut>'+esc(e.time)+'</td><td>'+e.port+'</td>'\n")
++         .append("  +'<td class='+(e.kind=='WS'?'ws':'mut')+'>'+esc(e.kind||'')+'</td>'\n")
++         .append("  +'<td>'+esc(e.method||'')+'</td>'\n")
++         .append("  +'<td class=path title=\"'+attr(e.path)+'\">'+esc(e.path||'')+'</td>'\n")
++         .append("  +'<td class='+cls(e)+'>'+(e.status||0)+'</td>'\n")
++         .append("  +'<td class=mut>'+e.durMs+'ms</td><td class=mut>'+(e.reqLen||0)+'</td><td class=mut>'+(e.respLen||0)+'</td>'\n")
++         .append("  +'<td><button class=cpy data-seq='+e.seq+' data-k=all>salin</button></td></tr>';\n")
++         .append(" var d=detOf(e);DET[e.seq]=d;\n")
++         .append(" var h='<tr class=det style=display:none><td colspan=11>';\n")
++         .append(" for(var i=0;i<d.length;i++)h+='<div class=sec><div class=sech><span>'+esc(d[i].l)+'</span><button class=cp data-seq='+e.seq+' data-k='+i+'>salin</button></div><pre>'+esc(d[i].t)+'</pre></div>';\n")
++         .append(" h+='</td></tr>';\n")
++         .append(" return r+h}\n")
++         .append("function pass(e){\n")
++         .append(" if(S.kind&&e.kind!=S.kind)return false;\n")
++         .append(" if(S.st=='2'&&!(e.status>=200&&e.status<300))return false;\n")
++         .append(" if(S.st=='3'&&!(e.status>=300&&e.status<400))return false;\n")
++         .append(" if(S.st=='4'&&!(e.status>=400&&e.status<500))return false;\n")
++         .append(" if(S.st=='5'&&e.status>=500)return false;\n")
++         .append(" if(S.st=='e'&&!(e.status>=400||e.error))return false;\n")
++         .append(" if(S.q){var t=((e.method||'')+' '+(e.path||'')+' '+(e.reqPreview||'')+' '+(e.respPreview||'')+' '+(e.extra||'')+' '+(e.error||'')).toLowerCase();if(t.indexOf(S.q)<0)return false}\n")
++         .append(" return true}\n")
++         .append("function applyFilter(){var rows=$('tb').querySelectorAll('tr.row');\n")
++         .append(" for(var i=0;i<rows.length;i++){var e=ENT[rows[i].getAttribute('data-seq')];\n")
++         .append("  var show=e?pass(e):true;rows[i].style.display=show?'':'none';\n")
++         .append("  var det=rows[i].nextSibling;\n")
++         .append("  if(det&&det.className=='det')det.style.display=(show&&det.style.display!='none')?'':'none';}}\n")
++         .append("function append(list){var w=$('tblwrap');\n")
++         .append(" var pin=w.scrollTop+w.clientHeight>=w.scrollHeight-60;\n")
++         .append(" var tb=$('tb');\n")
++         .append(" for(var i=0;i<list.length;i++){var e=list[i];ENT[e.seq]=e;\n")
++         .append("  var tmp=document.createElement('tbody');tmp.innerHTML=rowHtml(e);\n")
++         .append("  while(tmp.firstChild)tb.appendChild(tmp.firstChild);}\n")
++         .append(" var rows=tb.querySelectorAll('tr');var over=rows.length-MAXR*2;\n")
++         .append(" for(var j=0;j<over;j++)tb.removeChild(tb.firstChild);\n")
++         .append(" applyFilter();if(pin)w.scrollTop=w.scrollHeight}\n")
++         .append("function visible(){var out=[];var rows=$('tb').querySelectorAll('tr.row');\n")
++         .append(" for(var i=0;i<rows.length;i++){if(rows[i].style.display=='none')continue;\n")
++         .append("  var e=ENT[rows[i].getAttribute('data-seq')];if(e)out.push(e)}\n")
++         .append(" return out}\n")
++         .append("function copyTSV(){var v=visible();\n")
++         .append(" var L=['seq\\twaktu\\tport\\tkind\\tmethod\\tpath\\tstatus\\tdurMs\\treqLen\\trespLen\\terror'];\n")
++         .append(" for(var i=0;i<v.length;i++){var e=v[i];\n")
++         .append("  L.push([e.seq,e.time,e.port,e.kind,e.method||'',(e.path||'').replace(/\\t/g,' '),e.status||0,e.durMs,e.reqLen,e.respLen,(e.error||'').replace(/\\t/g,' ')].join('\\t'))}\n")
++         .append(" copyText(L.join('\\n'))}\n")
++         .append("function copyJSON(){copyText(JSON.stringify(visible(),null,1))}\n")
++         .append("function copyText(t){\n")
++         .append(" if(navigator.clipboard&&navigator.clipboard.writeText){\n")
++         .append("  navigator.clipboard.writeText(t).then(function(){toast('tersalin '+t.length+' karakter')},function(){legacyCopy(t)});\n")
++         .append(" }else legacyCopy(t)}\n")
++         .append("function legacyCopy(t){\n")
++         .append(" var ta=document.createElement('textarea');ta.value=t;\n")
++         .append(" ta.style.position='fixed';ta.style.left='-9999px';ta.style.top='0';\n")
++         .append(" document.body.appendChild(ta);ta.focus();ta.select();\n")
++         .append(" var ok=false;try{ok=document.execCommand('copy')}catch(x){}\n")
++         .append(" document.body.removeChild(ta);\n")
++         .append(" if(ok)toast('tersalin '+t.length+' karakter');\n")
++         .append(" else openModal('Salin manual — Ctrl+C',t)}\n")
++         .append("function openModal(t2,t){$('modaltitle').textContent=t2;$('modalpre').textContent=t;$('modal').style.display='block';\n")
++         .append(" var r=document.createRange();r.selectNodeContents($('modalpre'));\n")
++         .append(" var sc=window.getSelection();sc.removeAllRanges();try{sc.addRange(r)}catch(x){}}\n")
++         .append("var tt=null;\n")
++         .append("function toast(m){var el=$('toast');el.textContent=m;el.style.display='block';clearTimeout(tt);tt=setTimeout(function(){el.style.display='none'},1800)}\n")
++         .append("$('tb').addEventListener('click',function(ev){\n")
++         .append(" var n=ev.target;\n")
++         .append(" while(n&&n.tagName!='BUTTON'&&n.tagName!='TR')n=n.parentNode;\n")
++         .append(" if(n&&n.tagName=='BUTTON'){var seq=n.getAttribute('data-seq'),k=n.getAttribute('data-k');\n")
++         .append("  var d=DET[seq];if(d){var t=(k=='all')?d[d.length-1].t:d[parseInt(k)].t;copyText(t)}\n")
++         .append("  ev.stopPropagation();return}\n")
++         .append(" var tr=ev.target.closest?ev.target.closest('tr.row'):null;\n")
++         .append(" if(!tr)return;\n")
++         .append(" var det=tr.nextSibling;\n")
++         .append(" if(det&&det.className=='det')det.style.display=(det.style.display=='none'?'':'none');});\n")
++         .append("$('modalx').onclick=function(){$('modal').style.display='none'};\n")
++         .append("$('modal').onclick=function(ev){if(ev.target.id=='modal')$('modal').style.display='none'};\n")
++         .append("function sync(){S.mode=$('mode').value;S.port=parseInt($('port').value);S.kind=$('kind').value;\n")
++         .append(" S.st=$('st').value;S.q=$('q').value.toLowerCase();S.limit=parseInt($('limit').value);\n")
++         .append(" $('portsel').style.display=(S.mode=='port')?'':'none'}\n")
++         .append("function reset(){$('tb').innerHTML='';ENT={};DET={};S.since=0;$('notices').innerHTML=''}\n")
++         .append("['mode','port','limit'].forEach(function(id){$(id).onchange=function(){sync();reset()}});\n")
++         .append("['kind','st'].forEach(function(id){$(id).onchange=function(){sync();applyFilter()}});\n")
++         .append("$('q').oninput=function(){S.q=$('q').value.toLowerCase();applyFilter()};\n")
+          .append("$('pause').onclick=function(){S.auto=!S.auto;$('pause').textContent=S.auto?'Jeda':'Lanjut'};\n")
+-         .append("$('reset').onclick=function(){reset()};\n")
+-         .append("function reset(){$('tb').innerHTML='';S.since=0;$('notices').innerHTML='';}\n")
+-         .append("function url(){var u='/logs?mode='+S.mode+'&limit='+S.limit+'&since='+S.since;if(S.mode=='port')u+='&port='+S.port;return u}\n")
+-         .append("function note(cls,txt){var d=document.createElement('div');d.className=cls;d.textContent=txt;$('notices').appendChild(d)}\n")
+-         .append("function rowHtml(e){var cls=e.status>=400?'err':(e.status>=300?'warn':'ok');var req=esc(e.method)+' '+esc(e.path);var det='';\n")
+-         .append(" if(e.headers)det+='<b>headers</b>: '+esc(e.headers)+'\\n';\n")
+-         .append(" if(e.reqPreview)det+='<b>req</b>: '+esc(e.reqPreview)+'\\n';\n")
+-         .append(" if(e.respPreview)det+='<b>resp</b>: '+esc(e.respPreview)+'\\n';\n")
+-         .append(" if(e.extra)det+='<b>extra</b>: '+esc(e.extra)+'\\n';\n")
+-         .append(" if(e.error)det+='<b class=err>error</b>: '+esc(e.error);\n")
+-         .append(" return '<tr class=row data-seq='+e.seq+'><td>'+e.seq+'</td><td>'+esc(e.time)+'</td><td>'+e.port+'</td><td>'+esc(e.kind)+'</td><td title=\\''+esc(req).replace(/\\'/g,'')+'\\'>'+req+'</td><td class='+cls+'>'+e.status+'</td><td>'+e.durMs+'ms</td><td>'+e.reqLen+'</td><td>'+e.respLen+'</td></tr><tr class=det style=display:none><td colspan=9>'+det+'</td></tr>'}\n")
+-         .append("function pass(e){if(S.kind&&e.kind!==S.kind)return false;if(S.errs&&!(e.status>=400||e.error))return false;if(S.q){var t=((e.method||'')+' '+(e.path||'')+' '+(e.reqPreview||'')+' '+(e.respPreview||'')+' '+(e.extra||'')+' '+(e.error||'')).toLowerCase();if(t.indexOf(S.q)<0)return false}return true}\n")
+-         .append("function applyFilter(){var rows=$('tb').querySelectorAll('tr.row');for(var i=0;i<rows.length;i++){var det=rows[i].nextSibling;var seq=rows[i].getAttribute('data-seq');var e=ENT[seq];var show=e?pass(e):true;rows[i].style.display=show?'':'none';if(det&&det.className=='det')det.style.display=show?'none':'none'}}\n")
+-         .append("var ENT={};\n")
+-         .append("function append(list){var tb=$('tb');for(var i=0;i<list.length;i++){var e=list[i];ENT[e.seq]=e;var tmp=document.createElement('tbody');tmp.innerHTML=rowHtml(e);while(tmp.firstChild){tb.appendChild(tmp.firstChild)}if(!pass(e)){tb.lastChild.previousSibling.style.display='none'}}\n")
+-         .append(" var rows=tb.querySelectorAll('tr');var over=rows.length-MAXROWS*2;for(var j=0;j<over;j++)tb.removeChild(tb.firstChild)}\n")
++         .append("$('reset').onclick=reset;\n")
++         .append("$('cpts').onclick=copyTSV;\n")
++         .append("$('cpjs').onclick=copyJSON;\n")
++         .append("$('dl').onclick=function(){var a=document.createElement('a');a.href='/download?latest=1';a.download='';document.body.appendChild(a);a.click();document.body.removeChild(a)};\n")
+          .append("var lastDrop=-1;\n")
+-         .append("function poll(){fetch(url()).then(function(r){return r.json()}).then(function(j){\n")
+-         .append(" if(j.gap&&j.entries.length)note('warn','GAP: entri seq '+(S.since+1)+'..'+(j.entries[0].seq-1)+' sudah terbuang dari buffer — arsip lengkap di /download');\n")
+-         .append(" if(j.entries.length){append(j.entries);S.since=j.seqNewest;applyFilter()}\n")
+-         .append(" if(j.droppedGlobal>0||j.droppedPort>0){var tot=j.droppedGlobal+j.droppedPort;if(tot!==lastDrop){lastDrop=tot;note('err','dropped: global='+j.droppedGlobal+' port='+j.droppedPort+' — tetap utuh di arsip disk')}}\n")
+-         .append(" refreshStats();setTimeout(poll,1500);\n")
+-         .append("}).catch(function(){setTimeout(poll,3000)})}\n")
+-         .append("function refreshStats(){fetch('/stats').then(function(r){return r.json()}).then(function(j){var p=j.ports;var up=Math.floor(j.uptimeMs/1000);var hm=Math.floor(up/3600),mm=Math.floor(up%3600/60),ss=up%60;\n")
+-         .append(" var t='uptime '+hm+'h'+mm+'m'+ss+'s | seq '+j.seq+' | arsip disk: '+(j.disk&&j.disk.enabled?esc(j.disk.file)+' '+j.disk.bytes+'B, '+j.disk.lines+' baris'+(j.disk.dropped>0?' <span class=err>DROPPED '+j.disk.dropped+'</span>':''):'OFF')+' | ';\n")
+-         .append(" ['9527','9528','5050','9530','4000'].forEach(function(k){var c=p[k];if(c)t+=k+':'+c.requests+(c.errors?'<span class=err>('+c.errors+'err)</span>':'')+' '});\n")
+-         .append(" if(j.droppedGlobal>0)t+='<span class=err>| bufferDropped:'+j.droppedGlobal+'</span> ';\n")
+-         .append(" $('statsbar').innerHTML=t}\n")
+-         .append(").catch(function(){})}\n")
+-         .append("function showFiles(j){var el=$('files');el.style.display='';var h='<b>Arsip NDJSON</b> ('+esc(j.dir)+'):<br>';h+='<a href=\"/download?latest=1\">[terbaru]</a> ';for(var i=0;i<j.files.length;i++)h+='<a href=\"/download?file='+encodeURIComponent(j.files[i].name)+'\">'+esc(j.files[i].name)+' ('+j.files[i].bytes+'B)</a> ';$('files').innerHTML=h}\n")
+-         .append("$('tb').addEventListener('click',function(ev){var tr=ev.target.closest('tr.row');if(!tr)return;var det=tr.nextSibling;if(det&&det.className=='det')det.style.display=(det.style.display=='none'?'':'none')});\n")
++         .append("function note(c2,txt){var d=document.createElement('div');d.className=c2;d.textContent=txt;$('notices').appendChild(d)}\n")
++         .append("function url(){var u='/logs?mode='+S.mode+'&limit='+S.limit+'&since='+S.since;if(S.mode=='port')u+='&port='+S.port;return u}\n")
++         .append("function poll(){\n")
++         .append(" if(!S.auto){setTimeout(poll,500);return}\n")
++         .append(" fetch(url()).then(function(r){return r.json()}).then(function(j){\n")
++         .append("  if(j.gap&&j.entries.length)note('warn','GAP: seq '+(S.since+1)+'..'+(j.entries[0].seq-1)+' terbuang dari buffer — arsip disk tetap utuh (Unduh NDJSON)');\n")
++         .append("  if(j.entries.length){append(j.entries);S.since=j.seqNewest}\n")
++         .append("  var tot=(j.droppedGlobal||0)+(j.droppedPort||0);\n")
++         .append("  if(tot>0&&tot!==lastDrop){lastDrop=tot;note('err','buffer dropped '+tot+' — arsip disk tetap utuh')}\n")
++         .append("  pollN++;if(pollN%3==0)refreshStats();\n")
++         .append("  setTimeout(poll,1200);\n")
++         .append(" }).catch(function(){setTimeout(poll,3000)})}\n")
++         .append("function refreshStats(){fetch('/stats').then(function(r){return r.json()}).then(function(j){\n")
++         .append(" var up=Math.floor(j.uptimeMs/1000);\n")
++         .append(" var t='uptime '+Math.floor(up/3600)+'h'+Math.floor(up%3600/60)+'m'+(up%60)+'s  seq '+j.seq;\n")
++         .append(" var ps=['9527','9528','5050','9530','4000'];\n")
++         .append(" for(var i=0;i<ps.length;i++){var c=j.ports[ps[i]];if(c)t+='  '+ps[i]+':'+c.requests+(c.errors?'('+c.errors+'err)':'')}\n")
++         .append(" if(j.disk&&j.disk.enabled)t+='  | arsip '+j.disk.file+' '+(j.disk.bytes>=1024?Math.round(j.disk.bytes/1024)+'KB':j.disk.bytes+'B')+' '+j.disk.lines+' baris';\n")
++         .append(" if(j.droppedGlobal>0)t+='  | dropped '+j.droppedGlobal;\n")
++         .append(" $('statsbar').textContent=t}).catch(function(){})}\n")
++         .append("document.title='LOGGER v4 :'+location.port;\n")
++         .append("$('title').textContent='LOGGER v4 :'+location.port;\n")
+          .append("sync();poll();\n");
+         return s.toString();
+     }
+diff --git a/rebuild-src/javasrc/com/db/local/server/ServerCore.java b/rebuild-src/javasrc/com/db/local/server/ServerCore.java
+index 50c3d0b..0203770 100644
+--- a/rebuild-src/javasrc/com/db/local/server/ServerCore.java
++++ b/rebuild-src/javasrc/com/db/local/server/ServerCore.java
+@@ -37,7 +37,10 @@ public final class ServerCore {
+                                     final StaticHandler.AssetsSource assets,
+                                     final CountDownLatch readyEarly) {
+         final StaticHandler configHandler = new StaticHandler(docroot, assets, null, LoggerCore.PORT_CONFIG);
+-        final StaticHandler cdnHandler = new StaticHandler(docroot, null, readyEarly, LoggerCore.PORT_CDN);
++        // v4 (Bagian 19): CDN handler JUGA dapat AssetsSource — fallback generik
++        // anti-race ekstraksi (base.version dkk. dilayani dari assets saat ekstraksi
++        // belum selesai → popup "Server base.version is Not Exist" tidak pernah terjadi)
++        final StaticHandler cdnHandler = new StaticHandler(docroot, assets, readyEarly, LoggerCore.PORT_CDN);
+         final SdkHandler sdk = new SdkHandler();
+         final SocketIoHandler login = new SocketIoHandler();
+ 
+diff --git a/rebuild-src/javasrc/com/db/local/server/StaticHandler.java b/rebuild-src/javasrc/com/db/local/server/StaticHandler.java
+index 02dd248..323664f 100644
+--- a/rebuild-src/javasrc/com/db/local/server/StaticHandler.java
++++ b/rebuild-src/javasrc/com/db/local/server/StaticHandler.java
+@@ -15,6 +15,10 @@ import java.util.concurrent.TimeUnit;
+  * Khusus 9527: /bs/db/android/*.bin dilayani LANGSUNG dari assets (fallback cepat,
+  * anti-race dengan ekstraksi pertama) dan log menyertakan JSON ter-decode pasca-XOR
+  * "DragonBall" (readme 15.6/16.6).
++ * v4 (Bagian 19) — ANTI-RACE EKSTRAKSI TOTAL (akar popup "Server base.version is
++ * Not Exist" — smali LaunchActivity memetakan HTTP 404 → string "404" lalu popup):
++ * SEMUA file yang belum terekstrak ke server/ dilayani LANGSUNG dari assets
++ * (fallback generik: disk dulu → assets). Dua listener kini punya AssetsSource.
+  * Log v3 (Bagian 18): teks (js/json/html/…) preview s.d. 2048 B; file biner DILOG
+  * KOMPAK "[bin N B]" + respCT (ribuan file resource tidak membanjiri buffer dengan
+  * hex — metadata ukuran/status/durasi tetap utuh, arsip NDJSON disk tetap lengkap);
+@@ -85,11 +89,13 @@ public final class StaticHandler implements HttpWorker.Handler {
+         }
+ 
+         byte[] data = null;
++        String fromAssets = null;
+ 
+         // FAST PATH 9527: bin config langsung dari assets (sebelum ekstraksi selesai)
+         if (assets != null && req.path.startsWith("/bs/db/android/")
+                 && req.path.endsWith(".bin")) {
+             data = assets.read("server_root" + req.path);
++            if (data != null) fromAssets = "fast";   // fast-path 9527 (selalu assets dulu)
+         }
+ 
+         File f = resolve(req.path);
+@@ -99,6 +105,17 @@ public final class StaticHandler implements HttpWorker.Handler {
+             }
+         }
+ 
++        // v4 (Bagian 19): fallback generik — file belum terekstrak? ambil dari assets.
++        // Membunuh seluruh race ekstraksi (base.version/resource.version/upgrade.json/
++        // size.json/all.zip/html/js — apa pun yang diminta saat ekstraksi masih jalan).
++        if (data == null && assets != null) {
++            byte[] ad = assets.read("server_root" + req.path);
++            if (ad != null && ad.length > 0) {
++                data = ad;
++                fromAssets = "race";   // file belum terekstrak → anti-race 19.1
++            }
++        }
++
+         if (data == null) {
+             byte[] b = HttpWorker.text("404 not found: " + req.path);
+             Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=utf-8");
+@@ -122,6 +139,9 @@ public final class StaticHandler implements HttpWorker.Handler {
+         e.respLen = data.length;
+         e.durMs = System.currentTimeMillis() - t0;
+         StringBuilder extra = new StringBuilder(64);
++        if (fromAssets != null) extra.append("sumber=ASSETS (")
++                .append(fromAssets.equals("fast") ? "fast-path 9527" : "file belum terekstrak — anti-race 19.1")
++                .append(") | ");
+         extra.append("respCT=").append(ct);
+         if (head) extra.append(" (HEAD, tanpa body)");
+ 
+diff --git a/rebuild-src/scripts/repack_v4.py b/rebuild-src/scripts/repack_v4.py
+new file mode 100644
+index 0000000..96d8879
+--- /dev/null
++++ b/rebuild-src/scripts/repack_v4.py
+@@ -0,0 +1,101 @@
++#!/usr/bin/env python3
++# Repack APK MOD-LOCALSERVER v4 (Bagian 19 — ANTI-RACE + DASHBOARD v4)
++#  - replace : assets/config_BS.properties (9527, identik artefak), assets/QHinfo (9530),
++#              classes.dex (patch starter di Application.onCreate — dipakai ulang byte-identik dari v2)
++#  - tambah  : classes2.dex (mini-server v3: + DiskWriter NDJSON, buffer 15000/6000,
++#              dashboard live, /download, since, chunked, HEAD, headers, milestone),
++#              assets/server_root/** (isi server/ — dipakai ulang byte-identik dari v2)
++#  - buang   : META-INF signature lama (di-sign ulang uber-apk-signer)
++#  - pertahankan compress_type per entry (resources.arsc wajib STORED utk targetSdk 30)
++import zipfile, os, sys, base64, hashlib, time
++
++SRC = '/home/z/db-apk-analysis-ws/db-local(Original-DO NOT DELETE!).apk'
++OUT = '/home/z/db-apk-analysis-ws/rebuild/work/db-local(MOD-LOCALSERVER-v4)-unsigned.apk'
++PATCHED_DEX = '/home/z/db-apk-analysis-ws/rebuild/work/classes_patched.dex'   # dari v2 (starter) — byte-identik
++SERVER_DEX  = '/home/z/db-apk-analysis-ws/rebuild/work/dexout/classes.dex'   # mini-server v4
++SERVER_ROOT = '/home/z/db-apk-analysis-ws/rebuild/work/server_root'           # dari v2 — byte-identik
++
++NEW_URL = 'http://127.0.0.1:9527/bs/db/android'
++new_cfg = (
++    'EntryPoint1=' + base64.b64encode(NEW_URL.encode()).decode() + '\n'
++    'EntryPoint1_debug=' + base64.b64encode(NEW_URL.encode()).decode() + '\n'
++    '\n'
++    'EntryPoint2=' + base64.b64encode(NEW_URL.encode()).decode() + '\n'
++    'EntryPoint2_debug=' + base64.b64encode(NEW_URL.encode()).decode()
++).encode('utf-8')
++QH = b'http://127.0.0.1:9530'
++
++# bandingkan dengan artefak v2 (harus identik byte)
++chk_cfg = open('/home/z/db-apk-analysis-ws/rebuild/check/assets/config_BS.properties', 'rb').read()
++chk_qh = open('/home/z/db-apk-analysis-ws/rebuild/check/assets/QHinfo', 'rb').read()
++assert new_cfg == chk_cfg, 'config_BS beda dari v2! (%d vs %d)' % (len(new_cfg), len(chk_cfg))
++assert QH == chk_qh, 'QHinfo beda dari v2!'
++print('config_BS.properties:', len(new_cfg), 'B — identik artefak v2')
++print('QHinfo              :', len(QH), 'B — identik artefak v2')
++
++def is_signature(name):
++    n = name.upper()
++    return (n.startswith('META-INF/') and (
++        n.endswith('.SF') or n.endswith('.RSA') or n.endswith('.DSA') or n.endswith('.EC')
++        or n == 'META-INF/MANIFEST.MF' or n.startswith('META-INF/COM/ANDROID/BUILD')))
++
++def server_files():
++    out = []
++    for root, dirs, files in os.walk(SERVER_ROOT):
++        dirs.sort()
++        for f in sorted(files):
++            full = os.path.join(root, f)
++            rel = 'assets/server_root/' + os.path.relpath(full, SERVER_ROOT).replace(os.sep, '/')
++            out.append((full, rel))
++    return out
++
++t0 = time.time()
++zin = zipfile.ZipFile(SRC)
++names = zin.namelist()
++print('entri asli:', len(names))
++
++zout = zipfile.ZipFile(OUT, 'w', zipfile.ZIP_DEFLATED, compresslevel=9)
++copied = 0
++replaced = []
++for name in names:
++    if is_signature(name):
++        continue
++    info = zin.getinfo(name)
++    if name == 'assets/config_BS.properties':
++        data = new_cfg; replaced.append((name, 'REPLACE'))
++    elif name == 'assets/QHinfo':
++        data = QH; replaced.append((name, 'REPLACE'))
++    elif name == 'classes.dex':
++        data = open(PATCHED_DEX, 'rb').read(); replaced.append((name, 'REPLACE (starter, byte-identik v2)'))
++    else:
++        data = zin.read(name); copied += 1
++    zi = zipfile.ZipInfo(name, date_time=info.date_time)
++    zi.compress_type = info.compress_type          # pertahankan (resources.arsc STORED)
++    zi.external_attr = info.external_attr
++    zout.writestr(zi, data)
++
++# classes2.dex (mini-server v3) — DEFLATED
++d2 = open(SERVER_DEX, 'rb').read()
++zi = zipfile.ZipInfo('classes2.dex', date_time=(2026, 11, 22, 16, 20, 0))
++zi.compress_type = zipfile.ZIP_DEFLATED
++zi.external_attr = 0o600 << 16
++zout.writestr(zi, d2)
++print('classes2.dex ditambah:', len(d2), 'B')
++replaced.append(('classes2.dex', 'ADD (mini-server v3)'))
++
++# assets/server_root/** — .zip STORED, lain DEFLATED
++n_server = 0
++for full, rel in server_files():
++    data = open(full, 'rb').read()
++    zi = zipfile.ZipInfo(rel, date_time=(2026, 11, 22, 13, 0, 0))
++    zi.compress_type = zipfile.ZIP_STORED if rel.endswith('.zip') else zipfile.ZIP_DEFLATED
++    zi.external_attr = 0o600 << 16
++    zout.writestr(zi, data)
++    n_server += 1
++print('assets/server_root ditambah:', n_server, 'file')
++
++zout.close()
++sz = os.path.getsize(OUT)
++h = hashlib.sha256(open(OUT, 'rb').read()).hexdigest()
++print('unsigned APK:', sz, 'B, sha256', h[:16] + '…', '| waktu %.1fs' % (time.time() - t0))
++print('replaced:', replaced)
