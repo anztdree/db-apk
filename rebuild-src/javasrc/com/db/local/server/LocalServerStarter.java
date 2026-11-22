@@ -24,6 +24,8 @@ import java.util.concurrent.CountDownLatch;
  *   latch readyEarly dilepas setelah js/ selesai (anti-blokir boot CDN 9528)
  * - 9527 melayani /bs/db/android/*.bin LANGSUNG dari assets (anti-race boot)
  * - 5 listener bind 127.0.0.1: 9527/9528/5050/9530/4000 (fallback 4001)
+ * - v3 (Bagian 18): DiskWriter NDJSON diinisialisasi PALING AWAL — semua entry
+ *   (BOOT/EXTRACT/bind/HTTP/WS) tertulis di <serverRoot>/logs/ dari detik pertama
  * - SEMUA exception ditelan (dilaporkan ke logger) — jangan pernah crash app
  */
 public final class LocalServerStarter {
@@ -40,15 +42,20 @@ public final class LocalServerStarter {
             final File serverRoot = new File(base != null ? base : ctx.getFilesDir(), "server");
             LoggerCore.serverRootPath = serverRoot.getAbsolutePath();
 
+            // v3: arsip NDJSON siap SEBELUM apapun jalan
+            DiskWriter.init(new File(serverRoot, "logs"));
+            logBoot("BOOT", "LocalServerStarter.start dipanggil (Application.onCreate) — serverRoot=" + serverRoot);
+
             final CountDownLatch readyEarly = new CountDownLatch(1);
             final Thread extractor = new Thread(() -> {
                 try {
-                    long n = extractRec(ctx.getAssets(), "server_root", serverRoot, readyEarly, 0);
+                    long n = extractRec(ctx.getAssets(), "server_root", serverRoot, readyEarly, 0, 0);
                     LoggerCore.extracted = true;
                     LoggerCore.extractedFiles = n;
+                    logBoot("EXTRACT", "ekstraksi selesai total " + n + " file ke " + serverRoot);
                     readyEarly.countDown(); // jaga-jaga bila folder js/ tidak ditemukan
                 } catch (Throwable t) {
-                    logBoot("ekstraksi gagal: " + t);
+                    logBoot("EXTRACT", "ekstraksi gagal: " + t);
                     readyEarly.countDown();
                 }
             }, "server-extract");
@@ -73,25 +80,28 @@ public final class LocalServerStarter {
             };
 
             ServerCore.StartResult res = ServerCore.start(serverRoot, assets, readyEarly);
-            logBoot("mini-server aktif; logger di port " + res.loggerPort
-                    + (res.loggerFallback ? " (fallback)" : "") + "; serverRoot=" + serverRoot);
+            logBoot("BOOT", "mini-server aktif; logger di port " + res.loggerPort
+                    + (res.loggerFallback ? " (fallback)" : "") + "; arsip NDJSON: "
+                    + new File(serverRoot, "logs"));
         } catch (Throwable t) {
-            logBoot("start gagal: " + t);
+            logBoot("BOOT", "start gagal: " + t);
         }
     }
 
-    private static void logBoot(String msg) {
+    private static void logBoot(String kind, String msg) {
         LoggerCore.Entry e = new LoggerCore.Entry();
         e.port = LoggerCore.PORT_LOGGER;
-        e.method = "BOOT";
+        e.kind = kind;
+        e.method = kind;
         e.path = msg;
         e.status = 0;
         LoggerCore.log(e);
     }
 
-    /** ekstraksi rekursif; latch dilepas setelah folder js/ pada bs/ selesai */
+    /** ekstraksi rekursif; latch dilepas setelah folder js/ pada bs/ selesai;
+     *  v3: milestone per folder top-level di-log (kind EXTRACT) */
     static long extractRec(AssetManager am, String assetPath, File targetDir,
-                           CountDownLatch early, long count) throws IOException {
+                           CountDownLatch early, long count, int depth) throws IOException {
         String[] list;
         try {
             list = am.list(assetPath);
@@ -106,6 +116,7 @@ public final class LocalServerStarter {
         List<String> sorted = new ArrayList<>();
         Collections.addAll(sorted, list);
         Collections.sort(sorted, (a, b) -> rank(a) - rank(b));
+        long before = count;
         for (String name : sorted) {
             String childAsset = assetPath + "/" + name;
             File childTarget = new File(targetDir, name);
@@ -116,11 +127,14 @@ public final class LocalServerStarter {
                 sub = null;
             }
             if (sub != null && sub.length > 0) {
-                count = extractRec(am, childAsset, childTarget, early, count);
+                count = extractRec(am, childAsset, childTarget, early, count, depth + 1);
             } else {
                 copyAsset(am, childAsset, childTarget);
                 count++;
             }
+        }
+        if (depth == 1) {
+            logBoot("EXTRACT", "ekstraksi " + assetPath + " selesai (" + (count - before) + " file)");
         }
         if ("js".equals(targetDir.getName()) && "bs".equals(targetDir.getParentFile().getName())) {
             early.countDown();
@@ -152,6 +166,7 @@ public final class LocalServerStarter {
         } catch (IOException ioe) {
             LoggerCore.Entry e = new LoggerCore.Entry();
             e.port = LoggerCore.PORT_LOGGER;
+            e.kind = "EXTRACT";
             e.method = "EXTRACT";
             e.path = assetPath;
             e.status = 500;

@@ -7,12 +7,20 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Logger/monitoring 2 MODE (readme 15.6 / 16.6 — komponen BARU, bukan fakta APK asli):
- *  - mode ALL  : kronologis lintas port layanan (ring buffer global, cap 2000)
- *  - mode PORT : ring buffer per port (cap 400/port) — header, preview body req/resp
- *                (dibatasi 2048 byte), status, durasi, error; khusus 9527 menyertakan
- *                JSON config TER-DECODE pasca-XOR "DragonBall".
- * Event bus = in-memory singleton (satu proses — tanpa HTTP hop antar layanan).
+ * Logger/monitoring v3 (Bagian 18 — evolusi 15.6/16.6, komponen BARU milik APK mod):
+ *  - mode ALL  : kronologis lintas port layanan (ring buffer global, cap 15000)
+ *  - mode PORT : ring buffer per port (cap 6000/port) — header request, preview body
+ *                req/resp (teks 4096/2048; biner kompakt "[bin N B]"), status, durasi,
+ *                error; khusus 9527 menyertakan JSON config TER-DECODE pasca-XOR
+ *                "DragonBall" di extra.
+ *  - PERSISTEN DISK: setiap entri ditulis NDJSON ke <serverRoot>/logs/log-*.ndjson
+ *    (DiskWriter thread tunggal; rotasi 16 MB/part, maks 8 file) — log selamat dari
+ *    restart app dan bisa diunduh via logger /download. INI JAWABAN "log itu utama".
+ *  - akurasi kelengkapan: droppedGlobal/droppedPort menghitung entri yang terbuang
+ *    dari buffer (terlihat di /stats & dashboard); logger TIDAK mencatat request
+ *    miliknya sendiri (anti-pollution — hanya counter) sehingga alur game tidak
+ *    tergeser oleh traffic dashboard.
+ *  - kind: HTTP | WS | BOOT | EXTRACT | SYS (pembeda alur game vs sistem).
  */
 public final class LoggerCore {
     public static final int PORT_CONFIG = 9527;
@@ -21,39 +29,47 @@ public final class LoggerCore {
     public static final int PORT_SDK    = 9530;
     public static final int PORT_LOGGER = 4000;
     public static final int PORT_FALLBACK = 4001;
-    public static final int BODY_PREVIEW_MAX = 2048;
-    public static final int GLOBAL_CAP = 2000;
-    public static final int PORT_CAP = 400;
+    /** preview teks maksimum (naik dari 2 KB — Bagian 18, prioritas kelengkapan log) */
+    public static final int BODY_PREVIEW_MAX = 4096;
+    /** preview teks untuk file statis game (js/json/html/…) */
+    public static final int STATIC_TEXT_PREVIEW = 2048;
+    public static final int GLOBAL_CAP = 15000;
+    public static final int PORT_CAP = 6000;
+    public static final int HEADERS_MAX = 1536;
 
     public static final class Entry {
         public long seq;
         public long ts;
         public int port;
+        public String kind = "HTTP";   // HTTP | WS | BOOT | EXTRACT | SYS
         public String method;
         public String path;
         public int status;
         public long durMs;
         public long reqLen;
         public long respLen;
+        public String headers;   // header request, kompakt "k=v; k2=v2" (cap HEADERS_MAX)
         public String reqPreview;
         public String respPreview;
-        public String extra;     // mis. JSON config ter-decode (9527) / event socket.io
+        public String extra;     // mis. JSON config ter-decode (9527) / event socket.io / respCT
         public String error;
 
         String esc(String s) { return s == null ? "" : JsonUtil.esc(s); }
 
         public String toJson() {
-            StringBuilder b = new StringBuilder(512);
+            StringBuilder b = new StringBuilder(768);
             b.append("{\"seq\":").append(seq)
              .append(",\"ts\":").append(ts)
              .append(",\"time\":\"").append(esc(fmtTime(ts)))
              .append("\",\"port\":").append(port)
-             .append(",\"method\":\"").append(esc(method))
+             .append(",\"kind\":\"").append(esc(kind))
+             .append("\",\"method\":\"").append(esc(method))
              .append("\",\"path\":\"").append(esc(path))
              .append("\",\"status\":").append(status)
              .append(",\"durMs\":").append(durMs)
              .append(",\"reqLen\":").append(reqLen)
              .append(",\"respLen\":").append(respLen);
+            if (headers != null)     b.append(",\"headers\":\"").append(esc(headers)).append('"');
             if (reqPreview != null)  b.append(",\"reqPreview\":\"").append(esc(reqPreview)).append('"');
             if (respPreview != null) b.append(",\"respPreview\":\"").append(esc(respPreview)).append('"');
             if (extra != null)       b.append(",\"extra\":\"").append(esc(extra)).append('"');
@@ -97,6 +113,9 @@ public final class LoggerCore {
     public static volatile String serverRootPath = "";
     public static volatile boolean extracted = false;
     public static volatile long extractedFiles = 0;
+    /** entri terbuang dari ring buffer (tidak hilang di disk — DiskWriter menulis semua) */
+    public static volatile long droppedGlobal = 0;
+    public static final long[] droppedPort = new long[6];
 
     static {
         for (int i = 0; i < PER_PORT.length; i++) PER_PORT[i] = new ArrayDeque<>();
@@ -115,9 +134,13 @@ public final class LoggerCore {
         }
     }
 
+    /** catat entri ke ring buffer (memori) + arsip NDJSON disk. Thread-safe. */
     public static void log(Entry e) {
         e.seq = SEQ.incrementAndGet();
         if (e.ts == 0) e.ts = System.currentTimeMillis();
+        String json = e.toJson();
+        DiskWriter w = DiskWriter.INSTANCE;
+        if (w != null) w.enqueue(json);
         Counter c = COUNTERS.get(e.port);
         synchronized (LOCK) {
             if (c != null) {
@@ -127,37 +150,86 @@ public final class LoggerCore {
                 if (e.status >= 400 || e.error != null) c.errors++;
             }
             GLOBAL.addLast(e);
-            while (GLOBAL.size() > GLOBAL_CAP) GLOBAL.pollFirst();
+            while (GLOBAL.size() > GLOBAL_CAP) { GLOBAL.pollFirst(); droppedGlobal++; }
             ArrayDeque<Entry> q = PER_PORT[slot(e.port)];
             q.addLast(e);
-            while (q.size() > PORT_CAP) q.pollFirst();
+            while (q.size() > PORT_CAP) { q.pollFirst(); droppedPort[slot(e.port)]++; }
         }
     }
 
-    /** mode ALL — kronologis naik, entri N terakhir */
-    public static ArrayList<Entry> latestGlobal(int limit) {
+    /**
+     * counter saja TANPA menyimpan entri (dipakai listener logger agar traffic
+     * dashboard/logger tidak membanjiri ring buffer alur game — Bagian 18).
+     */
+    public static void countSelf(int port, long reqLen, long respLen, boolean error) {
+        Counter c = COUNTERS.get(port);
+        if (c == null) return;
         synchronized (LOCK) {
-            ArrayList<Entry> all = new ArrayList<>(GLOBAL);
-            int from = Math.max(0, all.size() - Math.max(1, limit));
-            return new ArrayList<>(all.subList(from, all.size()));
+            c.requests++;
+            c.bytesIn += reqLen;
+            c.bytesOut += respLen;
+            if (error) c.errors++;
         }
     }
 
-    /** mode PORT — kronologis naik, entri N terakhir untuk port tsb */
-    public static ArrayList<Entry> latestPort(int port, int limit) {
+    private static ArrayList<Entry> tail(ArrayDeque<Entry> src, int limit, long since) {
+        ArrayList<Entry> all = new ArrayList<>(src);
+        int from = 0;
+        if (since > 0) {
+            // lewati entri dengan seq <= since (increment seq, cari batas dari kiri)
+            int lo = 0, hi = all.size();
+            while (lo < hi) { int mid = (lo + hi) >>> 1; if (all.get(mid).seq <= since) lo = mid + 1; else hi = mid; }
+            from = lo;
+        }
+        if (limit > 0 && all.size() - from > limit) from = all.size() - limit;
+        return new ArrayList<>(all.subList(from, all.size()));
+    }
+
+    /** seq terkecil yang MASIH ada di buffer global (untuk deteksi gap vs since client) */
+    public static long oldestGlobalSeq() {
         synchronized (LOCK) {
-            ArrayList<Entry> all = new ArrayList<>(PER_PORT[slot(port)]);
-            int from = Math.max(0, all.size() - Math.max(1, limit));
-            return new ArrayList<>(all.subList(from, all.size()));
+            return GLOBAL.isEmpty() ? 0 : GLOBAL.peekFirst().seq;
         }
     }
+
+    public static long oldestPortSeq(int port) {
+        synchronized (LOCK) {
+            ArrayDeque<Entry> q = PER_PORT[slot(port)];
+            return q.isEmpty() ? 0 : q.peekFirst().seq;
+        }
+    }
+
+    /** mode ALL — kronologis naik; limit<=0 = semua buffer; since>0 = hanya seq>since */
+    public static ArrayList<Entry> latestGlobal(int limit, long since) {
+        synchronized (LOCK) { return tail(GLOBAL, limit, since); }
+    }
+
+    /** mode PORT — kronologis naik; limit<=0 = semua buffer; since>0 = hanya seq>since */
+    public static ArrayList<Entry> latestPort(int port, int limit, long since) {
+        synchronized (LOCK) { return tail(PER_PORT[slot(port)], limit, since); }
+    }
+
+    /** kompatibilitas pemanggil lama */
+    public static ArrayList<Entry> latestGlobal(int limit) { return latestGlobal(limit, 0); }
+    public static ArrayList<Entry> latestPort(int port, int limit) { return latestPort(port, limit, 0); }
+
+    public static long currentSeq() { return SEQ.get(); }
 
     public static String statsJson() {
-        StringBuilder b = new StringBuilder(256);
+        StringBuilder b = new StringBuilder(512);
         b.append("{\"startedAt\":").append(STARTED_AT)
          .append(",\"uptimeMs\":").append(System.currentTimeMillis() - STARTED_AT)
-         .append(",\"ports\":{");
+         .append(",\"seq\":").append(SEQ.get())
+         .append(",\"droppedGlobal\":").append(droppedGlobal)
+         .append(",\"droppedPort\":{");
         boolean first = true;
+        for (int p : new int[]{PORT_CONFIG, PORT_CDN, PORT_LOGIN, PORT_SDK, PORT_LOGGER}) {
+            if (!first) b.append(',');
+            first = false;
+            b.append('"').append(p).append("\":").append(droppedPort[slot(p)]);
+        }
+        b.append("},\"ports\":{");
+        first = true;
         synchronized (LOCK) {
             for (Map.Entry<Integer, Counter> en : COUNTERS.entrySet()) {
                 if (!first) b.append(',');
@@ -165,7 +237,8 @@ public final class LoggerCore {
                 b.append('"').append(en.getKey()).append("\":").append(en.getValue().toJson());
             }
         }
-        b.append("}}");
+        b.append("},\"disk\":").append(DiskWriter.statsJson())
+         .append(",\"selfLogged\":false}");
         return b.toString();
     }
 
@@ -175,6 +248,7 @@ public final class LoggerCore {
          .append(",\"extracted\":").append(extracted)
          .append(",\"extractedFiles\":").append(extractedFiles)
          .append(",\"fallbackLogger\":").append(fallbackLogger)
+         .append(",\"disk\":").append(DiskWriter.statsJson())
          .append(",\"binds\":{");
         boolean first = true;
         synchronized (LOCK) {

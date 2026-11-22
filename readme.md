@@ -1184,3 +1184,125 @@ classes.dex re-assemble (smali 2.5.2): 6.697.104 → **6.697.176 B** (+72 B inst
 - README append-only: Bagian 1–16 TIDAK diubah sedikit pun.
 - git-lfs 3.5.1 dipasang lokal (`~/.local/bin`) — sandbox reset sebelumnya menghapus binary;
   objek LFS lama (APK v1 105 MB) terverifikasi MASIH ADA di GitHub LFS (uji batch API 22 Nov).
+
+---
+
+## 18. LOGGER TOTAL v3 — jawaban "popup error + log port 4000 tidak lengkap" (22 Nov 2026)
+
+Laporan owner setelah uji device APK v2: "Oke work. hanya saja muncul popup error. dan log kita
+pada web port 4000 tidak lengkap. mohon totalitas.. karena log itu utama". Bagian ini = audit
+jujur AKAR MASALAH log v2 + perbaikan menyeluruh (LOGGER TOTAL) + APK v3. Semua angka hasil uji
+nyata sandbox (desktop JVM + browser), bukan rencana.
+
+### 18.1 Akar masalah "log tidak lengkap" di v2 — 6 temuan (diagnosis dari kode v2)
+
+| # | Akar masalah | Efek nyata di device |
+|---|---|---|
+| 1 | Ring buffer kecil: global 2.000, per-port 400 | Boot pertama game men-download ~3.300 file statis via 9528 → buffer penuh dalam DETIK; entri boot penting (9527 config, 5050 login, 9530 SDK) TERGESER keluar buffer sebelum owner sempat buka web 4000 |
+| 2 | TIDAK ada persistensi disk (memori saja) | App mati/restart proses = SEMUA log hilang |
+| 3 | Dashboard hanya menampilkan 50 baris terakhir, tanpa body/extra/error, tanpa filter | Yang terlihat di web = piringan kecil dari log yang sudah miskin (1+2) |
+| 4 | /logs ikut ter-catat sendiri (self-pollution) | Setiap refresh dashboard memakan slot buffer alur game |
+| 5 | Header request TIDAK dicatat (spec 16.6 menjanjikan "header"); preview body 2 KB; limit API dipatok 2000 | Diagnosis kurang data |
+| 6 | Body POST `Transfer-Encoding: chunked` DIABAIKAN (v2 hanya Content-Length) | Body event socket.io/POST tertentu bisa hilang dari log + log menunjukkan reqLen 0 padahal client kirim data |
+
+### 18.2 LOGGER TOTAL v3 — 9 komponen (semua di classes2.dex, murni java.* minSdk 21)
+
+1. **LoggerCore v3**: buffer global **15.000** + per-port **6.000**; counter **droppedGlobal /
+   droppedPort** (kelengkapan TRANSPARAN — bila ada yang terbuang dari buffer, angkanya kelihatan
+   di /stats & dashboard, bukan diam-diam); field baru `kind` (HTTP|WS|BOOT|EXTRACT|SYS) dan
+   `headers` (header request kompakt, cap 1,5 KB); preview teks 4.096 B / teks statis 2.048 B;
+   **request milik logger sendiri TIDAK disimpan** (hanya counter — anti-pollution #4).
+2. **DiskWriter (KOMPONEN BARU — inti "log itu utama")**: SETIAP entri ditulis baris NDJSON ke
+   `<serverRoot>/logs/log-<waktu-boot>.ndjson` (thread tunggal + queue 20.000, flush per baris →
+   data selamat walau proses mati mendadak; rotasi 16 MB/part; maks 8 file, tertua dihapus; SEMUA
+   exception ditelan). Arsip disk TIDAK PERNAH meluap — buffer penuh pun arsip tetap utuh 1:1.
+   Diunduh via logger: `/download` (list), `/download?latest=1`, `/download?file=NAME`.
+3. **HttpWorker**: dukung body **chunked** (#6 — diuji: POST chunked 28 B ter-parse utuh,
+   reqPreview penuh); body > 8 MB → truncate + koneksi ditutup (tertandai); **HEAD tanpa body**;
+   request line rusak → entry SYS 400; header request di-capture (fulfil 16.6).
+4. **StaticHandler**: file teks (html/js/json/css/xml) preview s.d. 2 KB; file biner (png/zip/mp3/…)
+   **kompak `[bin N B]`** + `respCT` di extra — ribuan file resource tidak membanjiri buffer dengan
+   hex (metadata ukuran/status/durasi tetap utuh, arsip disk tetap lengkap); khusus 9527 tetap
+   menyertakan JSON config TER-DECODE di extra (XOR DragonBall).
+5. **SocketIoHandler**: entry WS ber-`kind=WS`; **ping→pong (WS-level) ikut ter-log**; body OPEN
+   (103 byte) tercatat di respPreview (v2 hanya di extra); long-poll payload tetap penuh.
+6. **SdkHandler**: header request + body s.d. 4 KB — parameter yang game kirim ke /v1/* kelihatan.
+7. **ServerCore**: hasil bind tiap port masuk log (kind SYS).
+8. **LocalServerStarter**: DiskWriter.init PALING AWAL (semua entry BOOT/EXTRACT/bind tertulis
+   dari detik pertama); milestone ekstraksi per folder top-level (db/ → html → js/ → resource/ →
+   upgrade/) + total file — boot flow kelihatan kronologis.
+9. **LoggerHandler v3 (web port 4000 DITULIS TOTAL)**: dashboard live auto-refresh 1,5 dtk
+   (incremental `since` — tidak mengirim ulang yang sudah dilihat); filter Mode ALL/PORT, port
+   9527/9528/5050/9530, kind, pencarian subset, hanya-error, limit (s.d. semua buffer); **klik
+   baris = detail penuh** (headers/req/resp/extra/error — termasuk JSON config ter-decode); baris
+   status berwarna (>=400 merah, WS biru); papan /stats hidup (uptime, seq, counter per port,
+   arsip disk + ukuran + baris, dropped merah bila >0); **notifikasi GAP** bila ada entri buffer
+   yang tidak terlihat client; tombol Arsip NDJSON (list file → klik unduh) + unduh terbaru;
+   responsif (mobile 390 px teruji); seksi "Cara baca (Bagian 18)" menjelaskan alur boot + status
+   popup yang diharapkan. API: `/logs?mode=all|port&port=P&limit=N&since=SEQ`, `/stats`,
+   `/health`, `/download[?latest=1|file=NAME]` (nama tervalidasi anti path-traversal).
+
+### 18.3 Uji nyata v3 di sandbox (desktop JVM, server_root asli dari v2)
+
+| Uji | Hasil |
+|---|---|
+| Bind 5 listener + /health | semua AKTIF; disk `enabled:true` sejak sebelum request pertama |
+| 9527 bin | 687 B; XOR decode → `loginPort:5050`, `loginServer:http://127.0.0.1` ✓; extra dashboard = JSON penuh |
+| 9528 | index-native.html byte-identik; serversetting.json isi baru (loginserver 127.0.0.1:5050) ✓ |
+| 9530 | envelope capture live ✓ (header + body request ter-log) |
+| 5050 polling | OPEN 103 byte 1:1 ✓; POST chunked `42["login","user","pass123"]` ter-parse utuh (reqLen 28, preview penuh) ✓; framing benar `6:2probe` → long-poll mengembalikan `6:3probe` ✓ |
+| 5050 WebSocket | 101 + Sec-WebSocket-Accept ✓; `2probe`→`3probe` ✓; ping `2`→`3` ✓; close ter-log (kind WS) ✓ |
+| HEAD statis | header tanpa body ✓ |
+| Incremental | `/logs?since=SEQ` hanya entri baru ✓ |
+| Anti-pollution | buffer 2.000 entri via dashboard: **0 entri logger-HTTP di buffer** ✓ |
+| **BANJIR 16.000 req/3 dtk (5.287 req/s)** | seq 16.026; droppedGlobal **1.026** (terhitung, terlihat); droppedPort 9530 **10.002**; **arsip disk 16.026 baris = seq, dropped 0** — arsip 100% utuh melebihi buffer; GAP flag TRUE di dashboard |
+| Dashboard (browser nyata) | tabel live naik, detail baris 9527 menampilkan JSON config ter-decode, filter PORT 9527 hanya entri 9527, arsip list + unduh jalan, mobile 390 px terbaca (screenshot) |
+| Integritas arsip | `seq == disk.lines` (26/26 dan 16.026/16.026) — TANPA kehilangan |
+
+### 18.4 HASIL APK v3 + verifikasi menyeluruh
+
+| Item | Nilai |
+|---|---|
+| Sumber | APK asli (sha256 b308c44d…2218) — BUKAN v2; 3 entri di-replace dari artefak terverifikasi |
+| Replaced | `classes.dex` (starter +72 B — **byte-identik v2**, sha256 d506fae9f8377db2 terkonfirmasi ulang via baksmali: `invoke-static {p0}, Lcom/db/local/server/LocalServerStarter;->start(Landroid/content/Context;)V` di Application.smali), `assets/config_BS.properties` (256 B identik), `assets/QHinfo` (21 B identik) |
+| Added | `classes2.dex` **57.384 B** (10 class + inner/lambda = 25 smali, DiskWriter ikut — baksmali verifikasi), `assets/server_root/**` 2.758 file (byte-identik v2 — 12 sampel acak cmp 0 beda) |
+| resources.arsc | tetap STORED (compress=0) — wajib targetSdk 30 |
+| Entri | 6.427 (= v2) |
+| Sign | keystore SAMA `dblocalmod` (CN=DB Local Mod, O=Owner, C=ID, exp 2056) — **v2 HARUS di-uninstall dulu bila terpasang** (sertifikat sama sebenarnya bisa install-over, tapi wipe `server/` lama disarankan agar ekstraksi baru mulai bersih) |
+| Verifikasi | zipalign verified; signature verified **[v1, v2, v3]** |
+| File | `release-mod/db-local(MOD-LOCALSERVER-v3).apk` — **202.650.484 B**, sha256 **f3b6b81d00890036dafaeeeb97b99a740b793b188e7f9554d43fb901d42e6763** |
+| Tool | ECJ 3.33.0 + D8 8.3.37 (r8, Google Maven) + baksmali 2.5.2 (fat) + uber-apk-signer 1.3.0 — jar TIDAK di-commit |
+
+### 18.5 Cara pakai log v3 di device (INI YANG UTAMA)
+
+1. Buka `http://127.0.0.1:4000/` di browser device (atau via `adb reverse tcp:4000 tcp:4000` lalu
+   `http://127.0.0.1:4000/` di browser PC) — dashboard LANGSUNG hidup, auto-refresh.
+2. Alur boot kelihatan kronologis: SYS bind → EXTRACT milestone → 9527 bin (extra=JSON) →
+   9528 html/js/serversetting → 5050 OPEN/login event → 9530 /v1/*.
+3. **Popup error saat game berhenti di login = PERILAKU TERDOKUMENTASI 17.7#2** (GetServerList
+   TIDAK dikarang — kesepakatan tidak ada data game palsu). Dengan log v3, entry terakhir port
+   5050 SEBELUM popup menunjukkan event tepat yang dikirim game — dasar kalibrasi berikutnya bila
+   owner siap menambah listener 5051/5052.
+4. Arsip penuh tanpa kecuali: tombol **Arsip NDJSON** di dashboard / `/download?latest=1`, atau
+   langsung dari disk: `Android/data/com.db.local/server/logs/log-*.ndjson`
+   (`adb pull /sdcard/Android/data/com.db.local/server/logs/`). Tahan 8 file (rotasi 16 MB).
+5. `/stats` menampilkan dropped buffer — bila > 0, arsip disk tetap 100% lengkap (teruji banjir
+   16.000 req: buffer kehilangan 1.026, disk 0).
+
+### 18.6 Batasan jujur v3
+
+1. Isi body di arsip = preview (teks 4.096/2.048 B; biner metadata `[bin N B]`) — bukan capture
+   byte penuh; keputusan sadar agar 3.300 file resource tidak menulis GB data. Semua yang
+   kecil-penting (config JSON, event socket.io, body SDK) muat utuh dalam preview.
+2. Ring buffer RAM (15.000 global/6.000 port) bisa meluap pada boot pertama (ribuan file statis)
+   — dropped counter terlihat; ARSIP DISK tetap utuh (teruji).
+3. Ping/pong WS ikut di-log (±1 entry/25 dtk/sesi aktif) — kelengkapan > kepadatan.
+4. Dashboard mengambil `/logs` tiap 1,5 dtk — request ini tidak masuk buffer (countSelf saja).
+5. Popup login tetap ada sampai owner setuju listener 5051/5052 (server list game) ditambah —
+   TIDAK dikarang tanpa izin (kesepakatan 17.7#2).
+
+### 18.7 Status push
+
+- Bagian 18 + `rebuild-src/javasrc/` (10 java: + DiskWriter) + `rebuild-src/scripts/repack_v3.py`
+  + APK v3 (LFS) di-commit dan di-push bersamaan.
+- README append-only: Bagian 1–17 TIDAK diubah sedikit pun.

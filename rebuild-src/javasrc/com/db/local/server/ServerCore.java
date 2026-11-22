@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -68,7 +69,23 @@ public final class ServerCore {
         } else {
             LoggerCore.BINDS.put("4000", "GAGAL bind (4000 dan 4001)");
         }
+        logBinds();
         return new StartResult(loggerPort, fallback);
+    }
+
+    /** v3: hasil bind ikut masuk log (kind SYS) — kelihatan di dashboard & disk */
+    private static void logBinds() {
+        synchronized (LoggerCore.BINDS) {
+            for (Map.Entry<String, String> en : LoggerCore.BINDS.entrySet()) {
+                LoggerCore.Entry e = new LoggerCore.Entry();
+                e.port = LoggerCore.PORT_LOGGER;
+                e.kind = "SYS";
+                e.method = "BIND";
+                e.path = "port " + en.getKey() + " — " + en.getValue();
+                e.status = en.getValue().contains("AKTIF") ? 0 : 500;
+                LoggerCore.log(e);
+            }
+        }
     }
 
     private static void bindAndServe(int port, HttpWorker.Handler handler, String label) {

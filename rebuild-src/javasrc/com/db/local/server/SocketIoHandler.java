@@ -128,6 +128,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         e.method = req.method;
         e.path = req.rawPath;
         e.reqLen = req.body.length;
+        e.headers = req.headersStr;
         if (req.body.length > 0) e.reqPreview = StaticHandler.preview(req.body);
 
         boolean isWs = "websocket".equalsIgnoreCase(req.header("upgrade"));
@@ -144,6 +145,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         }
 
         if (isWs) {
+            e.kind = "WS";
             return handleWebSocket(req, out, sock, e, t0);
         }
 
@@ -173,6 +175,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 byte[] bb = body.getBytes(StandardCharsets.UTF_8);
                 HttpWorker.writeResponse(out, 200, "OK", h, bb);
                 e.status = 200; e.respLen = bb.length;
+                e.respPreview = body;   // v3: body OPEN tercatat penuh (103 byte, 1:1 capture live)
                 e.extra = "OPEN sid=" + s.sid + " (open+40, 1:1 capture live)";
                 e.durMs = System.currentTimeMillis() - t0;
                 LoggerCore.log(e);
@@ -371,6 +374,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 if (opcode == 0x8) { // close
                     LoggerCore.Entry ce = new LoggerCore.Entry();
                     ce.port = LoggerCore.PORT_LOGIN;
+                    ce.kind = "WS";
                     ce.method = "WS";
                     ce.path = "/socket.io ws close sid=" + s.sid;
                     ce.status = 1000; ce.reqLen = payload.length;
@@ -379,12 +383,22 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     s.closed = true;
                     SESSIONS.remove(s.sid);
                     return false;
-                } else if (opcode == 0x9) { // ping → pong
+                } else if (opcode == 0x9) { // ping → pong (terlog — v3 kelengkapan)
                     wsSendControl(out, 0xA, payload);
+                    LoggerCore.Entry pe = new LoggerCore.Entry();
+                    pe.port = LoggerCore.PORT_LOGIN;
+                    pe.kind = "WS";
+                    pe.method = "WS";
+                    pe.path = "/socket.io ws sid=" + s.sid + " ping→pong";
+                    pe.status = 200; pe.reqLen = payload.length;
+                    pe.respPreview = "pong";
+                    pe.durMs = 0;
+                    LoggerCore.log(pe);
                 } else if (opcode == 0xA) { // pong — abaikan
                 } else if (opcode == 0x1 || opcode == 0x2) { // text/binary = packet engine.io
                     LoggerCore.Entry le = new LoggerCore.Entry();
                     le.port = LoggerCore.PORT_LOGIN;
+                    le.kind = "WS";
                     le.method = "WS";
                     le.path = "/socket.io ws sid=" + s.sid;
                     le.reqLen = payload.length;

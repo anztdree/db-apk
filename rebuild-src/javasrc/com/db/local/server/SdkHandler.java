@@ -9,7 +9,9 @@ import java.util.Map;
  * Listener 9530 — mirror qsdk.t4game.com:80 (API SDK t4game: 33 path /v1/* + /v2/purchase,
  * kontrak 14.A#8). Respons = envelope asli hasil capture live (backup verify-artifacts):
  *   {"result":false,"data":[],"error":{"id":20000,"message":"Params error"}}  (HTTP 200)
- * Request yang masuk SEMUA di-log (mode PORT menampilkan header/body) untuk diagnosis.
+ * Request yang masuk SEMUA di-log — v3 (Bagian 18): body preview s.d. 4 KB +
+ * header request + respCT di extra (mode PORT memperlihatkan parameter yang dikirim
+ * game — kunci diagnosis popup karena /v1/system/init result:false).
  * Tidak ada data game yang dikarang — hanya envelope yang benar-benar tertangkap.
  */
 public final class SdkHandler implements HttpWorker.Handler {
@@ -24,6 +26,7 @@ public final class SdkHandler implements HttpWorker.Handler {
         e.method = req.method;
         e.path = req.rawPath;
         e.reqLen = req.body.length;
+        e.headers = req.headersStr;
         if (req.body.length > 0) e.reqPreview = StaticHandler.preview(req.body);
 
         Map<String, String> h = HttpWorker.baseHeaders("application/json");
@@ -35,6 +38,7 @@ public final class SdkHandler implements HttpWorker.Handler {
         e.status = status;
         e.respLen = body.length;
         e.respPreview = ENVELOPE;
+        e.extra = "respCT=application/json | envelope capture live 14.A#8 (result:false — TIDAK dikarang)";
         e.durMs = System.currentTimeMillis() - t0;
         LoggerCore.log(e);
         return true;

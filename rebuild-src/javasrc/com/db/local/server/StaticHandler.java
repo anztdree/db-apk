@@ -15,6 +15,10 @@ import java.util.concurrent.TimeUnit;
  * Khusus 9527: /bs/db/android/*.bin dilayani LANGSUNG dari assets (fallback cepat,
  * anti-race dengan ekstraksi pertama) dan log menyertakan JSON ter-decode pasca-XOR
  * "DragonBall" (readme 15.6/16.6).
+ * Log v3 (Bagian 18): teks (js/json/html/…) preview s.d. 2048 B; file biner DILOG
+ * KOMPAK "[bin N B]" + respCT (ribuan file resource tidak membanjiri buffer dengan
+ * hex — metadata ukuran/status/durasi tetap utuh, arsip NDJSON disk tetap lengkap);
+ * Content-Type respons dicatat di extra (diagnosis MIME WebView); HEAD tanpa body.
  */
 public final class StaticHandler implements HttpWorker.Handler {
     private final File docroot;
@@ -44,7 +48,9 @@ public final class StaticHandler implements HttpWorker.Handler {
         e.method = req.method;
         e.path = req.rawPath;
         e.reqLen = req.body.length;
+        e.headers = req.headersStr;
         if (req.body.length > 0) e.reqPreview = preview(req.body);
+        boolean head = req.isHead();
 
         if ("OPTIONS".equals(req.method)) {
             Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=utf-8");
@@ -62,7 +68,7 @@ public final class StaticHandler implements HttpWorker.Handler {
             byte[] b = HttpWorker.text("method not allowed");
             HttpWorker.writeResponse(out, 405, "Method Not Allowed",
                     HttpWorker.baseHeaders("text/plain; charset=utf-8"), b);
-            e.status = 405; e.durMs = System.currentTimeMillis() - t0;
+            e.status = 405; e.respLen = b.length; e.durMs = System.currentTimeMillis() - t0;
             LoggerCore.log(e);
             return true;
         }
@@ -93,13 +99,6 @@ public final class StaticHandler implements HttpWorker.Handler {
             }
         }
 
-        if (data != null && e.port == LoggerCore.PORT_CONFIG && req.path.endsWith(".bin")) {
-            // khusus 9527 (16.6): log menyertakan JSON config TER-DECODE pasca-XOR DragonBall
-            String decodedJson = decodeXor(data);
-            e.extra = decodedJson.length() > 4096
-                    ? decodedJson.substring(0, 4096) : decodedJson;
-        }
-
         if (data == null) {
             byte[] b = HttpWorker.text("404 not found: " + req.path);
             Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=utf-8");
@@ -113,16 +112,44 @@ public final class StaticHandler implements HttpWorker.Handler {
             return true;
         }
 
-        Map<String, String> h = HttpWorker.baseHeaders(JsonUtil.contentType(req.path));
+        String ct = JsonUtil.contentType(req.path);
+        Map<String, String> h = HttpWorker.baseHeaders(ct);
         h.put("Cache-Control", "no-store");
         h.put("Access-Control-Allow-Origin", "*");
-        HttpWorker.writeResponse(out, 200, "OK", h, data);
+        HttpWorker.writeResponse(out, 200, "OK", h, data, head);
+
         e.status = 200;
         e.respLen = data.length;
-        e.respPreview = preview(data);
         e.durMs = System.currentTimeMillis() - t0;
+        StringBuilder extra = new StringBuilder(64);
+        extra.append("respCT=").append(ct);
+        if (head) extra.append(" (HEAD, tanpa body)");
+
+        if (e.port == LoggerCore.PORT_CONFIG && req.path.endsWith(".bin")) {
+            // khusus 9527 (16.6): log menyertakan JSON config TER-DECODE pasca-XOR DragonBall
+            String decodedJson = decodeXor(data);
+            String cut = decodedJson.length() > LoggerCore.BODY_PREVIEW_MAX
+                    ? decodedJson.substring(0, LoggerCore.BODY_PREVIEW_MAX) + "…[+"
+                      + (decodedJson.length() - LoggerCore.BODY_PREVIEW_MAX) + "B]" : decodedJson;
+            e.extra = extra.append(" | DECODED-XOR: ").append(cut).toString();
+            e.respPreview = "[xor " + data.length + " B — decode di extra]";
+        } else if (isTextType(ct)) {
+            e.extra = extra.toString();
+            int n = Math.min(data.length, LoggerCore.STATIC_TEXT_PREVIEW);
+            e.respPreview = new String(data, 0, n, java.nio.charset.StandardCharsets.UTF_8);
+            if (data.length > n) e.respPreview += "…[+" + (data.length - n) + "B]";
+        } else {
+            // biner (png/jpg/zip/mp3/…) — kompakt, tetap lengkap di disk (NDJSON)
+            e.extra = extra.toString();
+            e.respPreview = "[bin " + data.length + " B]";
+        }
         LoggerCore.log(e);
         return true;
+    }
+
+    private static boolean isTextType(String ct) {
+        return ct.startsWith("text/") || ct.contains("javascript")
+                || ct.contains("json") || ct.contains("xml") || ct.contains("svg");
     }
 
     private File resolve(String urlPath) {
@@ -175,23 +202,27 @@ public final class StaticHandler implements HttpWorker.Handler {
         return new String(out, java.nio.charset.StandardCharsets.UTF_8);
     }
 
+    /** preview body request: teks apa adanya (cap BODY_PREVIEW_MAX), biner kompakt */
     static String preview(byte[] data) {
         int n = Math.min(data.length, LoggerCore.BODY_PREVIEW_MAX);
-        StringBuilder b = new StringBuilder(n * 2);
         boolean binary = false;
         for (int i = 0; i < n; i++) {
             int c = data[i] & 0xff;
             if (c == 0 || (c < 0x09) || (c > 0x0d && c < 0x20 && c != 0x1b)) { binary = true; break; }
         }
         if (binary) {
-            b.append("[bin ").append(data.length).append("B] ");
-            for (int i = 0; i < Math.min(n, 128); i++) {
-                b.append(String.format("%02x", data[i] & 0xff));
-                if ((i & 31) == 31) b.append(' ');
-            }
-        } else {
-            b.append(new String(data, 0, n, java.nio.charset.StandardCharsets.UTF_8));
-            if (data.length > n) b.append("…[+").append(data.length - n).append("B]");
+            return "[bin " + data.length + " B] " + hex(data, Math.min(n, 64));
+        }
+        StringBuilder b = new StringBuilder(n);
+        b.append(new String(data, 0, n, java.nio.charset.StandardCharsets.UTF_8));
+        if (data.length > n) b.append("…[+").append(data.length - n).append("B]");
+        return b.toString();
+    }
+
+    static String hex(byte[] data, int n) {
+        StringBuilder b = new StringBuilder(n * 2);
+        for (int i = 0; i < n; i++) {
+            b.append(String.format("%02x", data[i] & 0xff));
         }
         return b.toString();
     }
