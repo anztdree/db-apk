@@ -620,16 +620,16 @@ AppsFlyer/Line/ThinkingData — bukan gameplay).
 
 | Keputusan | Nilai | Alasan (fakta) |
 |---|---|---|
-| Port tunggal | **9527** | (a) >1024 → bind tanpa root (Termux/emulator non-root); (b) <32768 → di luar range port ephemeral Linux/Android; (c) bukan port umum tool (8080/8000/3000/8888/1080/5555 dihindari); (d) `cleartextTrafficPermitted="true"` → HTTP polos ke 127.0.0.1 LEGAL tanpa ubah manifest (fakta res/xml/network_security_config.xml) |
+| Port tunggal | **9527** | (a) >1024 → bind oleh proses app biasa tanpa root — mini-server embedded di dalam APK (DIKOREKSI, lihat 13.2: BUKAN Termux); (b) <32768 → di luar range port ephemeral Linux/Android; (c) bukan port umum tool (8080/8000/3000/8888/1080/5555 dihindari); (d) `cleartextTrafficPermitted="true"` → HTTP polos ke 127.0.0.1 LEGAL tanpa ubah manifest (fakta res/xml/network_security_config.xml) |
 | Satu layanan | HTTP statis + config bin + API SDK + **socket.io v2.1.2 (EIO=3) login** | socket.io v2 = HTTP server + upgrade; hidup di port yang sama dengan file statis |
 | `loginPort` | 9527 | field dibaca dari JSON config yang KITA sajikan — bebas ditentukan |
 | `loginServer` | `http://127.0.0.1` | klien io → `http://127.0.0.1:9527` |
 | Cadangan (reserved, belum dibuat) | 9528/9529/9530 | bila suatu saat perlu server game/chat/dungeon terpisah untuk isi `GetServerList` (di luar skop saat ini) |
 
-### 12.4 ROOT FOLDER: `files/server/` — di-serve pada path `/sdk/` (pilihan owner)
+### 12.4 ROOT FOLDER — [DIKOREKSI oleh owner: lihat 13.1 — root = `com.db.local/server/`, SEBELAH `files/`, BUKAN di dalam `files/`]
 
 ```
-files/server/                              ← root owner; URL http://127.0.0.1:9527/sdk/
+com.db.local/server/                       ← SEBELAH files/ (koreksi 13.1); URL http://127.0.0.1:9527/sdk/
 ├─ bs/
 │  ├─ db/
 │  │  └─ android/
@@ -654,9 +654,78 @@ files/server/                              ← root owner; URL http://127.0.0.1:
 
 ### 12.5 Konsekuensi wajib setelah penggantian
 
-1. Hapus `Android/data/com.db.local/files/game/` di device — folder cache mengikuti escape
-   URL; URL baru menghasilkan folder escape baru (`http/127.0.0.1#0A9527/…`) (fakta 3.1–3.2).
+1. Wipe cache client `Android/data/com.db.local/files/game/` SEKALI setelah ganti URL — folder
+   cache mengikuti escape URL; URL baru menghasilkan folder escape baru (`http/127.0.0.1#0A9527/…`)
+   (fakta 3.1–3.2). CATATAN KOREKSI 13.1: `files/` adalah folder client; server TIDAK MENULIS di
+   sana — wipe cache adalah operasi client sekali jalan (manual di device, atau opsional
+   dijalankan otomatis oleh app versi baru saat boot pertama).
 2. `QHinfo` baru harus TANPA trailing slash (mirror asli 22 byte) — concat `%s%s` memang
    menyambung langsung; action sudah diawali `/v1/`.
 3. Server local harus menjawab handshake socket.io v2 (EIO=3) di port 9527 + 33 route POST
    JSON (format respons 1:1 akan dicapture saat field-test — checkpoint 7.4 tetap berlaku).
+
+---
+
+## 13. KOREKSI OWNER (22 Nov 2026): lokasi root server & arsitektur mini-server
+
+### 13.1 Koreksi 1 — root server DI SEBELAH `files/`, BUKAN di dalam `files/`
+
+Klaim salah (versi 12.4): "ROOT FOLDER: `files/server/`".
+
+FAKTA dari owner: **folder `files/` adalah folder CLIENT yang tidak boleh diotak-atik.**
+Server root ada **di sebelah** `files/`. Struktur benar di device:
+
+```
+/storage/emulated/0/Android/data/com.db.local/
+├─ files/              ← FOLDER CLIENT — DILARANG disentuh server
+│  └─ game/            ← preloadPath client: getExternalFilesDir("") + "/game/" (fakta 3.1–3.2)
+│     └─ http/127.0.0.1#0A9527/…   ← folder escape URL cache — DIBUAT SENDIRI oleh downloader game,
+│                                     bukan oleh server kita
+└─ server/             ← ROOT SERVER (sebelah files/) — web root mini-server, URL /sdk/
+   ├─ bs/
+   │  ├─ db/android/setting_BS_Android.bin   ← JSON config local di-XOR "DragonBall"
+   │  ├─ db/android/com_db_local.bin         ← opsional
+   │  ├─ index-native.html + manifest.json + js/ + resource/   ← file game
+   │  ├─ resource/properties/serversetting.json
+   │  └─ upgrade/{base.version, resource.version, size.json, upgrade.json, *.zip}
+   └─ (33 rute API SDK /sdk/v1/…, /sdk/v2/purchase — di-handle kode mini-server, bukan file statis)
+```
+
+- `files/` berisi cache/preload client yang diisi otomatis oleh game (escape URL) — server
+  TIDAK pernah menulis ke situ. Satu-satunya operasi yang menyentuh `files/game/` adalah
+  wipe cache SEKALI setelah penggantian URL (operasi client, bukan penempatan file server).
+- App boleh membuat/menulis folder sendiri di root data external-nya (`com.db.local/`)
+  di luar `files/` — perilaku platform Android untuk app-specific dir; akan dikonfirmasi
+  saat field-test (ditandai jujur, bukan asumsi teruji).
+
+### 13.2 Koreksi 2 — TANPA Termux: mini-server EMBEDDED di dalam APK
+
+Klaim salah (versi 12.3): menyebut "Termux/emulator non-root" sebagai cara bind port.
+
+FAKTA dari owner: **TIDAK pakai Termux. Mini-server dibuat di dalam APK** (versi APK hasil
+modifikasi membawa server-nya sendiri):
+
+| Komponen mini-server di dalam APK | Detail |
+|---|---|
+| HTTP server | serve file statis dari web root `com.db.local/server/` (pohon di 13.1) |
+| Config | `GET /sdk/bs/db/android/setting_BS_Android.bin` (+ `com_db_local.bin` opsional) — XOR `DragonBall` |
+| API SDK t4game | 33 rute POST JSON di `/sdk/v1/…`, `/sdk/v2/purchase` (11.2) |
+| Login socket.io | **v2.1.2 (EIO=3)** — handshake + event login + `GetServerList`, port 9527 sama |
+| Start | dijalankan di jalur boot app (sebelum downloader config jalan) → bind `127.0.0.1:9527` |
+| Isi folder `server/` | diekstrak dari assets APK saat boot pertama (proposal implementasi — assets adalah jalur andal menaruh file ke app-specific dir; alternatif adb push dibatasi Android 11+). Dikonfirmasi saat build. |
+
+Alasan port 9527 TETAP berlaku: >1024 (proses app biasa bisa bind, tanpa root), <32768
+(di luar ephemeral), bukan port umum tool.
+
+### 13.3 Status arsitektur setelah koreksi
+
+```
+APK modifikasi com.db.local
+├─ mini-server embedded (HTTP + socket.io v2.1.2 EIO=3) → 127.0.0.1:9527
+│    web root: Android/data/com.db.local/server/  (SEBELAH files/)
+├─ assets diubah: config_BS.properties EntryPoint1+2 (Base64) → 127.0.0.1:9527/sdk/...,
+│                 QHinfo → http://127.0.0.1:9527/sdk (tanpa slash)
+└─ client game (files/) — TIDAK diubah, TIDAK ditulis server
+```
+
+Rencana lama 12.4 (`files/server/`) dan penyebutan Termux (12.3) DIBATALKAN oleh koreksi ini.
