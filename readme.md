@@ -1497,3 +1497,143 @@ Aliyun), baksmali/smali org.smali 2.5.2 + dexlib2/util/guava 27.1-android/jcomma
   `rebuild-src/scripts/repack_v5.py` (baru) + APK v5 (LFS) di-commit dan di-push bersamaan;
   `db-local(MOD-LOCALSERVER-v4).apk` dihapus dari repo (diganti v5 — pola sama dengan v2→v3→v4).
 - README append-only: Bagian 1–19 TIDAK diubah sedikit pun.
+
+
+---
+
+## 21. LOGIN NATURAL "LOCAL TAPI BERASA ONLINE" + LOGGER v5 (22 Nov 2026)
+
+Laporan owner setelah v5: **menu game muncul "masukin kode migrasi"** ("bentar tampilan menu kok
+masukin kode migrasi") lalu permintaan: *"saya mau ini berfungsi sempurna.. jadi mohon untuk
+rebuild secara natural.. local tapi berasa nyata online. dan juga soal log monitoring bagi saya
+masih terasa sulit di baca"*. Bagian ini = penjelasan akar layar kode migrasi dari smali + JS
+(bukan tebakan), implementasi alur login natural lengkap, server game 5051, dan dashboard logger
+v5 yang dibaca manusia. Semua angka = hasil uji nyata sandbox.
+
+### 21.1 Akar layar "kode migrasi" — rantai lengkap dari smali + JS
+
+| # | Bukti | Kode |
+|---|---|---|
+| 1 | Game memanggil `QuickGameManager.init(...)` → callback `onInitFinished(true)` → **langsung `QuickGameManager.login(activity)`** | `cointhreat/cointhreat/cointhreat/pursetruechild/feedtonight/singersmooth.smali` `onInitFinished` |
+| 2 | `login()` → `feedtonight.hardlinerspare()`: bila ada session tersimpan → langsung `onLoginFinished` TANPA UI; bila TIDAK ada → buka `HWLoginActivity` action **`ACTION_LOGIN`** → karena tidak ada akun tersimpan (user_name/last_token kosong di model/b) → tampil **layar login SDK** (`hw_fragment_login.xml` + `hw_view_login_cdkey.xml`) | `feedtonight.smali` `hardlinerspare` `:cond_6b`; `HWLoginActivity$singersmooth.onServiceConnected :cond_84` |
+| 3 | Layar itu = milik SDK (bukan game) — string "Enter migration code" / "\nMigration code:\n" ada di `resources.arsc` APK asli (en/fr/de). Ini yang dilihat owner | `strings resources.arsc` original.apk (grep biner) |
+| 4 | Game (MainActivity) TIDAK PERNAH memanggil `freeLogin()` (auto-register) — hanya `login()` standar → UI muncul tiap instalasi bersih | grep invoke QuickGameManager di `MainActivity.smali`: hanya init/pay/logout/floatview/lifecycle |
+
+### 21.2 Kontrak yang ditemukan (dasar implementasi — semua dari smali/JS, tidak dikarang)
+
+**SDK (9530, via QHinfo):**
+- `POST /v1/user/registerVisitor` — tamu (HWLoginActivity ACTION_AUTO_REGISTER_AND_LOGIN →
+  `dishbesideshockey$nationalcommunitymissing$seventygenom`). Respons: `getBoolean("result")` +
+  `getString("data")` → session string diparse `psalmicvolleyball/cointhreat.cointruth`:
+  **`authToken` wajib**, **`userData` (JSONObject) wajib** → `QGUserData.generateFromJson`:
+  `username/uid/displayUid/token` getString wajib, `isGuest` "1"=tamu, `openType` optString,
+  `isNewUser` optInt, `isTrash` optInt; `tips/bindInfo/checkRealName` opsional.
+- `POST /v1/user/autoLogin` — launch berikutnya (`dishbesideshockey$hardlinerspare` →
+  `service.cointruth(authToken)`) — format respons sama.
+- Login sukses → `service.seventygenom(14)` → akun TERSIMPAN di prefs klien → launch berikutnya
+  tanpa UI sama sekali (perilaku "server nyata").
+
+**Game wrapper native (setelah onLoginFinished):**
+- `pursetruechild/feedtonight/singersmooth.onLoginFinished` → HashMap
+  `uid/username/token/usermode` → **`GET {loginServer}:{loginWebPort}/loginchecknative?…&os=Android&sdk=…`**
+  (HttpURLConnection GET, retry 3× pada kegagalan). Karena config `loginServer=http://127.0.0.1`
+  + `loginWebPort=5050` → URL = `http://127.0.0.1:5050/loginchecknative` (DILAYANI SocketIoHandler
+  5050, bukan 9530).
+- Respons: **body RAW disimpan sebagai `thirdParams`** untuk JS, lalu divalidasi
+  `getInt("code")==0` → `MainActivity.customreading()` → WebView `index-native.html` lanjut.
+- Java→JS `startGame` payload (`EgretNativeAndroid.callExternalInterface`): `loginServer`
+  (= loginServer:loginPort = `http://127.0.0.1:5050`), `thirdParams` (= body loginchecknative),
+  `clientParams` (dari config bin) → `index-native.html` `egret.ExternalInterface.addCallback("startGame")`.
+
+**JS game (index-native.html + main.min_777039fc.js):**
+- `getSdkLoginInfo()` membaca `thirdParams` (flat: `sdk/userid/userId/nickname/securityCode/…`)
+  → Login scene: `ts.loginUserInfo.userId/sign/sdk` → `isFromSdk=true` → `sdkLoginSuccess(o)` →
+  **langsung `GetServerList` (tanpa form username/password)**.
+- `clientRequestServerList` = `socket.emit("handler.process", {type:"User",action:"GetServerList",
+  userId, subChannel, channel}, ack)` — **socket.io v2.1.2 ACK** (wire: `42<id>["handler.process",{…}]`,
+  jawaban server `43<id>[<args>]`; konfirmasi di socket.io.min_2e0501e.js `ack=function(t){…packet({type:ACK,id:t,data:r})}`).
+- `processHandlerWithLogin`: `ret!==0` → "登录出错"; `data` = STRING JSON; `compress` → LZString.
+- `selectNewServer`: `t.serverList[0].serverId` (atau `t.history[0]`) → item server dibaca
+  `serverId/name/online/hot/new/url/offlineReason` (ServerListNode/ServerListItem).
+- `clientStartGame`: `mainClient.connectToServer(ts.loginInfo.serverItem.url)` = **socket KEDUA
+  (server game)** → `user/enterGame` `{loginToken,userId,serverId,version,language,gameVersion}`
+  → respons = data pemain → `UserDataParser.saveUserData(t)` → `e.newUser` → laporan create-role →
+  `ts.runScene("OverScene", FIRSTENTER)` (scene utama game).
+- `saveUserData` membaca (yang WAJIB ada): `currency` (string kode), `user._*`, `hangup._*`,
+  `globalWar*`, `summon._*`, `totalProps._items`, `backpackLevel`, `superSkill` (**array** —
+  `for(n=0;n<e.length)` crash bila undefined), `heros`, `curMainTask` (**{} wajib** —
+  `Object.keys(e)` crash bila undefined), `scheduleInfo` (AllRefreshCount.initData),
+  `dragonEquiped` (**{} wajib** — `for-in`), sisanya optional-guarded (`imprint/checkin/userGuild/
+  guildLevel/guide/vipLog/cardLog/clickSystem/giftInfo/dungeon/teamTraining/channelSpecial`).
+- Lanjutan: `user/getBulletinBrief` → `{_brief:{}}`.
+
+### 21.3 Implementasi v6
+
+**Patch smali (2 titik — seminimal mungkin):**
+| File | Patch | Alasan |
+|---|---|---|
+| `com/zhuhuan/game/Application.smali` | sisip `LocalServerStarter.start(p0)` sebelum invoke-super (pola 17.5, byte-identik v4/v5) | starter server |
+| `com/quickgame/android/sdk/feedtonight.smali` `hardlinerspare` `:cond_6b` | `const-string "com.quickgame.android.sdk.ACTION_LOGIN"` → **`"com.quickgame.android.sdk.ACTION_AUTO_REGISTER_AND_LOGIN"`** (SATU baris, 1 kemunculan di file) | login() game → jalur **tamu auto-register** yang sudah ada di SDK (bukan layar login): autologin=true (default feedtonight), tanpa akun tersimpan → `registerVisitor` otomatis + dialog "Logging in…" sebentar → sukses → akun tersimpan di klien → launch berikutnya TANPA UI |
+
+**Mini-server v6 (`classes2.dex` — 22 class, 80.876 B):**
+| Komponen | Isi |
+|---|---|
+| `AccountStore.java` (baru) | akun tamu PERSISTEN `<serverRoot>/data/account.json` (uid/token/username) — uid sama antar restart seperti server nyata; menyusun session JSON & thirdParams PERSIS kontrak 21.2 |
+| `SdkHandler.java` | + `/v1/user/registerVisitor` (register tamu, isNewUser=1 di register, 0 di autoLogin), `/v1/user/autoLogin`, `/v1/auth/setGameRoleInfo` & `/v1/user/getServerAgreement` (sukses kosong); init/getNotice v5 TIDAK berubah; path lain tetap envelope 14.A#8 |
+| `SocketIoHandler.java` | 2 mode (LOGIN/GAME): **lapisan event socket.io `handler.process` dengan ACK v2** (`42<id>`→`43<id>[{ret,data,compress}]`) di polling POST & frame WS; **`/loginchecknative`** dilayani di 5050 (body raw thirdParams + `code:0`); routing: GetServerList/loginGame/LoginAnnounce/SaveUserEnterInfo/SaveLanguage/saveHistory/getNotice/getBulletinBrief/enterGame; action dibandingkan case-insensitive; fallback = `{ret:0,data:"{}"}` + terekam utuh di logger |
+| `ServerCore.java`/`LoggerCore.java` | listener **baru 5051** (GAME, `serverItem.url`); `PORT_GAME=5051` masuk counter/droppedPort/stats |
+| `GameData` (dalam SocketIoHandler) | `serverList` = 1 server "DragonBall Local" id 1 hot url `http://127.0.0.1:5051`; `enterGame` = payload pemain baru (newUser:true) dengan SEMUA kunci wajib 21.2 (defensif: objek/array kosong) |
+| `LoggerHandler.java` | **dashboard v5 "MONITOR SERVER"** (21.4) |
+
+### 21.4 Dashboard logger v5 — jawaban "masih terasa sulit di baca"
+
+- **Kartu alur** per kejadian (bukan tabel teknis): BADAN TAHAP berwarna (SISTEM/KONFIG/CDN/SDK/
+  LOGIN/GAME) + **deskripsi bahasa Indonesia manusia** diturunkan dari port+path (`describe()`):
+  "Buat akun tamu — uid … tersimpan permanen", "Cek versi dasar — 110", "Unduh paket update —
+  19.4MB dalam 187ms", "Verifikasi akun (loginchecknative) — code 0, game dilanjutkan",
+  "Event login GetServerList — dijawab", "Masuk server 1 — data pemain baru dikirim (1.4KB)".
+- Titik status besar berwarna (hijau/kuning/merah), meta ringkas (#seq, jam, durasi, ukuran).
+- **STATUS SERVER**: chip per port (9527 KONFIG / 9528 CDN / 5050 LOGIN / **5051 GAME** / 9530 SDK /
+  4000 LOGGER) — hijau bila ada aktivitas, jumlah req + gagal.
+- **RINGKASAN**: "Terakhir penting:" — kalimat milestone terakhir (akun dibuat/verifikasi sukses/
+  masuk server/UI dimuat), peringatan ⚠ otomatis untuk status ≥400.
+- Semua kemampuan v4 tetap: klik kartu = blok REQUEST/RESPON/EXTRA/ERROR (JSON auto-pretty),
+  tombol salin per blok, Salin daftar (TSV), Salin JSON, Unduh arsip NDJSON, filter tahap/status/
+  cari/jumlah, jeda; arsip NDJSON `<serverRoot>/logs` tidak berubah.
+
+### 21.5 Verifikasi v6 (semua di sandbox, angka nyata)
+
+| Item | Hasil |
+|---|---|
+| Kompilasi server | ECJ 3.33.0 `-source 8 -target 8` + android.jar API21 → **22 class** → D8 8.3.37 → `classes2.dex` **80.876 B** sha256 `f359a1ee…` (v5: 63.692 B) |
+| Smoke test desktop (9 uji) | init ✓; registerVisitor ✓ (`result:true`, session `authToken/userData/isGuest:"1/openType:"12"/isNewUser`, akun PERSISTEN — uid sama antar run); autoLogin ✓; loginchecknative ✓ (`code:0`+userid+loginToken); **GetServerList ACK** ✓ (`serverList`,`127.0.0.1:5051`); **enterGame ACK** ✓ (payload 1.397 B lengkap kunci wajib); getBulletinBrief ✓; LoginAnnounce ✓; SaveUserEnterInfo ✓ — **9/9 PASS** |
+| Smoke test **WebSocket** | upgrade 101 → open `0{...}` → `2probe/3probe` → event `42` via WS → **ACK `43` dikirim via frame WS** (5050 GetServerList ✓, 5051 enterGame ✓, LoginAnnounce ✓) — jalur upgrade socket.io v2 klien terjawab |
+| Patch smali → dex | smali 2.5.2 assemble: `classes_v6.dex` **6.697.176 B**; baksmali-verifikasi: `ACTION_AUTO_REGISTER_AND_LOGIN` ×1, `ACTION_LOGIN"` ×0, `LocalServerStarter` ×1 |
+| Repack v6 | base APK asli sha256 `b308c44d…`; config_BS 256 B & QHinfo 21 B & server_root 2.758 file **byte-identik v5** (assert diff 0); classes2.dex + server_root ditambah |
+| APK final | `release-mod/db-local(MOD-LOCALSERVER-v6).apk` — **202.658.676 B**, sha256 **`cbbc04f2287030ddadddb4a073e5a1dcce0c177afe615be1a5b1acaccc4ddb06`**, 6.427 entri (=v5), zipalign verified, **signature verified [v1, v2, v3]**, CN=DB Local Mod exp 2056 (keystore SAMA) |
+| Baksmali dari APK TER-SIGN | classes.dex: patch login tamu ✓ starter ✓; classes2.dex: 22 class v6 ✓ (`AccountStore`, `SocketIoHandler$GameData`, const `0x13bb`=5051 di SocketIoHandler/ServerCore/LoggerCore, `loginchecknative`/`registerVisitor`/`autoLogin` ✓) |
+| Dashboard v5 | diuji live di sandbox: HTML ter-serve, /stats memuat 5051, /logs kronologis, kartu tahap + deskripsi tampil |
+
+### 21.6 Perilaku yang diharapkan di device (jujur — dua lapis)
+
+1. **Layar kode migrasi HILANG**: `login()` game → jalur tamu auto-register → POST
+   `registerVisitor` (9530) → dialog "Logging in…" sebentar → sukses → akun tersimpan klien.
+   **Instalasi kedua dst. langsung masuk tanpa UI sama sekali.**
+2. **Verifikasi akun**: `loginchecknative` (5050) → `code:0` → WebView `index-native.html` (9528).
+3. **Login game**: JS `getSdkLoginInfo` → `GetServerList` (5050 ACK) → server "DragonBall Local"
+   (hot) → pilih otomatis (`selectNewServer`) → connect `http://127.0.0.1:5051`.
+4. **Masuk game**: `enterGame` (5051 ACK) → data pemain baru → `saveUserData` → scene utama
+   (OverScene). **Batasan jujur**: payload pemain baru = struktur MINIMAL hasil parsing
+   `saveUserData` — kemungkinan besar perlu 1–3 iterasi device (ada field yang belum terlihat
+   aksesnya di JS) — SEMUA request game selanjutnya (getInfo dkk.) dijawab `{ret:0,data:"{}"}`
+   dan TEREKAM UTUH di logger → iterasi berikutnya berbasis log, bukan tebakan. Gameplay penuh
+   (battle/guild/dll) = server game sungguhan, di luar skop rebuild ini.
+5. Dashboard 4000 = "MONITOR SERVER" — tahap + kalimat manusia; klik untuk detail teknis.
+
+### 21.7 Status push
+
+- Bagian 21 + `rebuild-src/javasrc/com/db/local/server/AccountStore.java` (baru) +
+  5 java (SdkHandler/SocketIoHandler/ServerCore/LoggerCore/LoggerHandler) +
+  `rebuild-src/scripts/repack_v6.py` (baru) + APK v6 (LFS) di-commit & di-push bersamaan;
+  `db-local(MOD-LOCALSERVER-v5).apk` dihapus dari repo (diganti v6 — pola sama v2→v3→v4→v5→v6).
+- README append-only: Bagian 1–20 TIDAK diubah sedikit pun.

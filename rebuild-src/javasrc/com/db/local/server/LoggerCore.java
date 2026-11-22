@@ -28,6 +28,7 @@ public final class LoggerCore {
     public static final int PORT_LOGIN  = 5050;
     public static final int PORT_SDK    = 9530;
     public static final int PORT_LOGGER = 4000;
+    public static final int PORT_GAME  = 5051;   // Bagian 21 — server game (serverItem.url)
     public static final int PORT_FALLBACK = 4001;
     /** preview teks maksimum (naik dari 2 KB — Bagian 18, prioritas kelengkapan log) */
     public static final int BODY_PREVIEW_MAX = 4096;
@@ -119,7 +120,7 @@ public final class LoggerCore {
 
     static {
         for (int i = 0; i < PER_PORT.length; i++) PER_PORT[i] = new ArrayDeque<>();
-        for (int p : new int[]{PORT_CONFIG, PORT_CDN, PORT_LOGIN, PORT_SDK, PORT_LOGGER})
+        for (int p : new int[]{PORT_CONFIG, PORT_CDN, PORT_LOGIN, PORT_GAME, PORT_SDK, PORT_LOGGER})
             COUNTERS.put(p, new Counter());
     }
 
@@ -223,7 +224,7 @@ public final class LoggerCore {
          .append(",\"droppedGlobal\":").append(droppedGlobal)
          .append(",\"droppedPort\":{");
         boolean first = true;
-        for (int p : new int[]{PORT_CONFIG, PORT_CDN, PORT_LOGIN, PORT_SDK, PORT_LOGGER}) {
+        for (int p : new int[]{PORT_CONFIG, PORT_CDN, PORT_LOGIN, PORT_GAME, PORT_SDK, PORT_LOGGER}) {
             if (!first) b.append(',');
             first = false;
             b.append('"').append(p).append("\":").append(droppedPort[slot(p)]);

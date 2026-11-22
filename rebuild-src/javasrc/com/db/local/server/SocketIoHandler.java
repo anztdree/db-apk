@@ -16,26 +16,46 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Listener 5050 — login socket.io v2.1.2 (EIO=3) mirror login.popoh5.com:610,
- * CONFIG UTAMA GAMEPLAY (peta 16.2). Perilaku 1:1 hasil capture live server asli
- * (22 Nov 2026, backup logs):
- *   - poll pertama (tanpa sid)  : 200 text/plain; charset=UTF-8, Access-Control-Allow-Origin: *,
- *                                 Set-Cookie io=<sid>; Path=/; HttpOnly,
- *                                 body = 96:0{"sid":"…20char","upgrades":["websocket"],
- *                                        "pingInterval":25000,"pingTimeout":5000}2:40  (103 byte)
- *   - POST (sid valid)          : 200 text/html "ok"
- *   - GET poll (sid valid)      : long-poll di-hold s.d. ada packet / timeout, body kosong bila sunyi
- *   - sid tidak dikenal         : 400 application/json {"code":1,"message":"Session ID unknown"}
- *   - sesi ditutup              : poll berikut → 1:1 (close), lalu sesi dihapus
- *   - 2probe → 3probe; 2 → 3; 42[event] → HANYA di-log (tidak ada data game dikarang);
- *     41 → tutup sesi.
- *   - transport=websocket: upgrade 101 (Sec-WebSocket-Accept), frame text EIO=3,
- *     ping WS (0x9) → pong (0xA), close (0x8) → tutup.
+ * Listener 5050 (LOGIN) & 5051 (GAME) — socket.io v2.1.2 (EIO=3).
+ *
+ * Basis polling/WS 1:1 capture live server asli (Bagian 17, logs backup):
+ *   - open: 96 char JSON sid 20 + pingInterval 25000 + pingTimeout 5000, 103 byte
+ *   - POST → "ok" text/html; GET long-poll hold; sid unknown → 400 code:1; close → 1
+ *   - WS upgrade 101, ping 0x9 → pong 0xA
+ *
+ * Bagian 21 — LAPISAN EVENT socket.io `handler.process` (bukti JS game):
+ *   - client: socket.emit("handler.process", msg, ack) (TSLoginClient.sendToServer)
+ *     → wire: 42<ackId>["handler.process",{type,action,...}]
+ *   - server: socket.io v2 ACK → 43<ackId>[{ret,data,compress}]
+ *   - callback JS: {ret:0, data:<STRING JSON (LZString bila compress)>, compress:false}
+ *     (processHandlerWithLogin: ret!==0 → "登录出错"; JSON.parse(data); compress →
+ *      LZString.decompressFromUTF16)
+ *
+ * LOGIN (5050):
+ *   - /loginchecknative (GET — pursetruechild/feedtonight/singersmooth.onLoginFinished,
+ *     HttpURLConnection GET; URL loginServer:loginWebPort = 5050): body raw =
+ *     thirdParams JS; divalidasi getInt("code")==0 → WebView lanjut.
+ *   - User/GetServerList → selectServer/selectNewServer (serverData.serverList[],
+ *     item: serverId/name/online/hot/new/url; history[]).
+ *   - User/loginGame → {userId, channelCode} (jalur origin).
+ *   - User/LoginAnnounce → {} (getNotice JS: for-in data).
+ *   - User/SaveUserEnterInfo, User/SaveLanguage → {} (laporan, abaikan).
+ * GAME (5051):
+ *   - user/enterGame → payload user baru (UserDataParser.saveUserData):
+ *     user/hangup/summon/totalProps/imprint/superSkill(ARRAY)/heros/curMainTask({})/
+ *     scheduleInfo/dragonEquiped({})/currency(string kode)/backpackLevel/newUser.
+ *   - user/getBulletinBrief → {_brief:{}}.
+ *   - lainnya → data {} + terekam di logger untuk iterasi.
  */
 public final class SocketIoHandler implements HttpWorker.Handler {
     public static final int PING_INTERVAL = 25000;
     public static final int PING_TIMEOUT = 5000;
     private static final String WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+
+    private final boolean gameMode;
+
+    public SocketIoHandler() { this(false); }
+    public SocketIoHandler(boolean gameMode) { this.gameMode = gameMode; }
 
     public static final class Session {
         public final String sid;
@@ -45,6 +65,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         public volatile boolean closed = false;
         public volatile boolean closePendingNotified = false;
         public volatile boolean upgraded = false;
+        public volatile OutputStream wsOut = null;   // v6: ACK bisa lewat WS langsung
 
         Session(String sid) { this.sid = sid; }
 
@@ -56,6 +77,20 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             } finally {
                 lock.unlock();
             }
+        }
+
+        /** v6: kirim ACK — via WS bila sudah upgrade, selain itu antre untuk polling */
+        void deliver(String pkt) {
+            OutputStream ws = wsOut;
+            if (upgraded && ws != null) {
+                try {
+                    wsSendText(ws, pkt);
+                    return;
+                } catch (Throwable t) {
+                    // WS putus → jatuh ke antre polling
+                }
+            }
+            offer(pkt);
         }
 
         String drain(long waitMs) {
@@ -124,7 +159,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
     public boolean handle(HttpWorker.Request req, OutputStream out, Socket sock) throws IOException {
         long t0 = System.currentTimeMillis();
         LoggerCore.Entry e = new LoggerCore.Entry();
-        e.port = LoggerCore.PORT_LOGIN;
+        e.port = gameMode ? LoggerCore.PORT_GAME : LoggerCore.PORT_LOGIN;
         e.method = req.method;
         e.path = req.rawPath;
         e.reqLen = req.body.length;
@@ -132,6 +167,30 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         if (req.body.length > 0) e.reqPreview = StaticHandler.preview(req.body);
 
         boolean isWs = "websocket".equalsIgnoreCase(req.header("upgrade"));
+
+        String raw = (req.path == null || req.path.isEmpty()) ? req.rawPath : req.path;
+        String pNoQ = raw;
+        int qi = pNoQ.indexOf('?');
+        if (qi >= 0) pNoQ = pNoQ.substring(0, qi);
+
+        // ===== v6: /loginchecknative — hanya mode LOGIN (5050) =====
+        if (!gameMode && pNoQ.equals("/loginchecknative")) {
+            byte[] bb = SdkHandler.loginCheckNativeBody();
+            Map<String, String> h = HttpWorker.baseHeaders("application/json");
+            h.put("Access-Control-Allow-Origin", "*");
+            HttpWorker.writeResponse(out, 200, "OK", h, bb);
+            e.status = 200;
+            e.respLen = bb.length;
+            e.respPreview = new String(bb, StandardCharsets.UTF_8);
+            e.extra = "LOGINCHECK-NATIVE 21 | GET HttpURLConnection dari "
+                    + "pursetruechild/feedtonight/singersmooth.onLoginFinished (uid/username/"
+                    + "token/usermode+os=Android&sdk=..); body RAW = thirdParams JS; "
+                    + "getInt(code)==0 -> MainActivity.customreading() -> WebView lanjut "
+                    + "| respCT=application/json";
+            e.durMs = System.currentTimeMillis() - t0;
+            LoggerCore.log(e);
+            return true;
+        }
 
         if ("OPTIONS".equals(req.method)) {
             Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=utf-8");
@@ -175,7 +234,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 byte[] bb = body.getBytes(StandardCharsets.UTF_8);
                 HttpWorker.writeResponse(out, 200, "OK", h, bb);
                 e.status = 200; e.respLen = bb.length;
-                e.respPreview = body;   // v3: body OPEN tercatat penuh (103 byte, 1:1 capture live)
+                e.respPreview = body;
                 e.extra = "OPEN sid=" + s.sid + " (open+40, 1:1 capture live)";
                 e.durMs = System.currentTimeMillis() - t0;
                 LoggerCore.log(e);
@@ -245,7 +304,12 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 else if ("5".equals(pkt)) { /* upgrade ack — tidak perlu balasan */ }
                 else if ("40".equals(pkt)) { /* connect namespace — open sudah mengirim 40 */ }
                 else if (pkt.startsWith("42")) {
-                    e.extra = "EVENT: " + pkt;   // di-log apa adanya; TIDAK ada data dikarang
+                    // v6: event handler.process → routing + ACK
+                    String ack = handleEventPacket(pkt, s);
+                    if (e.extra == null) e.extra = "EVENT: " + pkt;
+                    if (ack != null && e.extra.length() < 1800) {
+                        e.extra += " | ACK: " + (ack.length() > 400 ? ack.substring(0, 400) + "…" : ack);
+                    }
                 } else if (pkt.startsWith("2")) {
                     s.offer("3");
                 }
@@ -295,6 +359,209 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         return out;
     }
 
+    /* ==================== v6: LAPISAN EVENT handler.process ==================== */
+
+    /** hasil ekstraksi pesan event */
+    static final class EventMsg {
+        String ackId = "";   // "" bila tanpa ack
+        String type = "";
+        String action = "";
+        String raw = "";
+    }
+
+    /**
+     * "42<ackId>["handler.process",{...}]" → ACK "43<ackId>[{ret,data,compress}]"
+     * (socket.io v2: event+ack = 42+id, ACK server = 43+id+args array).
+     */
+    static String handleEventPacket(String pkt, Session s) {
+        EventMsg m = parseEvent(pkt);
+        if (m == null) return null;
+        String resp = routeEvent(m);
+        if (m.ackId.isEmpty()) return null;
+        String ack = "43" + m.ackId + "[" + resp + "]";
+        s.deliver(ack);
+        return ack;
+    }
+
+    static EventMsg parseEvent(String pkt) {
+        // "42" lalu digit ackId (opsional) lalu payload '[' ...
+        if (!pkt.startsWith("42")) return null;
+        int i = 2;
+        StringBuilder id = new StringBuilder();
+        while (i < pkt.length() && pkt.charAt(i) >= '0' && pkt.charAt(i) <= '9') {
+            id.append(pkt.charAt(i)); i++;
+        }
+        int br = pkt.indexOf('[', i);
+        if (br < 0) return null;
+        // cari objek JSON pertama dalam array
+        int ob = pkt.indexOf('{', br);
+        if (ob < 0) return null;
+        int end = matchBrace(pkt, ob);
+        if (end < 0) return null;
+        String obj = pkt.substring(ob, end + 1);
+        EventMsg m = new EventMsg();
+        m.ackId = id.toString();
+        m.raw = obj;
+        m.type = extractStr(obj, "type");
+        m.action = extractStr(obj, "action");
+        return m;
+    }
+
+    static int matchBrace(String s, int open) {
+        int depth = 0;
+        boolean inStr = false;
+        for (int i = open; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (inStr) {
+                if (c == '\\') i++;
+                else if (c == '"') inStr = false;
+            } else if (c == '"') inStr = true;
+            else if (c == '{') depth++;
+            else if (c == '}') {
+                depth--;
+                if (depth == 0) return i;
+            }
+        }
+        return -1;
+    }
+
+    /** ambil nilai string key dari objek JSON kecil tanpa parser penuh */
+    static String extractStr(String obj, String key) {
+        String pat = "\"" + key + "\"";
+        int i = obj.indexOf(pat);
+        if (i < 0) return "";
+        int colon = obj.indexOf(':', i + pat.length());
+        if (colon < 0) return "";
+        int q1 = obj.indexOf('"', colon + 1);
+        if (q1 < 0) return "";
+        StringBuilder b = new StringBuilder();
+        for (int k = q1 + 1; k < obj.length(); k++) {
+            char c = obj.charAt(k);
+            if (c == '\\') { k++; if (k < obj.length()) b.append(obj.charAt(k)); continue; }
+            if (c == '"') break;
+            b.append(c);
+        }
+        return b.toString();
+    }
+
+    /** routing event → isi respons {ret,data,compress} */
+    static String routeEvent(EventMsg m) {
+        String type = m.type == null ? "" : m.type;
+        String action = m.action == null ? "" : m.action;
+        String low = type.toLowerCase();
+        String act = action.toLowerCase();   // v6-fix: case-insensitive
+                                             // (JS kirim "GetServerList"/"enterGame"/...)
+
+        // ===== GAME (5051) =====
+        if (low.equals("user") && act.equals("entergame")) {
+            return GameData.enterGameResponse();
+        }
+        if (low.equals("user") && act.equals("getbulletinbrief")) {
+            return ack("{\"_brief\":{}}");
+        }
+
+        // ===== LOGIN (5050) =====
+        if (low.equals("user") && act.equals("getserverlist")) {
+            return ack(GameData.serverListJson());
+        }
+        if (low.equals("user") && act.equals("logingame")) {
+            AccountStore a = AccountStore.loadOrCreate();
+            String uid = extractStr(m.raw, "userId");
+            if (uid == null || uid.isEmpty()) uid = a.uid;
+            String ch = extractStr(m.raw, "fromChannel");
+            if (ch == null || ch.isEmpty()) ch = "quick";
+            return ack("{\"userId\":\"" + JsonUtil.esc(uid) + "\",\"channelCode\":\""
+                    + JsonUtil.esc(ch) + "\",\"sign\":\"local\"}");
+        }
+        if (low.equals("user") && act.equals("loginannounce")) {
+            return ack("{}");
+        }
+        if (low.equals("user") && (act.equals("saveuserenterinfo")
+                || act.equals("savelanguage") || act.equals("savehistory"))) {
+            return ack("{}");
+        }
+        if (act.equals("getnotice") || act.equals("getbulletin")) {
+            return ack("{}");
+        }
+
+        // ===== fallback: balas kosong & terekam (belajar dari log) =====
+        return ack("{}");
+    }
+
+    /** bungkus payload data menjadi {ret:0,data:"<string>",compress:false} */
+    static String ack(String dataJson) {
+        return "{\"ret\":0,\"data\":\"" + JsonUtil.esc(dataJson) + "\",\"compress\":false}";
+    }
+
+    /* ==================== v6: payload data game (Bagian 21) ==================== */
+
+    /** Penyusun payload data game — kontrak dari UserDataParser.saveUserData (JS). */
+    static final class GameData {
+
+        /** daftar server — item persis dipakai ServerListNode/selectServer/onLoginSuccess */
+        static String serverListJson() {
+            long now = System.currentTimeMillis() / 1000L;
+            return "{\"serverList\":[{"
+                    + "\"serverId\":1,\"name\":\"DragonBall Local\","
+                    + "\"online\":true,\"hot\":true,\"new\":false,"
+                    + "\"url\":\"http://127.0.0.1:5051\","
+                    + "\"state\":1,\"recommend\":true,\"offlineReason\":\"\","
+                    + "\"registerTime\":" + now + ",\"worldRoomId\":\"w1\",\"guildRoomId\":\"g1\""
+                    + "}],\"history\":[]}";
+        }
+
+        /** enterGame — objek user baru; kunci yang dibaca UserDataParser.saveUserData:
+         *  currency, user._*, hangup._*, globalWar*, summon._*, totalProps._items,
+         *  imprint._items (opsional-guarded), superSkill (ARRAY wajib), heros,
+         *  curMainTask ({} wajib — Object.keys), scheduleInfo (_* dibaca initData),
+         *  dragonEquiped ({} wajib — for-in), backpackLevel, newUser, language. */
+        static String enterGameResponse() {
+            AccountStore a = AccountStore.loadOrCreate();
+            long now = System.currentTimeMillis() / 1000L;
+            StringBuilder b = new StringBuilder(2048);
+            b.append("{");
+            b.append("\"newUser\":true,");
+            b.append("\"language\":\"en\",");
+            b.append("\"currency\":\"USD\",");
+            b.append("\"user\":{\"_id\":\"").append(JsonUtil.esc(a.uid)).append("\",")
+             .append("\"_pwd\":\"\",\"_nickName\":\"").append(JsonUtil.esc(a.username)).append("\",")
+             .append("\"_headImage\":\"\",\"_lastLoginTime\":").append(now).append(",")
+             .append("\"_createTime\":").append(now).append(",")
+             .append("\"_bulletinVersions\":{},\"_oriServerId\":1},");
+            b.append("\"hangup\":{\"_curLess\":0,\"_maxPassLesson\":0,")
+             .append("\"_haveGotChapterReward\":{},\"_maxPassChapter\":0,")
+             .append("\"_clickGlobalWarBuffTag\":false,\"_buyFund\":0,")
+             .append("\"_haveGotFundReward\":{}},");
+            b.append("\"globalWarBuffTag\":{},\"globalWarLastRank\":{},")
+             .append("\"globalWarBuff\":0,\"globalWarBuffEndTime\":0,");
+            b.append("\"summon\":{\"_energy\":0,\"_wishList\":[],\"_wishVersion\":0,")
+             .append("\"_canCommonFreeTime\":0,\"_canSuperFreeTime\":0,\"_summonTimes\":{}},");
+            b.append("\"totalProps\":{\"_items\":{}},");
+            b.append("\"backpackLevel\":1,");
+            b.append("\"imprint\":{\"_items\":{}},");
+            b.append("\"superSkill\":[],");
+            b.append("\"heros\":{},");
+            b.append("\"curMainTask\":{},");
+            b.append("\"scheduleInfo\":{\"_marketDiamondRefreshCount\":0,")
+             .append("\"_vipMarketDiamondRefreshCount\":0,\"_arenaAttackTimes\":0,")
+             .append("\"_arenaBuyTimesCount\":0,\"_snakeResetTimes\":0,")
+             .append("\"_snakeSweepCount\":0,\"_cellGameHaveGotReward\":0,")
+             .append("\"_cellGameHaveTimes\":0,\"_cellgameHaveSetHero\":0,")
+             .append("\"_strongEnemyTimes\":0,\"_strongEnemyBuyCount\":0,")
+             .append("\"_mergeBossBuyCount\":0,\"_dungeonTimes\":{},\"_dungeonBuyTimes\":{},")
+             .append("\"_hangupTimes\":0},");
+            b.append("\"dragonEquiped\":{},");
+            b.append("\"checkin\":{},");
+            b.append("\"channelSpecial\":{},");
+            b.append("\"userGuild\":{},\"userGuildPub\":{},");
+            b.append("\"guide\":{},");
+            b.append("\"vipLog\":[],\"cardLog\":[],");
+            b.append("\"bulletinVersions\":{}");
+            b.append("}");
+            return ack(b.toString());
+        }
+    }
+
     /* ---------- WebSocket (upgrade EIO=3) ---------- */
 
     private boolean handleWebSocket(HttpWorker.Request req, OutputStream out, Socket sock,
@@ -331,6 +598,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         if (qs == null) {
             wsSendText(out, "0" + openJson(s.sid));
         }
+        s.wsOut = out;   // v6: ACK event bisa dikirim langsung lewat WS
 
         e.status = 101;
         e.extra = "WS upgrade sid=" + s.sid;
@@ -373,7 +641,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
 
                 if (opcode == 0x8) { // close
                     LoggerCore.Entry ce = new LoggerCore.Entry();
-                    ce.port = LoggerCore.PORT_LOGIN;
+                    ce.port = e.port;
                     ce.kind = "WS";
                     ce.method = "WS";
                     ce.path = "/socket.io ws close sid=" + s.sid;
@@ -386,7 +654,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 } else if (opcode == 0x9) { // ping → pong (terlog — v3 kelengkapan)
                     wsSendControl(out, 0xA, payload);
                     LoggerCore.Entry pe = new LoggerCore.Entry();
-                    pe.port = LoggerCore.PORT_LOGIN;
+                    pe.port = e.port;
                     pe.kind = "WS";
                     pe.method = "WS";
                     pe.path = "/socket.io ws sid=" + s.sid + " ping→pong";
@@ -397,7 +665,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 } else if (opcode == 0xA) { // pong — abaikan
                 } else if (opcode == 0x1 || opcode == 0x2) { // text/binary = packet engine.io
                     LoggerCore.Entry le = new LoggerCore.Entry();
-                    le.port = LoggerCore.PORT_LOGIN;
+                    le.port = e.port;
                     le.kind = "WS";
                     le.method = "WS";
                     le.path = "/socket.io ws sid=" + s.sid;
@@ -405,7 +673,13 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     le.reqPreview = text;
                     if ("2probe".equals(text)) { wsSendText(out, "3probe"); le.respPreview = "3probe"; le.status = 200; }
                     else if ("2".equals(text)) { wsSendText(out, "3"); le.respPreview = "3"; le.status = 200; }
-                    else if (text.startsWith("42")) { le.status = 200; le.extra = "EVENT: " + text; }
+                    else if (text.startsWith("42")) {
+                        // v6: event handler.process → ACK langsung via frame WS
+                        String ack = handleEventPacket(text, s);
+                        le.status = 200;
+                        le.extra = "EVENT: " + (text.length() > 300 ? text.substring(0, 300) + "…" : text);
+                        if (ack != null) le.respPreview = ack;
+                    }
                     else if ("41".equals(text)) {
                         le.status = 200; le.extra = "client disconnect (41)";
                         s.closed = true;

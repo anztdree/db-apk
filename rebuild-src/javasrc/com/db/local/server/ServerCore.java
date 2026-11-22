@@ -12,7 +12,8 @@ import java.util.concurrent.CountDownLatch;
  * Inti mini-server: SATU proses, 5 listener, SEMUA bind 127.0.0.1 (peta 16.5):
  *   9527 → StaticHandler (config bin, XOR DragonBall decode di log)
  *   9528 → StaticHandler (CDN game + upgrade + serversetting.json)
- *   5050 → SocketIoHandler (socket.io v2.1.2 EIO=3 — config utama gameplay)
+ *   5050 → SocketIoHandler LOGIN (socket.io v2.1.2 EIO=3 + /loginchecknative)
+ *   5051 → SocketIoHandler GAME  (socket.io v2.1.2 EIO=3 — serverItem.url, Bagian 21)
  *   9530 → SdkHandler (33 path API SDK, envelope capture live)
  *   4000 → LoggerHandler (fallback 4001 bila bind gagal — 15.2/16.2)
  * Murni java.* (tanpa import android.*) agar bisa diuji di desktop JVM sebelum
@@ -42,7 +43,10 @@ public final class ServerCore {
         // belum selesai → popup "Server base.version is Not Exist" tidak pernah terjadi)
         final StaticHandler cdnHandler = new StaticHandler(docroot, assets, readyEarly, LoggerCore.PORT_CDN);
         final SdkHandler sdk = new SdkHandler();
-        final SocketIoHandler login = new SocketIoHandler();
+        final SocketIoHandler login = new SocketIoHandler(false);
+        // Bagian 21: server game = socket.io `handler.process` enterGame dkk.
+        // (url dari item GetServerList → http://127.0.0.1:5051)
+        final SocketIoHandler game = new SocketIoHandler(true);
 
         int loggerPort = LoggerCore.PORT_LOGGER;
         boolean fallback = false;
@@ -58,7 +62,8 @@ public final class ServerCore {
 
         bindAndServe(LoggerCore.PORT_CONFIG, configHandler, "config bin (mirror configus…:443)");
         bindAndServe(LoggerCore.PORT_CDN, cdnHandler, "CDN game (mirror dragonh5cdn…:443)");
-        bindAndServe(LoggerCore.PORT_LOGIN, login, "login socket.io v2.1.2 EIO=3 (mirror login…:610)");
+        bindAndServe(LoggerCore.PORT_LOGIN, login, "login socket.io v2.1.2 EIO=3 + loginchecknative (mirror login…:610)");
+        bindAndServe(LoggerCore.PORT_GAME, game, "server game socket.io v2.1.2 EIO=3 (serverItem.url — Bagian 21)");
         bindAndServe(LoggerCore.PORT_SDK, sdk, "API SDK t4game (mirror qsdk.t4game.com:80)");
 
         LoggerCore.fallbackLogger = fallback;

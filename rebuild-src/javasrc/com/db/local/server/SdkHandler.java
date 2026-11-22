@@ -10,28 +10,23 @@ import java.util.Map;
  * kontrak 14.A#8).
  *
  * Bagian 20 — FIX "stuck tanpa popup" (bukti smali klien):
- *  - com/quickgame/android/sdk/psalmicvolleyball/singersmooth: setelah connect("/v1/system/init")
- *    klien baca getBoolean("result"); jika FALSE hanya QGLog lalu RETURN — callback init TIDAK
- *    pernah dipanggil → game menunggu selamanya = stuck tanpa popup (log owner 2026-11-22:
- *    seq 17 result:false, lalu tidak ada request apa pun lagi).
- *  - com/quickgame/android/sdk/model/e.cointhreat(String) (parser data init):
- *      * kunci "payTypes" WAJIB ADA — jika tidak ada → "pay type no key" → return null
- *        → callback tidak dipanggil → stuck;
- *      * field lain semuanya has()-guarded (opsional);
- *      * "version" dilewatkan → model g null → runnable 'version update' (popup download)
- *        tidak pernah dijalankan (kondisional di singersmooth$cointhreat);
- *      * "nodes" dilewatkan → daftar server SDK tidak di-set (GetServerList = jalur socket.io
- *        5050, bukan jalur ini).
- *  - com/quickgame/android/sdk/singersmooth.cointhreat(model e) (callback sukses):
- *      * panggil /v1/system/getNotice (try/catch; result:false atau data <=2 char →
- *        skip notice, aman);
- *      * lalu SELALU singersmooth$seventygenom → "init success three" →
- *        onInitFinished(true) → game lanjut.
+ *  - init result:true + payTypes + loginTypes ["12"] tanpa version/nodes.
  *
- * Respons init sukses (dikarang MINIMAL sesuai ekspektasi parser klien — direkam di extra):
- *   {"result":true,"data":{"payTypes":[],"loginTypes":["12"]}}
- * Envelope capture live 14.A#8 (result:false id 20000) TETAP dipakai untuk path lain yang
- * belum dipetakan — semua request direkam utuh di logger untuk iterasi berikutnya.
+ * Bagian 21 — LOGIN NATURAL TANPA LAYAR "MIGRATION CODE" (bukti smali + JS):
+ *  1. /v1/user/registerVisitor  — guest auto-register (HWLoginActivity jalur
+ *     ACTION_AUTO_REGISTER_AND_LOGIN → dishbesideshockey$nationalcommunitymissing$
+ *     seventygenom). Respons {result:true, data:"<session>"} diparse
+ *     psalmicvolleyball/cointhreat.cointruth → authToken WAJIB + userData WAJIB.
+ *  2. /v1/user/autoLogin — login token tersimpan (launch berikutnya,
+ *     dishbesideshockey$hardlinerspare → service.cointruth(token)).
+ *  3. /loginchecknative (GET, loginServer:loginWebPort = 127.0.0.1:5050) —
+ *     dipanggil game wrapper pursetruechild/feedtonight/singersmooth.onLoginFinished
+ *     dengan query uid/username/token/usermode; body mentah menjadi thirdParams
+ *     untuk JS (getSdkLoginInfo), lalu divalidasi getInt("code")==0 →
+ *     MainActivity.customreading() → WebView index-native.html lanjut.
+ *  4. Akun tamu PERSISTEN (AccountStore → <serverRoot>/data/account.json) —
+ *     UID/token sama antar restart seperti server nyata.
+ * Path lain yang belum dipetakan tetap envelope capture 14.A#8 dan terekam utuh.
  */
 public final class SdkHandler implements HttpWorker.Handler {
 
@@ -72,6 +67,21 @@ public final class SdkHandler implements HttpWorker.Handler {
                     + "dipanggil -> stuck); loginTypes=[12] tanpa cek GMS; TANPA version "
                     + "(hindari runnable 'version update'), TANPA nodes (GetServerList=jalur 5050) "
                     + "| respCT=application/json";
+        } else if (p.equals("/v1/user/registerVisitor")) {
+            AccountStore a = AccountStore.loadOrCreate();
+            body = a.sdkDataResponse(a.isNewUser);
+            extra = "REGISTER-VISITOR 21 | guest auto-register (HWLoginActivity "
+                    + "ACTION_AUTO_REGISTER_AND_LOGIN -> dishbesideshockey$nationalcommunitymissing"
+                    + "$seventygenom); session: authToken+userData (uid/username/displayUid/"
+                    + "token/isGuest/openType) persis parser psalmicvolleyball/cointhreat; "
+                    + "akun PERSISTEN di server/data/account.json (uid tetap antar restart) "
+                    + "| respCT=application/json";
+        } else if (p.equals("/v1/user/autoLogin")) {
+            AccountStore a = AccountStore.loadOrCreate();
+            body = a.sdkDataResponse(false);
+            extra = "AUTO-LOGIN 21 | token tersimpan (dishbesideshockey$hardlinerspare -> "
+                    + "service.cointruth authToken) -> session sama seperti registerVisitor "
+                    + "| respCT=application/json";
         } else if (p.equals("/v1/system/getNotice")) {
             body = OK_EMPTY;
             extra = "getNotice kosong: result=true data=\"\" (len 0 <=2 -> callback skip notice, "
@@ -80,6 +90,14 @@ public final class SdkHandler implements HttpWorker.Handler {
                 || p.equals("/v1/system/getAgreement")) {
             body = OK_EMPTY;
             extra = "system path lain -> sukses kosong | respCT=application/json";
+        } else if (p.equals("/v1/auth/setGameRoleInfo")) {
+            body = OK_EMPTY;
+            extra = "SET-GAME-ROLE 21 | laporan role game (cointhreat.smali setGameRoleInfo) "
+                    + "-> result:true kosong | respCT=application/json";
+        } else if (p.equals("/v1/user/getServerAgreement")) {
+            body = OK_EMPTY;
+            extra = "agreement kosong (dishbesideshockey/dishbesideshockey) | "
+                    + "respCT=application/json";
         } else {
             body = ENVELOPE;
             extra = "envelope capture live 14.A#8 (result:false — TIDAK dikarang) | "
@@ -98,5 +116,14 @@ public final class SdkHandler implements HttpWorker.Handler {
         e.durMs = System.currentTimeMillis() - t0;
         LoggerCore.log(e);
         return true;
+    }
+
+    /**
+     * loginchecknative DILAYANI DI 5050 (bukan di sini) karena URL-nya
+     * loginServer + ":" + loginWebPort (bukan QHinfo) — lihat SocketIoHandler.
+     * Method ini hanya util untuk menyusun responsnya secara konsisten.
+     */
+    public static byte[] loginCheckNativeBody() {
+        return HttpWorker.text(AccountStore.loadOrCreate().loginCheckNative());
     }
 }
