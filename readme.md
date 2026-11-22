@@ -1428,3 +1428,72 @@ Uji browser nyata (agent-browser, dashboard dari server desktop):
 - Bagian 19 + `rebuild-src/javasrc/` (10 java) + `rebuild-src/scripts/repack_v4.py` + APK v4
   (LFS) di-commit dan di-push bersamaan.
 - README append-only: Bagian 1–18 TIDAK diubah sedikit pun.
+
+
+## Bagian 20 — FIX "stuck tanpa popup": SDK init result:false → result:true (2026-11-22)
+
+### 20.1 Laporan owner + fakta dari log dashboard v4 (port 4000, sesi 23:43)
+
+Log owner (19 entri, dashboard v4 — fitur salin bekerja): semua tahap SEBELUM init sudah
+sehat setelah Bagian 19 — bind 5 listener AKTIF; 9527 config bin 200 (fast-path, XOR decoded);
+9528 upgrade `base.version` 200 `110`, `resource.version` 200 `11390`, `upgrade.json` 200,
+`size.json` 200, `all.zip` 200 19.385.098 B (193 ms — popup 404 Bagian 19.5 #1 terbukti hilang);
+ekstraksi 2758 file selesai 23:43:24.9. Kemudian: **`POST /v1/system/init` (9530) 200 →
+envelope `{"result":false,"data":[],"error":{"id":20000,"message":"Params error"}}`** — dan
+SETELAH ITU TIDAK ADA REQUEST APA PUN LAGI (tidak ada index-native.html, tidak ada 5050).
+Owner: "setelah update terdapat stuck tanpa popup".
+
+### 20.2 Bukti akar dari smali klien (bukan tebakan)
+
+| # | Bukti | Kode |
+|---|---|---|
+| 1 | Setelah `connect("/v1/system/init")` klien baca `getBoolean("result")`; jika **false** hanya `QGLog` lalu `return-void` — **callback init TIDAK PERNAH dipanggil** → game menunggu init selamanya = stuck tanpa popup | `com/quickgame/android/sdk/psalmicvolleyball/singersmooth.smali` cabang `:cond_17f` |
+| 2 | Parser `data` init: kunci **`payTypes` WAJIB ADA** — `has()` false → log "pay type no key" → **`return-object null`** → callback tidak dipanggil → stuck. Field lain semuanya `has()`-guarded (opsional): `nodes`, `loginTypes`, `isNotGift`, `showShare`, `showDiscount`, `webUrl`, `requestIp`, `productConfig`, `otherpayType`, `payFast`, `lightPackage` | `com/quickgame/android/sdk/model/e.smali` method `cointhreat(String)` `:cond_48d` |
+| 3 | Jika `version` (JSONObject) ADA → `model.g` terisi → cek waktu → runnable `singersmooth$cointhreat` = log "version update" + `startActivity(download_update)` = **popup update** → kami TIDAK mengirim `version` → runnable tidak pernah dibuat | `singersmooth.smali` `:cond_98` + `singersmooth$cointhreat.smali` |
+| 4 | Callback sukses: simpan productInfo → panggil `/v1/system/getNotice` (semua di try/catch; `result:false` atau `data` ≤2 char → skip notice, aman) → "init success one/two" → **SELALU** `runOnUiThread(singersmooth$seventygenom)` = "init success three" → `onInitFinished(true)` → **game dilanjutkan** | `com/quickgame/android/sdk/singersmooth.smali` + `singersmooth$seventygenom.smali` |
+| 5 | **Asal mula envelope result:false (koreksi jujur)**: capture `14.A#8` dibuat saat analisis dengan **body kosong `{}`** (fakta 14.A#8) — server asli menolak body kosong, wajar `Params error`. Mini-server v2–v4 membalaskan envelope itu ke request game yang SAH dan lengkap (`sv=v2&data=…&sign=…`, 1249 B — terbukti di log) → game yang benar diperlakukan salah → stuck | `SdkHandler` v4 + readme 14.A#8 |
+
+### 20.3 Fix SdkHandler v5 — path-aware (satu-satunya perubahan kode)
+
+| Path 9530 | Respons v5 | Dasar |
+|---|---|---|
+| `/v1/system/init` | `{"result":true,"data":{"payTypes":[],"loginTypes":["12"]}}` | 20.2 #2: `payTypes` kunci wajib; `loginTypes ["12"]` = tanpa cek GMS + tanpa counter; **tanpa `version`** (hindari popup update 20.2 #3); **tanpa `nodes`** (daftar server SDK tidak di-set — GetServerList adalah jalur socket.io 5050) |
+| `/v1/system/getNotice` | `{"result":true,"data":""}` | 20.2 #4: `data` ≤2 char → skip notice (tidak ada notice untuk ditampilkan) |
+| `/v1/system/onNewToken`, `/v1/system/dmsg`, `/v1/system/getAgreement` | `{"result":true,"data":""}` | sukses kosong — tidak ada isi untuk ditampilkan |
+| semua path lain (v1/user/*, v1/auth/*, v2/purchase) | envelope capture 14.A#8 `result:false` **TIDAK berubah** | belum ada bukti format respons yang benar — semua request tetap terekam utuh di logger untuk iterasi berikutnya |
+
+Penanda extra di log: `INIT-SUCCESS 20.1 | data dari parsing smali model/e.cointhreat: …` —
+owner bisa melihat persis respons apa yang dikirim dan alasannya.
+
+### 20.4 Verifikasi v5 (toolchain dibangun ulang — sandbox reset ke-2)
+
+Toolchain hilang karena reset; dibangun ulang dan semuanya terverifikasi: ECJ 3.33.0 (mirror
+Aliyun), baksmali/smali org.smali 2.5.2 + dexlib2/util/guava 27.1-android/jcommander/jsr305
+(mirror Aliyun), r8/D8 8.3.37 (dl.google.com), android.jar API 21 (Sable), uber-apk-signer 1.3.0
+(selamat di my-project). Keystore `dblocalmod` (pass tercatat Bagian 19) selamat di repo.
+
+| Item | Hasil |
+|---|---|
+| Kompilasi | ECJ `-source 8 -target 8` + `android.jar` API21 → 19 class → D8 `--release --min-api 21` → `classes2.dex` **63.692 B** sha256 `61899dd3…` (+572 B vs v4) |
+| Baksmali verifikasi (dex dari APK TER-SIGN) | string `INIT-SUCCESS 20.1`, `payTypes`/`loginTypes ["12"]`, `getNotice`, `Params error` — semua ada di `SdkHandler.smali` |
+| Smoke test desktop JVM (handler asli, 5 request) | init → `result:true data:{payTypes:[],loginTypes:["12"]}`; getNotice/onNewToken → `result:true data:""`; `/v1/auth/getUserInfo` + `/v2/purchase` → envelope capture (fallback) |
+| Repack v5 (`repack_v5.py`) | base APK asli (sha256 `b308c44d…` — diunduh ulang via media LFS, identik); `classes.dex` starter + `config_BS.properties` 256 B + `QHinfo` 21 B + `assets/server_root/**` 2758 file — **semuanya byte-identik v4** (diff 0); sign ulang META-INF dibuang |
+| APK final | `release-mod/db-local(MOD-LOCALSERVER-v5).apk` — **202.650.484 B**, sha256 **`70fc5b7ff103d999cac2144ab6c605c9d8a6e0a7bfe2e2e4ed19a244b274bd3d`**, 6.427 entri (= v4), zipalign verified, **signature verified [v1, v2, v3]**, sertifikat CN=DB Local Mod exp 2056 (keystore SAMA) |
+
+### 20.5 Perilaku yang diharapkan di device setelah v5 (jujur)
+
+1. Init SDK: parser klien baca `result:true` → `data` → `payTypes` ada → model QGProductInfo
+   non-null → callback jalan → getNotice (skip) → "init success three" → **`onInitFinished(true)`**
+   → game melanjutkan alur (update resource sudah terbukti 200 di log Bagian 20.1).
+2. Tahap berikutnya = load `index-native.html` (9528) + login socket.io 5050 (`GetServerList`
+   dsb.). Jika di sana ada tahap yang macet/gagal, dashboard v4 memperlihatkan event socket.io
+   persis seperti yang dikirim game — dasar putusan iterasi berikutnya (batasan 17.7 #2 untuk
+   daftar server game/chat/dungeon tetap: TIDAK dikarang tanpa keputusan owner).
+3. Popup update SDK tidak akan muncul (`version` tidak dikirim — 20.2 #3).
+
+### 20.6 Status push
+
+- Bagian 20 + `rebuild-src/javasrc/com/db/local/server/SdkHandler.java` (baru) +
+  `rebuild-src/scripts/repack_v5.py` (baru) + APK v5 (LFS) di-commit dan di-push bersamaan;
+  `db-local(MOD-LOCALSERVER-v4).apk` dihapus dari repo (diganti v5 — pola sama dengan v2→v3→v4).
+- README append-only: Bagian 1–19 TIDAK diubah sedikit pun.
