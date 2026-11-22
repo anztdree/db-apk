@@ -1042,3 +1042,145 @@ milik APK modifikasi — bukan fakta APK asli.
    downloader config jalan.
 5. Field-test: capture handshake 5050, envelope SDK 9530, config bin 9527 → kalibrasi 1:1
    (checkpoint jujur; acuan awal = 14.A#7–8).
+
+---
+
+## 17. REBUILD LENGKAP v2 — 16.9 #2/#3/#4 SELESAI (22 Nov 2026)
+
+Bagian ini menjawab protes owner ("rebuild setengah-setengah"): hasil 16.7 hanya menyelesaikan
+16.9 #1 (2 asset). Bagian 17 menyelesaikan #2 (bin config), #3 (isi `server/bs/`), #4 (mini-server
+embedded + patch boot) — SEMUA ke dalam satu APK baru `db-local(MOD-LOCALSERVER-v2).apk`.
+Semua angka di bawah hasil uji nyata di sandbox (bukan rencana).
+
+### 17.1 Port literal XXTEA "onepiece" dibaca ULANG dari smali (koreksi spesifikasi 5.1)
+
+Spesifikasi 5.1 tidak menyebut satu perbedaan kunci yang hanya terlihat dari smali class
+`cointhreat/cointhreat/cointhreat/reweavingsiamesedpropertylessnesses/customreading`
+(= `customreading.nationalcommunitymissing` di jadx; port lama hilang saat reset sandbox):
+
+| Aspek | Spesifikasi 5.1 (lengkapnya di sini) |
+|---|---|
+| `sum` | **KONSTAN = delta 0x9E3779B9** (`mul-long 1 * 0x9e3779b9`) — BUKAN `rounds*delta` yang turun per round. "1 pass" artinya SATU pass p = n-1 → 0 |
+| `e` | **KONSTAN = (delta >> 2) & 3** (dihitung sekali sebelum loop) |
+| `y` iterasi | y awal = v[0]; setiap selesai update v[p], y BERIKUTNYA = v[p] yang baru di-update (= v[p'+1]) |
+| p = 0 | y = v[1] (sudah ter-update), z = v[n-1] (sudah ter-update) |
+| aritmetika | long 64-bit dengan mask32 di tiap komponen MX — hasil modulo 2^32 identik int 32-bit |
+| MX | `mask32(y^sum) + mask32(z^key[(p&3)^e])) ^ (mask32((z>>>5)^(y<<2)) + mask32((z<<4)^(y>>>3))` |
+| pad | byte terakhir = jumlah pad, dibuang TANPA clamp (uji nyata: pad all.zip = 4) |
+| infoinfo.bin | [16:32] ≠ magic → dikembalikan apa adanya (isi "voyage_fancy_radius\|pschent_full_tired" 38 B plaintext) |
+
+Uji ulang dengan port baru — SEMUA CRC VALID dan ukuran PERSIS sama dengan audit:
+`base.zip` 1.233.549 B (161 entri), `all.zip` 9.428.692 B (741 entri), `vvcc.json` 183.712 B
+(1.944 entri peta), `vvcc_tc.json` 10.907 B. Port baru: `rebuild-src/scripts/onepiece_decrypt.py`.
+
+### 17.2 CDN ASLI MASIH HIDUP — isi server/bs/ = salinan LIVE 1:1 (bukan tebakan)
+
+Uji live 22 Nov 2026: `dragonh5cdn.popoh5.com` masih 200 OK untuk SEMUA file. Unduhan nyata:
+
+| File CDN | Ukuran | Keterangan |
+|---|---|---|
+| `/bs/index-native.html` | 10.792 B | identik angka 4.D#1; referensi eksternal hanya privacy parajoymobile + battle-log (di luar skop) |
+| `/bs/manifest.json` | 533 B | 15 js (`initial` 7 + `game` 8) |
+| `/bs/upgrade/base.version` | `110\n` | = assets APK `base.version` (110) |
+| `/bs/upgrade/resource.version` | `11390\n` | = assets APK `resource.version` (11390) |
+| `/bs/upgrade/size.json` | 105 B | `{"base":"31015076",…,"all":19385098}` — persis 4.E |
+| `/bs/upgrade/upgrade.json` | 130 B | persis 4.E |
+| `/bs/upgrade/base.zip` | 31.015.076 B | = angka size.json; 2.616 entri, CRC valid |
+| `/bs/upgrade/all.zip` | 19.385.098 B | = angka size.json; 652 entri, CRC valid |
+| `/bs/resource/properties/serversetting.json` | 73 B | asli `{"loginserver":"https://login.popoh5.com:610","requireSDK":false}` |
+
+FAKTA PENTING (jujur): js di zip APK LEBIH LAMA dari CDN — APK memuat `main.min_7eae4d6e.js`
+(fakta 4.G), CDN `manifest.json` sekarang mereferensikan `main.min_777039fc.js`. Karena itu
+isi `server/bs/js/**` + `resource/**` diambil dari UNION ekstrak CDN `base.zip` + `all.zip`
+(versi v110/11390 yang masih dilayani asli) — BUKAN dari zip dalam APK. Verifikasi: 15 js
+manifest SEMUA ada di pohon; `index-native.html` byte-identik disajikan kembali oleh mini-server.
+
+### 17.3 Pohon `assets/server_root/**` dalam APK v2 (= isi server/ setelah ekstraksi)
+
+```
+server/                          ← Android/data/com.db.local/server/ (SEBELAH files/, 13.1)
+└─ bs/
+   ├─ db/android/setting_BS_Android.bin   687 B  ← JSON final 16.3, XOR "DragonBall", ROUNDTRIP valid
+   ├─ db/android/com_db_local.bin         2 B    ← "{}" XOR (live asli = 404; {} = tanpa override, boot lanjut)
+   ├─ index-native.html                   10.792 B  ← salinan byte-identik CDN
+   ├─ manifest.json                       533 B     ← salinan byte-identik CDN
+   ├─ js/                                 25 file (11,3 MB) ← union CDN
+   ├─ resource/                           3.239 file (118,3 MB) ← union CDN, termasuk
+   │    └─ properties/serversetting.json  66 B ← format tab 1:1, loginserver → http://127.0.0.1:5050
+   └─ upgrade/                            base.version, resource.version, size.json, upgrade.json,
+                                          base.zip (31.015.076 B), all.zip (19.385.098 B) ← byte CDN asli
+```
+
+`setting_BS_Android.bin` di-generate dari `setting_BS_Android_live_fresh.bin` (backup) — decode
+XOR → TEPAT 5 penggantian kontekstual (`url`, `update`, `loginServer`, `loginPort` 610→5050,
+`loginWebPort` 510→5050) → format tab, field lain (testMode=1, tsUrl, checkTime=300,
+tsLoginServer, clientParams) byte-identik → encode ulang. 711 B → 687 B.
+
+### 17.4 Mini-server embedded (16.9 #4) — 9 class Java → `classes2.dex` (37.696 B)
+
+Sumber: `rebuild-src/javasrc/com/db/local/server/` (HttpWorker, JsonUtil, LocalServerStarter,
+LoggerCore, LoggerHandler, SdkHandler, ServerCore, SocketIoHandler, StaticHandler).
+Build: ECJ 3.33.0 (`-source/-target 8`) → D8 8.3.37 (`--min-api 21`, minSdk=21 → ART memuat
+classes2.dex native). `java.util.Base64` TIDAK dipakai (Android API 26+) — encoder sendiri.
+
+| Listener (bind 127.0.0.1) | Perilaku teruji (curl/WS di sandbox) |
+|---|---|
+| 9527 config bin | `/bs/db/android/setting_BS_Android.bin?rnd=…` → 687 B 200; decode XOR valid, `loginPort` 5050; dilayani LANGSUNG dari assets (anti-race ekstraksi); log menyertakan JSON TER-DECODE (16.6); `com_db_local.bin` → `{}` |
+| 9528 CDN | `index-native.html` 10.792 B byte-identik sumber; `serversetting.json` isi baru; `upgrade/*` lengkap; anti-race: tunggu latch ekstraksi tahap awal (db→root→js) maks 60 s |
+| 5050 login socket.io | **PERILAKU 1:1 CAPTURE LIVE** (server asli login.popoh5.com:610 masih hidup, dicapture 22 Nov 2026 — script `rebuild-src/scripts/capture_login2.py`): poll pertama → body PERSIS 103 byte `96:0{"sid":"…20char","upgrades":["websocket"],"pingInterval":25000,"pingTimeout":5000}2:40` (uji: 103 byte ✓), header `Access-Control-Allow-Origin: *` + `Set-Cookie io=<sid>; Path=/; HttpOnly` ✓; POST → `ok` (text/html, 2 B) ✓; long-poll di-hold ✓; sid bodoh → 400 `{"code":1,"message":"Session ID unknown"}` ✓; `2probe`→`3probe`, `2`→`3` ✓; WebSocket upgrade 101 + Sec-WebSocket-Accept ✓ (uji frame nyata: `2probe`→`3probe`, ping `2`→`3`, close `41` di-log). Event `42[...]` di-log APAPA ADANYA — server asli juga tidak membalas event sintetis tanpa login valid, dan mini-server TIDAK mengarang data game (jujur 16.6) |
+| 9530 API SDK | semua path POST/GET → 200 envelope capture live `{"result":false,"data":[],"error":{"id":20000,"message":"Params error"}}` ✓ (kontrak 14.A#8, backup verify-artifacts) |
+| 4000 logger (fallback 4001) | `/` dashboard HTML; `/stats` counter per port; `/health` status bind (uji: 5 listener AKTIF); `/logs?mode=all&limit=N` kronologis naik; `/logs?mode=port&port=9527|9528|5050|9530&limit=N` — 9527 menyertakan `extra` = JSON ter-decode (uji: tampil) ✓; preview body ≤ 2 KB; ring buffer global 2.000 + per-port 400 |
+
+Ekstraksi pertama boot: `assets/server_root/**` → `Android/data/com.db.local/server/**`
+(2.758 file, ±156 MB — device butuh ruang; cache client `files/game/http/127.0.0.1#0A9528/bs/`
+dibuat SENDIRI oleh client, 14.F/16.4 — files/ tidak disentuh server).
+
+### 17.5 Patch boot (16.9 #4b) — smali `Application.onCreate`
+
+`com/zhuhuan/game/Application.smali` (hasil baksmali classes.dex) — sisipan SEBELUM
+`invoke-super`:
+
+```smali
+invoke-static {p0}, Lcom/db/local/server/LocalServerStarter;->start(Landroid/content/Context;)V
+```
+
+classes.dex re-assemble (smali 2.5.2): 6.697.104 → **6.697.176 B** (+72 B instruksi starter).
+`start()` menelan SEMUA exception (boot app TIDAK bisa kena crash oleh mini-server).
+
+### 17.6 HASIL APK v2 + verifikasi menyeluruh
+
+| Item | Nilai |
+|---|---|
+| Sumber | `db-local(Original-DO NOT DELETE!).apk` (sha256 b308c44d…2218) |
+| Entri | asli 3.668 − 3 META-INF lama + classes2.dex + 2.758 server_root + 3 META-INF baru = **6.427** |
+| Replaced | `classes.dex` (+72 B starter), `assets/config_BS.properties` (396→256 B, identik artefak 16.7 byte), `assets/QHinfo` (22→21 B identik) |
+| resources.arsc | tetap STORED (compress=0) — wajib targetSdk 30 |
+| Sign | keystore `dblocalmod` SAMA (CN=DB Local Mod, O=Owner, C=ID, exp 2056) — **APK v1 (79d78e7d…) HARUS DI-UNINSTALL dulu bila terpasang** |
+| Verifikasi | zipalign verified; signature verified **[v1, v2, v3]**; 2.758 file server_root di-extract dari APK → cmp vs pohon sumber = **0 beda**; bin decode JSON valid; starter call terkonfirmasi di `Application.smali` hasil baksmali ULANG dari dex dalam APK; 9 class server ada di classes2.dex |
+| File | `release-mod/db-local(MOD-LOCALSERVER-v2).apk` — **202.638.196 B**, sha256 **bf403c4d9fbfc60b85119212bd1f019b9068954b93684eb5ffa865354fa01bb8** |
+| Tool | baksmali/smali 2.5.2 (classpath Maven), D8/r8 8.3.37, ECJ 3.33.0, uber-apk-signer 1.3.0, git-lfs 3.5.1 (semua di-download ulang di `tools/` — jar TIDAK di-commit) |
+
+### 17.7 Batasan jujur ( checkpoint 16.9 #5 sebagian — yang belum bisa diuji di sandbox)
+
+1. Uji di sandbox = JVM desktop (perilaku HTTP/WS/socket.io 1:1 terkonfirmasi). **Uji device
+   (instal APK, boot game) belum dilakukan** — perlu device/emulator Android, bukan bagian
+   dari lingkungan ini. Checkpoint 16.9 #5 tinggal ini.
+2. GetServerList: mini-server hanya HANDSHAKE + LOG. Balasan daftar server (game/chat/dungeon,
+   16.2 "di luar skop saat ini") TIDAK dikarang — game akan berhenti di login dengan log lengkap
+   di 4000. Kapan pun owner siap, port 5051/5052 (reserved) tinggal ditambah sebagai listener.
+3. Semua request SDK 9530 dijawab envelope "Params error" (yang benar-benar tertangkap live).
+   Respons path spesifik lain TIDAK dikarang.
+4. Battle-log (`log.sjflaregame.com:10000`, 4.D#8) dan privacy page — di luar skop, tidak
+   dimirror (battle-log memang diblokir qcloud di live).
+5. APK membesar 105 MB → 202 MB karena CDN mirror lengkap (js 11 MB + resource 118 MB
+   uncompressed + zips upgrade 50 MB). Alternative penghematan (buang zips upgrade — versi
+   lokal=server sehingga tak pernah diunduh) TIDAK diambil demi 1:1 penuh.
+6. `index-native.html` asli memuat 2 URL pihak ketiga (privacy parajoymobile, battle-log
+   sjflaregame) — tetap apa adanya (mirror 1:1), tidak dimodifikasi.
+
+### 17.8 Status push
+
+- Bagian 17 + `rebuild-src/` (9 java + 4 script) + APK v2 (LFS) di-commit dan di-push bersamaan.
+- README append-only: Bagian 1–16 TIDAK diubah sedikit pun.
+- git-lfs 3.5.1 dipasang lokal (`~/.local/bin`) — sandbox reset sebelumnya menghapus binary;
+  objek LFS lama (APK v1 105 MB) terverifikasi MASIH ADA di GitHub LFS (uji batch API 22 Nov).
