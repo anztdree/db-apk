@@ -2872,3 +2872,98 @@ dan SDK tetap berjalan normal tanpa itu. Konsekuensi di seluruh logger:
 Uji device berikutnya: rebuild APK (classes2.dex dari javasrc terbaru via
 ECJ+D8, lalu `repack_v3.py`) — dashboard baru langsung terlihat di
 `http://127.0.0.1:4000` tanpa perubahan cara pakai.
+
+---
+
+## Bagian 40 — REBUILD APK v4: LOGGER v3 MASUK DEVICE (23 Nov 2026 malam)
+
+### 40.1 Konteks
+
+Arahan owner (kata-kata persis): *"astaga gak di rebuild gimana saya mau
+tess"* — Bagian 39 hanya mengubah SOURCE logger v3 (commit `4fe5a4f`), APK
+di device masih dashboard lama. Bagian ini = eksekusi rebuild yang dijanjikan
+di akhir Bagian 39: classes2.dex baru → APK v4 → siap tes.
+
+### 40.2 Toolchain (sandbox ter-reset, dibangun ulang dari nol)
+
+- `javac 21.0.13` — dari `openjdk-21-jdk-headless_21.0.13+9-1~deb13u2_amd64.deb`
+  (lokal) diekstrak ke `/tmp/jdk`, lalu dioverlay lib/conf JRE sistem
+  (`/usr/lib/jvm/java-21-openjdk-amd64`) karena deb jdk-headless tidak membawa
+  `libjli.so`/`modules` dan `/usr/lib/jvm` tidak bisa ditulis (bukan root).
+- **D8 8.3.37** — diunduh ulang dari `dl.google.com/android/maven2/com/android/
+  tools/r8/8.3.37/r8-8.3.37.jar` (16.628.796 B) → `tools/d8.jar`.
+- APK v3 dasar — diunduh via `tools/fetch_lfs.py` (LFS batch API + PAT) ke
+  `work/v3.apk`, **202.691.550 B, sha256 `b2a802716cb6952e…`** — cocok dengan
+  yang terdokumentasi Bagian 38.3.
+- Sign: `uber-apk-signer 1.3.0` + `release-mod/dblocal-mod.keystore`
+  (alias `dblocalmod`, storepass/keypass `dblocalmod123` — sama dgn v2/v3).
+
+### 40.3 Perubahan kode sebelum dex (penanda versi v3 → v4)
+
+1. `CrashHook.java` — laporan crash: `MOD-LOCALSERVER v4 — LAPORAN CRASH`.
+2. `LocalServerStarter.java` — boot log: `…Application.onCreate —
+   MOD-LOCALSERVER v4 — serverRoot=…`.
+3. `LoggerHandler.java` — judul dashboard: `🐉 DB MONITOR <span class=ver>v4</span>`.
+4. `rebuild-src/smoke/run_smoke.py` — test `v17-ver-dashboard` diperbarui
+   `"v3" → "v4"` (penanda versi memang dinaikkan — perubahan disengaja).
+
+### 40.4 Verifikasi (semua dijalankan di sesi ini)
+
+1. **Kompilasi javac 21** (30 file: stubs + javasrc + SmokeMain, UTF-8) — PASS.
+2. **Smoke desktop** — **119/119 PASS** (setelah 1 test versi diperbarui).
+3. **D8** `--release --min-api 21` → `classes2.dex` **161.564 B**
+   sha256 `84d7e7ed…` (v3: 159.064 B; +2.500 B = dashboard MONITOR redesign).
+4. **Repack v4** (`rebuild-src/scripts/repack_v4.py`, pola rantai swap —
+   sama dgn v11..v18): salin 6.425 entri byte-identik dari v3, ganti
+   `classes2.dex`, buang 3 sign lama; sanity: classes.dex proven
+   (`1df64d91…`), QHinfo `http://127.0.0.1:9530`, config_BS base64 `9527`,
+   clientversion.json ada.
+5. **Diff zip v3 → v4 (signed)** = **tepat 4**: `classes2.dex` +
+   `META-INF/{MANIFEST.MF, DBLOCALM.SF, DBLOCALM.RSA}` — TANPA tambahan/
+   penghapusan entri lain; AndroidManifest / resources.arsc / lib / res /
+   semua assets byte-identik v3.
+6. **Sign ulang**: zipalign + signature **[v1, v2, v3] verified**, sertifikat
+   `CN=DB Local Mod, O=Owner, C=ID` (expire 14 Nov 2056) — SAMA dgn v3 →
+   install langsung di atas v3 TANPA uninstall.
+7. Marker v4 terkonfirmasi di dex final (`>v4</span>`, `overlay OFF (normal)`).
+
+### 40.5 APK v4
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v4).apk` |
+| Ukuran | **202.691.550 B** (identik v3 — dex +zipalign balancing) |
+| sha256 | `0c7db70962a0910153e743315d294bdcdedce844f6d0c3cb45130bd53f0281f0` |
+| classes2.dex | 161.564 B sha `84d7e7ed…` — mini-server dgn logger v3 |
+| classes.dex | sha `1df64d91…` — proven, kode game tak tersentuh |
+| Penanda | BOOT/crash/dashboard = **v4** |
+| Sign | v1+v2+v3, keystore sama (update-over-v3 aman) |
+
+### 40.6 Cara uji device (sama seperti biasa)
+
+1. Install `db-local(MOD-LOCALSERVER-v4).apk` LANGSUNG di atas v3 (keystore
+   sama — tanpa uninstall, akun & progres aman).
+2. Boot game → buka browser device: `http://127.0.0.1:4000` → judul harus
+   **🐉 DB MONITOR v4** — tabel 7 kolom, chip layanan beremoji, verdict
+   ✅❌⚠️ℹ️⚙️.
+3. **Izin overlay kini tampil `ℹ️ INFO` / `🛡️ overlay OFF (normal)`** —
+   TIDAK lagi merah/error (arahan owner Bagian 39).
+4. Entri `enterGame` di tabel kini tampil `🎮 Masuk server 1 — data pemain
+   diterima (N KB)` bila ACK `ret:0`.
+5. Bila ada yang tidak sesuai → kirim screenshot/trace dari tombol
+   `📋 Salin tabel` — diperbaiki langsung (arahan owner: *"nanti waktu
+   implementasi kalau ada yg gak sesuai di benerin"*).
+
+### 40.7 File berubah
+
+1. `release-mod/db-local(MOD-LOCALSERVER-v4).apk` — APK baru (LFS).
+2. `rebuild-src/scripts/repack_v4.py` — skrip repack swap-dex + verifikasi
+   diff otomatis (baru).
+3. `rebuild-src/javasrc/com/db/local/server/{CrashHook,LocalServerStarter,
+   LoggerHandler}.java` — penanda versi v4.
+4. `rebuild-src/smoke/run_smoke.py` — test penanda versi diperbarui ke v4.
+5. `readme.md` — Bagian 40 (file ini).
+
+Catatan: `release-mod/db-local(MOD-LOCALSERVER-v3).apk` DIPERTAHANKAN sebagai
+jalur rollback bila v4 bermasalah di device — owner bebas menghapusnya
+setelah v4 lolos uji.

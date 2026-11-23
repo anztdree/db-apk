@@ -418,7 +418,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("@media(max-width:640px){#tbl .c-seq,#tbl .c-dur{display:none}#flow{max-height:calc(100vh - 310px)}}\n")
          .append("@media(max-width:480px){#tbl .c-port{display:none}#tbl td,#tbl thead th{padding:5px 7px}body{padding:8px}}\n")
          .append("</style></head><body>\n")
-         .append("<div id=top><span id=title>🐉 DB MONITOR<span class=ver>v3</span></span>")
+         .append("<div id=top><span id=title>🐉 DB MONITOR<span class=ver>v4</span></span>")
          .append("<span id=pill class=g>🟢 cek …</span>")
          .append("<a href=/sdkconfig><button>🛠️ SDK CONFIG</button></a>")
          .append("<span id=statsbar>memuat …</span></div>\n")

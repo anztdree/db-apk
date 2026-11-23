@@ -402,7 +402,7 @@ try:
     check("v17-banner-overlay-js", "renderOverlay" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd
           and "overlay OFF (normal)" in bd)
-    check("v17-ver-dashboard", "v3" in bd and "/v1/system/init" in bd)
+    check("v17-ver-dashboard", "v4" in bd and "/v1/system/init" in bd)  # v4: penanda versi dinaikkan (Bagian 40)
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
