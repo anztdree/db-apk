@@ -26,4 +26,14 @@ public class Context {
     public void startActivity(Intent intent) {
         throw new RuntimeException("stub");
     }
+
+    /** v18 — dipakai SessionReset (prefs framework, signature asli API 1). */
+    public SharedPreferences getSharedPreferences(String name, int mode) {
+        throw new RuntimeException("stub");
+    }
+
+    /** v18 — dipakai ExitInfo (ActivityManager via refleksi; signature asli). */
+    public Object getSystemService(String name) {
+        throw new RuntimeException("stub");
+    }
 }

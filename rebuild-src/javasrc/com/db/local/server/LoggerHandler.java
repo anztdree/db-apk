@@ -101,6 +101,15 @@ public final class LoggerHandler implements HttpWorker.Handler {
             body = HttpWorker.text(err == null
                     ? "{\"result\":true,\"code\":\"" + JsonUtil.esc(code) + "\"}"
                     : "{\"result\":false,\"error\":\"" + JsonUtil.esc(err) + "\"}");
+        } else if ("/sdkconfig/session-reset".equals(p) && "POST".equalsIgnoreCase(req.method)) {
+            // v18 — RESET SESI SDK: hapus sesi tersimpan (prefs qg_Users + info.qg)
+            // -> game berikutnya UI LOGIN MANUAL (jalur aman tanpa izin overlay)
+            String err = SessionReset.reset(OverlayFixer.ctx, false);
+            status = err == null ? 200 : 400;
+            h = HttpWorker.baseHeaders("application/json");
+            body = HttpWorker.text(err == null
+                    ? "{\"result\":true,\"info\":\"" + JsonUtil.esc(SessionReset.lastResetInfo) + "\"}"
+                    : "{\"result\":false,\"error\":\"" + JsonUtil.esc(err) + "\"}");
         } else if ("/crash".equals(p)) {
             // v17 — daftar + isi laporan crash terbaru (banner merah dashboard)
             status = 200;
@@ -118,7 +127,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
         } else {
             status = 404;
             h = HttpWorker.baseHeaders("application/json");
-            body = HttpWorker.text("{\"error\":\"gunakan / , /stats , /health , /logs?mode=all|port&port=..&limit=N&since=SEQ , /download , /crash\"}");
+            body = HttpWorker.text("{\"error\":\"gunakan / , /stats , /health , /logs?mode=all|port&port=..&limit=N&since=SEQ , /download , /crash , POST /sdkconfig/session-reset\"}");
         }
 
         h.put("Access-Control-Allow-Origin", "*");
@@ -399,12 +408,12 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("@media(max-width:640px){#tbl .c-seq,#tbl .c-dur{display:none}#flow{max-height:calc(100vh - 300px)}}\n")
          .append("@media(max-width:480px){#tbl .c-port{display:none}#tbl td,#tbl thead th{padding:4px 6px}body{padding:6px}}\n")
          .append("</style></head><body>\n")
-         .append("<div id=top><span id=title>MONITOR SERVER<span class=ver>v17</span></span>")
+         .append("<div id=top><span id=title>MONITOR SERVER<span class=ver>v18</span></span>")
          .append("<span id=pill class=g>cek …</span>")
          .append("<a href=/sdkconfig><button>SDK CONFIG</button></a>")
          .append("<span id=statsbar>memuat …</span></div>\n")
 
-         .append("<div id=bwrap><div id=crashbn></div><div id=obn></div><div id=probn></div></div>\n")
+         .append("<div id=bwrap><div id=crashbn></div><div id=obn></div><div id=sesbn></div><div id=probn></div></div>\n")
          .append("<div class=panel><div id=chips></div><div id=sysline></div></div>\n")
 
          .append("<div class=panel id=ctl>\n")
@@ -425,7 +434,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("<b style=color:#8fd48f>PANDUAN CEPAT (server lokal)</b>\n")
          .append("<ul style=margin:6px 0 2px 18px;padding:0;font-size:12.5px;color:#c7d1da>\n")
          .append("<li>Alur normal: konfigurasi 9527 → resource 9528 → SDK 9530 → layar login → TAMU/DAFTAR/LOGIN → verifikasi 5050 → game 5051.</li>\n")
-         .append("<li><b>CRASH setelah loading?</b> cek banner merah CRASH di atas (trace lengkap + Salin). Penyebab umum: izin <b>Display over other apps</b> OFF — aktifkan lewat banner IZIN OVERLAY (1 klik).</li>\n")
+         .append("<li><b>CRASH setelah loading?</b> cek banner merah CRASH di atas (trace lengkap + Salin). Penyebab umum: izin <b>Display over other apps</b> OFF — aktifkan lewat banner IZIN OVERLAY (1 klik), atau biarkan v18 mereset sesi otomatis lalu LOGIN MANUAL.</li>\n")
          .append("<li>Di layar login SDK: <b>TAMU</b> = langsung main; <b>DAFTAR</b> = akun baru; <b>LOGIN</b> = akun terdaftar.</li>\n")
          .append("<li>Panel <b>SDK CONFIG</b>: edit kontrak + preset loginTypes E1/E2/E3 (eksperimen crash, satu variabel per restart).</li>\n")
          .append("</ul>\n</div>\n")
@@ -648,6 +657,10 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" if(o&&o.checked&&!o.granted){w.innerHTML='<div class=prob><div class=ph>IZIN Display over other apps OFF</div><div class=pm>Dialog auto-login SDK memakai window overlay (type 2008) — tanpa izin ini SDK bisa CRASH tepat setelah loading selesai (BadTokenException). Aktifkan izin untuk aplikasi DB - Local, lalu kembali ke game.</div><button id=ovfix>BUKA SETTINGS OVERLAY</button></div>';\n")
          .append("  $('ovfix').onclick=function(){post('/fix/overlay','').then(function(r){if(r.result)toast('halaman Settings dibuka — aktifkan izin utk DB - Local, lalu kembali ke game');else toast(r.error||'gagal',true)}).catch(function(){toast('jaringan gagal',true)})}}\n")
          .append(" else w.innerHTML=''}\n")
+         .append("function renderSession(j){var w=$('sesbn');var ov=j.overlay,ss=j.session;if(!ov||!ss){w.innerHTML='';return}\n")
+         .append(" if(ss.resetAuto){w.innerHTML='<div class=prob><div class=ph>SESI SDK DIRESET OTOMATIS</div><div class=pm>'+esc(ss.resetInfo||'sesi login tersimpan SDK dihapus — akibat crash sebelumnya + izin overlay OFF')+'<br>Buka game: LOGIN MANUAL (TAMU/DAFTAR/LOGIN). Akun tetap ada di database.</div></div>';return}\n")
+         .append(" if(ov.checked&&!ov.granted&&ss.saved){w.innerHTML='<div class=prob><div class=ph>SESI SDK TERSIMPAN + IZIN OVERLAY OFF</div><div class=pm>Auto-login SDK menampilkan dialog window type 2008 — tanpa izin ini game bisa CRASH tepat setelah loading. Bila terjadi: BUKA GAME LAGI — v18 mereset sesi otomatis lalu game buka LOGIN MANUAL (tetap bisa main tanpa izin). Solusi permanen: aktifkan izin di banner IZIN OVERLAY.</div></div>';return}\n")
+         .append(" w.innerHTML=''}\n")
          .append("function renderCrash(){fetch('/crash').then(function(r){return r.json()}).then(function(j){\n")
          .append(" var w=$('crashbn');if(!j||!j.latest){w.innerHTML='';return}\n")
          .append(" if(j.latest.name==CRASHLATEST&&w.innerHTML)return;\n")
@@ -741,11 +754,12 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" var h='';for(var i=0;i<ids.length;i++){var p=ids[i][0],cc=j.ports[p];\n")
          .append("  h+='<span class=chip><span class=\"dot '+((cc&&cc.requests>0)?'g':'m')+'\"></span><b>'+ids[i][1]+'</b> '+p+(cc?(' · '+cc.requests+' req'+(cc.errors?' · <span style=color:#ff8a80>'+cc.errors+' gagal</span>':'')):' · 0 req')+'</span>'}\n")
          .append(" c.innerHTML=h}\n")
-         .append("function sysline(){fetch('/sdkconfig/api').then(function(r){return r.json()}).then(function(j){API=j;\n")
+         .append("function sysline(){fetch('/sdkconfig/api').then(function(r){return r.json()}).then(function(j){API=j;renderSession(j);\n")
          .append(" var h='DB <b>'+esc(j.backend)+'</b> ('+esc(j.dbDir)+') · PRODUCT: ';\n")
          .append(" if(j.productCode){h+='<b class='+(j.productOk?'ok':'bad')+'>'+esc(j.productCode)+'</b> '+(j.productOk?'DITERIMA':'DITOLAK — lihat banner merah')}\n")
          .append(" else h+='<span class=m>belum ada request game</span>';\n")
          .append(" h+=' · tamu: '+(j.guest?esc(j.guest.uid):'-')+' · akun email: '+j.accounts.length;\n")
+         .append(" var ov=j.overlay||{},ss=j.session||{};h+=' · sesi SDK: '+(ss.saved?'<b class=bad>tersimpan</b>':'tidak ada')+' · overlay: '+(ov.checked?(ov.granted?'OK':'<b class=bad>OFF</b>'):'?');\n")
          .append(" $('sysline').innerHTML=h}).catch(function(){})}\n")
          .append("function poll(){\n")
          .append(" if(!S.auto){setTimeout(poll,500);return}\n")
@@ -794,7 +808,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
         SdkConfig.ensureIndex();
         Db db = Db.open(LoggerCore.serverRootPath);
         StringBuilder b = new StringBuilder(8192);
-        b.append("{\"ver\":\"v17\"")
+        b.append("{\"ver\":\"v18\"")
          .append(",\"backend\":\"").append(db.backend()).append('"')
          .append(",\"dbDir\":\"").append(JsonUtil.esc(LoggerCore.serverRootPath))
          .append("/sdk/data\"");
@@ -817,6 +831,13 @@ public final class LoggerHandler implements HttpWorker.Handler {
             b.append('"').append(JsonUtil.esc(prods.get(i))).append('"');
         }
         b.append(']');
+        // v18 — status izin overlay + sesi SDK (banner + panel dashboard)
+        b.append(",\"overlay\":{\"checked\":").append(LoggerCore.overlayChecked)
+         .append(",\"granted\":").append(LoggerCore.overlayGranted).append('}');
+        boolean sesSaved = SessionReset.sessionExists(OverlayFixer.ctx);
+        b.append(",\"session\":{\"saved\":").append(sesSaved)
+         .append(",\"resetAuto\":").append(SessionReset.autoResetDone)
+         .append(",\"resetInfo\":\"").append(JsonUtil.esc(SessionReset.lastResetInfo)).append("\"}");
         b.append(",\"files\":{");
         String[] names = SdkConfig.EDITABLE_NAMES;
         for (int i = 0; i < names.length; i++) {
@@ -895,6 +916,10 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("<button id=p3 onclick=preset('1,13')>E3 [\"1\",\"13\"] mirror server asli</button>\n")
          .append("</div>\n")
 
+         .append("<div class=sec><div class=sech><span>SESI SDK (auto-login — v18)</span><span id=seschip class=m></span></div>\n")
+         .append("<div class=bd><button class=pr onclick=sesReset()>RESET SESI SDK (keluar akun SDK)</button>\n")
+         .append("<div class=hint>Menghapus sesi login tersimpan SDK (prefs qg_Users + info.qg) — AKUN DI DATABASE TIDAK DIHAPUS. Fungsi: memutus siklus crash auto-login (dialog window type 2008 butuh izin overlay; SDK asli tidak pernah mengecek). Setelah reset, game membuka UI LOGIN MANUAL yang terbukti aman. v18 juga mereset OTOMATIS saat boot bila: izin overlay OFF + crash terekam + sesi ada.</div></div></div>\n")
+
          .append("<div class=sec><div class=sech><span>v1/system/init.json</span><button class=pr onclick=saveFile('init.json','t_init')>SIMPAN</button></div>\n")
          .append("<div class=bd><textarea id=t_init spellcheck=false></textarea>\n")
          .append("<div class=hint>payTypes + loginTypes WAJIB ada (parser model/e game).</div></div></div>\n")
@@ -925,6 +950,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("function post(url,body){return fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body}).then(function(r){return r.json()})}\n")
          .append("function preset(types){post('/sdkconfig/preset','types='+encodeURIComponent(types)).then(function(j){if(j.result){toast('init.json -> loginTypes ['+j.loginTypes+'] — force-stop & buka game');load()}else toast(j.error||'gagal',true)}).catch(function(){toast('jaringan gagal',true)})}\n")
          .append("function prodAdd(){var v=$('prodin').value.trim();if(!v){toast('isi productCode dulu',true);return}post('/sdkconfig/product-add','code='+encodeURIComponent(v)).then(function(j){if(j.result){toast('productCode DITERIMA — force-stop & buka game');$('prodin').value='';load()}else toast(j.error||'gagal',true)}).catch(function(){toast('jaringan gagal',true)})}\n")
+         .append("function sesReset(){if(!confirm('RESET SESI SDK?\\nGame berikutnya membuka UI LOGIN MANUAL (akun di database tetap ada). Lanjut?'))return;post('/sdkconfig/session-reset','').then(function(j){if(j.result){toast('sesi SDK dihapus — force-stop & buka game: LOGIN MANUAL');load()}else toast(j.error||'gagal',true)}).catch(function(){toast('jaringan gagal',true)})}\n")
          .append("function saveFile(name,tid){var v=$(tid).value;post('/sdkconfig/save','name='+encodeURIComponent(name)+'&content='+encodeURIComponent(v)).then(function(j){if(j.result){toast(name+' tersimpan');load()}else toast(j.error||'gagal',true)}).catch(function(){toast('jaringan gagal',true)})}\n")
          .append("function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}\n")
          .append("function load(){fetch('/sdkconfig/api').then(function(r){return r.json()}).then(function(j){\n")
@@ -934,6 +960,9 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" $('prodchip').className=j.productCode?(j.productOk?'g':'r'):'m';\n")
          .append(" var pl='';for(var pi=0;pi<(j.products||[]).length;pi++)pl+='<span class=chip style=margin:2px 4px 2px 0>'+esc(j.products[pi])+'</span>';\n")
          .append(" $('prodl').innerHTML=pl||'<span class=m>kosong</span>';\n")
+         .append(" var ov=j.overlay||{},ss=j.session||{};\n")
+         .append(" $('seschip').textContent=(ss.saved?'SESI TERSIMPAN':'tanpa sesi')+' · overlay '+(ov.checked?(ov.granted?'OK':'OFF'):'?')+(ss.resetAuto?' · DIRESET OTOMATIS':'');\n")
+         .append(" $('seschip').className=(ss.saved&&ov.checked&&!ov.granted)?'r':(ss.resetAuto?'g':'m');\n")
          .append(" $('t_init').value=j.files['init.json'];$('t_profile').value=j.files['profile.json'];$('t_ckreg').value=j.files['ckRegVistor.json'];$('t_fallback').value=j.files['fallback.json'];$('t_qh').value=j.files['QHinfo'];\n")
          .append(" var lt='';try{lt=JSON.parse(j.files['init.json']).data.loginTypes.join(',')}catch(e){}\n")
          .append(" $('p1').className='pr'+(lt=='1'?' on':'');$('p2').className='pr'+(lt=='12'?' on':'');$('p3').className='pr'+(lt=='1,13'?' on':'');\n")

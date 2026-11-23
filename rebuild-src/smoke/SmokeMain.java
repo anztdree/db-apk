@@ -4,12 +4,18 @@ import com.db.local.server.Db;
 import com.db.local.server.ServerCore;
 import com.db.local.server.LoggerCore;
 import com.db.local.server.CrashHook;
+import com.db.local.server.ExitInfo;
+import com.db.local.server.SessionReset;
 
 public class SmokeMain {
     public static void main(String[] args) throws Exception {
+        // v18 — self test JSON surgery info.qg (throw = smoke gagal total)
+        SessionReset.selfTest();
         String root = args.length > 0 ? args[0] : "/tmp/v13root";
         String doc  = args.length > 1 ? args[1] : "/home/z/ws9/server_root";
         LoggerCore.serverRootPath = root;
+        // v18 — ExitInfo jalur desktop (entri SYS/EXITINFO "desktop — dilewati")
+        ExitInfo.logPrevious(null);
         new File(root, "sdk").mkdirs();
         Db.open(root);   // Bagian 30 — migrasi lokasi lama di boot (persis APK)
         ServerCore.start(new File(doc), null, new CountDownLatch(0));

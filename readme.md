@@ -2356,3 +2356,83 @@ APK release-mod/db-local(MOD-LOCALSERVER-v16).apk 202679156 B sha256
 Uji device: install-over v16 → boot log `MOD-LOCALSERVER v16` + `SDK-CONFIG-UPGRADE`
 → game jalan → layar login muncul (init lolos) → TAMU/DAFTAR/LOGIN →
 monitor 127.0.0.1:4000 (TAMPILAN PENTING; banner merah = masalah + tombol fix).
+
+## Bagian 33 — v18: EXITINFO + RESET SESI SDK (jalur aman tanpa izin overlay) + banner sesi
+
+Laporan owner (balasan atas diagnosa v17): *"logika orang bodoh... apk original cuma
+kita edit endpoint.... lalu dari apk originalnya kita tambah mini server yg tidak
+mengganggu apk original di dalamnya .. bisa force close? artinya saking cacatnya anda"*.
+
+### 33.1 Jawaban jujur + bukti smali yang DIVERIFIKASI ULANG (APK original, decode fresh)
+
+Owner benar pada prinsipnya: classes.dex tidak disentuh sejak v11 (sha `1df64d91`,
+diff smali vs original tepat 1 file Application.smali +2 baris starter) — berarti
+crash HANYA bisa dipicu oleh DATA/jalur baru yang dibuka server lokal. Jalur yang
+di device ini BARU PERTAMA KALI dieksekusi sejak mod (fresh install, signature beda
+dari original → SEMUA izin Android reset default):
+
+1. `HWLoginActivity$singersmooth.onServiceConnected` (smali): action
+   `ACTION_LOGIN` + extra `autologin=true` + username & token sesi tersimpan
+   tidak kosong → `new d/e(...).show(...)` **TANPA cek izin** —
+   `grep canDrawOverlays seluruh smali SDK = 0 pemakai` (diverifikasi ulang).
+2. `d/e.onCreateView` (smali): `WindowManager.LayoutParams.type = 0x7d8` (2008 =
+   TYPE_APPLICATION_OVERLAY) → Android 6+ tanpa izin "Display over other apps" =
+   `BadTokenException` tepat "setelah sdk selesai LOADING" (tanpa request HTTP
+   berikutnya — cocok dgn log device v16 17:27: tidak ada satu pun request
+   SDK/5050 setelah getNotice).
+3. Sesi KOSONG → jalur `ironoriginhoblike()` = UI LOGIN MANUAL (d/f) — jalur ini
+   TERBUKTI aman di device (login email 06:08 sukses tanpa crash).
+
+### 33.2 PENYIMPANAN SESI SDK (bukti `singersmooth<init>(ctx,"qg_Users")`)
+
+- prefs framework: `getSharedPreferences("qg_Users", 0)`, key `qg_Users`
+  (JSON sesi) + `update_time`.
+- file `info.qg` (API 29+ = device): `<extFiles>/Documents/info.qg`, root JSON
+  `{"qg_Users":{...,"update_time":...}, ...}`; file MENANG bila
+  update_time > prefs → reset harus menghapus KEDUANYA.
+- legacy `/sdcard/quickgame/linfo/<pkg>/info.qg` (best-effort; scoped storage).
+
+### 33.3 Perubahan v18 (hanya classes2.dex — 161.336 B, +17.032 B vs v17)
+
+1. **SessionReset** (baru): reset sesi via API framework (prefs) + JSON surgery
+   escape-aware pada info.qg (namespace `qg_Users` dihapus, key lain
+   DIPERTAHANKAN, file tetap JSON valid; self-test 8 kasus). **AUTO-GUARD boot**:
+   reset HANYA bila izin overlay OFF + ada crash-*.txt belum ditangani (buku
+   besar `logs/crash-handled.list`) + sesi tersimpan ada → putus siklus crash
+   tanpa meminta izin apa pun; game berikutnya = LOGIN MANUAL. Akun di
+   `sdk/data` TIDAK dihapus.
+2. **ExitInfo** (baru): ApplicationExitInfo via refleksi (API 30+; trace API 31 =
+   Android 12 device owner) — cara sesi SEBELUMNYA mati (CRASH/CRASH_NATIVE/
+   ANR/LOW_MEMORY + trace 16KB) terekam di boot → log SYS/EXITINFO.
+3. **CrashHook v18**: Wrapper bernama + watchdog 10 dtk (bila SDK pasang handler
+   sendiri → dibungkus ulang; chain tetap utuh).
+4. **Dashboard v8**: banner SESI (reset otomatis / sesi+overlay off), sysline
+   `· sesi SDK: … · overlay: …`, panel SDK CONFIG seksi "SESI SDK" + tombol
+   **RESET SESI SDK** (POST `/sdkconfig/session-reset`), ver v18.
+5. Stubs baru: `SharedPreferences` (+Context.getSharedPreferences/
+   getSystemService) — signature asli framework.
+
+### 33.4 Verifikasi
+
+- ECJ 3.33.0 + D8 8.3.37 min-api 21 → `classes2.dex` 161.336 B.
+- SMOKE DESKTOP **97/97 PASS** (82 lama tetap + 15 baru: api ver/session/overlay,
+  route session-reset desktop, banner sesi, panel reset, exitinfo desktop,
+  autoguard skip desktop, self-test 8 kasus JSON surgery) + Node runtime
+  JS-syntax check monitor & panel OK.
+- classes.dex sha `1df64d91` = identik v11–v17 (SDK/game smali 100% original);
+  baksmali-diff vs original (decode fresh kedua APK) tepat 1 file
+  Application.smali (+2 baris starter).
+- zip v17 vs v18: beda HANYA `classes2.dex` + 3 META-INF.
+- sign v1v2v3 zipalign verified, keystore SAMA (CN=DB Local Mod, exp 2056).
+- APK `release-mod/db-local(MOD-LOCALSERVER-v18).apk` 202.691.444 B, sha256
+  `dd5120a3…`.
+
+### 33.5 Uji device (tanpa PC)
+
+1. install-over v18 → boot log `MOD-LOCALSERVER v18` + `EXITINFO` + `SESI-GUARD`.
+2. Buka game. Bila crash lagi setelah loading → **buka 127.0.0.1:4000** →
+   banner merah CRASH berisi trace → SALIN TRACE.
+3. Tutup & buka game LAGI → `SESI SDK DIRESET OTOMATIS` → layar LOGIN MANUAL
+   (TAMU/DAFTAR/LOGIN) → main tanpa perlu izin apa pun.
+4. Solusi permanen (opsional): banner IZIN OVERLAY → tombol BUKA SETTINGS →
+   aktifkan untuk "DB - Local" → auto-login dialog jalan normal.

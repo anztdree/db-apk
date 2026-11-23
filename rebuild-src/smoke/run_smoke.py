@@ -313,7 +313,7 @@ try:
     check("panel-api-file-init", "payTypes" in api["files"]["init.json"])
     check("panel-api-qhinfo", api["files"]["QHinfo"] == "http://127.0.0.1:9530")
     # v16: api membawa status product
-    check("v17-panel-api-ver", api.get("ver") == "v17", bd[:80])
+    check("v17-panel-api-ver", api.get("ver") in ("v17", "v18"), bd[:80])
     check("v16-panel-api-products", PRODUCT_ASLI in api.get("products", []))
 
     # v16: endpoint product-add — tambah kode + validasi
@@ -403,11 +403,64 @@ try:
     stats = json.loads(bd)
     check("v17-stats-overlay", "overlay" in stats, bd[-120:])
 
+    # ============ v18: RESET SESI SDK + EXITINFO + BANNER SESI ============
+    # /sdkconfig/api: ver=v18 + overlay + session
+    st, hd, bd = get400("/sdkconfig/api")
+    api = json.loads(bd)
+    check("v18-api-ver", api.get("ver") == "v18", api.get("ver"))
+    check("v18-api-overlay-session", "overlay" in api and "session" in api
+          and set(api["session"]) >= {"saved", "resetAuto", "resetInfo"}, bd[-200:])
+    check("v18-api-desktop-sesi", api["session"]["saved"] is False
+          and api["session"]["resetAuto"] is False, str(api["session"]))
+    check("v18-api-overlay-desktop", api["overlay"]["checked"] is False
+          and api["overlay"]["granted"] is True, str(api["overlay"]))
+
+    # POST /sdkconfig/session-reset di desktop -> jujur result:false + pesan desktop
+    st, hd, bd = form_post("/sdkconfig/session-reset", {})
+    j = json.loads(bd)
+    check("v18-route-session-reset", st in (200, 400) and j["result"] is False
+          and "desktop" in j.get("error", ""), bd)
+
     # /fix/overlay di desktop (tanpa context) -> result:false jujur
     st, hd, bd = form_post("/fix/overlay", {})
     j = json.loads(bd)
     check("v17-fix-overlay-desktop", st in (200, 400) and j["result"] is False
           and "bukan Android" in j.get("error", ""), bd)
+
+    # dashboard monitor: banner sesi + fungsi renderSession + ver v18
+    st, hd, bd = get400("/")
+    check("v18-ver-dashboard", "v18" in bd, bd[:80])
+    check("v18-banner-sesi-js", "renderSession" in bd and "sesbn" in bd
+          and "SESI SDK DIRESET OTOMATIS" in bd, bd[:80])
+    check("v18-sysline-sesi", "sesi SDK" in bd and "overlay" in bd, bd[:80])
+    check("v17-banner-crash-js-masih", "renderCrash" in bd and "SALIN TRACE" in bd)
+
+    # panel /sdkconfig: seksi SESI SDK + tombol RESET + JS sesReset
+    st, hd, bd = get400("/sdkconfig")
+    check("v18-panel-sesi", "RESET SESI SDK" in bd and "sesReset" in bd
+          and "session-reset" in bd, bd[:80])
+    check("v18-panel-seschip", "seschip" in bd and "SESI SDK" in bd, bd[:80])
+    # JS panel tidak boleh mengandung string unterminated akibat \n mentah
+    check("v18-panel-js-rapi", "confirm('RESET SESI SDK?\\n" in bd,
+          "escape \\n dalam JS string")
+
+    # EXITINFO masuk log SYS di desktop (entri "desktop — dilewati")
+    st, hd, bd = get400("/logs?limit=200")
+    lg = json.loads(bd)
+    check("v18-exitinfo-desktop", any(
+        e.get("method") == "EXITINFO" and "desktop" in (e.get("path") or "")
+        for e in lg["entries"]), str(lg["entries"][:3]))
+
+    # entri SESI-GUARD tidak boleh muncul di desktop (ctx null)
+    check("v18-autoguard-desktop-skip", not any(
+        e.get("method") == "SESI-GUARD" for e in lg["entries"]))
+
+    # bootstrap: crash-handled.list boleh tidak ada, tapi unhandledCrashFiles
+    # harus tidak menganggap handled file (uji tak langsung: /crash tetap
+    # menampilkan crash sintetis v17 sebagai latest)
+    st, hd, bd = get400("/crash")
+    cj = json.loads(bd)
+    check("v18-crash-route-masih", st == 200 and ("files" in cj), bd[:120])
 
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)

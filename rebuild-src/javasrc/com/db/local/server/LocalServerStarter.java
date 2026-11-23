@@ -30,6 +30,10 @@ import java.util.concurrent.CountDownLatch;
  * - v17: CrashHook (crash luar server terekam) + OverlayFixer (izin overlay —
  *   kandidat utama crash 'setelah sdk selesai LOADING': dialog auto-login
  *   SDK memakai window TYPE_APPLICATION_OVERLAY tanpa cek izin)
+ * - v18: ExitInfo (cara sesi SEBELUMNYA mati — CRASH/ANR/native, API 30+)
+ *   + SessionReset.autoGuard (putus siklus crash auto-login TANPA izin:
+ *   overlay OFF + crash + sesi ada -> sesi SDK dihapus -> game buka UI
+ *   LOGIN MANUAL yang terbukti aman) + panel tombol RESET SESI SDK
  */
 public final class LocalServerStarter {
     private static volatile boolean started = false;
@@ -47,7 +51,10 @@ public final class LocalServerStarter {
 
             // v3: arsip NDJSON siap SEBELUM apapun jalan
             DiskWriter.init(new File(serverRoot, "logs"));
-            logBoot("BOOT", "LocalServerStarter.start dipanggil (Application.onCreate) — MOD-LOCALSERVER v17 — serverRoot=" + serverRoot);
+            logBoot("BOOT", "LocalServerStarter.start dipanggil (Application.onCreate) — MOD-LOCALSERVER v18 — serverRoot=" + serverRoot);
+
+            // v18: cara sesi SEBELUMNYA mati (CRASH/ANR/native — ApplicationExitInfo)
+            ExitInfo.logPrevious(ctx);
 
             // v17: penangkap crash — SEMUA crash Java proses ini (termasuk kode
             // SDK/game asli) terekam ke logs/crash-*.txt + banner dashboard.
@@ -60,6 +67,11 @@ public final class LocalServerStarter {
             // v17: context utk OverlayFixer + cek izin overlay di boot
             OverlayFixer.ctx = ctx;
             OverlayFixer.checkAndLog();
+
+            // v18: auto-guard — putus siklus crash auto-login TANPA izin apa pun
+            // (overlay OFF + crash terekam + sesi ada -> sesi SDK dihapus ->
+            // game berikutnya LOGIN MANUAL — jalur yang terbukti aman di device)
+            SessionReset.autoGuard(ctx);
             // Bagian 30: DB = sdk/data/ — dibuka di boot supaya migrasi lokasi
             // lama (server/data/ v13/v14 -> sdk/data/) selesai SEBELUM listener
             // mana pun melayani request.

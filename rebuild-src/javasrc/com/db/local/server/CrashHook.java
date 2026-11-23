@@ -1,6 +1,7 @@
 package com.db.local.server;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -11,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Date;
 
 /**
- * v17 — PENANGKAP CRASH (jawaban "setelah sdk selesai LOADING force close").
+ * v18 — PENANGKAP CRASH (jawaban "setelah sdk selesai LOADING force close").
  *
  * Diagnosis 23 Nov 2026: v16 pertama kali membuat /v1/system/init LOLOS
  * gerbang (v13-v15 SDK selalu mati di 30001) sehingga SDK maju ke jalur yang
@@ -29,6 +30,13 @@ import java.util.Date;
  *    di dashboard 4000 dengan trace, tombol salin + unduh
  *  - handler bawaan Android tetap dipanggil (dialog crash sistem normal)
  * Murni java.* — aman di desktop smoke (instal + report bisa diuji).
+ *
+ * v18 tambahan:
+ *  - Wrapper = kelas bernama + watchdog 10 dtk: bila SDK/crash-reporter lain
+ *    memasang handler sendiri SETELAH boot, kita bungkus ULANG agar crash
+ *    tetap terekam (chain tetap utuh — handler SDK tetap dipanggil).
+ *  - unhandledCrashFiles()/markCrashHandled(): buku besar logs/crash-handled.list
+ *    untuk SessionReset.autoGuard — reset sesi HANYA sekali per crash baru.
  */
 public final class CrashHook {
 
@@ -36,28 +44,127 @@ public final class CrashHook {
 
     private CrashHook() {}
 
-    /** Pasang hook sekali di boot. Tidak pernah throw. */
+    /** v18 — wrapper bernama (instansi kita mudah dikenali watchdog). */
+    static final class Wrapper implements Thread.UncaughtExceptionHandler {
+        final Thread.UncaughtExceptionHandler inner;
+        Wrapper(Thread.UncaughtExceptionHandler inner) { this.inner = inner; }
+        @Override
+        public void uncaughtException(Thread t, Throwable e) {
+            try {
+                report(e, t);
+            } catch (Throwable ignored) {}
+            if (inner != null) {
+                try { inner.uncaughtException(t, e); } catch (Throwable ignored2) {}
+            }
+        }
+    }
+
+    /** Pasang hook sekali di boot + watchdog anti-timpa. Tidak pernah throw. */
     public static void install() {
         if (installed) return;
         installed = true;
         try {
             final Thread.UncaughtExceptionHandler prev =
                     Thread.getDefaultUncaughtExceptionHandler();
-            Thread.setDefaultUncaughtExceptionHandler(
-                    new Thread.UncaughtExceptionHandler() {
-                        @Override
-                        public void uncaughtException(Thread t, Throwable e) {
-                            try {
-                                report(e, t);
-                            } catch (Throwable ignored) {
-                                // laporan gagal — jangan ganggu proses mati
-                            }
-                            if (prev != null) prev.uncaughtException(t, e);
-                        }
-                    });
+            Thread.setDefaultUncaughtExceptionHandler(new Wrapper(prev));
             boot("CrashHook terpasang — crash Java seluruh proses terekam ke logs/crash-*.txt + banner dashboard");
+            // v18: watchdog — bila SDK memasang handler sendiri nanti, bungkus ulang
+            Thread wd = new Thread(new Runnable() {
+                public void run() {
+                    while (true) {
+                        try { Thread.sleep(10000); } catch (InterruptedException ie) { return; }
+                        try {
+                            Thread.UncaughtExceptionHandler cur =
+                                    Thread.getDefaultUncaughtExceptionHandler();
+                            if (!(cur instanceof Wrapper)) {
+                                Thread.setDefaultUncaughtExceptionHandler(new Wrapper(cur));
+                                sys("CrashHook re-wrap: handler default diganti pihak lain "
+                                        + "(crash-reporter SDK?) — dibungkus ulang, crash tetap terekam");
+                            }
+                        } catch (Throwable ignored) {}
+                    }
+                }
+            }, "crashhook-watchdog");
+            wd.setDaemon(true);
+            wd.start();
         } catch (Throwable t) {
             boot("CrashHook gagal dipasang: " + t);
+        }
+    }
+
+    /* ============ v18 — buku besar crash belum ditangani (untuk autoGuard) ============ */
+
+    /** daftar crash-*.txt yang BELUM ditangani (tidak ada di crash-handled.list). */
+    public static java.util.ArrayList<String> unhandledCrashFiles() {
+        java.util.ArrayList<String> out = new java.util.ArrayList<String>();
+        try {
+            File dir = new File(LoggerCore.serverRootPath, "logs");
+            String[] names = dir.list();
+            if (names == null) return out;
+            java.util.HashSet<String> handled = handledSet();
+            for (int i = 0; i < names.length; i++) {
+                String n = names[i];
+                if (n.startsWith("crash-") && n.endsWith(".txt") && !handled.contains(n))
+                    out.add(n);
+            }
+            java.util.Collections.sort(out);
+        } catch (Throwable ignored) {}
+        return out;
+    }
+
+    /** tandai laporan sudah ditangani (autoGuard) — tidak dihapus, arsip tetap. */
+    public static void markCrashHandled(java.util.List<String> names) {
+        if (names == null || names.isEmpty()) return;
+        try {
+            File f = new File(new File(LoggerCore.serverRootPath, "logs"), "crash-handled.list");
+            StringBuilder b = new StringBuilder();
+            File old = f;
+            if (old.exists()) b.append(readFile(old));
+            for (int i = 0; i < names.size(); i++)
+                b.append(names.get(i)).append('\n');
+            FileOutputStream out = new FileOutputStream(f);
+            try {
+                out.write(b.toString().getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                out.getFD().sync();
+            } finally {
+                out.close();
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private static java.util.HashSet<String> handledSet() {
+        java.util.HashSet<String> s = new java.util.HashSet<String>();
+        try {
+            File f = new File(new File(LoggerCore.serverRootPath, "logs"), "crash-handled.list");
+            if (!f.exists()) return s;
+            String c = readFile(f);
+            if (c == null) return s;
+            String[] parts = c.split("\\n");
+            for (int i = 0; i < parts.length; i++) {
+                String t = parts[i].trim();
+                if (t.length() > 0) s.add(t);
+            }
+        } catch (Throwable ignored) {}
+        return s;
+    }
+
+    private static String readFile(File f) {
+        FileInputStream in = null;
+        try {
+            byte[] buf = new byte[(int) f.length()];
+            in = new FileInputStream(f);
+            int off = 0;
+            while (off < buf.length) {
+                int r = in.read(buf, off, buf.length - off);
+                if (r < 0) break;
+                off += r;
+            }
+            return new String(buf, 0, off, StandardCharsets.UTF_8);
+        } catch (Throwable t) {
+            return "";
+        } finally {
+            if (in != null) try { in.close(); } catch (Exception ignored) {}
         }
     }
 
@@ -71,7 +178,7 @@ public final class CrashHook {
             name = "crash-" + ts + ".txt";
             File f = new File(dir, name);
             StringBuilder b = new StringBuilder(8192);
-            b.append("MOD-LOCALSERVER v17 — LAPORAN CRASH\n")
+            b.append("MOD-LOCALSERVER v18 — LAPORAN CRASH\n")
              .append("waktu : ").append(LoggerCore.Entry.fmtTime(System.currentTimeMillis())).append('\n')
              .append("thread: ").append(t == null ? "?" : t.getName()).append('\n')
              .append("root  : ").append(LoggerCore.serverRootPath).append('\n')
@@ -147,6 +254,15 @@ public final class CrashHook {
         e.port = LoggerCore.PORT_LOGGER;
         e.kind = "BOOT";
         e.method = "BOOT";
+        e.path = msg;
+        LoggerCore.log(e);
+    }
+
+    private static void sys(String msg) {
+        LoggerCore.Entry e = new LoggerCore.Entry();
+        e.port = LoggerCore.PORT_LOGGER;
+        e.kind = "SYS";
+        e.method = "CRASHHOOK";
         e.path = msg;
         LoggerCore.log(e);
     }
