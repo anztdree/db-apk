@@ -24,7 +24,7 @@
 #     clientversion.json, serversetting.json, setting bin 9528).
 import zipfile, os, hashlib, sys, time
 
-V7   = 'release-mod/db-local(MOD-LOCALSERVER-v7).apk'
+V7   = 'work/v7-base.apk'
 NEW  = 'work/v8-unsigned.apk'
 DEX  = 'tools/out/dex/classes.dex'
 

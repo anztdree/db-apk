@@ -546,8 +546,9 @@ try:
     check("v44-detail-line", "class=dt>↳" in bd, "")
     check("v44-salin-server", "compOf(e)+']  '" in bd
           and "plain(detailOf(e))" in bd, "")
-    # 7. banner boot server ala console asli (dipercantik — bukan dipangkas)
-    check("v44-banner-boot", "╔═" in bd and "╚═" in bd
+    # 7. banner boot server ala console asli (dipercantik — bukan dipangkas;
+    #    border CSS agar presisi di SEMUA font device)
+    check("v44-banner-boot", "id=banner" in bd and "class=b1" in bd
           and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v8" in bd
           and "console log real-time" in bd, "")
     # 8. header premium: titik status bercahaya + badge versi

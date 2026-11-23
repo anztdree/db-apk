@@ -3474,3 +3474,33 @@ dengan konsol yang tepat di tengahnya:
 5. `rebuild-src/scripts/repack_v8.py` — skrip repack + guard console v8
    (baru).
 6. `readme.md` — Bagian 44 (file ini).
+
+### 44.7 Finalisasi tampilan (verifikasi browser + koreksi presisi banner)
+
+- Dashboard diuji VISUAL via browser headless (desktop 1280×800 + mobile
+  390×844) terhadap server desktop SmokeMain: header premium, banner boot,
+  baris `WAKTU(ms) LEVEL [KOMPONEN] pesan` + baris detail ↳, warna level &
+  komponen, kursor berkedip, modal detail klik-baris (REQUEST/RESPON/
+  EXTRA/SEMUA) — semuanya render benar, konsol errors = NOL.
+- Koreksi 1: banner box-drawing `╔═║╚` TERNYATA tidak presisi di font
+  device (glyph box-drawing bisa beda lebar antar font) → banner diganti
+  **border CSS** (rounded + glow hijau) — presisi di SEMUA device, tetap
+  bergaya boot banner server. Test `v44-banner-boot` disesuaikan
+  (`id=banner` + `class=b1` + teks).
+- Koreksi 2: lebar banner ASCII dihitung ulang (sempat 1 char meleset)
+  — moot setelah koreksi 1 (banner kini murni CSS).
+- Nilai FINAL APK v8 (menggantikan nilai di 44.4):
+
+| Item | Nilai final |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v8).apk` |
+| Ukuran | **200.463.326 B** |
+| sha256 | `9a6362758dcac9f188a0e08ff2cf2ec7a3079835189907b1e138a33e06962348` |
+| classes2.dex | **148.644 B** sha `567609b6…1e783` (D8; banner CSS) |
+| Penanda | BOOT/crash/dashboard = **v8** (tetap) |
+| Sign | v1+v2+v3, keystore sama, exp 2056 (tetap) |
+
+- Smoke desktop FINAL: **112/112 PASS** (semua guard perilaku lama tetap).
+- Runtime JS node FINAL: `node --check` PASS + uji level/comp/describe/
+  detail/lnHtml dengan entri nyata PASS (registerVisitor INFO, 30001 WARN,
+  500 ERROR, aset DEBUG, ping→pong DEBUG, overlay INFO, CRASH ERROR).
