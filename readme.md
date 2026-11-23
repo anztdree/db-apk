@@ -3317,3 +3317,160 @@ tampilannya agar terasa seperti console server sungguhan.
    natural + rute-404 ditambah (106 test).
 7. `rebuild-src/scripts/repack_v7.py` — skrip repack + guard console v7 (baru).
 8. `readme.md` — Bagian 43 (file ini).
+
+---
+
+## Bagian 44 — v8: SERVER CONSOLE PREMIUM — DIPERCANTIK, BUKAN DIPANGKAS (24 Nov 2026)
+
+### 44.1 Permintaan owner (kata-kata persis)
+
+> "hadeeeh malah makin cacat. ini maunya saya di percantik bukan di pangkas..
+> teks yg muncul itu seperti teks layaknya server original.. bukan teks yg
+> output nya minimalis"
+
+Konteks: device sudah jalan v7 (console natural — terminal hitam polos tanpa
+emoji, satu baris pendek per peristiwa). Owner menilai v7 justru turun kelas:
+terlalu gersang/minimalis. Dua arahan berturut-turut kini dijawab SEKALIGUS
+dengan konsol yang tepat di tengahnya:
+- Bagian 39: "stylish tapi gak seperti server natural" → tolak tampilan
+  web-app dekoratif;
+- Bagian 44: "dipercantik bukan dipangkas, teks seperti server original" →
+  tolak terminal gersang; rancang **SERVER CONSOLE PREMIUM**: teks log
+  VERBOSE persis console server asli + UI rapi, berwarna, dan hidup.
+
+### 44.2 Yang berubah (semua di classes2.dex — classes.dex tak tersentuh)
+
+1. **TEKS VERBOSE seperti server original** (`LoggerHandler.Js()` —
+   `describe()` ditulis ulang penuh): tiap peristiwa dijabarkan kalimat
+   penuh, contoh:
+   - "Registrasi akun tamu berhasil — uid 8834… diterbitkan, token
+     tersimpan permanen di database lokal";
+   - "Konfigurasi game dimuat (setting_BS_Android.bin) — seluruh alamat
+     server dialihkan ke 127.0.0.1 (server lokal)";
+   - "Tiket login terverifikasi (loginchecknative) — akses game diberikan,
+     sesi dilanjutkan ke server game";
+   - "Pemain masuk server game — data karakter lengkap diterima (24.6KB,
+     ret=0)";
+   - "Handshake server login diterima — sesi socket dibuat (EIO=3,
+     pingInterval 25 dtk)";
+   - "Paket pembaruan diunduh — 18.5MB dalam 240 ms (CDN lokal)".
+2. **Baris detail ↳** (`detailOf()` + CSS `.dt`): di bawah tiap pesan ada
+   baris metadata lengkap — `↳ POST /sdk/v1/user/registerVisitor · status
+   200 · req 118 B · resp 342 B · 12ms` — persis akses-log server asli
+   (fungsi baru `fmtB()` untuk format ukuran manusiawi B/KB/MB).
+3. **FORMAT baris ala server asli — WAKTU(ms) LEVEL [KOMPONEN] pesan**:
+   - `levelOf()` menggantikan verdict lama: **INFO** hijau (alur normal),
+     **DEBUG** cyan (traffic halus: aset game, heartbeat ping→pong,
+     konfigurasi kosong), **WARN** amber (4xx/redirect/30001), **ERROR**
+     merah (5xx/CRASH) — konvensi log server asli (DEBUG/INFO/WARN/ERROR);
+   - `compOf()` — tag komponen berwarna per layanan: **[CORE]** [CONFIG]
+     [CDN] [SDK] [LOGIN] [GAME] [MONITOR] seperti tag modul server asli;
+   - timestamp kini MENAMPILKAN MILI-DETIK (`10:23:45.210` — 13.5ch).
+4. **UI DIPERCANTIK** (bukan dipangkas):
+   - header premium: titik status bercahaya (glow + denyut halus
+     `@keyframes pl`), judul **DB LOCAL SERVER**, badge versi **v8** ber-
+     kotak hijau, subjudul `· live console · com.db.local`;
+   - **banner boot server** di atas stream (dibuka = server menyapa):
+     box `╔═…═╗ ║ DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v8 ║ ║
+     console log real-time · http://127.0.0.1:4000 ║ ╚═…═╝` + baris dim
+     "server berjalan — log dari semua layanan mengalir otomatis";
+   - kursor blok berkedip bertahan (glow hijau); tombol ikon dipoles
+     (radius 6px, hover halus, transisi 0.15s); latar header/footer
+     gradient tipis; scrollbar custom; baris masalah merah gelap;
+   - modal detail & toast dipoles (radius 8px + shadow).
+5. **SALIN LOG = teks persis format server** (`copyTable()` ditulis ulang):
+   keluaran per entri = `2026-11-24 10:23:45.210  INFO  [SDK]  Registrasi
+   akun tamu berhasil — …` + baris `↳ …` (+ `ERROR: …` bila ada) — saat
+   ditempel ke chat/editor, terlihat seperti log server sungguhan, bukan
+   output minimalis.
+6. **Panduan diperbarui**: penjelasan warna level (INFO/DEBUG/WARN/ERROR)
+   + alur boot + cari detail klik-baris.
+7. **TIDAK BERUBAH** (semua arahan lama tetap berlaku):
+   - overlay = **INFO bukan error** (Bagian 39 — eksklusi isProblem +
+     level `['INFO','i']` tetap);
+   - tombol **IKON saja** (Bagian 41);
+   - port 4000 **murni log monitoring** — rute `/sdkconfig*` + `/fix/
+     overlay` tetap **404** (Bagian 41/43);
+   - tanpa popup "tips" (Bagian 42 — guard `'"tips"'` tetap);
+   - penanda BOOT/crash/dashboard dinaikkan ke **v8**
+     (`LocalServerStarter`/`CrashHook`).
+
+### 44.3 Proses + verifikasi
+
+- Toolchain pasca-reset: javac **21.0.13** (ekstraksi deb lokal
+  `/tmp/jdkx`, LD_LIBRARY_PATH ke libjli JRE sistem; catatan: ct.sym deb
+  tak lengkap → `--release` gagal untuk SEMUA versi → kompilasi memakai
+  `-source 8 -target 8 -Xlint:-options` — bytecode v52 tetap kompatibel
+  D8 min-api 21); D8/r8 8.3.37 (sha `59753e70…439` sesuai dokumentasi);
+  uber-apk-signer 1.3.0; git-lfs 3.5.1.
+- **Kompilasi javac 21** (stubs + javasrc + SmokeMain) — PASS 2 set
+  (build-smoke utk uji, build-dex utk dex — stubs TIDAK ikut dex).
+- **Smoke desktop — 112/112 PASS** (106 v43 → 112: guard gaya v43
+  disesuaikan menjadi guard v44 + 6 test baru; SEMUA guard perilaku lama
+  tetap: rute-404 ×7, qhinfo-utuh, tanpa-"tips" ×3, js-id-semua-ada,
+  icon-buttons, no-sdkconfig-leak, crashbn, modal-icon, kursor, LISTEN,
+  filter lengkap, overlay-INFO, uji kontrak SDK end-to-end). Test baru
+  penting: `v44-console-title`, `v44-describe-verbose` (5 kalimat verbose
+  wajib ada), `v44-level-of` (INFO/DEBUG/WARN/ERROR), `v44-fmtB-detail`,
+  `v44-comp-of`, `v44-comp-tags` (7 warna komponen), `v44-detail-line`
+  (baris ↳), `v44-salin-server` (format salin = teks server), `v44-
+  banner-boot` (banner ╔═╗ v8), `v44-hdr-premium` (dot + badge + pulse).
+- **JS dashboard diuji RUNTIME di node** (v24): `node --check` PASS +
+  simulasi DOM — level/comp/describe/detail/lnHtml dieksekusi dgn entri
+  nyata: registerVisitor → `INFO [SDK] Registrasi akun tamu berhasil…`,
+  30001 → `WARN … PRODUCT DITOLAK …`, 500 → ERROR, aset 9528 → DEBUG,
+  ping→pong → DEBUG, overlay → INFO & bukan problem, CRASH → ERROR.
+- **D8** → `classes2.dex` **148.788 B** sha `f5315b4c…4b65` (v7:
+  142.676 B; +6.112 B = teks verbose + level + komponen + banner).
+  Marker dex ADA: `>v8</span>`, `DB LOCAL SERVER`, `MOD-LOCALSERVER v8`,
+  `LISTEN `, `pembaruan otomatis berhenti`, `Konfigurasi game dimuat`,
+  `Tiket login terverifikasi`, `console log real-time`; marker NOL:
+  `DB MONITOR`, `"tips"`, `sdkconfig`, `>v7</span>`, judul v7.
+- **Repack v8** (`rebuild-src/scripts/repack_v8.py`, dasar = APK v7 LFS,
+  sha `594caec9…37cd` = readme Bagian 43): diff zip v7→v8 (unsigned) =
+  **tepat 1** (`classes2.dex`); classes.dex proven `1df64d91…` utuh;
+  QHinfo/config_BS/clientversion/serversetting byte identik; 6428 entri
+  (= v7) pasca-sign.
+- **Sign**: zipalign verified + **signature verified [v1, v2, v3]**,
+  sertifikat **CN=DB Local Mod, O=Owner, C=ID** exp 14 Nov 2056 —
+  keystore sama dgn v1..v7; install-over aman.
+
+### 44.4 APK v8
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v8).apk` |
+| Ukuran | **200.463.326 B** |
+| sha256 | `b00cb31ada57525a137dcb95ae0e3896b2b7520326b4d264740728ba5cfbcf47` (v7 = `594caec9…`) |
+| classes2.dex | 148.788 B sha `f5315b4c…4b65` — console premium verbose |
+| Penanda | BOOT/crash/dashboard = **v8** |
+| Sign | v1+v2+v3, keystore sama |
+
+### 44.5 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v8).apk` langsung di atas v7
+   (keystore sama — tanpa uninstall; akun & progres aman).
+2. Boot game → log BOOT `MOD-LOCALSERVER v8` → buka `127.0.0.1:4000`:
+   header premium (titik hijau bercahaya + badge v8) + banner boot server
+   + log mengalir dengan format **WAKTU(ms) LEVEL [KOMPONEN] pesan** +
+   baris detail ↳ — teks kaya seperti console server asli.
+3. Perhatikan warna: hijau INFO normal, cyan DEBUG traffic halus, amber
+   WARN perlu perhatian, merah ERROR/crash.
+4. Tombol 📋 (kiri bawah) → salin log = teks persis format server —
+   tempel ke mana pun, tetap terlihat seperti log server sungguhan.
+5. Klik baris log apa pun → detail REQUEST/RESPON/EXTRA (JSON rapi).
+
+### 44.6 File berubah
+
+1. `release-mod/db-local(MOD-LOCALSERVER-v8).apk` — APK console premium
+   (LFS; v7 dihapus dari repo, pola sama v1→…→v7→v8).
+2. `rebuild-src/javasrc/com/db/local/server/LoggerHandler.java` — rombak
+   total dashboard (console premium v8: describe verbose + levelOf +
+   compOf + detailOf + fmtB + banner + header premium + salin-server).
+3. `rebuild-src/javasrc/com/db/local/server/{LocalServerStarter,CrashHook}.java`
+   — penanda v7 → **v8** (BOOT/crash).
+4. `rebuild-src/smoke/run_smoke.py` — guard gaya v43 → v44 + 6 test baru
+   (112 test).
+5. `rebuild-src/scripts/repack_v8.py` — skrip repack + guard console v8
+   (baru).
+6. `readme.md` — Bagian 44 (file ini).

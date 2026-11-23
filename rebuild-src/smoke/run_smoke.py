@@ -373,19 +373,19 @@ try:
 
     # ============ Bagian 32/43: CONSOLE NATURAL + CRASH + OVERLAY =========
     st, hd, bd = get400("/")
-    # Bagian 43 — console server natural (bukan aplikasi stylish)
-    check("v43-console-200", st == 200 and "com.db.local — server console" in bd,
-          bd[:120])
+    # Bagian 44 — console SERVER PREMIUM (dipercantik, teks verbose ala server asli)
+    check("v43-console-200", st == 200 and "DB LOCAL SERVER" in bd
+          and "MOD-LOCALSERVER v8" in bd, bd[:120])
     check("v43-stream-markup", "id=stream" in bd and "id=tb" in bd
           and "id=tail" in bd, bd[:80])
-    check("v17-salin-tabel", "copyTable" in bd and "PERISTIWA" in bd)
+    check("v17-salin-tabel", "copyTable" in bd and "plain(describe(e))" in bd)
     check("v17-banner-crash-js", "renderCrash" in bd and "fetch('/crash')" in bd
           and "id=cpcrash" in bd)  # Bagian 41: tombol icon-only 📋
     # Bagian 39 — overlay tetap INFO netral ("overlay OFF (normal)")
     check("v17-banner-overlay-js", "renderOverlay" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd
           and "overlay OFF (normal)" in bd)
-    check("v17-ver-dashboard", ">v7</span>" in bd and "/v1/system/init" in bd)  # v7 (Bagian 43)
+    check("v17-ver-dashboard", ">v8</span>" in bd and "/v1/system/init" in bd)  # v8 (Bagian 44)
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
@@ -422,7 +422,7 @@ try:
     # Bagian 43: rute sdkconfig sudah dihapus — sesi reset kini HANYA terlihat
     # sebagai entri log SYS (SESI-RESET). Panel web di port 4000 tidak ada.
     st, hd, bd = get400("/")
-    check("v1-ver-dashboard", "v7" in bd, bd[:80])
+    check("v1-ver-dashboard", "v8" in bd, bd[:80])
     check("v41-banner-sesi-dihapus", "renderSession" not in bd and "sesbn" not in bd
           and "SESI SDK DIRESET OTOMATIS" not in bd)  # sesi reset kini hanya entri log SYS (SESI-RESET)
     check("v41-sysline-dihapus", "sysline" not in bd
@@ -511,26 +511,49 @@ try:
         "CDN game + socket.io login" in (e.get("path") or "")
         for e in lg["entries"]), "")
 
-    # ============ Bagian 43 — console SERVER NATURAL (guard gaya) ==========
+    # ============ Bagian 44 — console SERVER PREMIUM (guard gaya) ==========
     # Arahan owner (kata-kata persis):
-    #  "logger ini emang stylish tapi gak seperti layaknya server yg Natural
-    #   sedang berjalan.."
+    #  "hadeeeh malah makin cacat. ini maunya saya di percantik bukan di
+    #   pangkas.. teks yg muncul itu seperti teks layaknya server original..
+    #   bukan teks yg output nya minimalis"
     st, hd, bd = get400("/")
-    # 1. identitas console natural + judul lama hilang
-    check("v43-console-title", "server console" in bd and "DB MONITOR" not in bd, bd[:80])
-    # 2. entri log TANPA emoji — emoji stylish v39 tidak boleh ada lagi
-    #    (naga/rocket/plug/clipboard-v28: hanya ada di describe lama)
+    # 1. identitas console premium + judul lama hilang (v3 & v7)
+    check("v44-console-title", "DB LOCAL SERVER" in bd and "DB MONITOR" not in bd
+          and "com.db.local — server console" not in bd, bd[:80])
+    # 2. entri log TANPA emoji — pesan log tetap teks server asli (chrome
+    #    ikon tombol diperbolehkan — arahan Bagian 41)
     check("v43-tanpa-emoji-log", "\U0001f409" not in bd and "\U0001f680" not in bd
           and "\U0001f50c" not in bd and "\U0001f4e5" not in bd
           and "\U0001f522" not in bd and "\U0001f9fe" not in bd, "")
     check("v43-tanpa-emoji-verdict", "\u2705" not in bd and "\u26a0\ufe0f" not in bd
           and "\u2139\ufe0f" not in bd, "")
-    check("v43-describe-natural", "'<b>Server mulai</b> — '" in bd
-          and "'<b>Port aktif</b> — '" in bd
-          and "'<b>Verifikasi akun</b> (loginchecknative)" in bd, "")
-    # 3. verdict polos: OK/GAGAL/CEK/INFO/SYS + overlay = INFO bukan error
-    check("v43-verdict-plain", "['OK','g']" in bd and "['GAGAL','r']" in bd
-          and "['INFO','i']" in bd, "")
+    # 3. deskripsi VERBOSE ala server asli (bukan output minimalis)
+    check("v44-describe-verbose", "'<b>Server engine berjalan</b> — '" in bd
+          and "'<b>Konfigurasi game dimuat</b>" in bd
+          and "'<b>Tiket login terverifikasi</b>" in bd
+          and "'<b>Registrasi akun tamu berhasil</b>" in bd
+          and "'<b>Pemain masuk server game</b>" in bd, "")
+    # 4. level ala log server: INFO/DEBUG/WARN/ERROR + overlay = INFO
+    check("v44-level-of", "['INFO','g']" in bd and "['DEBUG','d']" in bd
+          and "['WARN','w']" in bd and "['ERROR','r']" in bd, "")
+    check("v44-fmtB-detail", "function fmtB(n)" in bd and "function detailOf(e)" in bd, "")
+    # 5. komponen server berwarna: [CORE][CONFIG][CDN][SDK][LOGIN][GAME][MONITOR]
+    check("v44-comp-of", "function compOf(e)" in bd, "")
+    check("v44-comp-tags", "c-CORE" in bd and "c-CONFIG" in bd and "c-CDN" in bd
+          and "c-SDK" in bd and "c-LOGIN" in bd and "c-GAME" in bd
+          and "c-MONITOR" in bd, "")
+    # 6. baris detail ↳ + salin log = teks format server persis
+    check("v44-detail-line", "class=dt>↳" in bd, "")
+    check("v44-salin-server", "compOf(e)+']  '" in bd
+          and "plain(detailOf(e))" in bd, "")
+    # 7. banner boot server ala console asli (dipercantik — bukan dipangkas)
+    check("v44-banner-boot", "╔═" in bd and "╚═" in bd
+          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v8" in bd
+          and "console log real-time" in bd, "")
+    # 8. header premium: titik status bercahaya + badge versi
+    check("v44-hdr-premium", "id=dot" in bd and "id=ver" in bd
+          and "@keyframes pl" in bd, "")
+    # 9. overlay tetap INFO (Bagian 39 — tidak berubah)
     check("v39-overlay-info-verdict",
           "m=='OVERLAY'" in bd and "['INFO','i']" in bd, "")
     check("v39-overlay-not-problem", "=='OVERLAY')return false" in bd, "")
@@ -538,15 +561,13 @@ try:
           "IZIN Display over other apps OFF" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd, "")
     check("v39-describe-overlay-info", "Izin overlay</b> — '+esc(p)" in bd, "")
-    # 4. baris status ala server: LISTEN + uptime + arsip + status badge
+    # 10. baris status ala server: LISTEN + uptime + arsip + status badge
     check("v43-stline-server", "LISTEN " in bd and "uptimeStr" in bd
           and "id=stbadge" in bd and "status: " in bd, "")
-    # 5. live feel: kursor blok berkedip + penanda jeda
+    # 11. live feel: kursor blok berkedip + penanda jeda
     check("v43-live-cursor", "id=cursor" in bd and "@keyframes bl" in bd
           and "id=pausemark" in bd, "")
-    # 6. kolom tetap terstruktur: # WAKTU TAHAP PORT ST DUR PERISTIWA (salin)
-    check("v43-kolom-copy", "'#','WAKTU','TAHAP','PORT','ST','DUR','PERISTIWA'" in bd, "")
-    # 7. filter tetap lengkap: tahap/port/status/jumlah + cari
+    # 12. filter tetap lengkap: tahap/port/status/jumlah + cari
     check("v43-filter-lengkap", "id=stage" in bd and "id=port" in bd
           and "id=st" in bd and "id=limit" in bd and "id=q" in bd, "")
 
