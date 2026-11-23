@@ -3075,3 +3075,117 @@ hanya cek sintaks — celah verifikasi yang kini ditutup (41.4-3).
 
 Catatan: APK v4 (rusak — log tidak tampil) dan v3 masih di `release-mod/`
 sebagai arsip; owner bebas menghapus v4 karena tidak ada gunanya.
+
+---
+
+## Bagian 42 — v6: POPUP "PENGINGAT" DIHAPUS TOTAL — TIDAK DIPAKSAKAN ADA (23 Nov 2026 malam)
+
+### 42.0 Laporan owner (kata-kata persis, setelah tes v5 — log device 04:34, 37 entri)
+
+> "maksud saya gini kok adaa teks popup mengingat. padahal setahu saya aslinya itu
+>  emang gak ada.. dan saya mohon jika emang gk ada jangan di paksakan untuk ada"
+
+Prinsip owner dikunci untuk SEMUA patch: **yang tidak ada di game asli tidak boleh
+dipaksakan ada**. Log device 04:34 (v5) 100% bersih — tidak ada satu pun 404/error —
+berarti popup itu muncul walau SEMUA request sukses = popup yang KITA paksa ada.
+
+### 42.1 Bukti diagnosis (smali APK v5 — decode fresh, dilacak hari ini)
+
+1. **Identitas popup**: `com/quickgame/android/sdk/feedtonight.smali` method
+   `worktopichardtails(QGUserHolder)` (line 2556): bila bean sesi lolos syarat
+   (authToken non-empty + userData != null + tips != null) → `AlertDialog` dengan
+   **judul `R.string.hw_network_dialog_title`** dan **isi = field tips** → `show()`.
+   Log pendamping: `"get tips = <isi>"` (line 2617).
+2. **Teks popup**: strings.xml — `hw_network_dialog_title` = **"提醒"** (zh) /
+   "Notification" (en); tombol `hw_network_dialog_ok` = "确定"/OK. Inilah "teks popup
+   mengingat" yang dilihat owner.
+3. **Kapan muncul**: SETIAP selesai register/login (response sesi diparse oleh
+   `psalmicvolleyball/cointhreat.cointhreat(String)`). Pada sesi 04:34: popup
+   muncul tepat di jendela baris 34→36 log (DAFTAR 04:34:36.9 → loginchecknative
+   04:34:38.1 = 1,2 detik = dialog tampil lalu di-close owner).
+4. **Syarat dialog dari smali (verifikasi baris-per-baris)**:
+   - `bean.cointhreat` = **authToken** (diisi `getString("authToken")` line 134-139 —
+     SELALU non-empty pada sesi sukses);
+   - `bean.seventygenom` = `json.getString("tips")` **hanya bila `json.has("tips")`**
+     (line 145-153) — key opsional by design;
+   - `TextUtils.isEmpty(bean.cointhreat)` → true = skip; `tips == null` → skip.
+5. **AKAR**: response sesi kita (`AccountStore.sessionJsonOf`) lama mengirim
+   **`"tips":""`** — string kosong tapi **BUKAN null** → `has("tips")` = true →
+   **popup muncul SETIAP register/login**. Server ASLI **TIDAK PERNAH** mengirim
+   key ini — bukti: `verify-artifacts/live_login_handshake_capture_20261122.txt`
+   + `qsdk_v1_system_init_response.json` = **NOL kemunculan "tips"**. Owner benar:
+   popup ini KITA yang paksakan lewat response, bukan perilaku asli.
+6. **Bukan tersangka** (dicek agar tidak salah tuduh): popup jaringan gate init
+   (`hoboismrelationbelow`, teks sama "提醒" + "网络连接失败…" — hanya bila device
+   TANPA koneksi aktif; sesi 04:34 init sukses = jalur ini tidak lewat); popup
+   "Server base.version/resource.version is Not Exist" (hanya bila HTTP 404 sesungguhnya
+   — log 04:34 semua 200 + anti-race assets Bagian 19); healthNotice (dead code —
+   branch `heishi`); blockmessage.min.js (filter kata chat, bukan UI); config bin
+   (diff vs live capture = murni redirect endpoint); OverlayFixer (log-only, tanpa UI).
+
+### 42.2 Fix v6 (sisi data murni — classes.dex forbidden zone TETAP UTUH)
+
+| # | File | Perubahan | Efek |
+|---|------|-----------|------|
+| A | `rebuild-src/javasrc/com/db/local/server/AccountStore.java` | key **`"tips":""` DIHAPUS** dari `sessionJsonOf` | response = PERSIS format server asli (authToken+checkRealName+userData tanpa tips) → `has("tips")` = false → tips = null → **dialog "提醒" tidak pernah muncul lagi** |
+| B | `rebuild-src/javasrc/com/db/local/server/{LocalServerStarter,CrashHook}.java` | penanda BOOT/crash `v4` → **`v6`** | install baru terverifikasi dari log (BOOT & crash sebelumnya masih v4 — inkonsistensi Bagian 41 ikut dirapikan) |
+| C | `rebuild-src/javasrc/com/db/local/server/LoggerHandler.java` | judul dashboard `v5` → **`v6`** | sama |
+| D | `rebuild-src/smoke/run_smoke.py` | 3 test guard baru `v42-tips-tidak-ada-*` + test versi → v6 | key tips tidak akan pernah kembali di response APA PUN (registerVisitor/autoLogin/loginByName) |
+
+- Tidak ada popup baru ditambahkan — patch ini MENGHAPUS satu-satunya popup yang
+  dipaksakan response. Alur login/register/enterGame 100% tak berubah (parser SDK
+  membaca tips secara opsional; null = skip dialog, lanjut normal).
+- classes.dex tetap `1df64d91…` (starter +2 baris) — zona terlarang utuh.
+
+### 42.3 Verifikasi v6
+
+- Toolchain dibangun ulang pasca-reset: apktool 2.10.0, **D8 8.3.37** (16.628.796 B
+  persis dokumentasi Bagian 39), **javac 21.0.13** (deb lokal + libjli dari JRE
+  sistem — `LD_LIBRARY_PATH`), git-lfs 3.5.1.
+- **Kompilasi javac 21** (30 file: stubs + javasrc + SmokeMain) — PASS.
+- **Smoke desktop — 127/127 PASS** (124 lama + 3 guard `v42-tips-tidak-ada-*` baru;
+  test `v17-ver-dashboard` → v6).
+- **D8** → `classes2.dex` **158.984 B** sha `0e59a6c1…` (v5: 158.988 B; −4 B =
+  string tips hilang). `strings` dex: marker v6 ada, **NOL kemunculan `"tips"`**.
+- **Repack v6** (`rebuild-src/scripts/repack_v6.py`, dasar = APK v5): diff zip
+  v5→v6 (unsigned) = **tepat 4** (`classes2.dex` + 3 META-INF); classes.dex proven
+  `1df64d91…` utuh; QHinfo/config_BS/clientversion/serversetting/setting bin
+  byte-identik; **6428 entri (= v5)**.
+- **Sign**: zipalign verified + **signature verified [v1, v2, v3]**, sertifikat
+  **CN=DB Local Mod, O=Owner, C=ID** exp 2056 — sama v1..v5; install-over aman.
+- Baksmali APK TER-SIGN: marker v6 terbaca, **nol "tips"**, classes.dex proven.
+
+### 42.4 APK v6
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v6).apk` |
+| Ukuran | **202.691.550 B** (kebetulan identik v5 — dex −4 B seimbang dgn padding zipalign; beda sha) |
+| sha256 | `d91542fed140c017a159da74e9927356b1932b37595f626e2c35caa594156ff9` (v5 = `60c2f1bd…`) |
+| classes2.dex | 158.984 B sha `0e59a6c1…` — TANPA "tips" |
+| Penanda | BOOT/crash/dashboard = **v6** |
+| Sign | v1+v2+v3, keystore sama |
+
+### 42.5 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v6).apk` langsung di atas v5 (keystore sama,
+   tanpa uninstall — akun dan progres aman).
+2. Boot game → log `MOD-LOCALSERVER v6` (BOOT) → dashboard `🐉 DB MONITOR v6`.
+3. DAFTAR / LOGIN (tamu atau email) → **TIDAK ADA POPUP "提醒/PENGINGAT"** — layar
+   langsung lanjut natural ke verifikasi akun → game.
+4. Bila masih ada popup apa pun: buka `127.0.0.1:4000` → 📋 salin tabel → kirim,
+   sebutkan TEKS PERSIS di popupnya (judul + isi) — dengan teks persis, sumbernya
+   langsung ketemu di smali/JS.
+
+### 42.6 File berubah
+
+1. `release-mod/db-local(MOD-LOCALSERVER-v6).apk` — APK fix popup (LFS; v5 dihapus
+   dari repo, pola sama v1→…→v5).
+2. `rebuild-src/javasrc/com/db/local/server/AccountStore.java` — key tips dihapus
+   + dokumentasi akar.
+3. `rebuild-src/javasrc/com/db/local/server/{LocalServerStarter,CrashHook}.java`
+   — penanda v6 (BOOT/crash).
+4. `rebuild-src/javasrc/com/db/local/server/LoggerHandler.java` — judul v6.
+5. `rebuild-src/smoke/run_smoke.py` — 3 guard v42 + versi v6 (127 test).
+6. `rebuild-src/scripts/repack_v6.py` — skrip repack + guard tanpa-tips (baru).
+7. `readme.md` — Bagian 42 (file ini).

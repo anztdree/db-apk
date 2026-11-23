@@ -403,7 +403,7 @@ try:
     check("v17-banner-overlay-js", "renderOverlay" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd
           and "overlay OFF (normal)" in bd)
-    check("v17-ver-dashboard", "v5" in bd and "/v1/system/init" in bd)  # v5: penanda versi dinaikkan (Bagian 41)
+    check("v17-ver-dashboard", "v6" in bd and "/v1/system/init" in bd)  # v6: penanda versi dinaikkan (Bagian 42)
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
@@ -622,6 +622,30 @@ try:
     # 4. elemen probn ada (banner masalah) + tombol modal icon
     check("v41-probn-ada", "id=probn" in html and "id=crashbn" in html, "")
     check("v41-modal-icon", ">\U0001f4cb</button>" in bd and ">\u2716\ufe0f</button>" in bd, "")
+
+    # ================= Bagian 42 — popup "pengingat" DIHAPUS TOTAL ==========
+    # Laporan owner (kata-kata persis):
+    #  "maksud saya gini kok adaa teks popup mengingat. padahal setahu saya
+    #   aslinya itu emang gak ada.. dan saya mohon jika emang gk ada jangan
+    #   di paksakan untuk ada"
+    # Akar (bukti smali APK v5, dilacak hari ini): parser sesi SDK
+    #   psalmicvolleyball/cointhreat.cointhreat(String) membaca key "tips"
+    #   BILA ADA (json.has) → feedtonight.worktopichardtails(QGUserHolder)
+    #   menampilkan AlertDialog judul hw_network_dialog_title ("提醒"/
+    #   Notification) berisi teks tips — syarat: authToken non-empty (selalu
+    #   utk sesi sukses) + userData != null + tips != null. Response lama
+    #   kita mengirim "tips":"" (string kosong, tapi BUKAN null) → popup
+    #   muncul SETIAP selesai register/login. Server ASLI TIDAK PERNAH
+    #   mengirim key ini (verify-artifacts live capture 20261122 = nol
+    #   kemunculan "tips"). Fix v6: key tips dihapus dari sessionJsonOf.
+    # GUARD REGRESI: response sesi APA PUN tidak boleh memuat key "tips".
+    st, hd, bd = sdk_post("/v1/user/registerVisitor", must_params())
+    check("v42-tips-tidak-ada-registervisitor", '"tips"' not in bd, bd[:120])
+    st, hd, bd = sdk_post("/v1/user/autoLogin", must_params())
+    check("v42-tips-tidak-ada-autologin", '"tips"' not in bd, bd[:120])
+    p42 = must_params(email="baru@db.local"); p42["password"] = PW2
+    st, hd, bd = sdk_post("/v1/user/loginByName", p42)
+    check("v42-tips-tidak-ada-loginemail", '"tips"' not in bd, bd[:120])
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
 

@@ -8,7 +8,18 @@ import java.util.Random;
  * Kontrak dari smali (bukti, bukan karangan):
  *  - psalmicvolleyball/cointhreat.cointruth(String) (parser session):
  *      authToken  getString  WAJIB
- *      tips       opsional
+ *      tips       TIDAK DIKIRIM (v6 — akar popup "pengingat" yang dilarang
+ *                 owner: parser SDK `json.has("tips")` → seventygenom=tips →
+ *                 feedtonight.worktopichardtails(QGUserHolder) menampilkan
+ *                 AlertDialog judul R.string.hw_network_dialog_title
+ *                 ("提醒"/Notification) berisi teks tips SETIAP selesai
+ *                 register/login, karena syarat dialog = authToken non-empty
+ *                 (SELALU utk sesi sukses) + userData != null + tips != null.
+ *                 "\"tips\":\"\"" pun memicu (cek null, bukan empty).
+ *                 Server ASLI tidak pernah mengirim key ini — bukti
+ *                 verify-artifacts live capture 20261122: nol kemunculan
+ *                 "tips". Tanpa key → tips=null → dialog tidak pernah ada;
+ *                 alur lain 100% tak berubah (key opsional by design).
  *      userData   getJSONObject WAJIB → bean/QGUserData.generateFromJson:
  *                   username/uid/displayUid/token = getString WAJIB,
  *                   isGuest = getString("1"=guest), openType = optString,
@@ -163,10 +174,11 @@ public final class AccountStore {
      * isGuest: "1"=tamu (openType 12) | "0"=email (openType 1).
      * isNewUser SELALU 0 (flag tracking SDK — jalur AppsFlyer/Adjust/FB
      * dilewati SDK sendiri; terbukti v8: isNewUser=1 offline = popup stuck).
+     * v6 (Bagian 42): key "tips" DIHAPUS TOTAL — popUp "提醒/pengingat".
      */
     public static String sessionJsonOf(String uidX, String uname, String tok,
                                        String openType, String isGuest, boolean newUser) {
-        return "{\"authToken\":\"" + JsonUtil.esc(tok) + "\",\"tips\":\"\","
+        return "{\"authToken\":\"" + JsonUtil.esc(tok) + "\","
                 + "\"checkRealName\":\"0\",\"userData\":{"
                 + "\"uid\":\"" + JsonUtil.esc(uidX) + "\","
                 + "\"username\":\"" + JsonUtil.esc(uname) + "\","
