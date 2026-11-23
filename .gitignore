@@ -1,4 +1,10 @@
 tools/dl/
 tools/out/
+tools/dex/
 rebuild-src/build-smoke/
+rebuild-src/build-stubs/
+rebuild-src/build-dex/
+rebuild-src/*.jar
+work/
+*.log
 *.idsig
