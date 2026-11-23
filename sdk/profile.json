@@ -1,0 +1,9 @@
+{
+ "poweredBy": "PHP/5.4.37",
+ "contentType": "text/json",
+ "alwaysHttp200": true,
+ "verifySign": true,
+ "signSecret": "0b2a18e45d7df321",
+ "products": ["75880787318053043365515388491588", "會員帳戶註冊"],
+ "note": "profil kawat server asli qsdk.t4game.com. products = daftar productCode yang dianggap ada. 75880787318053043365515388491588 = kode ASLI yang dikirim client game (rekam device 23 Nov) — inilah penyebab 30001 'silent error' v15 saat daftar products belum memuatnya. verifySign=false = matikan cek sign."
+}

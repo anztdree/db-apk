@@ -1,0 +1,76 @@
+# PANDUAN FOLDER `sdk/` — CONFIG PENUH TANPA REBUILD APK
+
+> Permintaan owner: *"tanpa perlu rebuild apk .. anda buat folder sdk isinya nanti
+> full config yg akan saya download dan tempelkan ke android/data/sdk"*.
+> Folder `sdk/` di repo ini = isi config lengkap, **terverifikasi byte-per-byte
+> identik** dengan yang di-seed server lokal v1 (uji: server dijalankan, semua 6
+> file IDENTIK dgn hasil seed — bukti di readme Bagian 35).
+
+## 1. LOKASI PERSIS DI DEVICE (BUKTI KODE, JANGAN KESALAH TEMPAT)
+
+Bukti `LocalServerStarter.java:47-49`:
+```java
+extBase    = ctx.getExternalFilesDir(null);   // /storage/emulated/0/Android/data/com.db.local/files
+base       = extBase.getParentFile();         // /storage/emulated/0/Android/data/com.db.local
+serverRoot = new File(base, "server");        // /storage/emulated/0/Android/data/com.db.local/server
+```
+Jadi path lengkap folder config:
+
+```
+/storage/emulated/0/Android/data/com.db.local/server/sdk/
+```
+
+Struktur penuh `server/` di device (yang mana milik siapa):
+
+```
+Android/data/com.db.local/server/
+├── bs/      <- MILIK APK (ekstraksi assets tiap boot; JANGAN diedit)
+├── sdk/     <- MILIK OWNER (config; TIDAK pernah disentuh ekstraksi APK)
+│   ├── profile.json
+│   ├── v1/system/init.json
+│   ├── v1/user/ckRegVistor.json
+│   ├── fallback.json
+│   ├── errors.json
+│   ├── QHinfo
+│   └── data/            <- db.sqlite AKUN (dibuat server; jangan ganti-ganti)
+└── logs/    <- log NDJSON + crash-*.txt (dashboard 127.0.0.1:4000)
+```
+
+## 2. CARA PASTE (TANPA PC, TANPA REBUILD)
+
+1. Download folder `sdk/` dari repo ini (GitHub: buka folder `sdk` -> tiap file
+   -> "Download raw file"; atau download ZIP repo dan ambil folder `sdk/`-nya).
+2. Buka file manager di HP (yang bisa akses `Android/data`, mis. file manager
+   dengan akses storage penuh).
+3. Masuk ke `Android/data/com.db.local/server/`.
+4. **Bila folder `sdk/` belum ada** -> salin folder `sdk/` dari download ke situ.
+   **Bila sudah ada** -> timpa FILE config-nya saja (jangan hapus folder `data/`).
+5. Selesai. Tidak perlu restart: **server membaca ulang file config pada TIAP
+   request** (bukti `SdkConfig.java:17` + `contract()` `:142-153`) — ulangi
+   aksinya di game (mis. buka lagi layar login) dan config baru langsung berlaku.
+
+## 3. ISI FOLDER + EFEKNYA (semua ada bukti di docs/SDK-STUDY.md)
+
+| File | Efek |
+|---|---|
+| `profile.json` | Gerbang `/v1/system/init`: daftar `products` (30001), `verifySign`, `signSecret`, header PHP. Menambah productCode = edit array `products` |
+| `v1/system/init.json` | `loginTypes` menentukan UI login SDK: `["1"]` = email+TAMU (default v1), `["12"]` = TAMU saja, `["1","13"]` = mirror server asli (+Kode Migrasi). `payTypes` WAJIB ada (parser `model/e`) |
+| `v1/user/ckRegVistor.json` | Kontrak cek tamu (`isReged`) |
+| `fallback.json` | Jawaban endpoint yang belum dipetakan (result:false 20000) |
+| `errors.json` | Katalog error (dokumentasi live server asli) |
+| `QHinfo` | CATATAN endpoint. PENTING: client membaca endpoint dari **assets/QHinfo di dalam APK** (bukti QuickGameManager.smali:66-75), jadi mengubah file ini TIDAK mengubah endpoint client — hanya rebuild APK yang bisa |
+
+## 4. ATURAN AMAN (dari kode server — bukan asumsi)
+
+1. **JSON wajib `{`...`}`** — kalau rusak, server otomatis seed ulang default dan
+   mencatat log `SDK-CONFIG rusak` (SdkConfig.java:148). Editan hilang = tulis ulang.
+2. **`init.json` wajib berisi `payTypes` + `loginTypes`** (SdkConfig.java:208-210).
+3. **`QHinfo` wajib `http://`/`https://`, TANPA `/` di akhir** (SdkConfig.java:197-204).
+4. **Jangan buat `index.txt`** — server menghapusnya otomatis tiap boot
+   (SdkConfig.java:259-263; keluhan owner lama "berasa jadi sampah").
+5. **Jangan sentuh `sdk/data/`** — itu DB akun (db.sqlite). Salin antar device =
+   pindahkan akun, bukan config.
+6. **`bs/` bukan tempat config** — file di sana ditimpa ekstraksi APK tiap boot.
+7. Edit lebih praktis dari browser HP: panel `http://127.0.0.1:4000/sdkconfig`
+   (edit file yang sama + preset E1/E2/E3 + tabel akun) — folder `sdk/` ini adalah
+   versi OFFLINE dari panel itu.

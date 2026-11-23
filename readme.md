@@ -2487,3 +2487,55 @@ karena mini-server kita beda system dari originalnya tapi tetap dalam 1 apk."*
 2. Boot → log `MOD-LOCALSERVER v1` di dashboard `127.0.0.1:4000`.
 3. Buka game → layar LOGIN: **TAMU / DAFTAR / LOGIN** → semuanya jalan lokal.
 4. Panel `127.0.0.1:4000/sdkconfig` — DB-BACKEND sqlite, tabel akun, preset E1/E2/E3.
+
+---
+
+## Bagian 35 — REPO DIRAPIKAN + STUDI SDK BERBASIS BUKTI + FOLDER `sdk/` CONFIG (23 Nov 2026)
+
+Perintah owner: *"benerin duluu itu Repository.. banyak file sampah.. rapikan..
+lalu fokus pelajari sdk .. gimana SDK berjalan dan bekerja.. sesuai dengan bukti ..
+Seharusnya setelah ini tanpa perlu rebuild apk .. anda buat folder sdk isinya nanti
+full config yg akan saya download dan tempelkan ke android/data/sdk"*.
+
+### 35.1 Repo dirapikan (dihapus dari repo; riwayat git tetap ada)
+
+- 9 file `.patch` kerja lama di root (0001–0009).
+- 13 script repack seri lama (`repack.py`, `repack_v3…v18.py`) + `capture_login*.py`
+  — hanya `repack_v1_clean.py` (seri v1) dan `onepiece_decrypt.py` (util dekripsi
+  config game) yang tersisa.
+- Artifact verifikasi seri lama: `v14–v18_baksmali_diff_vs_original.txt`,
+  `verify_final.txt`. Yang tersisa: bukti kontrak live + `v1` + `verify_total.txt`
+  (dikutip komentar kode).
+- `.gitignore` baru: `work/`, folder build, `tools/dex`, `*.jar` lokal, `*.log`,
+  `*.idsig`.
+
+### 35.2 Studi SDK — docs/SDK-STUDY.md (100% bukti file:baris, nol asumsi)
+
+- Dari mana SDK dapat alamat server: `QuickGameManager.initThirdDataSDK` baca asset
+  `QHinfo` -> `bindcommunist.cointhreat.seventygenom[0]` = base SEMUA request
+  (QuickGameManager.smali:63-75; pemakai base: bindcommunist/cointhreat.smali:75).
+- 33 endpoint `/v1/…` unik katalog dari smali + 15 yang diimplement server lokal
+  (SdkHandler.java:260-445).
+- Rumus sign dari smali: TreeMap sort -> `k=v&` berulang + secret
+  `0b2a18e45d7df321` (seventygenom.smali:531/:602) -> MD5 (:635); DITERIMA server
+  asli (probe live LIVE_CONTRACT_20261123.md).
+- Alur boot-login lengkap + akar crash "setelah loading" = dialog auto-login
+  window type 0x7d8/2008 TANPA cek izin (d/e.smali:465, show di
+  HWLoginActivity$singersmooth.smali:191; grep canDrawOverlays = 0).
+- Sesi tersimpan: prefs `QGSp`/`qg_Users` (psalmicvolleyball/seventygenom.smali:56/:62/:257)
+  + file `info.qg` (unnecessarysperrylites/singersmooth.smali:124/:193/:581).
+
+### 35.3 Folder `sdk/` — full config siap-download (TANPA rebuild APK)
+
+Isi = config lengkap persis struktur device:
+`sdk/profile.json`, `sdk/v1/system/init.json`, `sdk/v1/user/ckRegVistor.json`,
+`sdk/fallback.json`, `sdk/errors.json`, `sdk/QHinfo`.
+
+**Bukti identik**: server dijalankan desktop, request pertama memicu seed, lalu
+DIFF 6 file — **SEMUA IDENTIK byte-per-byte** dgn folder `sdk/` repo.
+
+Lokasi tempel di device (bukti LocalServerStarter.java:47-49):
+`Android/data/com.db.local/server/sdk/` — server baca ulang TIAP request,
+jadi edit = berlaku langsung tanpa restart. Panduan lengkap: **docs/SDK-CONFIG.md**.
+Catatan jujur (bukti §35.2): file `sdk/QHinfo` = catatan; client membaca endpoint
+dari assets/QHinfo DI DALAM APK — ganti endpoint client tetap butuh rebuild.
