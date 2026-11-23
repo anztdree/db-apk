@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>DB-LOCAL MONITOR v8</title>
+<style>
+:root{
+  --bg:#0b0e13; --panel:#121821; --panel2:#0f141c; --line:#232c38; --line2:#2c3745;
+  --tx:#e7edf3; --tx2:#9aa8b6; --tx3:#6b7a89;
+  --ok:#34d399; --okbg:#0c231a;
+  --info:#a9b6c4; --infobg:#171d26;
+  --warn:#fbbf24; --warnbg:#241a06;
+  --err:#f87171; --errbg:#2a1112;
+  --brand:#f97316; --brand2:#fb923c;
+  --mono:ui-monospace,'JetBrains Mono','Cascadia Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  background:var(--bg);color:var(--tx);font-size:15px;line-height:1.5;
+  min-height:100vh;display:flex;flex-direction:column;
+}
+/* ================= HEADER ================= */
+header{
+  position:sticky;top:0;z-index:30;background:linear-gradient(180deg,#0d1219 0%,#0b0e13 100%);
+  border-bottom:1px solid var(--line);padding:10px 14px 8px;
+  padding-top:calc(10px + env(safe-area-inset-top));
+}
+.hrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-size:19px;font-weight:800;letter-spacing:.3px;color:var(--tx);display:flex;align-items:center;gap:8px}
+.logo .drg{font-size:22px}
+.logo small{color:var(--tx3);font-weight:600;font-size:11px}
+.live{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;
+  color:var(--ok);background:var(--okbg);border:1px solid #1d4a35;border-radius:999px;padding:3px 11px}
+.live .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);animation:pulse 1.4s infinite}
+.live.off{color:var(--warn);background:var(--warnbg);border-color:#5c430b}
+.live.off .dot{background:var(--warn);animation:none}
+@keyframes pulse{0%{opacity:1}50%{opacity:.25}100%{opacity:1}}
+.ver{font-size:10.5px;color:var(--tx3);border:1px solid var(--line);border-radius:5px;padding:2px 7px;font-family:var(--mono)}
+.statrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:12.5px}
+.stat{display:inline-flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);
+  border-radius:8px;padding:3px 9px;color:var(--tx2);font-variant-numeric:tabular-nums}
+.stat b{color:var(--tx);font-weight:700}
+.stat.ok b{color:var(--ok)} .stat.info b{color:var(--info)} .stat.warn b{color:var(--warn)} .stat.err b{color:var(--err)}
+.stat.health-ok{border-color:#1d4a35;color:var(--ok);font-weight:700;background:var(--okbg)}
+.stat.health-bad{border-color:#5c2325;color:var(--err);font-weight:700;background:var(--errbg)}
+/* ================= TOOLBAR ================= */
+#toolbar{position:sticky;top:0;z-index:25;background:var(--bg);padding:8px 14px 6px;border-bottom:1px solid var(--line)}
+.trow{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+#q{flex:1;min-width:150px;background:var(--panel2);border:1px solid var(--line2);border-radius:9px;
+  color:var(--tx);padding:8px 12px;font-size:14px;outline:none}
+#q:focus{border-color:var(--brand)}
+#q::placeholder{color:var(--tx3)}
+button.btn{background:var(--panel2);border:1px solid var(--line2);border-radius:9px;color:var(--tx2);
+  padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;min-height:36px;font-family:inherit}
+button.btn:hover{border-color:var(--brand);color:var(--tx)}
+button.btn:active{transform:scale(.97)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;border-radius:999px;
+  padding:4px 11px;border:1px solid var(--line2);background:var(--panel);color:var(--tx2);cursor:pointer;min-height:28px}
+.chip .n{font-weight:500;color:var(--tx3);font-variant-numeric:tabular-nums}
+.chip.on{border-color:var(--brand);color:var(--tx);background:#1b140d}
+.chip.on .n{color:var(--brand2)}
+.chip.s-ok.on{border-color:#1d4a35;background:var(--okbg);color:var(--ok)}
+.chip.s-info.on{border-color:#3a4656;background:var(--infobg);color:var(--info)}
+.chip.s-warn.on{border-color:#5c430b;background:var(--warnbg);color:var(--warn)}
+.chip.s-err.on{border-color:#5c2325;background:var(--errbg);color:var(--err)}
+/* ================= STREAM ================= */
+#wrap{flex:1;width:100%;max-width:880px;margin:0 auto;padding:10px 12px 4px;display:flex;flex-direction:column;gap:8px}
+#stream{display:flex;flex-direction:column;gap:7px;position:relative}
+.newpill{position:fixed;left:50%;transform:translateX(-50%);bottom:64px;z-index:28;display:none;
+  background:var(--brand);color:#160a02;font-weight:800;font-size:12.5px;border:none;border-radius:999px;
+  padding:7px 16px;cursor:pointer;box-shadow:0 4px 14px rgba(249,115,22,.4)}
+.card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.card .strip{position:absolute;left:0;top:0;bottom:0;width:3.5px}
+.card.s-ok .strip{background:var(--ok)} .card.s-info .strip{background:#46566b}
+.card.s-warn .strip{background:var(--warn)} .card.s-err .strip{background:var(--err)}
+.card-main{display:flex;gap:10px;padding:9px 12px 8px 14px;cursor:pointer;align-items:flex-start}
+.card-main:hover{background:var(--panel2)}
+.emo{font-size:17px;line-height:1.35;flex-shrink:0}
+.cbody{flex:1;min-width:0}
+.ctitle{font-size:14px;font-weight:600;color:var(--tx);word-break:break-word}
+.ctitle .x{color:var(--brand2);font-weight:800;font-size:12.5px;background:#1b140d;border:1px solid #4a2b12;
+  border-radius:6px;padding:0 7px;margin-left:7px;white-space:nowrap;display:inline-block}
+.ctitle .dim{color:var(--tx2);font-weight:500}
+.ctitle .bad{color:var(--err)} .ctitle .warnc{color:var(--warn)} .ctitle .good{color:var(--ok)}
+.cmeta{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;font-size:11.5px;color:var(--tx3);
+  font-family:var(--mono);align-items:center;row-gap:3px}
+.pchip{display:inline-flex;align-items:center;gap:4px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:6px;padding:1px 7px;font-weight:700;color:var(--tx2)}
+.spill{display:inline-flex;align-items:center;border-radius:6px;padding:1px 7px;font-weight:800}
+.spill.s-ok{background:var(--okbg);color:var(--ok)} .spill.s-info{background:var(--infobg);color:var(--info)}
+.spill.s-warn{background:var(--warnbg);color:var(--warn)} .spill.s-err{background:var(--errbg);color:var(--err)}
+.meta2{color:var(--tx3)}
+.mtime{color:var(--tx2);font-weight:600}
+.caret{color:var(--tx3);font-size:11px;flex-shrink:0;margin-top:4px;transition:transform .15s}
+.card.open .caret{transform:rotate(90deg)}
+/* detail */
+.cdetail{display:none;border-top:1px solid var(--line);background:var(--panel2);padding:8px 12px 10px 14px}
+.card.open .cdetail{display:block}
+.dblock{margin-top:7px}
+.dblock:first-child{margin-top:0}
+.dhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.dlabel{font-size:10.5px;font-weight:800;letter-spacing:1px;color:var(--tx3)}
+.dcopy{margin-left:auto;font-size:11px;padding:3px 9px;min-height:24px;border-radius:6px}
+.dpre{margin:0;background:#0a0d12;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+  font-family:var(--mono);font-size:12px;color:#c8d3de;white-space:pre-wrap;word-break:break-word;
+  max-height:280px;overflow:auto;line-height:1.45}
+.dpre::-webkit-scrollbar{width:8px}.dpre::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+.dpre .k{color:var(--brand2)}
+/* overlay info panel */
+.sysnote{display:flex;gap:10px;background:var(--infobg);border:1px solid #3a4656;border-radius:11px;padding:10px 13px}
+.sysnote .emo{font-size:18px}
+.sysnote .tt{font-weight:700;font-size:13.5px;color:var(--tx)}
+.sysnote .mm{font-size:12.5px;color:var(--tx2);margin-top:2px}
+.sysnote button{margin-top:7px}
+/* footer */
+footer{
+  position:sticky;bottom:0;z-index:30;background:#0d1219;border-top:1px solid var(--line);
+  padding:8px 14px;padding-bottom:calc(8px + env(safe-area-inset-bottom));
+  display:flex;gap:7px;flex-wrap:wrap;align-items:center
+}
+footer .hint{margin-left:auto;font-size:11.5px;color:var(--tx3)}
+/* toast */
+#toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:60;display:none;
+  background:#1c1207;color:var(--brand2);border:1px solid #4a2b12;padding:8px 18px;border-radius:9px;
+  font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.5);max-width:86vw;text-align:center}
+#toast.err{background:#2a1112;color:var(--err);border-color:#5c2325}
+@media(max-width:520px){
+  body{font-size:14.5px}
+  .ctitle{font-size:13.5px}
+  footer .hint{display:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hrow">
+    <div class="logo"><span class="drg">🐉</span> DB-LOCAL MONITOR <small>127.0.0.1</small></div>
+    <span class="ver" id="verTag">v8-pratinjau</span>
+    <span class="live" id="livePill"><span class="dot"></span><span id="liveTxt">LIVE</span></span>
+  </div>
+  <div class="statrow" id="statrow"></div>
+</header>
+
+<div id="toolbar">
+  <div class="trow">
+    <input id="q" placeholder="🔍 cari teks, path, uid…" autocomplete="off">
+    <button class="btn" id="pauseBtn">⏸ Jeda</button>
+    <button class="btn" id="simBtn">▶️ Simulasi live</button>
+    <button class="btn" id="clearBtn">🧹</button>
+  </div>
+  <div class="chips" id="sevChips"></div>
+  <div class="chips" id="portChips"></div>
+</div>
+
+<div id="wrap">
+  <div class="sysnote" id="ovnote" style="display:none">
+    <span class="emo">ℹ️</span>
+    <div>
+      <div class="tt" id="ovTitle"></div>
+      <div class="mm" id="ovMsg"></div>
+      <button class="btn" id="ovBtn" style="display:none">Buka Settings izin overlay (opsional)</button>
+    </div>
+  </div>
+  <div id="stream"></div>
+</div>
+
+<button class="newpill" id="newpill">⬇️ <span id="newpillN">0</span> entri baru</button>
+
+<footer>
+  <button class="btn" id="cpT">📋 Salin tabel</button>
+  <button class="btn" id="cpJ">📋 Salin JSON</button>
+  <button class="btn" id="dlBtn">⬇️ NDJSON</button>
+  <span class="hint" id="hint">logger :4000 · arsip NDJSON utuh di disk</span>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+/* ===================== DATA ASLI (sesi uji 23 Nov 23:50, 52 entri) ===================== */
+var DATA = [{"seq":1,"ts":1795452612375,"time":"2026-11-23 23:50:12.375","port":4000,"kind":"BOOT","method":"BOOT","path":"LocalServerStarter.start dipanggil (Application.onCreate) — MOD-LOCALSERVER v3 — serverRoot=/storage/emulated/0/Android/data/com.db.local/server","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":2,"ts":1795452612377,"time":"2026-11-23 23:50:12.377","port":4000,"kind":"SYS","method":"EXITINFO","path":"tidak ada riwayat exit (normal utk install baru)","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":3,"ts":1795452612381,"time":"2026-11-23 23:50:12.381","port":4000,"kind":"BOOT","method":"BOOT","path":"CrashHook terpasang — crash Java seluruh proses terekam ke logs/crash-*.txt + banner dashboard","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":4,"ts":1795452612382,"time":"2026-11-23 23:50:12.382","port":4000,"kind":"SYS","method":"OVERLAY","path":"IZIN 'Display over other apps' OFF — dialog auto-login SDK (window type 2008) akan CRASH 'setelah loading'. FIX: buka dashboard 4000 -> tombol merah BUKA SETTINGS OVERLAY -> aktifkan izin utk 'DB - Local' -> kembali ke game","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":5,"ts":1795452612470,"time":"2026-11-23 23:50:12.470","port":9530,"kind":"SYS","method":"SYS","path":"DB-BACKEND sqlite dir=/storage/emulated/0/Android/data/com.db.local/server/sdk/data","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":6,"ts":1795452612471,"time":"2026-11-23 23:50:12.471","port":4000,"kind":"BOOT","method":"BOOT","path":"DB siap di boot: backend=sqlite dir=sdk/data","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":7,"ts":1795452612477,"time":"2026-11-23 23:50:12.477","port":4000,"kind":"SYS","method":"BIND","path":"port 9527 — config bin (mirror configus…:443) — AKTIF","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":8,"ts":1795452612478,"time":"2026-11-23 23:50:12.478","port":4000,"kind":"SYS","method":"BIND","path":"port 9528 — CDN game + socket.io login (mirror dragonh5cdn…:443) — AKTIF","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":9,"ts":1795452612478,"time":"2026-11-23 23:50:12.478","port":4000,"kind":"SYS","method":"BIND","path":"port 5050 — login socket.io v2.1.2 EIO=3 + loginchecknative (mirror login…:610) — AKTIF","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":10,"ts":1795452612478,"time":"2026-11-23 23:50:12.478","port":4000,"kind":"SYS","method":"BIND","path":"port 5051 — server game socket.io v2.1.2 EIO=3 (serverItem.url — Bagian 21) — AKTIF","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":11,"ts":1795452612478,"time":"2026-11-23 23:50:12.478","port":4000,"kind":"SYS","method":"BIND","path":"port 9530 — API SDK t4game (mirror qsdk.t4game.com:80) — AKTIF","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":12,"ts":1795452612478,"time":"2026-11-23 23:50:12.478","port":4000,"kind":"SYS","method":"BIND","path":"port 4000 — logger 2 mode — AKTIF","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":13,"ts":1795452612479,"time":"2026-11-23 23:50:12.479","port":4000,"kind":"BOOT","method":"BOOT","path":"mini-server aktif; logger di port 4000; arsip NDJSON: /storage/emulated/0/Android/data/com.db.local/server/logs","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":14,"ts":1795452614123,"time":"2026-11-23 23:50:14.123","port":9527,"kind":"HTTP","method":"GET","path":"/bs/db/android/setting_BS_Android.bin?rnd=0.377957","status":200,"durMs":4,"reqLen":0,"respLen":687,"headers":"host=127.0.0.1:9527; connection=close; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","respPreview":"[xor 687 B — decode di extra]","extra":"sumber=ASSETS (fast-path 9527) | respCT=application/octet-stream | DECODED-XOR: {\n\t\"testMode\": 1,\n\t\"url\": \"http://127.0.0.1:9528/bs/index-native.html?v=202109150935\",\n\t\"tsUrl\": \"http://dragon.sjmobilegame.com:82/bs103/index-native.html\",\n\t\"update\": \"http://127.0.0.1:9528/bs/upgrade\",\n\t\"checkTime\": 300,\n\t\"loginServer\": \"http://127.0.0.1\",\n\t\"tsLoginServer\": \"http://118.24.68.91:7003\",\n\t\"loginPort\": 9528,\n\t\"loginWebPort\": 5050,\n\t\"clientParams\": {\n\t\t\"hideList\": [\n\t\t\t\"1.99\",\n\t\t\t\"2.99\",\n\t\t\t\"14.99\",\n\t\t\t\"59.99\",\n\t\t\t\"89.99\"\n\t\t],\n\t\t\"supportLang\": [\n\t\t\t{\n\t\t\t\t\"languageName\": \"English\",\n\t\t\t\t\"lang\": \"en\"\n\t\t\t},\n\t\t\t{\n\t\t\t\t\"languageName\": \"Français\",\n\t\t\t\t\"lang\": \"fr\"\n\t\t\t},\n\t\t\t{\n\t\t\t\t\"languageName\": \"한국인\",\n\t\t\t\t\"lang\": \"kr\"\n\t\t\t}\n\t\t],\n\t\t\"showCurChannel\": \"toFacebook\"\n\t}\n}"},{"seq":15,"ts":1795452614168,"time":"2026-11-23 23:50:14.168","port":9527,"kind":"HTTP","method":"GET","path":"/bs/db/android/com_db_local.bin?rnd=0.863380","status":200,"durMs":1,"reqLen":0,"respLen":2,"headers":"host=127.0.0.1:9527; connection=close; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","respPreview":"[xor 2 B — decode di extra]","extra":"sumber=ASSETS (fast-path 9527) | respCT=application/octet-stream | DECODED-XOR: {}"},{"seq":16,"ts":1795452614171,"time":"2026-11-23 23:50:14.171","port":9527,"kind":"HTTP","method":"GET","path":"/bs/db/android/setting_BS_Android.bin?rnd=0.530778","status":200,"durMs":0,"reqLen":0,"respLen":687,"headers":"host=127.0.0.1:9527; connection=close; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","respPreview":"[xor 687 B — decode di extra]","extra":"sumber=ASSETS (fast-path 9527) | respCT=application/octet-stream | DECODED-XOR: {\n\t\"testMode\": 1,\n\t\"url\": \"http://127.0.0.1:9528/bs/index-native.html?v=202109150935\",\n\t\"tsUrl\": \"http://dragon.sjmobilegame.com:82/bs103/index-native.html\",\n\t\"update\": \"http://127.0.0.1:9528/bs/upgrade\",\n\t\"checkTime\": 300,\n\t\"loginServer\": \"http://127.0.0.1\",\n\t\"tsLoginServer\": \"http://118.24.68.91:7003\",\n\t\"loginPort\": 9528,\n\t\"loginWebPort\": 5050,\n\t\"clientParams\": {\n\t\t\"hideList\": [\n\t\t\t\"1.99\",\n\t\t\t\"2.99\",\n\t\t\t\"14.99\",\n\t\t\t\"59.99\",\n\t\t\t\"89.99\"\n\t\t],\n\t\t\"supportLang\": [\n\t\t\t{\n\t\t\t\t\"languageName\": \"English\",\n\t\t\t\t\"lang\": \"en\"\n\t\t\t},\n\t\t\t{\n\t\t\t\t\"languageName\": \"Français\",\n\t\t\t\t\"lang\": \"fr\"\n\t\t\t},\n\t\t\t{\n\t\t\t\t\"languageName\": \"한국인\",\n\t\t\t\t\"lang\": \"kr\"\n\t\t\t}\n\t\t],\n\t\t\"showCurChannel\": \"toFacebook\"\n\t}\n}"},{"seq":17,"ts":1795452614179,"time":"2026-11-23 23:50:14.179","port":9527,"kind":"HTTP","method":"GET","path":"/bs/db/android/com_db_local.bin?rnd=0.762333","status":200,"durMs":1,"reqLen":0,"respLen":2,"headers":"host=127.0.0.1:9527; connection=close; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","respPreview":"[xor 2 B — decode di extra]","extra":"sumber=ASSETS (fast-path 9527) | respCT=application/octet-stream | DECODED-XOR: {}"},{"seq":18,"ts":1795452615107,"time":"2026-11-23 23:50:15.107","port":9528,"kind":"HTTP","method":"GET","path":"/bs/upgrade/base.version?rnd=0.705444","status":200,"durMs":2,"reqLen":0,"respLen":4,"headers":"host=127.0.0.1:9528; connection=close; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","respPreview":"110\n","extra":"respCT=text/plain; charset=utf-8"},{"seq":19,"ts":1795452615113,"time":"2026-11-23 23:50:15.113","port":9528,"kind":"HTTP","method":"GET","path":"/bs/upgrade/resource.version?rnd=0.540650","status":200,"durMs":1,"reqLen":0,"respLen":5,"headers":"host=127.0.0.1:9528; connection=close; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","respPreview":"11390","extra":"respCT=text/plain; charset=utf-8"},{"seq":20,"ts":1795452615118,"time":"2026-11-23 23:50:15.118","port":9528,"kind":"HTTP","method":"GET","path":"/bs/upgrade/upgrade.json?rnd=0.869338","status":200,"durMs":1,"reqLen":0,"respLen":130,"headers":"host=127.0.0.1:9528; connection=close; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","respPreview":"{\"11389\": \"11389_11390.zip\", \"11388\": \"11388_11390.zip\", \"11387\": \"11387_11390.zip\", \"11386\": \"11386_11390.zip\", \"all\": \"all.zip\"}","extra":"respCT=application/json; charset=utf-8"},{"seq":21,"ts":1795452615124,"time":"2026-11-23 23:50:15.124","port":9528,"kind":"HTTP","method":"GET","path":"/bs/upgrade/size.json?rnd=0.766806","status":200,"durMs":1,"reqLen":0,"respLen":105,"headers":"host=127.0.0.1:9528; connection=close; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","respPreview":"{\"base\": \"31015076\", \"11389\": 252562, \"11388\": 252562, \"11387\": 252562, \"11386\": 252562, \"all\": 19385098}","extra":"respCT=application/json; charset=utf-8"},{"seq":22,"ts":1795452615286,"time":"2026-11-23 23:50:15.286","port":9528,"kind":"HTTP","method":"GET","path":"/bs/upgrade/all.zip?v=11011390","status":200,"durMs":159,"reqLen":0,"respLen":19385098,"headers":"host=127.0.0.1:9528; connection=Keep-Alive; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","respPreview":"[bin 19385098 B]","extra":"respCT=application/zip"},{"seq":23,"ts":1795452616421,"time":"2026-11-23 23:50:16.421","port":9530,"kind":"SYS","method":"SYS","path":"SDK-CONFIG seed: errors.json","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":24,"ts":1795452616423,"time":"2026-11-23 23:50:16.423","port":9530,"kind":"SYS","method":"SYS","path":"SDK-CONFIG seed: QHinfo (21 B)","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":25,"ts":1795452616429,"time":"2026-11-23 23:50:16.429","port":9530,"kind":"SYS","method":"SYS","path":"SDK-CONFIG seed: v1/system/init.json (595 B)","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":26,"ts":1795452616433,"time":"2026-11-23 23:50:16.433","port":9530,"kind":"SYS","method":"SYS","path":"SDK-CONFIG seed: v1/user/ckRegVistor.json (66 B)","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":27,"ts":1795452616435,"time":"2026-11-23 23:50:16.435","port":9530,"kind":"SYS","method":"SYS","path":"SDK-CONFIG seed: fallback.json (72 B)","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":28,"ts":1795452616436,"time":"2026-11-23 23:50:16.436","port":9530,"kind":"SYS","method":"SYS","path":"SDK-CONFIG seed: profile.json (513 B)","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":29,"ts":1795452616438,"time":"2026-11-23 23:50:16.438","port":9530,"kind":"HTTP","method":"POST","path":"/v1/system/init","status":200,"durMs":24,"reqLen":1249,"respLen":594,"headers":"content-length=1249; host=127.0.0.1:9530; content-type=application/x-www-form-urlencoded; connection=Keep-Alive; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","reqPreview":"sv=v2&data=eyJkZXZJRFNob3J0IjoiaXRlbC1TNjY1TEl0ZWxhcm02NC12OGFpdGVsLVM2NjVMUzY2NUwtRjA2%0ANU9QUlNVVkFwQXFBci1TLUdMLTIwMjUwMjA3VjUzM1NQMUEuMjEwODEyLjAxNklURUwiLCJzY3Jl%0AZW5XaWR0aCI6NzIwLCJnYWlkIjoiZTIxMWJhODgtMTNlMi00ZTk5LWFhZTMtZDRhYTQxYzRmNDFh%0AIiwibGF0aXR1ZGUiOjAsImF1dGhUb2tlbiI6ImFjZDU1NjQ5NzNkYjY4MmI0ZWJiMzhhNzdkYWZi%0ANzI5Iiwic3VnZ2VzdEN1cnJlbmN5IjoiIiwiaW1zaSI6IiIsImRldmljZU5hbWUiOiJpdGVsIFM2%0ANjVMIiwiZGV2aWNlSWQiOiIzMTlDRTM1QTcwMzFGM0Q1OERERTk2NDg2REUwMTlGRiIsInBsYXRm%0Ab3JtIjoxLCJvc1ZlcnNpb24iOjMxLCJjb3VudHJ5Q29kZSI6ImlkIiwiZHBpIjoyNzIsIm9zTGFu%0AZ3VhZ2UiOiJpbiIsImFuZHJvaWRJZCI6ImJhNGQ0ZTc0YzhhM2I1NTYiLCJsb25naXR1ZGUiOjAs%0AImNoYW5uZWxDb2RlIjoiSUQiLCJzZXJpYWxOdW0iOiJ1bmtub3duIiwibmV0VHlwZSI6MCwiYmx1%0AZXRvb3RoTWFjIjoiIiwic2NyZWVuSGVpZ2h0IjoxNDQ0LCJjbGllbnRMYW5nIjoiaW4iLCJpc21v%0…[+449]","respPreview":"{\n  \"result\": true,\n  \"data\": {\n    \"payTypes\": [],\n    \"loginTypes\": [\"1\"],\n    \"first_install\": 1,\n    \"countryCode\": \"HK\",\n    \"productConfig\": {\n      \"guestShowBind\": \"1\",\n      \"isShowFloat\": \"0\",\n      \"useSms\": \"0\",\n      \"useServiceCenter\": \"0\",\n      \"single_play\": \"0\",\n      \"adZhifuSwt\": \"0\",\n      \"initCZurl\": \"\",\n      \"serviceInfo\": \"\",\n      \"logo\": \"\",\n      \"title\": \"\"\n    },\n    \"version\": {\n      \"versionNo\": \"empty\",\n      \"versionName\": \"empty\",\n      \"versionUrl\": \"empty\",\n      \"updateTime\": \"empty\",\n      \"isMust\": \"empty\",\n      \"updateTips\": \"empty\"\n    }\n  }\n}","extra":"INIT-SUCCESS (file sdk/v1/system/init.json — bisa diedit owner) | loginTypes menentukan layar login: [\"1\"]=form email+TAMU, [\"12\"]=tamu-only, [\"1\",\"13\"]=mirror replay server asli | payTypes kunci WAJIB parser model/e | GET-TEST=false | respCT=text/json"},{"seq":30,"ts":1795452616445,"time":"2026-11-23 23:50:16.445","port":9530,"kind":"HTTP","method":"POST","path":"/v1/system/getNotice","status":200,"durMs":2,"reqLen":604,"respLen":25,"headers":"content-length=604; host=127.0.0.1:9530; content-type=application/x-www-form-urlencoded; connection=Keep-Alive; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","reqPreview":"sv=v2&data=eyJkZXZJRFNob3J0IjoiaXRlbC1TNjY1TEl0ZWxhcm02NC12OGFpdGVsLVM2NjVMUzY2NUwtRjA2%0ANU9QUlNVVkFwQXFBci1TLUdMLTIwMjUwMjA3VjUzM1NQMUEuMjEwODEyLjAxNklURUwiLCJzZXJp%0AYWxOdW0iOiJ1bmtub3duIiwicHJvZHVjdENvZGUiOiI3NTg4MDc4NzMxODA1MzA0MzM2NTUxNTM4%0AODQ5MTU4OCIsImF1dGhUb2tlbiI6ImFjZDU1NjQ5NzNkYjY4MmI0ZWJiMzhhNzdkYWZiNzI5Iiwi%0AZ2FtZVZlcnNpb24iOjEsInNka1ZlcnNpb24iOjIyMywic3VnZ2VzdEN1cnJlbmN5IjoiIiwiY2xp%0AZW50TGFuZyI6ImluIiwidGltZSI6MTc5NTQ1MjYxNjQ0MCwiZGV2aWNlSWQiOiIzMTlDRTM1QTcw%0AMzFGM0Q1OERERTk2NDg2REUwMTlGRiIsInBsYXRmb3JtIjoxLCJjaGFubmVsQ29kZSI6IklEIn0%3D%0A&sign=73ea65c5d468e8400c9426e3f5572045","respPreview":"{\"result\":true,\"data\":\"\"}","extra":"getNotice kosong: result=true data=\"\" (len 0 <=2 -> callback skip notice, try/catch aman) | GERBANG-LOLOS | respCT=text/json"},{"seq":31,"ts":1795452617518,"time":"2026-11-23 23:50:17.518","port":9530,"kind":"SYS","method":"SYS","path":"AKUN-BARU uid=1795452617515 username=Guest8997","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":32,"ts":1795452617520,"time":"2026-11-23 23:50:17.520","port":9530,"kind":"HTTP","method":"POST","path":"/v1/user/registerVisitor","status":200,"durMs":7,"reqLen":604,"respLen":331,"headers":"content-length=604; host=127.0.0.1:9530; content-type=application/x-www-form-urlencoded; connection=Keep-Alive; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","reqPreview":"sv=v2&data=eyJkZXZJRFNob3J0IjoiaXRlbC1TNjY1TEl0ZWxhcm02NC12OGFpdGVsLVM2NjVMUzY2NUwtRjA2%0ANU9QUlNVVkFwQXFBci1TLUdMLTIwMjUwMjA3VjUzM1NQMUEuMjEwODEyLjAxNklURUwiLCJzZXJp%0AYWxOdW0iOiJ1bmtub3duIiwicHJvZHVjdENvZGUiOiI3NTg4MDc4NzMxODA1MzA0MzM2NTUxNTM4%0AODQ5MTU4OCIsImF1dGhUb2tlbiI6ImFjZDU1NjQ5NzNkYjY4MmI0ZWJiMzhhNzdkYWZiNzI5Iiwi%0AZ2FtZVZlcnNpb24iOjEsInNka1ZlcnNpb24iOjIyMywic3VnZ2VzdEN1cnJlbmN5IjoiIiwiY2xp%0AZW50TGFuZyI6ImluIiwidGltZSI6MTc5NTQ1MjYxNzUxMCwiZGV2aWNlSWQiOiIzMTlDRTM1QTcw%0AMzFGM0Q1OERERTk2NDg2REUwMTlGRiIsInBsYXRmb3JtIjoxLCJjaGFubmVsQ29kZSI6IklEIn0%3D%0A&sign=b16ed101268e65df335fa9603e489454","respPreview":"{\"result\":true,\"data\":\"{\\\"authToken\\\":\\\"07244c3914fb3e04baddbaa4cb317895\\\",\\\"tips\\\":\\\"\\\",\\\"checkRealName\\\":\\\"0\\\",\\\"userData\\\":{\\\"uid\\\":\\\"1795452617515\\\",\\\"username\\\":\\\"Guest8997\\\",\\\"displayUid\\\":\\\"1795452617515\\\",\\\"token\\\":\\\"07244c3914fb3e04baddbaa4cb317895\\\",\\\"isGuest\\\":\\\"1\\\",\\\"openType\\\":\\\"12\\\",\\\"isNewUser\\\":1,\\\"isTrash\\\":0}}\"}","extra":"REGISTER-VISITOR (tombol TAMU) | akun tamu PERSISTEN SQLite (sqlite) (uid tetap antar restart) | session: authToken+userData kontrak psalmicvolleyball/cointhreat | GERBANG-LOLOS | respCT=text/json"},{"seq":33,"ts":1795452618806,"time":"2026-11-23 23:50:18.806","port":5050,"kind":"HTTP","method":"GET","path":"/loginchecknative?uid=1795452617515&usermode=1&username=Guest8997&token=07244c3914fb3e04baddbaa4cb317895&appVersion=1&osVersion=31&sourceVersion=20200418&model=itel+S665L&packageName=com.db.local&brand=Itel&os=Android&sdk=BS","status":200,"durMs":0,"reqLen":0,"respLen":313,"headers":"host=127.0.0.1:5050; connection=close; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","respPreview":"{\"code\":0,\"sdk\":\"quick\",\"userid\":\"1795452617515\",\"userId\":\"1795452617515\",\"nickname\":\"Guest8997\",\"nickName\":\"Guest8997\",\"securityCode\":\"07244c3914fb3e04baddbaa4cb317895\",\"security\":\"07244c3914fb3e04baddbaa4cb317895\",\"loginToken\":\"07244c3914fb3e04baddbaa4cb317895\",\"sign\":\"local\",\"usermode\":\"1\",\"osType\":\"android\"}","extra":"LOGINCHECK-NATIVE 28 | uid=1795452617515 username=Guest8997 usermode=1 (dari query params SDK = akun yang login: tamu) | body RAW = thirdParams JS (getSdkLoginInfo pakai securityCode); getInt(code)==0 -> MainActivity.customreading() -> WebView lanjut | respCT=application/json"},{"seq":34,"ts":1795452619003,"time":"2026-11-23 23:50:19.003","port":4000,"kind":"EXTRACT","method":"EXTRACT","path":"ekstraksi server_root/bs selesai (2759 file)","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":35,"ts":1795452619003,"time":"2026-11-23 23:50:19.003","port":4000,"kind":"EXTRACT","method":"EXTRACT","path":"ekstraksi selesai total 2759 file ke /storage/emulated/0/Android/data/com.db.local/server","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":36,"ts":1795452619281,"time":"2026-11-23 23:50:19.281","port":9528,"kind":"HTTP","method":"GET","path":"/bs/index-native.html?v=202109150935","status":200,"durMs":2,"reqLen":0,"respLen":10792,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; accept=*/*; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative","respPreview":"<!DOCTYPE HTML>\n<html>\n\n<head>\n    <meta charset=\"utf-8\">\n    <title>DragonBall</title>\n    <meta name=\"viewport\"\n        content=\"width=device-width,initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no\" />\n    <meta name=\"apple-mobile-web-app-capable\" content=\"yes\" />\n    <meta name=\"full-screen\" content=\"true\" />\n    <meta name=\"screen-orientation\" content=\"portrait\" />\n    <meta name=\"x5-fullscreen\" content=\"true\" />\n    <meta name=\"360-fullscreen\" content=\"true\" />\n    <style>\n        html,\n        body {\n            -ms-touch-action: none;\n            background: #888888;\n            padding: 0;\n            border: 0;\n            margin: 0;\n            height: 100%;\n        }\n    </style>\n</head>\n\n<body>\n    <div style=\"margin: auto;width: 100%;height: 100%;\" class=\"egr…[+1231]","extra":"respCT=text/html; charset=utf-8"},{"seq":37,"ts":1795452619447,"time":"2026-11-23 23:50:19.447","port":9528,"kind":"HTTP","method":"GET","path":"/bs/manifest.json?v=0.5949768459008971","status":200,"durMs":2,"reqLen":0,"respLen":533,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; accept=*/*; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative","respPreview":"{\n\t\"initial\": [\n\t\t\"js/egret.min_d9413192.js\",\n\t\t\"js/egret.web.min_b66ab113.js\",\n\t\t\"js/game.min_16249d0f.js\",\n\t\t\"js/tween.min_6c5a88f9.js\",\n\t\t\"js/assetsmanager.min_2ef412b7.js\",\n\t\t\"js/eui.min_493403ce.js\",\n\t\t\"js/dragonBones.min_6252b9c4.js\"\n\t],\n\t\"game\": [\n\t\t\"js/md5.min_97e969ef.js\",\n\t\t\"js/lz-string.min_896bee8b.js\",\n\t\t\"js/socket.io.min_57ea9db7.js\",\n\t\t\"js/blockmessage.min_7dc7bcec.js\",\n\t\t\"js/battlelogic.min_d446437e.js\",\n\t\t\"js/ThinkingAnalyticsSDK.min_72d3fad5.js\",\n\t\t\"js/default.thm_4d02a3c6.js\",\n\t\t\"js/main.min_777039fc.js\"\n\t]\n}","extra":"respCT=application/json; charset=utf-8"},{"seq":38,"ts":1795452622381,"time":"2026-11-23 23:50:22.381","port":4000,"kind":"SYS","method":"CRASHHOOK","path":"CrashHook re-wrap: handler default diganti pihak lain (crash-reporter SDK?) — dibungkus ulang, crash tetap terekam","status":0,"durMs":0,"reqLen":0,"respLen":0},{"seq":39,"ts":1795452623609,"time":"2026-11-23 23:50:23.609","port":9528,"kind":"HTTP","method":"GET","path":"/bs/resource/properties/clientversion.json","status":200,"durMs":1,"reqLen":0,"respLen":37,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; accept=*/*; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative","respPreview":"{\n\t\"clientVersion\": \"202109150935\"\n}\n","extra":"respCT=application/json; charset=utf-8"},{"seq":40,"ts":1795452623612,"time":"2026-11-23 23:50:23.612","port":9528,"kind":"HTTP","method":"GET","path":"/bs/resource/properties/serversetting.json","status":200,"durMs":1,"reqLen":0,"respLen":66,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; accept=*/*; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative","respPreview":"{\n\t\"loginserver\": \"http://127.0.0.1:9528\",\n\t\"requireSDK\": false\n}\n","extra":"respCT=application/json; charset=utf-8"},{"seq":41,"ts":1795452624810,"time":"2026-11-23 23:50:24.810","port":9528,"kind":"HTTP","method":"GET","path":"/bs/denglujiemianxuanzhejiemiannew21_png","status":404,"durMs":1,"reqLen":0,"respLen":55,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; accept=*/*; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative","respPreview":"404 not found: /bs/denglujiemianxuanzhejiemiannew21_png","error":"file tidak ada di server/"},{"seq":42,"ts":1795452624813,"time":"2026-11-23 23:50:24.813","port":9528,"kind":"HTTP","method":"GET","path":"/bs/Instagram_png","status":404,"durMs":1,"reqLen":0,"respLen":32,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; accept=*/*; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative","respPreview":"404 not found: /bs/Instagram_png","error":"file tidak ada di server/"},{"seq":43,"ts":1795452624817,"time":"2026-11-23 23:50:24.817","port":9528,"kind":"HTTP","method":"GET","path":"/bs/Telegram_png","status":404,"durMs":1,"reqLen":0,"respLen":31,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; accept=*/*; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative","respPreview":"404 not found: /bs/Telegram_png","error":"file tidak ada di server/"},{"seq":44,"ts":1795452624820,"time":"2026-11-23 23:50:24.820","port":9528,"kind":"HTTP","method":"GET","path":"/bs/Discord_png","status":404,"durMs":1,"reqLen":0,"respLen":30,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; accept=*/*; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative","respPreview":"404 not found: /bs/Discord_png","error":"file tidak ada di server/"},{"seq":45,"ts":1795452624824,"time":"2026-11-23 23:50:24.824","port":9528,"kind":"HTTP","method":"GET","path":"/bs/resource/properties/clientversion.json?v=0.8563732148612304","status":200,"durMs":2,"reqLen":0,"respLen":37,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; accept=*/*; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative","respPreview":"{\n\t\"clientVersion\": \"202109150935\"\n}\n","extra":"respCT=application/json; charset=utf-8"},{"seq":46,"ts":1795452624836,"time":"2026-11-23 23:50:24.836","port":5050,"kind":"HTTP","method":"GET","path":"/socket.io/?EIO=3&transport=polling&t=Q89KD-z","status":200,"durMs":2,"reqLen":0,"respLen":103,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative; accept=*/*","respPreview":"96:0{\"sid\":\"WL92vbGSiZAKwAgkLQkK\",\"upgrades\":[\"websocket\"],\"pingInterval\":25000,\"pingTimeout\":5000}2:40","extra":"OPEN sid=WL92vbGSiZAKwAgkLQkK (open+40, 1:1 capture live)"},{"seq":47,"ts":1795452624840,"time":"2026-11-23 23:50:24.840","port":9528,"kind":"HTTP","method":"GET","path":"/bs/Logo18+Full_png","status":404,"durMs":1,"reqLen":0,"respLen":34,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; accept=*/*; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative","respPreview":"404 not found: /bs/Logo18+Full_png","error":"file tidak ada di server/"},{"seq":48,"ts":1795452624862,"time":"2026-11-23 23:50:24.862","port":5050,"kind":"WS","method":"GET","path":"/socket.io/?EIO=3&transport=websocket&sid=WL92vbGSiZAKwAgkLQkK","status":101,"durMs":1,"reqLen":0,"respLen":0,"headers":"upgrade=websocket; host=127.0.0.1:9528; connection=Upgrade; sec-websocket-key=zdusjorbbkq891XkQwSqLA==; sec-websocket-version=13","extra":"WS upgrade sid=WL92vbGSiZAKwAgkLQkK"},{"seq":49,"ts":1795452624864,"time":"2026-11-23 23:50:24.864","port":5050,"kind":"HTTP","method":"POST","path":"/socket.io/?EIO=3&transport=polling&t=Q89KD_T&sid=WL92vbGSiZAKwAgkLQkK","status":200,"durMs":1,"reqLen":126,"respLen":2,"headers":"content-length=126; host=127.0.0.1:9528; content-type=text/plain;charset=UTF-8; accept-encoding=deflate, gzip; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative; accept=*/*","reqPreview":"122:420[\"handler.process\",{\"type\":\"User\",\"action\":\"GetServerList\",\"userId\":\"1795452617515\",\"subChannel\":\"\",\"channel\":\"quick\"}]","respPreview":"ok","extra":"EVENT: 420[\"handler.process\",{\"type\":\"User\",\"action\":\"GetServerList\",\"userId\":\"1795452617515\",\"subChannel\":\"\",\"channel\":\"quick\"}] | ACK: 430[{\"ret\":0,\"data\":\"{\\\"serverList\\\":[{\\\"serverId\\\":1,\\\"name\\\":\\\"DragonBall Local\\\",\\\"online\\\":true,\\\"hot\\\":true,\\\"new\\\":false,\\\"url\\\":\\\"http://127.0.0.1:9528\\\",\\\"state\\\":1,\\\"recommend\\\":true,\\\"offlineReason\\\":\\\"\\\",\\\"registerTime\\\":1795452624,\\\"worldRoomId\\\":\\\"w1\\\",\\\"guildRoomId\\\":\\\"g1\\\"}],\\\"history\\\":[]}\",\"compress\":false}]"},{"seq":50,"ts":1795452624987,"time":"2026-11-23 23:50:24.987","port":5050,"kind":"WS","method":"WS","path":"/socket.io ws sid=WL92vbGSiZAKwAgkLQkK","status":200,"durMs":0,"reqLen":6,"respLen":0,"reqPreview":"2probe","respPreview":"3probe"},{"seq":51,"ts":1795452629178,"time":"2026-11-23 23:50:29.178","port":9530,"kind":"HTTP","method":"POST","path":"/v1/auth/getUserInfo","status":200,"durMs":4,"reqLen":633,"respLen":171,"headers":"content-length=633; host=127.0.0.1:9530; content-type=application/x-www-form-urlencoded; connection=Keep-Alive; accept-encoding=gzip; user-agent=Dalvik/2.1.0 (Linux; U; Android 12; itel S665L Build/SP1A.210812.016)","reqPreview":"sv=v2&data=eyJkZXZJRFNob3J0IjoiaXRlbC1TNjY1TEl0ZWxhcm02NC12OGFpdGVsLVM2NjVMUzY2NUwtRjA2%0ANU9QUlNVVkFwQXFBci1TLUdMLTIwMjUwMjA3VjUzM1NQMUEuMjEwODEyLjAxNklURUwiLCJzZXJp%0AYWxOdW0iOiJ1bmtub3duIiwiYXV0aFRva2VuIjoiMDcyNDRjMzkxNGZiM2UwNGJhZGRiYWE0Y2Iz%0AMTc4OTUiLCJzdWdnZXN0Q3VycmVuY3kiOiIiLCJjbGllbnRMYW5nIjoiaW4iLCJkZXZpY2VJZCI6%0AIjMxOUNFMzVBNzAzMUYzRDU4RERFOTY0ODZERTAxOUZGIiwicGxhdGZvcm0iOjEsInVpZCI6IjE3%0AOTU0NTI2MTc1MTUiLCJwcm9kdWN0Q29kZSI6Ijc1ODgwNzg3MzE4MDUzMDQzMzY1NTE1Mzg4NDkx%0ANTg4IiwiZ2FtZVZlcnNpb24iOjEsInNka1ZlcnNpb24iOjIyMywidGltZSI6MTc5NTQ1MjYyOTE2%0AOSwiY2hhbm5lbENvZGUiOiJJRCJ9%0A&sign=f1daad270f76d67ca89a87821fcfadab","respPreview":"{\"result\":true,\"data\":{\"uid\":\"1795452617515\",\"username\":\"Guest8997\",\"displayUid\":\"1795452617515\",\"token\":\"07244c3914fb3e04baddbaa4cb317895\",\"isGuest\":\"1\",\"openType\":\"12\"}}","extra":"GET-USER-INFO (Pusat Akun) | info akun by uid (tamu/email) | GERBANG-LOLOS | respCT=text/json"},{"seq":52,"ts":1795452634887,"time":"2026-11-23 23:50:34.887","port":5050,"kind":"HTTP","method":"GET","path":"/socket.io/?EIO=3&transport=polling&t=Q89KD_V&sid=WL92vbGSiZAKwAgkLQkK","status":200,"durMs":10020,"reqLen":0,"respLen":0,"headers":"host=127.0.0.1:9528; accept-encoding=deflate, gzip; user-agent=Mozilla/5.0 (Linux; Android 12; itel S665L Build/SP1A.210812.016) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.2883.95 Mobile Safari/537.36 EgretNative; accept=*/*","extra":"poll kosong (long-poll hold)"}];
+
+/* ===================== UTIL ===================== */
+function $(id){return document.getElementById(id)}
+function esc(x){return (x==null?'':''+x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function pathOf(e){var p=(''+(e.path||''));return p}
+function normPath(p){return (''+(p||'')).split('?')[0]}
+function pretty(s){var t=(''+s).trim();var c=t.charAt(0),e2=t.charAt(t.length-1);
+  if((c=='{'&&e2=='}')||(c=='['&&e2==']')){try{return JSON.stringify(JSON.parse(t),null,2)}catch(x){}}
+  return ''+s}
+function prettyExtra(x){var i=(''+x).indexOf('DECODED-XOR: ');
+  if(i>=0){try{return x.substring(0,i+13)+'\n'+JSON.stringify(JSON.parse(x.substring(i+13).trim()),null,2)}catch(y){}}
+  return ''+x}
+function hdrLines(h){return h?(''+h).split('; ').join('\n'):''}
+function ms2(n){var mb=n/1048576;return mb>=1?mb.toFixed(1)+'MB':Math.round(n/1024)+'KB'}
+function durStr(e){
+  var hold=(e.extra||'').indexOf('poll kosong')>=0&&e.durMs>4000;
+  if(hold)return 'hold';
+  if(!e.durMs)return '';
+  return e.durMs>=1000?(e.durMs/1000).toFixed(1)+'s':e.durMs+'ms';
+}
+function tOf(e){return (e.time||'').substring(11)}
+function uin(x){var m=/uid[=\":]+([0-9]+)/.exec(''+x);return m?m[1]:'?'}
+function toast(m,err){var el=$('toast');el.textContent=m;el.className=err?'err':'';
+  el.style.display='block';clearTimeout(el._t);el._t=setTimeout(function(){el.style.display='none'},2400)}
+
+/* ===================== PORT & SEVERITAS ===================== */
+var PORTS={
+  9527:{name:'konfig',emo:'⚙️'}, 9528:{name:'CDN',emo:'📦'},
+  5050:{name:'login',emo:'🔑'}, 5051:{name:'game',emo:'🎮'},
+  9530:{name:'SDK',emo:'🛡️'}, 4000:{name:'logger',emo:'📝'}
+};
+var PORT_ORDER=['9527','9528','5050','5051','9530','4000'];  /* urut alur game */
+function portChip(e){var p=PORTS[e.port]||{name:'?',emo:'❔'};return p.emo+' '+e.port+' '+p.name}
+
+/* ---- KLASIFIKASI v8 — inti pembenahan: overlay & aset dekoratif = INFO, BUKAN error ---- */
+function isCosmetic(e){
+  if((e.status||0)!=404)return false;
+  return /_png$|\.png($|\?)|\.jpg($|\?)|\.webp|\.gif|Instagram_|Telegram_|Discord_|Logo18/i.test(e.path||'');
+}
+function isHeartbeat(e){
+  if((e.extra||'').indexOf('poll kosong')>=0)return true;
+  if(e.respPreview=='pong')return true;
+  return false;
+}
+function classify(e){
+  var k=e.kind||'',st=e.status||0,p=e.path||'';
+  if(k=='CRASH')return 'err';
+  if(k=='SYS'&&e.method=='OVERLAY')return 'info';            // ← IZIN OVERLAY = INFO (tidak wajib)
+  if(isCosmetic(e))return 'info';                            // ← 404 gambar dekoratif = INFO (normal)
+  if((e.error||'').length)return 'err';
+  if(st>=500)return 'err';
+  if(st==404)return 'err';                                   // 404 config wajib = error sungguhan
+  if((e.respPreview||'').indexOf('"result":false')>=0)return 'err';
+  if(st>=400)return 'warn';
+  if(k=='SYS'&&/gagal|ditolak|rusak/i.test(p))return 'err';
+  /* sukses penting = ok; rutinitas = info */
+  if(k=='SYS'&&/AKTIF|siap di boot|mini-server aktif/.test(p))return 'ok';
+  if(e.port==9527&&st==200)return 'ok';
+  if(e.port==9528&&st==200){
+    if(/base\.version|resource\.version|upgrade\.json|size\.json|all\.zip|index-native|serversetting|clientversion|manifest\.json/.test(normPath(p)))return 'ok';
+    return 'info';
+  }
+  if(e.port==9530){
+    if(/system\/init|registerVisitor|registerUser|loginByName|autoLogin|getUserInfo/.test(p))return 'ok';
+    return 'info';
+  }
+  if(e.port==5050){
+    if(/loginchecknative/.test(p))return 'ok';
+    if((e.extra||'').indexOf('ACK')>=0&&(e.extra||'').indexOf('"ret":0')>=0)return 'ok';
+    if(st==101)return 'ok';
+    if(isHeartbeat(e))return 'info';
+    return 'info';
+  }
+  if(e.port==5051){
+    if((e.extra||'').indexOf('"ret":0')>=0)return 'ok';
+    return 'info';
+  }
+  return 'info';
+}
+var SEV_EMO={ok:'✅',info:'ℹ️',warn:'⚠️',err:'❌'};
+var SEV_LABEL={ok:'OK',info:'INFO',warn:'WARN',err:'ERROR'};
+
+/* ===================== DESKRIPSI MANUSIA (teks jelas, bahasa netral) ===================== */
+function epName(p){
+  if(p.indexOf('/v1/system/init')>=0)return 'Inisialisasi SDK';
+  if(p.indexOf('registerVisitor')>=0)return 'Buat akun tamu';
+  if(p.indexOf('registerUser')>=0)return 'Pendaftaran (DAFTAR)';
+  if(p.indexOf('loginByName')>=0)return 'Login (LOGIN)';
+  if(p.indexOf('autoLogin')>=0)return 'Login otomatis';
+  if(p.indexOf('getUserInfo')>=0)return 'Info akun';
+  if(p.indexOf('getNotice')>=0)return 'Cek pengumuman SDK';
+  if(p.indexOf('setGameRoleInfo')>=0)return 'Lapor data karakter';
+  if(p.indexOf('ckRegVistor')>=0)return 'Cek Kode Migrasi';
+  return 'SDK '+p.substring(0,40);
+}
+function eventName(extra){
+  var s=''+(extra||'');var i=s.indexOf('EVENT: 42');if(i<0)return null;
+  var m=/action":"([A-Za-z]+)/.exec(s.substring(i));
+  var ack=s.indexOf('ACK: 43',i)>=0;
+  return m?{a:m[1],ack:ack}:{a:'?',ack:ack};
+}
+function describe(e){
+  var k=e.kind||'',p=pathOf(e),np=normPath(p),st=e.status||0;
+  if(k=='CRASH')return ['CRASH proses game — '+p,'bad'];
+  if(k=='BOOT')return [p,''];
+  if(k=='EXTRACT')return [p,''];
+  if(k=='SYS'&&e.method=='OVERLAY'){
+    return ['Izin overlay OFF — <span class=dim>TIDAK wajib</span>, SDK tetap berjalan normal',''];
+  }
+  if(k=='SYS'){
+    if(/AKTIF/.test(p))return ['<span class=good>'+esc(p)+'</span>',''];
+    return [esc(p),''];
+  }
+  if(k=='LOGCAT')return ['Rekaman logcat — diagnostik otomatis',''];
+  if(k=='WS'){
+    if(st==101)return ['Upgrade WebSocket <b>berhasil</b> (101)',''];
+    return ['Keep-alive WebSocket sehat (ping-pong)',''];
+  }
+  if(e.port==9527){
+    if(np.indexOf('setting_BS')>=0)return ['Baca <b>konfigurasi game</b> — server diarahkan ke 127.0.0.1',''];
+    if(np.indexOf('com_db_local')>=0)return ['Baca konfigurasi aplikasi (kosong — normal)',''];
+    return ['Konfigurasi: '+esc(np),''];
+  }
+  if(e.port==9528){
+    if(np.indexOf('base.version')>=0)return ['Cek <b>versi dasar</b> — '+esc((e.respPreview||'').trim()||'?'),''];
+    if(np.indexOf('resource.version')>=0)return ['Cek <b>versi resource</b> — '+esc((e.respPreview||'').trim()||'?'),''];
+    if(np.indexOf('upgrade.json')>=0)return ['Baca <b>daftar paket update</b>',''];
+    if(np.indexOf('size.json')>=0)return ['Baca <b>ukuran paket update</b>',''];
+    if(np.indexOf('all.zip')>=0)return ['Unduh <b>paket update</b> — '+ms2(e.respLen||0)+' dalam '+durStr(e),''];
+    if(np.indexOf('serversetting')>=0)return ['Kirim <b>alamat server login</b> (loginserver → 127.0.0.1)',''];
+    if(np.indexOf('index-native')>=0)return ['Muat <b>UI game</b> (index-native.html) — '+ms2(e.respLen||0),''];
+    if(np.indexOf('manifest.json')>=0)return ['Muat manifest game',''];
+    if(np.indexOf('clientversion')>=0)return ['<span class=good>Kirim clientversion</span> — popup "Server clientversion is Not Exist" <b>hilang</b>',''];
+    if(isCosmetic(e))return ['Aset dekoratif tidak tersedia — <span class=dim>normal, hanya gambar sosmed/UI lama</span>',''];
+    if(/\.js($|\?)/.test(p))return ['Muat skrip game — '+esc(np.split('/').pop()),''];
+    if(np.indexOf('/resource/')>=0)return ['Muat aset game — '+esc(np.split('/').pop().substring(0,44)),''];
+    return ['CDN: '+esc(np),''];
+  }
+  if(e.port==9530){
+    if(p.indexOf('/v1/system/init')>=0)return ['<b>Inisialisasi SDK</b> — sukses, layar login mengikuti loginTypes',''];
+    if(p.indexOf('registerVisitor')>=0)return ['<b>Buat akun tamu</b> — uid '+esc(uin(e.extra||e.reqPreview))+' tersimpan permanen',''];
+    if(p.indexOf('getNotice')>=0)return ['Cek pengumuman SDK — tidak ada',''];
+    if(p.indexOf('getUserInfo')>=0)return ['<span class=good>Info akun</span> — GERBANG-LOLOS, sesi SDK valid',''];
+    return [epName(p)+' — sukses',''];
+  }
+  if(e.port==5050){
+    if(p.indexOf('loginchecknative')>=0)return ['<b>Verifikasi akun</b> (loginchecknative) — game dilanjutkan',''];
+    if((e.extra||'').indexOf('OPEN')>=0)return ['Handshake <b>server login</b> — sesi dibuat (OPEN + 40)',''];
+    if(st==101)return ['Upgrade WebSocket <b>berhasil</b> (101)',''];
+    if(isHeartbeat(e))return ['Long-poll <span class=dim>menahan koneksi (normal, bukan lambat)</span>',''];
+    var ev=eventName(e.extra);
+    if(ev&&ev.a=='GetServerList'){
+      var okA=(e.extra||'').indexOf('"ret":0')>=0;
+      return okA?['<span class=good><b>Daftar server</b> dijawab ret:0</span> — "DragonBall Local" @127.0.0.1:9528','']
+                :['Event login <b>'+esc(ev.a)+'</b>'+(ev.ack?' — dijawab':' — dikirim'),''];
+    }
+    if(ev)return ['Event login <b>'+esc(ev.a)+'</b>'+(ev.ack?' — dijawab':' — dikirim'),''];
+    return ['Server login: '+esc(np.substring(0,56)),''];
+  }
+  if(e.port==5051){
+    var ev2=eventName(e.extra);
+    if(ev2&&ev2.a=='enterGame')return ['<b>Masuk server 1</b> — data pemain diterima ('+ms2(e.respLen||0)+')',''];
+    if(ev2)return ['Event game <b>'+esc(ev2.a)+'</b>'+(ev2.ack?' — dijawab':' — dikirim'),''];
+    return ['Server game: '+esc(np.substring(0,56)),''];
+  }
+  return [esc(np),''];
+}
+
+/* ===================== DETAIL BLOK ===================== */
+function detOf(e){
+  var d=[];
+  if(e.kind!='HTTP'){
+    var t=(e.path||'')+(e.respPreview?'\n'+pretty(e.respPreview):'');
+    if(e.extra)t+='\n'+prettyExtra(e.extra);
+    d.push({l:'INFO',t:t});
+  }else{
+    var t2=(e.method||'')+' http://127.0.0.1:'+e.port+(e.path||'')+'\n'+hdrLines(e.headers);
+    if(e.reqPreview)t2+='\n[body '+(e.reqLen||0)+'B]\n'+pretty(e.reqPreview);
+    d.push({l:'REQUEST',t:t2});
+    if(e.respPreview!=null)d.push({l:'RESPON',t:'status '+(e.status||0)+'\n'+pretty(e.respPreview)});
+  }
+  if(e.extra&&e.kind=='HTTP')d.push({l:'EXTRA',t:prettyExtra(e.extra)});
+  if(e.error)d.push({l:'ERROR',t:e.error});
+  return d;
+}
+
+/* ===================== PENGELOMPOKKAN (efisiensi tampilan) ===================== */
+function groupKey(e,sev){
+  if(isCosmetic(e))return 'COSMETIC';
+  if(/SDK-CONFIG seed/.test(e.path||''))return 'SEED';
+  if(isHeartbeat(e))return 'HB'+e.port;
+  if(sev=='ok'&&e.port==9527)return 'CFG'+normPath(e.path);
+  return null;
+}
+function groupEntries(list){
+  var out=[];
+  for(var i=0;i<list.length;i++){
+    var e=list[i],sev=e._sev,gk=groupKey(e,sev);
+    if(gk){
+      var last=out.length?out[out.length-1]:null;
+      if(last&&last._group===gk){last._members.push(e);continue}
+      out.push({_group:gk,_members:[e]});
+      continue;
+    }
+    out.push(e);
+  }
+  return out;
+}
+function groupName(g){
+  var m=g._members,e=m[0],gk=g._group;
+  if(gk=='COSMETIC')return {emo:'🖼️',title:'Aset dekoratif tidak ada — <span class=dim>normal ('+m.length+' file)</span>',
+    files:m.map(function(x){return normPath(x.path).split('/').pop()})};
+  if(gk=='SEED')return {emo:'🧩',title:'Seed kontrak SDK ke disk — <span class=dim>'+m.length+' file</span>',
+    files:m.map(function(x){return (x.path||'').replace('SDK-CONFIG seed: ','')})};
+  if(gk.indexOf('HB')===0)return {emo:'💓',title:'Keep-alive koneksi <span class=dim>— '+m.length+'× long-poll normal (bukan lambat)</span>',files:[]};
+  return {emo:'⚙️',title:describe(e)[0],
+    files:m.map(function(x){return normPath(x.path).split('/').pop()})};
+}
+
+/* ===================== STATE & RENDER ===================== */
+var S={sevOn:{ok:true,info:true,warn:true,err:true},portOn:{},q:'',paused:false,open:{}};
+Object.keys(PORTS).forEach(function(p){S.portOn[p]=true});
+var STREAM=$('stream');
+var renderedCount=0;   /* entri mentah yang sudah masuk render (untuk simulasi) */
+var pending=[];        /* buffer saat jeda */
+var latestSeq=0;
+
+function counts(list){
+  var c={ok:0,info:0,warn:0,err:0};
+  list.forEach(function(e){c[classify(e)]++});
+  return c;
+}
+function renderStats(){
+  var c=counts(DATA.slice(0,renderedCount));
+  var dur=renderedCount>1?((DATA[renderedCount-1].ts-DATA[0].ts)/1000).toFixed(1)+'s':'—';
+  var bad=c.err+c.warn;
+  var h='<span class="stat">⏱️ durasi sesi <b>'+dur+'</b></span>'
+    +'<span class="stat">📥 entri <b>'+renderedCount+'</b></span>'
+    +'<span class="stat ok">✅ <b>'+c.ok+'</b></span>'
+    +'<span class="stat info">ℹ️ <b>'+c.info+'</b></span>'
+    +'<span class="stat warn">⚠️ <b>'+c.warn+'</b></span>'
+    +'<span class="stat err">❌ <b>'+c.err+'</b></span>'
+    +'<span class="stat '+(bad?'health-bad':'health-ok')+'">'+(bad?'❗ '+bad+' perlu dilihat':'✨ SEMUA SEHAT')+'</span>';
+  $('statrow').innerHTML=h;
+}
+function renderChips(){
+  var c=counts(DATA.slice(0,renderedCount));
+  var h='';
+  ['ok','info','warn','err'].forEach(function(s){
+    h+='<button class="chip s-'+s+(S.sevOn[s]?' on':'')+'" data-sev="'+s+'">'+SEV_EMO[s]+' '+SEV_LABEL[s]
+      +' <span class=n>'+c[s]+'</span></button>';
+  });
+  $('sevChips').innerHTML=h;
+  var hp='';
+  Object.keys(PORTS).forEach(function(p){
+    var n=0;DATA.slice(0,renderedCount).forEach(function(e){if(e.port==p)n++});
+    hp+='<button class="chip'+(S.portOn[p]?' on':'')+'" data-port="'+p+'">'+PORTS[p].emo+' '+p
+      +' '+PORTS[p].name+' <span class=n>'+n+'</span></button>';
+  });
+  var ordered='';PORT_ORDER.forEach(function(p){
+    var m=hp.match(new RegExp('<button[^>]*data-port="'+p+'"[\\s\\S]*?</button>'));
+    if(m)ordered+=m[0];
+  });
+  $('portChips').innerHTML=ordered||hp;
+}
+function passFilters(e){
+  if(!S.sevOn[e._sev||classify(e)])return false;
+  if(!S.portOn[e.port])return false;
+  if(S.q){
+    var t=((e.path||'')+' '+(e.extra||'')+' '+(e.reqPreview||'')+' '+(e.respPreview||'')+' '+(e.error||'')).toLowerCase();
+    if(t.indexOf(S.q)<0)return false;
+  }
+  return true;
+}
+function cardHtml(card){
+  if(card._group)return groupCardHtml(card);
+  var e=card,sev=e._sev,d=describe(e);
+  var dur=durStr(e);
+  var meta='<span class=meta2>#'+e.seq+'</span>'
+    +'<span class=mtime>'+tOf(e)+'</span>'
+    +'<span class=pchip>'+portChip(e)+'</span>'
+    +(e.kind=='HTTP'?'<span>'+esc(e.method||'')+'</span>':'<span>'+esc(e.kind)+'</span>')
+    +(e.status?'<span class="spill s-'+sev+'">'+e.status+'</span>':'')
+    +(dur?'<span class=meta2>⏱ '+dur+'</span>':'')
+    +(e.reqLen?'<span class=meta2>⬆ '+ms2(e.reqLen)+'</span>':'')
+    +(e.respLen?'<span class=meta2>⬇ '+ms2(e.respLen)+'</span>':'')
+    +(e.error?'<span class=meta2 style=color:var(--err)>'+esc(e.error.substring(0,60))+'</span>':'');
+  return '<div class="card s-'+sev+(S.open[e.seq]?' open':'')+'" data-seq="'+e.seq+'">'
+    +'<div class=strip></div>'
+    +'<div class=card-main>'
+    +'<span class=emo>'+SEV_EMO[sev]+'</span>'
+    +'<div class=cbody><div class=ctitle>'+d[0]+'</div><div class=cmeta>'+meta+'</div></div>'
+    +'<span class=caret>▶</span>'
+    +'</div>'
+    +'<div class=cdetail>'+detailHtml(e)+'</div>'
+    +'</div>';
+}
+function groupCardHtml(g){
+  var gi=groupName(g),m=g._members,e=m[0],sev=e._sev;
+  var names=gi.files.slice(0,4).map(function(f){return '· '+esc(f)}).join('<br>');
+  var more=gi.files.length>4?'<br><span style=color:var(--tx3)>· … +'+(gi.files.length-4)+' lagi</span>':'';
+  var dur=durStr(m[m.length-1]);
+  var meta='<span class=mtime>'+tOf(e)+'</span>'
+    +'<span class=pchip>'+portChip(e)+'</span>'
+    +'<span class="spill s-'+sev+'">'+(e.status||0)+'</span>'
+    +'<span class=meta2>'+m.length+' entri digabung</span>'
+    +(dur?'<span class=meta2>⏱ terakhir '+dur+'</span>':'');
+  var dhtml='<div class=dblock><div class=dhead><span class=dlabel>ANGGOTA ('+m.length+')</span>'
+    +'<button class="btn dcopy" data-gcopy="'+g._group+'">📋</button></div>'
+    +'<div class=dpre>'+m.map(function(x){return esc(tOf(x))+'  '+(normPath(x.path).split('/').pop()||x.path||'')+'  '+(x.status||0)}).join('\n')+'</div></div>';
+  return '<div class="card s-'+sev+'" data-g="'+g._group+'">'
+    +'<div class=strip></div>'
+    +'<div class=card-main>'
+    +'<span class=emo>'+gi.emo+'</span>'
+    +'<div class=cbody><div class=ctitle>'+gi.title+(m.length>1?'<span class=x>×'+m.length+'</span>':'')+'</div><div class=cmeta>'+meta+'</div>'
+    +(names?'<div class=cmeta style="margin-top:6px">'+names+more+'</div>':'')
+    +'</div>'
+    +'<span class=caret>▶</span>'
+    +'</div>'
+    +'<div class=cdetail>'+dhtml+'</div>'
+    +'</div>';
+}
+function detailHtml(e){
+  var blocks=detOf(e),h='';
+  blocks.forEach(function(b,i){
+    h+='<div class=dblock><div class=dhead><span class=dlabel>'+b.l+'</span>'
+      +'<button class="btn dcopy" data-bi="'+i+'" data-seq="'+e.seq+'">📋</button></div>'
+      +'<div class=dpre>'+esc(b.t)+'</div></div>';
+  });
+  return h;
+}
+function fullRender(){
+  for(var i=0;i<renderedCount;i++)DATA[i]._sev=classify(DATA[i]);
+  var vis=DATA.slice(0,renderedCount).filter(passFilters);
+  lastGroups=groupEntries(vis);
+  var h='';lastGroups.forEach(function(g){h+=g._group?groupCardHtml(g):cardHtml(g)});
+  STREAM.innerHTML=h;
+  renderStats();renderChips();
+  latestSeq=renderedCount?DATA[renderedCount-1].seq:0;
+}
+
+/* ---- jeda / entri baru ---- */
+function flushPending(){
+  if(!pending.length)return;
+  renderedCount=Math.max(renderedCount,pending[pending.length-1]);
+  pending=[];fullRender();updateNewpill();
+}
+function atBottom(){
+  return (window.innerHeight+window.scrollY)>=document.body.scrollHeight-120;
+}
+function pushLive(n){
+  if(S.paused){pending.push(n);updateNewpill();return}
+  var follow=atBottom();
+  renderedCount=n;fullRender();updateNewpill();
+  if(follow)window.scrollTo(0,document.body.scrollHeight);
+}
+function updateNewpill(){
+  var b=$('newpill');
+  if(S.paused&&pending.length){b.style.display='block';$('newpillN').textContent=pending.length}
+  else b.style.display='none';
+}
+
+/* ===================== INTERAKSI ===================== */
+STREAM.addEventListener('click',function(ev){
+  var cp=ev.target.closest?ev.target.closest('.dcopy'):null;
+  if(cp){
+    ev.stopPropagation();
+    var bi=cp.getAttribute('data-bi'),gs=cp.getAttribute('data-gcopy');
+    if(bi){
+      var card=cp.closest('.card'),seq=+card.getAttribute('data-seq');
+      var e=DATA.filter(function(x){return x.seq===seq})[0];
+      copyText(detOf(e)[+bi].t);
+    }else{
+      var gcard=cp.closest('.card'),gk=gcard.getAttribute('data-g');
+      var g=lastGroups.filter(function(x){return x._group===gk})[0];
+      if(g)copyText(g._members.map(function(x){return tOf(x)+'  '+normPath(x.path)+'  '+(x.status||0)}).join('\n'));
+    }
+    return;
+  }
+  var main=ev.target.closest?ev.target.closest('.card-main'):null;
+  if(!main)return;
+  var c2=main.closest('.card');
+  var gseq=c2.getAttribute('data-seq'),gg=c2.getAttribute('data-g');
+  var key=gseq?'s'+gseq:'g'+gg;
+  S.open[key]=!S.open[key];
+  if(gseq){c2.classList.toggle('open',!!S.open[key])}
+  else{ /* grup: render ulang kartu grup utk toggle ANGGOTA */
+    c2.classList.toggle('open',!!S.open[key]);
+    var pre=c2.querySelector('.cdetail .dpre');
+    if(pre)pre.style.display=(pre.style.display=='none'?'':'none');
+    var dh=c2.querySelector('.cdetail');
+    if(!S.open[key]&&dh)dh.style.display='';
+    if(S.open[key]&&!dh._shown){dh._shown=true;dh.style.display='block'}
+    if(dh)dh.style.display=S.open[key]?'block':'';
+  }
+});
+var lastGroups=[];  /* diisi fullRender; dipakai tombol salin kartu grup */
+$('sevChips').addEventListener('click',function(ev){
+  var b=ev.target.closest?ev.target.closest('[data-sev]'):null;if(!b)return;
+  var s=b.getAttribute('data-sev');S.sevOn[s]=!S.sevOn[s];fullRender();
+});
+$('portChips').addEventListener('click',function(ev){
+  var b=ev.target.closest?ev.target.closest('[data-port]'):null;if(!b)return;
+  var p=b.getAttribute('data-port');S.portOn[p]=!S.portOn[p];fullRender();
+});
+var qt=null;
+$('q').oninput=function(){clearTimeout(qt);var v=this.value.toLowerCase();
+  qt=setTimeout(function(){S.q=v;fullRender()},180)};
+$('clearBtn').onclick=function(){S.open={};fullRender();toast('🧹 detail ditutup — entri tetap aman di arsip')};
+$('pauseBtn').onclick=function(){
+  S.paused=!S.paused;
+  $('pauseBtn').textContent=S.paused?'▶️ Lanjut':'⏸ Jeda';
+  $('livePill').className='live'+(S.paused?' off':'');
+  $('liveTxt').textContent=S.paused?'JEDA':'LIVE';
+  if(!S.paused){flushPending();toast('▶️ streaming dilanjutkan')}
+};
+$('newpill').onclick=function(){S.paused=false;$('pauseBtn').textContent='⏸ Jeda';
+  $('livePill').className='live';$('liveTxt').textContent='LIVE';
+  flushPending();window.scrollTo(0,document.body.scrollHeight)};
+$('ovBtn').onclick=function(){toast('di APK: halaman Settings izin overlay dibuka (POST /fix/overlay)')};
+
+/* salin (dengan fallback HTTP biasa) */
+function copyText(t){
+  if(navigator.clipboard&&navigator.clipboard.writeText&&location.protocol==='https:'){
+    navigator.clipboard.writeText(t).then(function(){toast('📋 tersalin '+t.length+' karakter')},
+    function(){legacyCopy(t)});
+  }else legacyCopy(t);
+}
+function legacyCopy(t){
+  var ta=document.createElement('textarea');ta.value=t;
+  ta.style.cssText='position:fixed;left:-9999px;top:0';
+  document.body.appendChild(ta);ta.focus();ta.select();
+  var ok=false;try{ok=document.execCommand('copy')}catch(x){}
+  document.body.removeChild(ta);
+  if(ok)toast('📋 tersalin '+t.length+' karakter');
+  else toast('salin manual tidak didukung browser ini',true);
+}
+function copyTSV(){
+  var vis=DATA.slice(0,renderedCount).filter(passFilters);
+  var out=['#\tWAKTU\tSEV\tPORT\tSTATUS\tDUR\tPERISTIWA'];
+  vis.forEach(function(e){
+    var d=describe(e).join(' ').replace(/<[^>]*>/g,'');
+    out.push([e.seq,tOf(e),SEV_LABEL[classify(e)],e.port,e.status||0,durStr(e)||'-',d].join('\t'));
+  });
+  copyText(out.join('\n'));
+}
+function copyJSON(){
+  var vis=DATA.slice(0,renderedCount).filter(passFilters);
+  copyText(JSON.stringify(vis,null,1));
+}
+$('cpT').onclick=copyTSV;
+$('cpJ').onclick=copyJSON;
+$('dlBtn').onclick=function(){toast('di APK: mengunduh arsip NDJSON terbaru dari /download?latest=1')};
+
+/* ===================== SIMULASI LIVE ===================== */
+var simTimer=null;
+$('simBtn').onclick=function(){
+  if(simTimer){clearTimeout(simTimer);simTimer=null;$('simBtn').textContent='▶️ Simulasi live';return}
+  if(renderedCount>=DATA.length){renderedCount=0;fullRender()}
+  $('simBtn').textContent='⏹ Stop simulasi';
+  (function step(){
+    if(renderedCount>=DATA.length){$('simBtn').textContent='▶️ Simulasi live';simTimer=null;
+      toast('✨ selesai — '+DATA.length+' entri (data asli sesi 23:50)');return}
+    renderedCount++;pushLive(renderedCount);
+    simTimer=setTimeout(step,renderedCount===1?60:(120+Math.random()*380));
+  })();
+};
+
+/* ===================== CATATAN OVERLAY (versi netral) ===================== */
+function renderOverlayNote(){
+  var ov=DATA.filter(function(e){return e.kind=='SYS'&&e.method=='OVERLAY'})[0];
+  var w=$('ovnote');
+  if(!ov){w.style.display='none';return}
+  w.style.display='flex';
+  $('ovTitle').textContent='Izin "Display over other apps" OFF — bukan masalah';
+  $('ovMsg').textContent='Game asli tidak pernah meminta izin ini dan SDK tetap berjalan normal (terbukti sesi 23 Nov: tanpa crash, sampai daftar server). Di v8 status ini = INFO, bukan error. Aktifkan hanya bila suatu saat diminta.';
+  $('ovBtn').style.display='inline-block';
+}
+
+/* ===================== BOOT ===================== */
+renderedCount=DATA.length;
+fullRender();
+renderOverlayNote();
+window.scrollTo(0,0);
+</script>
+</body>
+</html>
