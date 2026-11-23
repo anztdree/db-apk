@@ -39,8 +39,8 @@ import java.util.ArrayList;
  *
  * ATURAN AUTO-GUARD (boot): reset HANYA bila (izin overlay OFF) &&
  * (ada laporan crash belum ditangani) && (sesi tersimpan ada). Sesi pemain
- * yang normal / izin aktif TIDAK pernah disentuh. Manual: tombol panel
- * SDK CONFIG "RESET SESI SDK" (POST /sdkconfig/session-reset).
+ * yang normal / izin aktif TIDAK pernah disentuh (reset manual saja tidak
+ * disediakan lagi — port 4000 murni log monitoring, Bagian 43).
  * Akun di database server/sdk/data TIDAK dihapus — pemain cukup login ulang.
  */
 public final class SessionReset {

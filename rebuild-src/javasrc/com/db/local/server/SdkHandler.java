@@ -204,8 +204,8 @@ public final class SdkHandler implements HttpWorker.Handler {
                 Db.log("PRODUCT DITOLAK 30001: productCode=" + pl
                         + " tidak ada di sdk/profile.json (products="
                         + SdkConfig.productsList().toString()
-                        + ") — BUKA panel SDK CONFIG 127.0.0.1:4000/sdkconfig"
-                        + " -> tombol TERIMA PRODUCT INI");
+                        + ") — tambahkan productCode ke daftar products di sdk/profile.json"
+                        + " lalu force-stop & buka game ulang");
             }
             return errLive(30001, "Product doesn't exist");
         }

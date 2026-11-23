@@ -17,9 +17,23 @@
 #     terstruktur & rapi, emoji stylish (chip layanan, badge tahap, verdict
 #     ✅❌⚠️ℹ️⚙️, tombol & banner beremoji).
 #  5. IZIN OVERLAY = INFO, BUKAN error (arahan owner: game asli tidak
-#     pernah minta overlay; SDK tetap berjalan normal): verdict ℹ️ INFO,
+#     pernah minta overlay; SDK tetap berjalan normal): verdict INFO,
 #     eksklusi eksplisit di isProblem, banner merah overlay dihapus,
 #     teks OverlayFixer/SessionReset dinetralkan.
+# Bagian 43 — rombak total ATAS ARAHAN OWNER (kata-kata persis):
+#  "sekarang mari rombak lagi logger dan UI di website kita, logger ini
+#   emang stylish tapi gak seperti layaknya server yg Natural sedang
+#   berjalan.."
+#  6. CONSOLE v7 — dashboard SERVER NATURAL: terminal monospace hitam
+#     pekat, entri log TANPA emoji (teks polos seperti server sungguhan),
+#     satu baris per peristiwa mengalir ke bawah, kursor blok berkedip,
+#     baris status LISTEN/uptime/seq/arsip/status. Tidak ada lagi kartu/
+#     chip/pill/badge warna-warni dan judul "DB MONITOR".
+#  7. PORT 4000 MURNI log monitoring — rute /sdkconfig*, /sdkconfig/api,
+#     /sdkconfig/save, /sdkconfig/preset, /sdkconfig/product-add,
+#     /sdkconfig/session-reset dan POST /fix/overlay DIHAPUS dari
+#     LoggerHandler (404). Bukan cuma disembunyikan dari tampilan — rute
+#     benar-benar tidak ada (penegasan arahan Bagian 41).
 import base64, hashlib, json, os, shutil, signal, subprocess, sys, time, urllib.request, urllib.error, urllib.parse
 import re
 
@@ -73,6 +87,14 @@ def form_post(path, fields):
 def get400(path):
     with urllib.request.urlopen("http://127.0.0.1:4000" + path, timeout=10) as r:
         return r.status, dict(r.headers), r.read().decode("utf-8", "replace")
+
+def get400s(path):
+    """GET :4000 yang TIDAK melempar saat 4xx/5xx (utk uji rute dihapus 404)."""
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:4000" + path, timeout=10) as r:
+            return r.status, dict(r.headers), r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, dict(e.headers), e.read().decode("utf-8", "replace")
 
 def get(path):
     with urllib.request.urlopen(BASE + path, timeout=10) as r:
@@ -331,79 +353,39 @@ try:
     check("backend-desktop-json", not os.path.exists(ROOT + "/sdk/data/db.json")
           and os.path.exists(ROOT + "/sdk/data/account.json"))
 
-    # ============ Bagian 30: PANEL SDK CONFIG (dashboard 4000) ============
-    st, hd, bd = get400("/sdkconfig")
-    check("panel-GET-200", st == 200 and "SDK CONFIG" in bd)
-    st, hd, bd = get400("/sdkconfig/api")
-    api = json.loads(bd)
-    check("panel-api-backend", api["backend"] == "json", bd[:120])
-    check("panel-api-tamu", api["guest"] and api["guest"]["uid"] == GUEST_NOW, bd[:200])
-    check("panel-api-file-init", "payTypes" in api["files"]["init.json"])
-    check("panel-api-qhinfo", api["files"]["QHinfo"] == "http://127.0.0.1:9530")
-    # v16: api membawa status product
-    check("v2-panel-api-ver", api.get("ver") == "v3", bd[:80])
-    check("v16-panel-api-products", PRODUCT_ASLI in api.get("products", []))
+    # ============ Bagian 43: PORT 4000 MURNI LOG MONITORING ============
+    # Arahan owner (kata-kata persis, Bagian 41 + penegasan Bagian 43):
+    #  "PORT 4000 CUMA UNTUK LOG MONITORING" — kini rute config SDK
+    #  benar-benar DIHAPUS dari LoggerHandler (404), bukan disembunyikan.
+    for del_route in ("/sdkconfig", "/sdkconfig/api", "/sdkconfig/save",
+                      "/sdkconfig/preset", "/sdkconfig/product-add",
+                      "/sdkconfig/session-reset", "/fix/overlay"):
+        st, hd, bd = get400s(del_route)
+        check("v43-rute-dihapus-404 " + del_route, st == 404, "%s -> %s" % (del_route, st))
+    st, hd, bd = form_post("/sdkconfig/session-reset", {})
+    check("v43-session-reset-404", st == 404, "%s" % st)
+    st, hd, bd = form_post("/sdkconfig/save", {"name": "init.json", "content": "{}"})
+    check("v43-save-404", st == 404, "%s" % st)
+    st, hd, bd = form_post("/fix/overlay", {})
+    check("v43-fix-overlay-404", st == 404, "%s" % st)
+    # QHinfo tidak bisa diubah lewat port 4000 lagi — isi tetap benar
+    check("v43-qhinfo-utuh", open(ROOT + "/sdk/QHinfo").read().strip() == "http://127.0.0.1:9530")
 
-    # v16: endpoint product-add — tambah kode + validasi
-    st, hd, bd = form_post("/sdkconfig/product-add", {"code": "TestProd123"})
-    check("v16-product-add-ok", json.loads(bd)["result"] is True, bd)
-    st, hd, bd = get400("/sdkconfig/api")
-    api2 = json.loads(bd)
-    check("v16-product-add-berlaku", "TestProd123" in api2.get("products", []))
-    st, hd, bd = form_post("/sdkconfig/product-add", {"code": "a,b"})
-    check("v16-product-add-tolak-koma", json.loads(bd)["result"] is False, bd)
-    st, hd, bd = form_post("/sdkconfig/product-add", {"code": "x" * 65})
-    check("v16-product-add-tolak-panjang", json.loads(bd)["result"] is False, bd)
-    st, hd, bd = form_post("/sdkconfig/product-add", {"code": "TestProd123"})
-    check("v16-product-add-idempotent", json.loads(bd)["result"] is True, bd)
-    prof2 = open(ROOT + "/sdk/profile.json").read()
-    check("v16-product-add-satu-kali", prof2.count("\"TestProd123\"") == 1)
-
-    # save init.json via panel -> live-reload
-    new_init = json.dumps({"result": True, "data": {"payTypes": [], "loginTypes": ["12"]}})
-    st, hd, bd = form_post("/sdkconfig/save", {"name": "init.json", "content": new_init})
-    check("panel-save-init-ok", json.loads(bd)["result"] is True, bd)
-    st, hd, bd = get("/v1/system/init")
-    check("panel-save-init-livereload", json.loads(bd)["data"]["loginTypes"] == ["12"], bd)
-
-    # preset E3 -> loginTypes ["1","13"]
-    st, hd, bd = form_post("/sdkconfig/preset", {"types": "1,13"})
-    check("panel-preset-e3", json.loads(bd)["result"] is True, bd)
-    st, hd, bd = get("/v1/system/init")
-    check("panel-preset-e3-livereload", json.loads(bd)["data"]["loginTypes"] == ["1", "13"], bd)
-    # preset kembali E1 (default)
-    form_post("/sdkconfig/preset", {"types": "1"})
-
-    # penolakan panel: nama tak dikenal (whitelist), init tanpa payTypes, QHinfo slash
-    st, hd, bd = form_post("/sdkconfig/save", {"name": "../../evil", "content": "{}"})
-    check("panel-tolak-nama-asing", json.loads(bd)["result"] is False, bd)
-    st, hd, bd = form_post("/sdkconfig/save", {"name": "init.json", "content": "{\"result\":true}"})
-    check("panel-tolak-init-tanpa-payTypes", json.loads(bd)["result"] is False, bd)
-    st, hd, bd = form_post("/sdkconfig/save", {"name": "QHinfo", "content": "http://127.0.0.1:9530/"})
-    check("panel-tolak-qhinfo-slash", json.loads(bd)["result"] is False, bd)
-    st, hd, bd = form_post("/sdkconfig/save", {"name": "QHinfo", "content": "http://127.0.0.1:9530"})
-    check("panel-save-qhinfo-ok", json.loads(bd)["result"] is True, bd)
-    check("panel-qhinfo-berlaku", open(ROOT + "/sdk/QHinfo").read().strip() == "http://127.0.0.1:9530")
-    # file asing TIDAK dibuat (anti path traversal)
-    check("panel-tidak-buat-file-asing", not os.path.exists(ROOT + "/evil"))
-
-    # ============ Bagian 32: DASHBOARD v7 TABEL + CRASH + OVERLAY ============
+    # ============ Bagian 32/43: CONSOLE NATURAL + CRASH + OVERLAY =========
     st, hd, bd = get400("/")
-    # Bagian 39 — judul dashboard baru "DB MONITOR v3"
-    check("v17-dashboard-200", st == 200 and "DB MONITOR" in bd)
-    check("v17-tabel-markup", "<table id=tbl" in bd and "PERISTIWA" in bd
-          and "<tbody id=tb>" in bd, bd[:80])
-    check("v17-chip-tahap", "renderStages" in bd and "stagechips" in bd)
-    check("v17-salin-tabel", "copyTable" in bd and "Salin tabel" in bd)
+    # Bagian 43 — console server natural (bukan aplikasi stylish)
+    check("v43-console-200", st == 200 and "com.db.local — server console" in bd,
+          bd[:120])
+    check("v43-stream-markup", "id=stream" in bd and "id=tb" in bd
+          and "id=tail" in bd, bd[:80])
+    check("v17-salin-tabel", "copyTable" in bd and "PERISTIWA" in bd)
     check("v17-banner-crash-js", "renderCrash" in bd and "fetch('/crash')" in bd
           and "id=cpcrash" in bd)  # Bagian 41: tombol icon-only 📋
-    # Bagian 39 — overlay bukan lagi banner merah: renderOverlay DIHAPUS,
-    # status overlay tampil netral di sysline ("overlay OFF (normal)");
-    # endpoint POST /fix/overlay tetap ada (kompatibilitas API)
+    # Bagian 39 — overlay tetap INFO netral ("overlay OFF (normal)")
     check("v17-banner-overlay-js", "renderOverlay" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd
           and "overlay OFF (normal)" in bd)
-    check("v17-ver-dashboard", "v6" in bd and "/v1/system/init" in bd)  # v6: penanda versi dinaikkan (Bagian 42)
+    check("v17-ver-dashboard", ">v7</span>" in bd and "/v1/system/init" in bd)  # v7 (Bagian 43)
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
@@ -436,47 +418,16 @@ try:
     stats = json.loads(bd)
     check("v17-stats-overlay", "overlay" in stats, bd[-120:])
 
-    # ============ v18: RESET SESI SDK + EXITINFO + BANNER SESI ============
-    # /sdkconfig/api: ver=v18 + overlay + session
-    st, hd, bd = get400("/sdkconfig/api")
-    api = json.loads(bd)
-    check("v2-api-ver", api.get("ver") == "v3", api.get("ver"))
-    check("v1-api-overlay-session", "overlay" in api and "session" in api
-          and set(api["session"]) >= {"saved", "resetAuto", "resetInfo"}, bd[-200:])
-    check("v1-api-desktop-sesi", api["session"]["saved"] is False
-          and api["session"]["resetAuto"] is False, str(api["session"]))
-    check("v18-api-overlay-desktop", api["overlay"]["checked"] is False
-          and api["overlay"]["granted"] is True, str(api["overlay"]))
-
-    # POST /sdkconfig/session-reset di desktop -> jujur result:false + pesan desktop
-    st, hd, bd = form_post("/sdkconfig/session-reset", {})
-    j = json.loads(bd)
-    check("v18-route-session-reset", st in (200, 400) and j["result"] is False
-          and "desktop" in j.get("error", ""), bd)
-
-    # /fix/overlay di desktop (tanpa context) -> result:false jujur
-    st, hd, bd = form_post("/fix/overlay", {})
-    j = json.loads(bd)
-    check("v17-fix-overlay-desktop", st in (200, 400) and j["result"] is False
-          and "bukan Android" in j.get("error", ""), bd)
-
-    # dashboard monitor: banner sesi + fungsi renderSession + ver v18
+    # ============ v18: RESET SESI via log SYS + EXITINFO ===================
+    # Bagian 43: rute sdkconfig sudah dihapus — sesi reset kini HANYA terlihat
+    # sebagai entri log SYS (SESI-RESET). Panel web di port 4000 tidak ada.
     st, hd, bd = get400("/")
-    check("v1-ver-dashboard", "v1" in bd, bd[:80])
+    check("v1-ver-dashboard", "v7" in bd, bd[:80])
     check("v41-banner-sesi-dihapus", "renderSession" not in bd and "sesbn" not in bd
-          and "SESI SDK DIRESET OTOMATIS" not in bd)  # Bagian 41: sesi reset kini hanya entri log SYS (SESI-RESET)
+          and "SESI SDK DIRESET OTOMATIS" not in bd)  # sesi reset kini hanya entri log SYS (SESI-RESET)
     check("v41-sysline-dihapus", "sysline" not in bd
-          and "sdkconfig" not in bd)  # Bagian 41: data SDK CONFIG keluar dari monitor
+          and "sdkconfig" not in bd)  # Bagian 41/43: data SDK CONFIG benar-benar keluar dari port 4000
     check("v41-banner-crash-js-masih", "renderCrash" in bd and "id=cpcrash" in bd)
-
-    # panel /sdkconfig: seksi SESI SDK + tombol RESET + JS sesReset
-    st, hd, bd = get400("/sdkconfig")
-    check("v18-panel-sesi", "RESET SESI SDK" in bd and "sesReset" in bd
-          and "session-reset" in bd, bd[:80])
-    check("v18-panel-seschip", "seschip" in bd and "SESI SDK" in bd, bd[:80])
-    # JS panel tidak boleh mengandung string unterminated akibat \n mentah
-    check("v18-panel-js-rapi", "confirm('RESET SESI SDK?\\n" in bd,
-          "escape \\n dalam JS string")
 
     # EXITINFO masuk log SYS di desktop (entri "desktop — dilewati")
     st, hd, bd = get400("/logs?limit=200")
@@ -560,39 +511,44 @@ try:
         "CDN game + socket.io login" in (e.get("path") or "")
         for e in lg["entries"]), "")
 
-    # ================= Bagian 39 — logger v3 (dashboard redesign) ==========
-    # Arahan owner: overlay = INFO (bukan error); teks jelas, mudah dibaca;
-    # tata letak terstruktur & rapi; emoji stylish; efisien.
+    # ============ Bagian 43 — console SERVER NATURAL (guard gaya) ==========
+    # Arahan owner (kata-kata persis):
+    #  "logger ini emang stylish tapi gak seperti layaknya server yg Natural
+    #   sedang berjalan.."
     st, hd, bd = get400("/")
-    # 1. identitas + emoji stylish
-    check("v39-title-monitor", "DB MONITOR" in bd and "\U0001f409" in bd, bd[:80])
-    check("v39-emoji-verdict", "\u2705" in bd and "\u274c" in bd
-          and "\u26a0\ufe0f" in bd and "\u2139\ufe0f" in bd, "")
-    check("v39-emoji-stage", "\u2699\ufe0f" in bd and "\U0001f310" in bd
-          and "\U0001f3ae" in bd, "")
-    check("v39-emoji-buttons", "\U0001f4cb" in bd and "\U0001f4be" in bd
-          and "\U0001f9f9" in bd, "")
-    # 2. overlay = INFO bukan error: verdict INFO + eksklusi eksplisit
-    #    isProblem + banner merah overlay lama DIHAPUS
+    # 1. identitas console natural + judul lama hilang
+    check("v43-console-title", "server console" in bd and "DB MONITOR" not in bd, bd[:80])
+    # 2. entri log TANPA emoji — emoji stylish v39 tidak boleh ada lagi
+    #    (naga/rocket/plug/clipboard-v28: hanya ada di describe lama)
+    check("v43-tanpa-emoji-log", "\U0001f409" not in bd and "\U0001f680" not in bd
+          and "\U0001f50c" not in bd and "\U0001f4e5" not in bd
+          and "\U0001f522" not in bd and "\U0001f9fe" not in bd, "")
+    check("v43-tanpa-emoji-verdict", "\u2705" not in bd and "\u26a0\ufe0f" not in bd
+          and "\u2139\ufe0f" not in bd, "")
+    check("v43-describe-natural", "'<b>Server mulai</b> — '" in bd
+          and "'<b>Port aktif</b> — '" in bd
+          and "'<b>Verifikasi akun</b> (loginchecknative)" in bd, "")
+    # 3. verdict polos: OK/GAGAL/CEK/INFO/SYS + overlay = INFO bukan error
+    check("v43-verdict-plain", "['OK','g']" in bd and "['GAGAL','r']" in bd
+          and "['INFO','i']" in bd, "")
     check("v39-overlay-info-verdict",
           "m=='OVERLAY'" in bd and "['INFO','i']" in bd, "")
     check("v39-overlay-not-problem", "=='OVERLAY')return false" in bd, "")
     check("v39-overlay-banner-dihapus",
           "IZIN Display over other apps OFF" not in bd
-          and "BUKA SETTINGS OVERLAY" not in bd
-          and "tombol merah BUKA SETTINGS" not in bd, "")
-    # 3. banner sesi reset = info amber (class note), heading tetap dikenali
-    check("v40-sesi-lewat-log", "renderSession" not in bd
-          and "SESI SDK DIRESET OTOMATIS" not in bd, "")
-    # 4. tabel baru 7 kolom: STATUS + PERISTIWA (tanpa kolom ERROR terpisah)
-    check("v39-tabel-status", "<th>STATUS</th>" in bd
-          and "<th>PERISTIWA</th>" in bd and "vEmoji" in bd, "")
-    # 5. sysline overlay netral + panduan menyatakan overlay normal
-    check("v39-sysline-overlay-normal", "overlay OFF (normal)" in bd, "")
-    check("v39-panduan-overlay", "Izin overlay OFF = <b>NORMAL</b>" in bd, "")
-    # 6. log entri OverlayFixer sendiri berbunyi netral (uji unit fungsi
-    #    deskripsi: teks baru ada di JS describe untuk SYS/OVERLAY)
+          and "BUKA SETTINGS OVERLAY" not in bd, "")
     check("v39-describe-overlay-info", "Izin overlay</b> — '+esc(p)" in bd, "")
+    # 4. baris status ala server: LISTEN + uptime + arsip + status badge
+    check("v43-stline-server", "LISTEN " in bd and "uptimeStr" in bd
+          and "id=stbadge" in bd and "status: " in bd, "")
+    # 5. live feel: kursor blok berkedip + penanda jeda
+    check("v43-live-cursor", "id=cursor" in bd and "@keyframes bl" in bd
+          and "id=pausemark" in bd, "")
+    # 6. kolom tetap terstruktur: # WAKTU TAHAP PORT ST DUR PERISTIWA (salin)
+    check("v43-kolom-copy", "'#','WAKTU','TAHAP','PORT','ST','DUR','PERISTIWA'" in bd, "")
+    # 7. filter tetap lengkap: tahap/port/status/jumlah + cari
+    check("v43-filter-lengkap", "id=stage" in bd and "id=port" in bd
+          and "id=st" in bd and "id=limit" in bd and "id=q" in bd, "")
 
 
     # ================= Bagian 41 — port 4000 MURNI log monitoring ==========
@@ -612,15 +568,16 @@ try:
           and "MASALAH</button>" not in bd and "Salin tabel</button>" not in bd, "")
     # 3. GUARD REGRESI — akar bug "log gak muncul": $('id') tanpa elemen HTML
     #    = TypeError = seluruh JS mati = poll log tidak pernah jalan.
-    #    Setiap id dirujuk $('...') di JS WAJIB ada di HTML (cpcrash dinamis).
+    #    Setiap id dirujuk $('...') di JS WAJIB ada di HTML (cpcrash & stbadge
+    #    dinamis — dibuat lewat innerHTML).
     js = bd[bd.find("<script>"):bd.find("</script>")]
     html = bd[:bd.find("<script>")]
     ids_js = set(re.findall(r"\$\('([A-Za-z0-9_-]+)'\)", js))
     ids_html = set(re.findall(r"id=[\"']?([A-Za-z0-9_-]+)", html))
-    missing = sorted(ids_js - ids_html - set(["cpcrash"]))
+    missing = sorted(ids_js - ids_html - set(["cpcrash", "stbadge"]))
     check("v41-js-id-semua-ada", not missing, "hilang: %s" % missing)
-    # 4. elemen probn ada (banner masalah) + tombol modal icon
-    check("v41-probn-ada", "id=probn" in html and "id=crashbn" in html, "")
+    # 4. crashbn + notices ada (banner crash + catatan gap/dropped)
+    check("v41-crashbn-ada", "id=crashbn" in html and "id=notices" in html, "")
     check("v41-modal-icon", ">\U0001f4cb</button>" in bd and ">\u2716\ufe0f</button>" in bd, "")
 
     # ================= Bagian 42 — popup "pengingat" DIHAPUS TOTAL ==========

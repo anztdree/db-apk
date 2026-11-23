@@ -3189,3 +3189,131 @@ berarti popup itu muncul walau SEMUA request sukses = popup yang KITA paksa ada.
 5. `rebuild-src/smoke/run_smoke.py` — 3 guard v42 + versi v6 (127 test).
 6. `rebuild-src/scripts/repack_v6.py` — skrip repack + guard tanpa-tips (baru).
 7. `readme.md` — Bagian 42 (file ini).
+
+
+## Bagian 43 — v7: LOGGER ROMBAK TOTAL → CONSOLE SERVER NATURAL (port 4000 murni log monitoring)
+
+### 43.1 Permintaan owner (kata-kata persis)
+
+> "sekarang mari rombak lagi logger dan UI di website kita, logger ini emang
+> stylish tapi gak seperti layaknya server yg Natural sedang berjalan.."
+
+Konteks: device sudah jalan v6 (log device disalinpemilik tampak rapi tapi
+beremoji 🚀🔌🧾🔢🛡️📦). Arahan: gaya "stylish" (pills/chips/banner/emoji di
+setiap baris) TIDAK terasa seperti server yang berjalan alami — rombak
+tampilannya agar terasa seperti console server sungguhan.
+
+### 43.2 Yang berubah (semua di classes2.dex — classes.dex tak tersentuh)
+
+1. **CONSOLE v7** (`LoggerHandler.dashboardHtml()`/`Js()` ditulis ulang):
+   - Terminal monospace hitam pekat full-height (header → stream → footer).
+     TIDAK ada lagi kartu/panel/chip/pill/badge berwarna, tidak ada judul
+     "🐉 DB MONITOR" — kini `com.db.local — server console` + `v7 · logger`.
+   - **Entri log TANPA emoji** — teks polos alami ("Server mulai — …",
+     "Port aktif — port 9527 …", "Baca konfigurasi game (setting) …",
+     "Unduh paket update — 18.5MB dalam 240ms"). Kolom tetap terstruktur:
+     `# WAKTU TAHAP PORT ST DUR PERISTIWA` (di layar: WAKTU/TAHAP/PORT/ST/
+     DUR/PERISTIWA — # ikut saat disalin; mobile sembunyikan #/DUR).
+   - Warna ala log level: merah = gagal/crash, amber = cek, abu = info,
+     hijau tua = ok; latar baris merah gelap utk baris bermasalah.
+   - **Kursor blok berkedip** di ujung stream (server hidup); saat jeda
+     tampil `‖ jeda — pembaruan otomatis berhenti`.
+   - **Baris status ala server** di header: `LISTEN 9527 9528 5050 5051 9530
+     4000` (port aktif = hijau, via /stats) `· uptime 0h05m12s · seq N ·
+     arsip log-….ndjson 1.2MB · 312 baris · status: NORMAL / N MASALAH`.
+   - Toolbar tetap IKON saja (arahan Bagian 41): ⭐ penting ❌ masalah 📜
+     semua ⚙️ filter ⏸️/▶️ jeda 🧹 bersihkan ❓ panduan; footer 📋 salin
+     tabel 📄 salin JSON 💾 unduh arsip. Filter lanjutan (cari/tahap/port/
+     status/jumlah) muncul lewat ⚙️ sebagai baris teks sederhana.
+   - Efisiensi dipertahankan: poll incremental `?since=` tiap 1.2 dtk,
+     MAXC 3000 baris, mode penting/masalah/semua, notice GAP/dropped teks
+     polos, detail klik-baris (modal REQUEST/RESPON/EXTRA/ERROR/SEMUA,
+     JSON pretty), banner CRASH tetap ada (merah gelap, teks polos).
+2. **PORT 4000 MURNI log monitoring** — rute DIHAPUS dari LoggerHandler
+   (bukan disembunyikan): `/sdkconfig`, `/sdkconfig/api`, `/sdkconfig/save`,
+   `/sdkconfig/preset`, `/sdkconfig/product-add`, `/sdkconfig/session-reset`,
+   `POST /fix/overlay` → semuanya **404**. Endpoint tersisa: `/`, `/stats`,
+   `/health`, `/logs`, `/download`, `/crash`.
+3. **SdkHandler** — pesan log PRODUCT DITOLAK 30001 tidak lagi mengarahkan
+   ke panel (panel tidak ada): "tambahkan productCode ke daftar products di
+   sdk/profile.json lalu force-stop & buka game ulang".
+4. Overlay tetap **INFO bukan error** (Bagian 39); guard tanpa-"tips" tetap
+   (Bagian 42); penanda BOOT/crash/dashboard dinaikkan ke **v7**.
+
+### 43.3 Proses + verifikasi
+
+- Toolchain dibangun ulang pasca-reset: D8/r8 8.3.37 di-download ulang dari
+  dl.google.com (**16.628.796 B persis dokumentasi Bagian 39**, sha256
+  59753e70…439); javac 21.0.13 dari ekstraksi deb lokal `/tmp/jdk` +
+  `LD_LIBRARY_PATH` ke libjli JRE sistem; uber-apk-signer 1.3.0 selamat;
+  git-lfs 3.5.1 di /tmp/lfs.
+- **Kompilasi javac 21** (stubs + javasrc + SmokeMain) — PASS (2x: sebelum
+  dan sesudah fix SdkHandler).
+- **Smoke desktop — 106/106 PASS** (127 v6 → 106: 24 test panel
+  sdkconfig/fix-overlay DIHAPUS karena rutenya dihapus, +3 test 404 rute
+  dihapus, +~0 net lain; guard v41/v42 semuanya tetap). Test baru penting:
+  `v43-console-200`, `v43-console-title` (DB MONITOR harus TIDAK ada),
+  `v43-tanpa-emoji-log` (🚀🐉🔌📥🔢🪧 tidak boleh ada), `v43-tanpa-emoji-verdict`
+  (✅⚠️ℹ️ tidak boleh ada), `v43-stline-server` (LISTEN/uptimeStr/stbadge),
+  `v43-live-cursor` (kursor + pausemark), `v43-kolom-copy`, `v43-filter-lengkap`,
+  `v43-rute-dihapus-404` × 7, `v43-session-reset-404`, `v43-save-404`,
+  `v43-fix-overlay-404`, `v43-qhinfo-utuh`, `v43-describe-natural`,
+  `v43-verdict-plain`. Guard anti-regresi `v41-js-id-semua-ada` diperluas
+  (stbadge dinamis ikut dikecualikan).
+- **D8** → `classes2.dex` **142.676 B** sha `b050a9d5…f8d7` (v6: 158.984 B;
+  −16.308 B = panel SDK CONFIG + UI stylish + rute dihapus). Marker dex:
+  `>v7</span>`, `server console`, `MOD-LOCALSERVER v7`, `LISTEN `,
+  `pembaruan otomatis berhenti` — semua ADA; `DB MONITOR`, `"tips"`,
+  `sdkconfig` — **NOL kemunculan**.
+- **Repack v7** (`rebuild-src/scripts/repack_v7.py`, dasar = APK v6 dari
+  working tree LFS, sha `d91542fe…56ff9` = readme Bagian 42): diff zip
+  v6→v7 (unsigned) = **tepat 4** (`classes2.dex` + 3 META-INF dibuang);
+  classes.dex proven `1df64d91…` utuh; QHinfo/config_BS/clientversion byte
+  identik; **6428 entri (= v6)**.
+- **Sign**: zipalign verified + **signature verified [v1, v2, v3]**,
+  sertifikat **CN=DB Local Mod, O=Owner, C=ID** exp 14 Nov 2056 — keystore
+  sama dgn v1..v6; install-over aman.
+- Verifikasi APK final: 6428 entri; classes.dex 6.697.176 B sha proven
+  utuh; classes2.dex di APK = byte-identik hasil D8 (sha b050a9d5…).
+
+### 43.4 APK v7
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v7).apk` |
+| Ukuran | **202.687.454 B** |
+| sha256 | `594caec9eb33f582fa9001eb45dbe36af749a850f575634ddd12fe9fe63937cd` (v6 = `d91542fe…`) |
+| classes2.dex | 142.676 B sha `b050a9d5…f8d7` — console natural, TANPA sdkconfig/tips |
+| Penanda | BOOT/crash/dashboard = **v7** |
+| Sign | v1+v2+v3, keystore sama |
+
+### 43.5 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v7).apk` langsung di atas v6 (keystore
+   sama — tanpa uninstall; akun & progres aman).
+2. Boot game → log BOOT `MOD-LOCALSERVER v7` → buka `127.0.0.1:4000`:
+   tampilan kini **console server natural** — hitam monospace, baris log
+   polos tanpa emoji mengalir ke bawah, kursor berkedip, baris status
+   `LISTEN … · uptime … · status: NORMAL`.
+3. Bandingkan dengan log server sungguhan (tail -f / journalctl) — kini
+   terasa seperti server yang berjalan alami, bukan aplikasi stylish.
+4. `/sdkconfig` dkk kini **404** — port 4000 hanya log monitoring.
+5. Klik baris apa pun → detail REQUEST/RESPON/EXTRA; 📋 salin tabel (kolom
+   # WAKTU TAHAP PORT ST DUR PERISTIWA); 💾 unduh arsip NDJSON.
+
+### 43.6 File berubah
+
+1. `release-mod/db-local(MOD-LOCALSERVER-v7).apk` — APK console natural
+   (LFS; v6 dihapus dari repo, pola sama v1→…→v6).
+2. `rebuild-src/javasrc/com/db/local/server/LoggerHandler.java` — rombak
+   total dashboard (console v7) + rute sdkconfig/fix-overlay dihapus.
+3. `rebuild-src/javasrc/com/db/local/server/SdkHandler.java` — pesan 30001
+   tidak lagi mengarah ke panel.
+4. `rebuild-src/javasrc/com/db/local/server/{LocalServerStarter,CrashHook}.java`
+   — penanda v7 (BOOT/crash).
+5. `rebuild-src/javasrc/com/db/local/server/{SdkConfig,SessionReset}.java`
+   — komentar disesuaikan (panel tidak ada lagi).
+6. `rebuild-src/smoke/run_smoke.py` — test panel dihapus, guard console
+   natural + rute-404 ditambah (106 test).
+7. `rebuild-src/scripts/repack_v7.py` — skrip repack + guard console v7 (baru).
+8. `readme.md` — Bagian 43 (file ini).

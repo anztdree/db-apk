@@ -8,3 +8,4 @@ rebuild-src/*.jar
 work/
 *.log
 *.idsig
+tools/*.jar

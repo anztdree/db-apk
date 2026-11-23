@@ -49,8 +49,9 @@ public final class SdkConfig {
     public static volatile boolean lastProductOk = false;
     public static volatile String lastRejectLogged = "";
 
-    /** Nama file yang boleh diedit lewat panel /sdkconfig (anti path-traversal).
-     *  Kunci = nama API panel; nilai = path relatif di sdk/. */
+    /** Nama file kontrak di sdk/ yang dikenali server (whitelist
+     *  anti path-traversal, dipakai seed boot). Kunci = nama pendek;
+     *  nilai = path relatif di sdk/. */
     public static final String[] EDITABLE_NAMES = {
             "profile.json", "init.json", "ckRegVistor.json", "fallback.json", "QHinfo"
     };
@@ -199,9 +200,9 @@ public final class SdkConfig {
     public static String fallbackJson(){ return contract("fallback.json", DEFAULT_FALLBACK); }
     public static String profileJson() { return contract("profile.json", DEFAULT_PROFILE); }
 
-    /* ================= Bagian 30 — API edit file kontrak (panel dashboard) ================= */
+    /* ================= Bagian 30 — seed/kelola file kontrak sdk/ ================= */
 
-    /** Isi file kontrak apa adanya (untuk GET /sdkconfig/api). Tak pernah null. */
+    /** Isi file kontrak apa adanya (baca disk saat boot/seed). Tak pernah null. */
     public static String readContractFile(String name) {
         String rel = editableRelPath(name);
         if (rel == null) return null;
@@ -224,7 +225,7 @@ public final class SdkConfig {
     }
 
     /**
-     * Tulis file kontrak dari panel (POST /sdkconfig/save).
+     * Tulis file kontrak ke sdk/ (dipakai seed boot; whitelist nama).
      * Return null bila OK, atau pesan penolakan.
      * Validasi: nama harus whitelist; JSON wajib {..}; init.json wajib
      * berisi payTypes + loginTypes (parser model/e game); QHinfo wajib
