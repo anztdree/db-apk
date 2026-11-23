@@ -1,0 +1,39 @@
+# v15 BAKSMALI-DIFF vs ORIGINAL — 23 Nov 2026 (Bagian 30)
+
+Metode: apktool 2.9.3 `d -f --no-res` pada kedua APK ter-sign.
+  A = db-local(Original-DO NOT DELETE!).apk  sha256 b308c44de6ec082a… (104.945.181 B)
+  V = db-local(MOD-LOCALSERVER-v15).apk      sha256 afdc1eb5eb3edf73… (202.679.156 B)
+
+## HASIL
+
+1. classes.dex (SDK/game smali — FORBIDDEN ZONE):
+   HANYA 1 file beda:
+     smali/com/zhuhuan/game/Application.smali
+       20a21,22
+       >     invoke-static {p0}, Lcom/db/local/server/LocalServerStarter;->start(Landroid/content/Context;)V
+     = persis pola v11/v13/v14 (starter +2 baris). Tidak ada smali SDK lain
+     yang tersentuh (feedtonight/f-a-n/QuickGameSdkService/model/e byte-identik).
+
+2. classes2.dex (server kita — entri BARU, tidak ada di original):
+     smali_classes2/com/db/local/server/ 24 class + LogcatDumper.
+     v15 menambah/mengubah: Db (migrasi lokasi sdk/data),
+     SdkConfig (QHinfo seed + whitelist edit + writeContractFile + presetInitJson),
+     LoggerHandler (panel /sdkconfig GET/api/save/preset),
+     LocalServerStarter (Db.open di boot), SmokeMain tidak ikut dex.
+
+3. ZIP-LEVEL v14 vs v15 (6427 entri, identik di keduanya):
+     entri hanya di v14 : []
+     entri hanya di v15 : []
+     isi beda (di luar META-INF): ['classes2.dex']  (127.056 B, D8 8.3.37, min-api 21)
+     META-INF baru: MANIFEST.MF, DBLOCALM.SF, DBLOCALM.RSA (DBLOCALM = dblocalmod)
+     assets/QHinfo + assets/config_BS.properties + assets/server_root/** + classes.dex
+     + resources.arsc + manifest: BYTE-IDENTIK v14.
+
+## SIGNING
+zipalign verified; signature verified [v1, v2, v3];
+Subject: CN=DB Local Mod, O=Owner, C=ID — keystore sama exp 2056 (dblocalmod).
+
+## SMOKE DESKTOP
+57/57 PASS (v14 37 kasus diperluas: qhinfo-seeded/qhinfo-isi,
+migrasi-lokasi-db-sqlite, migrasi-lokasi-legacy-json, lokasi-lama-tidak-hilang,
+panel GET/api/save/preset + 4 penolakan whitelist/validasi + anti-traversal).

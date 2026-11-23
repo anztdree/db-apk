@@ -2256,3 +2256,66 @@ menyentuh folder ini karena sdk/ sengaja TIDAK dikirim via assets). Dibaca ulang
    (mirror replay asli). Catat hasil — SATU variabel per percobaan.
 4. REGISTER/LOGIN email dkk. seperti Bagian 28.4 — kini tersimpan di `data/db.sqlite`.
 5. Jika ingin mematikan cek sign (darurat): `sdk/profile.json` → `"verifySign": false`.
+
+---
+
+## 30. BAGIAN 30 — v15: sdk/ MENJADI RUMAH LENGKAP SDK (koreksi owner + panel dashboard)
+
+> Koreksi owner 23 Nov: **"data/ dan juga QHinfo Masuk ke folder sdk"** — semua milik SDK
+> (config + data + QHinfo) = SATU folder `sdk/`. Disetujui sekali-jalan: + panel SDK CONFIG
+> di dashboard 4000 supaya eksperimen crash 100% tanpa PC.
+
+### 30.1 Struktur final `server/sdk/`
+
+```
+Android/data/com.db.local/server/sdk/     ← SEMUA milik SDK
+├── QHinfo              ← self-seed "http://127.0.0.1:9530" (21 B, tanpa slash — mirror asli)
+├── data/
+│   ├── db.sqlite       ← DB akun (pindah dari server/data/ — koreksi owner)
+│   └── (legacy account.json / accounts.json hasil migrasi lokasi lama)
+├── index.txt           ← panduan folder (diperbarui Bagian 30)
+├── profile.json        ← kawat PHP: poweredBy/contentType/verifySign/signSecret/products
+├── fallback.json / errors.json
+└── v1/
+    ├── system/init.json        ← loginTypes — tuas eksperimen crash
+    └── user/ckRegVistor.json   ← isReged mirror asli
+```
+
+**Fakta QHinfo (jujur, berbasis bukti):** client membaca QHinfo **dari dalam APK**
+(`QuickGameManager.initThirdDataSDK`, xref 1 pemakai — `verify-artifacts/verify_total.txt` A).
+`sdk/QHinfo` = **sumber kebenaran milik owner**: edit di situ → nilai dibakar ke
+`assets/QHinfo` pada rebuild APK berikutnya (bukan live-reload). Nilai sekarang = nilai
+yang sudah aktif di APK (v8+), jadi tidak ada perubahan perilaku.
+
+### 30.2 Perubahan kode v15
+
+| Item | Isi |
+|---|---|
+| `Db.open` | lokasi DB `server/data/` → **`server/sdk/data/`**; `migrateFromOldLocation` menyalin `db.sqlite` (instalan v14) + `account.json`/`accounts.json` (legacy) ke lokasi baru **bila target belum ada** — uid/token pemain TETAP; lokasi lama tidak dihapus |
+| `LocalServerStarter` | `Db.open` **di boot** — migrasi lokasi selesai sebelum listener mana pun melayani request; log `BOOT DB siap di boot` |
+| `SdkConfig` | + `DEFAULT_QHINFO` self-seed; + whitelist edit `EDITABLE_NAMES` (init/profile/ckReg/fallback/QHinfo); + `readContractFile` / `writeContractFile` (validasi: JSON `{..}`, init.json wajib `payTypes`+`loginTypes` parser model/e, QHinfo wajib `http(s)://` tanpa trailing slash, anti path-traversal); + `presetInitJson` (E1/E2/E3, hanya angka); `sdk/index.txt` diperbarui |
+| `LoggerHandler` | + **PANEL SDK CONFIG**: `GET /sdkconfig` (halaman editor gaya MONITOR SERVER), `GET /sdkconfig/api` (backend, guest, accounts, isi 5 file), `POST /sdkconfig/save`, `POST /sdkconfig/preset` (E1 `["1"]` / E2 `["12"]` / E3 `["1","13"]`) + tabel accounts + backend aktif; setiap edit tercatat `SDK-CONFIG-EDIT` di log SYS |
+
+### 30.3 Verifikasi v15
+
+| Item | Hasil |
+|---|---|
+| Smoke desktop **57/57 PASS** | 37 kasus v14 diperluas: `qhinfo-seeded`/`qhinfo-isi`, `migrasi-lokasi-db-sqlite`, `migrasi-lokasi-legacy-json`, `lokasi-lama-tidak-hilang`, panel `GET/api/save/preset` + 4 penolakan (whitelist, init tanpa payTypes, QHinfo slash, anti-traversal `panel-tidak-buat-file-asing`) |
+| classes.dex | byte-identik v11 (SDK smali 100% original) |
+| baksmali-diff vs original | **tepat 1 file** `Application.smali` (+2 baris starter); server = entri baru `smali_classes2/` — arsip `verify-artifacts/v15_baksmali_diff_vs_original.txt` |
+| zip v14 vs v15 | 6427 entri sama; beda HANYA `classes2.dex` (127.056 B) + 3 META-INF; assets + classes.dex byte-identik |
+| classes2.dex | **127.056 B** — +panel/whitelist/preset/migrasi lokasi |
+| APK final | `release-mod/db-local(MOD-LOCALSERVER-v15).apk` — **202.679.156 B**, sha256 `afdc1eb5eb3edf7343e68a94d38738169f2b0fa2f2e2ba6d2afd67941cd0b2aa`, zipalign verified, sign v1v2v3 keystore sama exp 2056 |
+| Toolchain | ECJ 3.33.0 (mirror) + D8 8.3.37 + apktool 2.9.3 + uber-apk-signer 1.3.0 + fetch LFS via batch API (`tools/fetch_lfs.py`) |
+
+### 30.4 Langkah uji device v15 (tanpa PC)
+
+1. Install-over v15 → buka browser HP → `http://127.0.0.1:4000/sdkconfig` → cek chip
+   `DB-BACKEND sqlite`, chip tamu (uid lama tetap), `sdk/QHinfo` terlihat di file manager.
+2. Cek log MONITOR SERVER: `BOOT DB siap di boot` + `MIGRASI-LOKASI ... server/data/ -> sdk/data/`
+   (kalau sebelumnya sempat jalan v14).
+3. **Eksperimen crash kini SEKALI KLIK**: di panel, tekan E1/E2/E3 → force-stop game → buka
+   lagi → catat. `E2 ["12"]` = tampilan tamu-only yang TERBUKTI jalan di v11/v12;
+   `E3 ["1","13"]` = mirror persis server asli.
+4. Edit manual tetap bisa: `Android/data/com.db.local/server/sdk/v1/system/init.json`.
+5. REGISTER/LOGIN/BIND/GANTI SANDI seperti Bagian 28.4 — semuanya kini di `sdk/data/db.sqlite`.

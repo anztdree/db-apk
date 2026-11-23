@@ -63,13 +63,21 @@ public abstract class Db {
     public static final Object LOCK = new Object();
     private static volatile Db sDb;
 
-    /** DB untuk <serverRoot> — backend dipilih otomatis; idempotent. */
+    /** DB untuk <serverRoot> — backend dipilih otomatis; idempotent.
+     *
+     * Bagian 30 (koreksi owner): semua milik SDK masuk folder sdk/ —
+     * lokasi DB pindah dari <serverRoot>/data/ ke <serverRoot>/sdk/data/.
+     * Migrasi otomatis dari lokasi lama (instalan v13/v14): db.sqlite
+     * + legacy account.json/accounts.json disalin ke lokasi baru bila
+     * target belum ada — uid/token PEMAIN TETAP. */
     public static Db open(String serverRoot) {
         synchronized (LOCK) {
             if (sDb != null) return sDb;
-            File data = new File(serverRoot == null || serverRoot.isEmpty()
-                    ? "." : serverRoot, "data");
+            File base = new File(serverRoot == null || serverRoot.isEmpty()
+                    ? "." : serverRoot);
+            File data = new File(base, "sdk" + File.separator + "data");
             if (!data.exists()) data.mkdirs();
+            migrateFromOldLocation(base, data);
             Db d;
             try {
                 d = new DbSqlite(data);
@@ -80,6 +88,49 @@ public abstract class Db {
             sDb = d;
             log("DB-BACKEND " + d.backend() + " dir=" + data.getAbsolutePath());
             return d;
+        }
+    }
+
+    /**
+     * Bagian 30 — salin berkas data dari lokasi lama <serverRoot>/data/
+     * (instalan v13/v14) ke lokasi baru <serverRoot>/sdk/data/ BILA target
+     * belum ada. db.sqlite = DB v14; account.json = tamu legacy v8-v13;
+     * accounts.json = akun email legacy v13. Tidak pernah menimpa data baru.
+     */
+    private static void migrateFromOldLocation(File base, File data) {
+        File oldData = new File(base, "data");
+        if (!oldData.isDirectory()) return;
+        String[] files = {"db.sqlite", "account.json", "accounts.json"};
+        boolean any = false;
+        for (int i = 0; i < files.length; i++) {
+            File src = new File(oldData, files[i]);
+            File dst = new File(data, files[i]);
+            if (!src.isFile() || dst.exists()) continue;
+            try {
+                copyFile(src, dst);
+                any = true;
+                log("MIGRASI-LOKASI " + files[i] + " : server/data/ -> sdk/data/ ("
+                        + dst.length() + " B)");
+            } catch (Throwable t) {
+                log("MIGRASI-LOKASI GAGAL " + files[i] + " : " + t);
+            }
+        }
+        if (any) log("MIGRASI-LOKASI selesai — uid/token pemain tetap");
+    }
+
+    private static void copyFile(File src, File dst) throws Exception {
+        java.io.FileInputStream in = new java.io.FileInputStream(src);
+        try {
+            java.io.FileOutputStream out = new java.io.FileOutputStream(dst);
+            try {
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            } finally {
+                out.close();
+            }
+        } finally {
+            in.close();
         }
     }
 

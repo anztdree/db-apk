@@ -62,6 +62,35 @@ public final class LoggerHandler implements HttpWorker.Handler {
             body = HttpWorker.text(logsJson(lim[0], since[0], portFilter[0]));
         } else if ("/download".equals(p)) {
             return handleDownload(req, out, t0);
+        } else if ("/sdkconfig".equals(p)) {
+            // Bagian 30 — panel SDK CONFIG (koreksi owner: semua milik SDK di sdk/)
+            status = 200;
+            h = HttpWorker.baseHeaders("text/html; charset=utf-8");
+            body = HttpWorker.text(sdkConfigHtml());
+        } else if ("/sdkconfig/api".equals(p)) {
+            status = 200;
+            h = HttpWorker.baseHeaders("application/json");
+            body = HttpWorker.text(sdkConfigApiJson());
+        } else if ("/sdkconfig/save".equals(p) && "POST".equalsIgnoreCase(req.method)) {
+            String name = formParam(req, "name");
+            String content = formParam(req, "content");
+            String err = SdkConfig.writeContractFile(name, content);
+            status = err == null ? 200 : 400;
+            h = HttpWorker.baseHeaders("application/json");
+            body = HttpWorker.text(err == null
+                    ? "{\"result\":true,\"saved\":\"" + JsonUtil.esc(name) + "\"}"
+                    : "{\"result\":false,\"error\":\"" + JsonUtil.esc(err) + "\"}");
+        } else if ("/sdkconfig/preset".equals(p) && "POST".equalsIgnoreCase(req.method)) {
+            String types = formParam(req, "types");
+            String json = SdkConfig.presetInitJson(types);
+            String err;
+            if (json == null) err = "types tidak valid (contoh: 1 atau 12 atau 1,13)";
+            else err = SdkConfig.writeContractFile("init.json", json);
+            status = err == null ? 200 : 400;
+            h = HttpWorker.baseHeaders("application/json");
+            body = HttpWorker.text(err == null
+                    ? "{\"result\":true,\"loginTypes\":\"" + JsonUtil.esc(types) + "\"}"
+                    : "{\"result\":false,\"error\":\"" + JsonUtil.esc(err) + "\"}");
         } else {
             status = 404;
             h = HttpWorker.baseHeaders("application/json");
@@ -502,5 +531,162 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("refreshStats();sync();poll();\n")
          .append("setTimeout(refreshStats,800);\n");
         return s.toString();
+    }
+
+    /* ====================================================================
+     * Bagian 30 — PANEL SDK CONFIG (koreksi owner: semua milik SDK di sdk/).
+     * Edit kontrak + QHinfo + preset eksperimen loginTypes + tabel accounts,
+     * semuanya dari browser HP (http://127.0.0.1:4000/sdkconfig) — tanpa PC,
+     * tanpa file manager. Edit tercatat SDK-CONFIG-EDIT di log SYS.
+     * ==================================================================== */
+
+    private String rowJson(Db.Row r, boolean withEmail) {
+        StringBuilder b = new StringBuilder(256);
+        b.append("{\"uid\":\"").append(JsonUtil.esc(r.uid)).append('"')
+         .append(",\"username\":\"").append(JsonUtil.esc(r.username)).append('"');
+        if (withEmail) b.append(",\"email\":\"").append(JsonUtil.esc(r.email)).append('"');
+        b.append(",\"token\":\"").append(JsonUtil.esc(r.token)).append('"')
+         .append(",\"isGuest\":").append(r.isGuest)
+         .append(",\"createTime\":").append(r.createTime)
+         .append(",\"lastLogin\":").append(r.lastLogin)
+         .append('}');
+        return b.toString();
+    }
+
+    /** State panel dalam satu JSON: backend, akun, isi semua file kontrak. */
+    private String sdkConfigApiJson() {
+        SdkConfig.ensureIndex();
+        Db db = Db.open(LoggerCore.serverRootPath);
+        StringBuilder b = new StringBuilder(8192);
+        b.append("{\"backend\":\"").append(db.backend()).append('"')
+         .append(",\"dbDir\":\"").append(JsonUtil.esc(LoggerCore.serverRootPath))
+         .append("/sdk/data\"");
+        Db.Row g = db.guest();
+        b.append(",\"guest\":").append(g == null ? "null" : rowJson(g, false));
+        java.util.List<Db.Row> accs = db.accounts();
+        b.append(",\"accounts\":[");
+        for (int i = 0; i < accs.size(); i++) {
+            if (i > 0) b.append(',');
+            b.append(rowJson(accs.get(i), true));
+        }
+        b.append(']');
+        b.append(",\"files\":{");
+        String[] names = SdkConfig.EDITABLE_NAMES;
+        for (int i = 0; i < names.length; i++) {
+            if (i > 0) b.append(',');
+            b.append('"').append(names[i]).append("\":\"")
+             .append(JsonUtil.esc(SdkConfig.readContractFile(names[i]))).append('"');
+        }
+        b.append('}');
+        b.append('}');
+        return b.toString();
+    }
+
+    /** Satu parameter form-urlencoded dari body POST. */
+    private String formParam(HttpWorker.Request req, String key) {
+        if (req.body == null || req.body.length == 0) return null;
+        String s = new String(req.body, java.nio.charset.StandardCharsets.UTF_8);
+        String[] parts = s.split("&");
+        for (int i = 0; i < parts.length; i++) {
+            int eq = parts[i].indexOf('=');
+            String k = eq < 0 ? parts[i] : parts[i].substring(0, eq);
+            if (!k.equals(key)) continue;
+            String v = eq < 0 ? "" : parts[i].substring(eq + 1);
+            try { return java.net.URLDecoder.decode(v, "UTF-8"); }
+            catch (Throwable t) { return v; }
+        }
+        return null;
+    }
+
+    /** Halaman panel SDK CONFIG — gaya visual sama dengan MONITOR SERVER. */
+    private String sdkConfigHtml() {
+        StringBuilder b = new StringBuilder(16384);
+        b.append("<!DOCTYPE html><html><head><meta charset='utf-8'>\n")
+         .append("<meta name='viewport' content='width=device-width,initial-scale=1'>\n")
+         .append("<title>SDK CONFIG</title>\n")
+         .append("<style>\n")
+         .append("*{box-sizing:border-box}\n")
+         .append("body{font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0f141a;color:#dbe4ec;margin:0;padding:10px;font-size:14px;line-height:1.45;user-select:text;-webkit-user-select:text}\n")
+         .append("#top{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;margin-bottom:8px}\n")
+         .append("#title{color:#8fd48f;font-weight:700;font-size:18px}\n")
+         .append("#statsbar{color:#8a97a5;font-size:12px}\n")
+         .append(".panel{background:#161d26;border:1px solid #2a333d;border-radius:10px;padding:10px 12px;margin-bottom:10px}\n")
+         .append(".chip{display:inline-flex;align-items:center;gap:6px;background:#1b2530;border:1px solid #2a333d;border-radius:20px;padding:4px 12px;font-size:12px}\n")
+         .append(".chip b{font-weight:600}\n")
+         .append("textarea{width:100%;background:#0b0f14;color:#c7d1da;border:1px solid #2a333d;border-radius:6px;padding:7px 9px;font-family:Menlo,Consolas,monospace;font-size:12px;min-height:90px}\n")
+         .append("textarea.small{min-height:38px}\n")
+         .append("button{background:#1b222b;color:#dbe4ec;border:1px solid #2a333d;border-radius:6px;padding:6px 12px;font-family:inherit;font-size:13px;cursor:pointer;min-height:34px}\n")
+         .append("button:hover{border-color:#4a5a6a}\n")
+         .append("button.pr{border-color:#3a5a3a;color:#8fd48f;font-weight:600}\n")
+         .append("button.on{background:#123a1f;border-color:#2f7a44;color:#9fe6a8}\n")
+         .append(".sec{margin:0 0 10px;border:1px solid #232b34;border-radius:8px;overflow:hidden}\n")
+         .append(".sech{background:#161c23;color:#8fd48f;padding:5px 10px;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:8px}\n")
+         .append(".sec .bd{padding:8px 10px}\n")
+         .append(".hint{color:#7f8c9a;font-size:11.5px;margin-top:4px}\n")
+         .append("table{width:100%;border-collapse:collapse;font-size:12px}\n")
+         .append("th{color:#9fb0c0;text-align:left;padding:4px 6px;border-bottom:1px solid #2a333d}\n")
+         .append("td{padding:4px 6px;border-bottom:1px solid #1d2530;word-break:break-all}\n")
+         .append(".g{color:#4cd964}.r{color:#ff8a80}.m{color:#8a97a5}\n")
+         .append("#toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#123a1f;color:#9fe6a8;border:1px solid #2f7a44;padding:7px 16px;border-radius:8px;display:none;z-index:50;font-size:13px}\n")
+         .append("#toast.err{background:#3a1214;color:#ff9e94;border-color:#7a2f34}\n")
+         .append("</style></head><body>\n")
+         .append("<div id=top><span id=title>SDK CONFIG</span><span id=statsbar>memuat …</span></div>\n")
+
+         .append("<div class=panel><div id=chips></div>\n")
+         .append("<div class=hint>Eksperimen crash: klik preset, lalu <b>force-stop &amp; buka game</b> satu variabel per restart. Hasil dilihat di MONITOR SERVER (log SDK).</div></div>\n")
+
+         .append("<div class=panel>\n")
+         .append("<div style='font-weight:700;color:#8fd48f;margin-bottom:6px'>PRESET loginTypes</div>\n")
+         .append("<button id=p1 onclick=preset('1')>E1 [\"1\"] form email+TAMU</button> ")
+         .append("<button id=p2 onclick=preset('12')>E2 [\"12\"] tamu-only (v11/v12)</button> ")
+         .append("<button id=p3 onclick=preset('1,13')>E3 [\"1\",\"13\"] mirror server asli</button>\n")
+         .append("</div>\n")
+
+         .append("<div class=sec><div class=sech><span>v1/system/init.json</span><button class=pr onclick=saveFile('init.json','t_init')>SIMPAN</button></div>\n")
+         .append("<div class=bd><textarea id=t_init spellcheck=false></textarea>\n")
+         .append("<div class=hint>payTypes + loginTypes WAJIB ada (parser model/e game).</div></div></div>\n")
+
+         .append("<div class=sec><div class=sech><span>profile.json</span><button class=pr onclick=saveFile('profile.json','t_profile')>SIMPAN</button></div>\n")
+         .append("<div class=bd><textarea id=t_profile spellcheck=false></textarea>\n")
+         .append("<div class=hint>Header PHP, verifySign, signSecret, daftar products.</div></div></div>\n")
+
+         .append("<div class=sec><div class=sech><span>v1/user/ckRegVistor.json</span><button class=pr onclick=saveFile('ckRegVistor.json','t_ckreg')>SIMPAN</button></div>\n")
+         .append("<div class=bd><textarea id=t_ckreg spellcheck=false></textarea></div></div>\n")
+
+         .append("<div class=sec><div class=sech><span>fallback.json</span><button class=pr onclick=saveFile('fallback.json','t_fallback')>SIMPAN</button></div>\n")
+         .append("<div class=bd><textarea id=t_fallback spellcheck=false></textarea></div></div>\n")
+
+         .append("<div class=sec><div class=sech><span>QHinfo</span><button class=pr onclick=saveFile('QHinfo','t_qh')>SIMPAN</button></div>\n")
+         .append("<div class=bd><textarea id=t_qh class=small spellcheck=false></textarea>\n")
+         .append("<div class=hint>Dibaca client dari DALAM APK (bukan file ini) — nilai di sini dibakar ke assets/QHinfo saat rebuild APK berikutnya. Tanpa trailing slash.</div></div></div>\n")
+
+         .append("<div class=sec><div class=sech><span>TABEL ACCOUNTS (sdk/data)</span><span id=dbchip class=m></span></div>\n")
+         .append("<div class=bd style='max-height:280px;overflow-y:auto'><table id=accs></table></div></div>\n")
+
+         .append("<div class=panel><a href='/' style='color:#8fd48f'>&larr; MONITOR SERVER</a></div>\n")
+         .append("<div id=toast></div>\n")
+
+         .append("<script>\n")
+         .append("function $(id){return document.getElementById(id)}\n")
+         .append("function toast(msg,err){var t=$('toast');t.textContent=msg;t.className=err?'err':'';t.style.display='block';clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none'},2600)}\n")
+         .append("function post(url,body){return fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body}).then(function(r){return r.json()})}\n")
+         .append("function preset(types){post('/sdkconfig/preset','types='+encodeURIComponent(types)).then(function(j){if(j.result){toast('init.json -> loginTypes ['+j.loginTypes+'] — force-stop & buka game');load()}else toast(j.error||'gagal',true)}).catch(function(){toast('jaringan gagal',true)})}\n")
+         .append("function saveFile(name,tid){var v=$(tid).value;post('/sdkconfig/save','name='+encodeURIComponent(name)+'&content='+encodeURIComponent(v)).then(function(j){if(j.result){toast(name+' tersimpan');load()}else toast(j.error||'gagal',true)}).catch(function(){toast('jaringan gagal',true)})}\n")
+         .append("function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}\n")
+         .append("function load(){fetch('/sdkconfig/api').then(function(r){return r.json()}).then(function(j){\n")
+         .append(" $('statsbar').textContent='backend '+j.backend+' · '+j.dbDir;\n")
+         .append(" $('chips').innerHTML='<span class=chip><b>DB-BACKEND</b>&nbsp;'+esc(j.backend)+'</span><span class=chip><b>tamu</b>&nbsp;'+(j.guest?esc(j.guest.uid)+' ('+esc(j.guest.username)+')':'belum ada')+'</span><span class=chip><b>akun email</b>&nbsp;'+j.accounts.length+'</span>';\n")
+         .append(" $('t_init').value=j.files['init.json'];$('t_profile').value=j.files['profile.json'];$('t_ckreg').value=j.files['ckRegVistor.json'];$('t_fallback').value=j.files['fallback.json'];$('t_qh').value=j.files['QHinfo'];\n")
+         .append(" var lt='';try{lt=JSON.parse(j.files['init.json']).data.loginTypes.join(',')}catch(e){}\n")
+         .append(" $('p1').className='pr'+(lt=='1'?' on':'');$('p2').className='pr'+(lt=='12'?' on':'');$('p3').className='pr'+(lt=='1,13'?' on':'');\n")
+         .append(" var h='<tr><th>uid</th><th>nama</th><th>email</th><th>tipe</th><th>login terakhir</th></tr>';\n")
+         .append(" if(j.guest)h+='<tr><td>'+esc(j.guest.uid)+'</td><td>'+esc(j.guest.username)+'</td><td class=m>-</td><td class=g>TAMU</td><td class=m>'+new Date(j.guest.lastLogin).toLocaleString()+'</td></tr>';\n")
+         .append(" for(var i=0;i<j.accounts.length;i++){var a=j.accounts[i];h+='<tr><td>'+esc(a.uid)+'</td><td>'+esc(a.username)+'</td><td>'+esc(a.email)+'</td><td>email</td><td class=m>'+new Date(a.lastLogin).toLocaleString()+'</td></tr>'}\n")
+         .append(" $('accs').innerHTML=h;$('dbchip').textContent=j.backend;\n")
+         .append("}).catch(function(){toast('API gagal dimuat',true)})}\n")
+         .append("document.title='SDK CONFIG :'+location.port;\n")
+         .append("load();\n")
+         .append("</script></body></html>");
+        return b.toString();
     }
 }

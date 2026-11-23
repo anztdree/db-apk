@@ -45,6 +45,15 @@ public final class LocalServerStarter {
             // v3: arsip NDJSON siap SEBELUM apapun jalan
             DiskWriter.init(new File(serverRoot, "logs"));
             logBoot("BOOT", "LocalServerStarter.start dipanggil (Application.onCreate) — serverRoot=" + serverRoot);
+            // Bagian 30: DB = sdk/data/ — dibuka di boot supaya migrasi lokasi
+            // lama (server/data/ v13/v14 -> sdk/data/) selesai SEBELUM listener
+            // mana pun melayani request.
+            try {
+                Db d0 = Db.open(serverRoot.getAbsolutePath());
+                logBoot("BOOT", "DB siap di boot: backend=" + d0.backend() + " dir=sdk/data");
+            } catch (Throwable t) {
+                logBoot("BOOT", "DB gagal dibuka di boot: " + t);
+            }
 
             final CountDownLatch readyEarly = new CountDownLatch(1);
             final Thread extractor = new Thread(() -> {

@@ -1,0 +1,4 @@
+tools/dl/
+tools/out/
+rebuild-src/build-smoke/
+*.idsig

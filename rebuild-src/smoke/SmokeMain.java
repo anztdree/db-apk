@@ -1,5 +1,6 @@
 import java.io.File;
 import java.util.concurrent.CountDownLatch;
+import com.db.local.server.Db;
 import com.db.local.server.ServerCore;
 import com.db.local.server.LoggerCore;
 
@@ -8,7 +9,8 @@ public class SmokeMain {
         String root = args.length > 0 ? args[0] : "/tmp/v13root";
         String doc  = args.length > 1 ? args[1] : "/home/z/ws9/server_root";
         LoggerCore.serverRootPath = root;
-        new File(root, "data").mkdirs();
+        new File(root, "sdk").mkdirs();
+        Db.open(root);   // Bagian 30 — migrasi lokasi lama di boot (persis APK)
         ServerCore.start(new File(doc), null, new CountDownLatch(0));
         Thread.currentThread().join();
     }

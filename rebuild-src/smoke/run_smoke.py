@@ -5,8 +5,11 @@ import base64, hashlib, json, os, shutil, signal, subprocess, sys, time, urllib.
 
 SECRET = "0b2a18e45d7df321"
 BASE = "http://127.0.0.1:9530"
-ROOT = "/tmp/v14root"
-WS = "/home/z/ws9"
+ROOT = "/tmp/v15root"
+WS = __file__[:__file__.rfind("/")] + "/.."   # rebuild-src/
+BUILD = WS + "/build-smoke"
+DOCROOT = "/tmp/v15doc"   # smoke tidak uji CDN — folder kosong cukup
+
 
 def sign_of(p):
     s = ""
@@ -22,6 +25,20 @@ def sdk_post(path, params=None, sign=None, data_raw=None):
     req = urllib.request.Request(BASE + path, data=body.encode(), method="POST")
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
     with urllib.request.urlopen(req, timeout=10) as r:
+        return r.status, dict(r.headers), r.read().decode("utf-8", "replace")
+
+def form_post(path, fields):
+    body = urllib.parse.urlencode(fields).encode()
+    req = urllib.request.Request("http://127.0.0.1:4000" + path, data=body, method="POST")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status, dict(r.headers), r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, dict(e.headers), e.read().decode("utf-8", "replace")
+
+def get400(path):
+    with urllib.request.urlopen("http://127.0.0.1:4000" + path, timeout=10) as r:
         return r.status, dict(r.headers), r.read().decode("utf-8", "replace")
 
 def get(path):
@@ -52,6 +69,7 @@ def envelope(id_, msg):
 # ================= setup =================
 shutil.rmtree(ROOT, ignore_errors=True)
 os.makedirs(ROOT + "/data", exist_ok=True)
+os.makedirs(DOCROOT, exist_ok=True)
 # legacy migration source (v8-v13 formats)
 GUEST_UID, GUEST_TOKEN, GUEST_NAME = "1700000000001", "a" * 32, "Guest1234"
 EMAIL_UID, EMAIL_TOKEN, EMAIL_PW = "1700000000002", "b" * 32, hashlib.md5(b"rahasia123").hexdigest()
@@ -61,9 +79,13 @@ open(ROOT + "/data/account.json", "w").write(json.dumps({
 open(ROOT + "/data/accounts.json", "w").write(json.dumps({"accounts": [{
     "email": "lama@db.local", "uid": EMAIL_UID, "token": EMAIL_TOKEN,
     "passMd5": EMAIL_PW, "createTime": 1700000000002}]}))
+# Bagian 30: instalan v14 lama punya server/data/db.sqlite — harus MIGRASI
+# (disalin, bukan dipindah) ke sdk/data/db.sqlite oleh migrateFromOldLocation
+OLD_DB = "DB-SQLITE-LAMA-v14-ini-hanya-junk-untuk-uji-copy-file"
+open(ROOT + "/data/db.sqlite", "w").write(OLD_DB)
 
 proc = subprocess.Popen(
-    ["java", "-cp", WS + "/server-v14/build-classes", "SmokeMain", ROOT, WS + "/server_root"],
+    ["java", "-cp", BUILD, "SmokeMain", ROOT, DOCROOT],
     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, preexec_fn=os.setpgrp)
 time.sleep(2.0)
 
@@ -82,6 +104,16 @@ try:
           and os.path.exists(ROOT + "/sdk/errors.json")
           and os.path.exists(ROOT + "/sdk/fallback.json")
           and os.path.exists(ROOT + "/sdk/v1/user/ckRegVistor.json"))
+    # Bagian 30: QHinfo masuk folder sdk/
+    check("qhinfo-seeded", os.path.exists(ROOT + "/sdk/QHinfo"), bd)
+    check("qhinfo-isi", open(ROOT + "/sdk/QHinfo").read().strip() == "http://127.0.0.1:9530")
+    # Bagian 30: DB pindah ke sdk/data/ — migrasi dari server/data/ lama
+    check("migrasi-lokasi-db-sqlite",
+          open(ROOT + "/sdk/data/db.sqlite").read() == OLD_DB)
+    check("migrasi-lokasi-legacy-json",
+          os.path.exists(ROOT + "/sdk/data/account.json")
+          and os.path.exists(ROOT + "/sdk/data/accounts.json"))
+    check("lokasi-lama-tidak-hilang", os.path.exists(ROOT + "/data/db.sqlite"))
 
     # 2. live-reload kontrak: edit file -> jawaban ikut
     p = ROOT + "/sdk/v1/system/init.json"
@@ -195,6 +227,7 @@ try:
     st, hd, bd = sdk_post("/v1/user/registerVisitor", must_params())
     new_guest = json.loads(json.loads(bd)["data"])["userData"]["uid"]
     check("bindMail-tamu-baru-uid-bedaa", new_guest != GUEST_UID, bd)
+    GUEST_NOW = new_guest
 
     # 16. changePassword
     p = must_params(); p.update({"uid": GUEST_UID,
@@ -228,13 +261,52 @@ try:
     check("profile-header-livereload", hd.get("X-Powered-By") == "PHP/5.4.40", str(hd))
     open(pfile, "w").write(prof)
 
-    # 21. backend fallback desktop = json (db.sqlite TIDAK ada)
-    check("backend-desktop-json", not os.path.exists(ROOT + "/data/db.sqlite"))
+    # 21. backend fallback desktop = json (DB aktif di sdk/data/, bukan data/)
+    check("backend-desktop-json", not os.path.exists(ROOT + "/sdk/data/db.json")
+          and os.path.exists(ROOT + "/sdk/data/account.json"))
+
+    # ============ Bagian 30: PANEL SDK CONFIG (dashboard 4000) ============
+    st, hd, bd = get400("/sdkconfig")
+    check("panel-GET-200", st == 200 and "SDK CONFIG" in bd)
+    st, hd, bd = get400("/sdkconfig/api")
+    api = json.loads(bd)
+    check("panel-api-backend", api["backend"] == "json", bd[:120])
+    check("panel-api-tamu", api["guest"] and api["guest"]["uid"] == GUEST_NOW, bd[:200])
+    check("panel-api-file-init", "payTypes" in api["files"]["init.json"])
+    check("panel-api-qhinfo", api["files"]["QHinfo"] == "http://127.0.0.1:9530")
+
+    # save init.json via panel -> live-reload
+    new_init = json.dumps({"result": True, "data": {"payTypes": [], "loginTypes": ["12"]}})
+    st, hd, bd = form_post("/sdkconfig/save", {"name": "init.json", "content": new_init})
+    check("panel-save-init-ok", json.loads(bd)["result"] is True, bd)
+    st, hd, bd = get("/v1/system/init")
+    check("panel-save-init-livereload", json.loads(bd)["data"]["loginTypes"] == ["12"], bd)
+
+    # preset E3 -> loginTypes ["1","13"]
+    st, hd, bd = form_post("/sdkconfig/preset", {"types": "1,13"})
+    check("panel-preset-e3", json.loads(bd)["result"] is True, bd)
+    st, hd, bd = get("/v1/system/init")
+    check("panel-preset-e3-livereload", json.loads(bd)["data"]["loginTypes"] == ["1", "13"], bd)
+    # preset kembali E1 (default)
+    form_post("/sdkconfig/preset", {"types": "1"})
+
+    # penolakan panel: nama tak dikenal (whitelist), init tanpa payTypes, QHinfo slash
+    st, hd, bd = form_post("/sdkconfig/save", {"name": "../../evil", "content": "{}"})
+    check("panel-tolak-nama-asing", json.loads(bd)["result"] is False, bd)
+    st, hd, bd = form_post("/sdkconfig/save", {"name": "init.json", "content": "{\"result\":true}"})
+    check("panel-tolak-init-tanpa-payTypes", json.loads(bd)["result"] is False, bd)
+    st, hd, bd = form_post("/sdkconfig/save", {"name": "QHinfo", "content": "http://127.0.0.1:9530/"})
+    check("panel-tolak-qhinfo-slash", json.loads(bd)["result"] is False, bd)
+    st, hd, bd = form_post("/sdkconfig/save", {"name": "QHinfo", "content": "http://127.0.0.1:9530"})
+    check("panel-save-qhinfo-ok", json.loads(bd)["result"] is True, bd)
+    check("panel-qhinfo-berlaku", open(ROOT + "/sdk/QHinfo").read().strip() == "http://127.0.0.1:9530")
+    # file asing TIDAK dibuat (anti path traversal)
+    check("panel-tidak-buat-file-asing", not os.path.exists(ROOT + "/evil"))
 
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
 
-print("\n===== SMOKE v14: %d PASS, %d FAIL =====" % (len(PASS), len(FAIL)))
+print("\n===== SMOKE v15: %d PASS, %d FAIL =====" % (len(PASS), len(FAIL)))
 if FAIL:
     print("GAGAL:", FAIL)
     sys.exit(1)
