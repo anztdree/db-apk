@@ -1,0 +1,18 @@
+{"file":"boss_snatch1.png","frames":{
+"-":{"x":111,"y":68,"w":15,"h":9,"offX":2,"offY":14,"sourceW":19,"sourceH":36},
+"+":{"x":0,"y":100,"w":22,"h":20,"offX":2,"offY":6,"sourceW":26,"sourceH":36},
+"1":{"x":93,"y":68,"w":18,"h":32,"offX":2,"offY":0,"sourceW":22,"sourceH":36},
+"2":{"x":50,"y":36,"w":25,"h":32,"offX":2,"offY":0,"sourceW":29,"sourceH":36},
+"3":{"x":24,"y":68,"w":24,"h":32,"offX":2,"offY":0,"sourceW":28,"sourceH":36},
+"4":{"x":99,"y":36,"w":24,"h":32,"offX":2,"offY":0,"sourceW":28,"sourceH":36},
+"5":{"x":0,"y":68,"w":24,"h":32,"offX":2,"offY":0,"sourceW":28,"sourceH":36},
+"6":{"x":0,"y":36,"w":25,"h":32,"offX":2,"offY":0,"sourceW":29,"sourceH":36},
+"7":{"x":72,"y":68,"w":21,"h":32,"offX":2,"offY":0,"sourceW":25,"sourceH":36},
+"8":{"x":48,"y":68,"w":24,"h":32,"offX":2,"offY":0,"sourceW":28,"sourceH":36},
+"9":{"x":25,"y":36,"w":25,"h":32,"offX":2,"offY":0,"sourceW":29,"sourceH":36},
+"0":{"x":75,"y":36,"w":24,"h":32,"offX":2,"offY":0,"sourceW":28,"sourceH":36},
+".":{"x":116,"y":0,"w":11,"h":10,"offX":2,"offY":22,"sourceW":15,"sourceH":36},
+"B":{"x":43,"y":0,"w":38,"h":36,"offX":2,"offY":0,"sourceW":42,"sourceH":36},
+"K":{"x":81,"y":0,"w":35,"h":36,"offX":2,"offY":0,"sourceW":39,"sourceH":36},
+"M":{"x":0,"y":0,"w":43,"h":36,"offX":2,"offY":0,"sourceW":47,"sourceH":36},
+" ":{"x":116,"y":10,"w":5,"h":5,"offX":0,"offY":0,"sourceW":5,"sourceH":36}}}

@@ -1,0 +1,11 @@
+{"file":"temple1.png","frames":{
+"1":{"x":23,"y":0,"w":7,"h":14,"offX":2,"offY":1,"sourceW":11,"sourceH":16},
+"2":{"x":0,"y":32,"w":11,"h":15,"offX":2,"offY":0,"sourceW":15,"sourceH":16},
+"3":{"x":11,"y":14,"w":10,"h":16,"offX":2,"offY":0,"sourceW":14,"sourceH":16},
+"4":{"x":11,"y":0,"w":12,"h":14,"offX":2,"offY":1,"sourceW":16,"sourceH":16},
+"5":{"x":21,"y":14,"w":10,"h":15,"offX":2,"offY":1,"sourceW":14,"sourceH":16},
+"6":{"x":0,"y":16,"w":11,"h":16,"offX":2,"offY":0,"sourceW":15,"sourceH":16},
+"7":{"x":21,"y":29,"w":10,"h":14,"offX":2,"offY":1,"sourceW":14,"sourceH":16},
+"8":{"x":0,"y":0,"w":11,"h":16,"offX":2,"offY":0,"sourceW":15,"sourceH":16},
+"9":{"x":11,"y":30,"w":10,"h":16,"offX":2,"offY":0,"sourceW":14,"sourceH":16},
+"0":{"x":0,"y":47,"w":10,"h":16,"offX":2,"offY":0,"sourceW":14,"sourceH":16}}}

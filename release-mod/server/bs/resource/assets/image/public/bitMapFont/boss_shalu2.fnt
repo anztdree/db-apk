@@ -1,0 +1,12 @@
+{"file":"boss_shalu2.png","frames":{
+"1":{"x":0,"y":175,"w":42,"h":87,"offX":2,"offY":0,"sourceW":46,"sourceH":88},
+"2":{"x":189,"y":174,"w":61,"h":87,"offX":2,"offY":0,"sourceW":65,"sourceH":88},
+"3":{"x":195,"y":0,"w":61,"h":88,"offX":2,"offY":0,"sourceW":65,"sourceH":88},
+"4":{"x":0,"y":0,"w":68,"h":87,"offX":2,"offY":0,"sourceW":72,"sourceH":88},
+"5":{"x":126,"y":88,"w":63,"h":87,"offX":2,"offY":1,"sourceW":67,"sourceH":88},
+"6":{"x":68,"y":0,"w":64,"h":88,"offX":2,"offY":0,"sourceW":68,"sourceH":88},
+"7":{"x":189,"y":88,"w":63,"h":86,"offX":2,"offY":1,"sourceW":67,"sourceH":88},
+"8":{"x":63,"y":88,"w":63,"h":88,"offX":2,"offY":0,"sourceW":67,"sourceH":88},
+"9":{"x":0,"y":87,"w":63,"h":88,"offX":2,"offY":0,"sourceW":67,"sourceH":88},
+"0":{"x":132,"y":0,"w":63,"h":88,"offX":2,"offY":0,"sourceW":67,"sourceH":88},
+" ":{"x":250,"y":174,"w":5,"h":5,"offX":0,"offY":0,"sourceW":14,"sourceH":88}}}

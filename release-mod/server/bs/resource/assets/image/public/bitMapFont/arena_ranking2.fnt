@@ -1,0 +1,14 @@
+{"file":"arena_ranking2.png","frames":{
+"0":{"x":36,"y":57,"w":36,"h":57,"offX":2,"offY":0,"sourceW":40,"sourceH":57},
+"1":{"x":100,"y":114,"w":28,"h":56,"offX":2,"offY":0,"sourceW":32,"sourceH":57},
+"2":{"x":35,"y":114,"w":34,"h":56,"offX":2,"offY":0,"sourceW":38,"sourceH":57},
+"3":{"x":0,"y":113,"w":35,"h":57,"offX":2,"offY":0,"sourceW":39,"sourceH":57},
+"4":{"x":0,"y":0,"w":37,"h":56,"offX":2,"offY":0,"sourceW":41,"sourceH":57},
+"5":{"x":37,"y":0,"w":36,"h":57,"offX":2,"offY":0,"sourceW":40,"sourceH":57},
+"6":{"x":72,"y":57,"w":36,"h":57,"offX":2,"offY":0,"sourceW":40,"sourceH":57},
+"7":{"x":69,"y":114,"w":31,"h":56,"offX":2,"offY":0,"sourceW":35,"sourceH":57},
+"8":{"x":0,"y":56,"w":36,"h":57,"offX":2,"offY":0,"sourceW":40,"sourceH":57},
+"9":{"x":73,"y":0,"w":36,"h":57,"offX":2,"offY":0,"sourceW":40,"sourceH":57},
+"+":{"x":0,"y":170,"w":36,"h":39,"offX":2,"offY":9,"sourceW":40,"sourceH":57},
+"-":{"x":36,"y":170,"w":25,"h":22,"offX":2,"offY":21,"sourceW":29,"sourceH":57},
+".":{"x":108,"y":57,"w":20,"h":22,"offX":2,"offY":32,"sourceW":24,"sourceH":57}}}

@@ -1,0 +1,29 @@
+{
+  "result": true,
+  "data": {
+    "payTypes": [],
+    "loginTypes": ["1"],
+    "first_install": 1,
+    "countryCode": "HK",
+    "productConfig": {
+      "guestShowBind": "1",
+      "isShowFloat": "0",
+      "useSms": "0",
+      "useServiceCenter": "0",
+      "single_play": "0",
+      "adZhifuSwt": "0",
+      "initCZurl": "",
+      "serviceInfo": "",
+      "logo": "",
+      "title": ""
+    },
+    "version": {
+      "versionNo": "empty",
+      "versionName": "empty",
+      "versionUrl": "empty",
+      "updateTime": "empty",
+      "isMust": "empty",
+      "updateTips": "empty"
+    }
+  }
+}

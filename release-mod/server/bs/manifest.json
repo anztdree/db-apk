@@ -1,0 +1,21 @@
+{
+	"initial": [
+		"js/egret.min_d9413192.js",
+		"js/egret.web.min_b66ab113.js",
+		"js/game.min_16249d0f.js",
+		"js/tween.min_6c5a88f9.js",
+		"js/assetsmanager.min_2ef412b7.js",
+		"js/eui.min_493403ce.js",
+		"js/dragonBones.min_6252b9c4.js"
+	],
+	"game": [
+		"js/md5.min_97e969ef.js",
+		"js/lz-string.min_896bee8b.js",
+		"js/socket.io.min_57ea9db7.js",
+		"js/blockmessage.min_7dc7bcec.js",
+		"js/battlelogic.min_d446437e.js",
+		"js/ThinkingAnalyticsSDK.min_72d3fad5.js",
+		"js/default.thm_4d02a3c6.js",
+		"js/main.min_777039fc.js"
+	]
+}

@@ -1,0 +1,12 @@
+{"file":"guild_boss1.png","frames":{
+"0":{"x":28,"y":36,"w":29,"h":35,"offX":2,"offY":1,"sourceW":33,"sourceH":38},
+"1":{"x":83,"y":71,"w":22,"h":36,"offX":2,"offY":0,"sourceW":26,"sourceH":38},
+"2":{"x":28,"y":71,"w":26,"h":34,"offX":2,"offY":2,"sourceW":30,"sourceH":38},
+"3":{"x":83,"y":37,"w":27,"h":34,"offX":2,"offY":1,"sourceW":31,"sourceH":38},
+"4":{"x":0,"y":0,"w":31,"h":36,"offX":2,"offY":0,"sourceW":35,"sourceH":38},
+"5":{"x":31,"y":0,"w":30,"h":36,"offX":2,"offY":0,"sourceW":34,"sourceH":38},
+"6":{"x":89,"y":0,"w":28,"h":37,"offX":2,"offY":0,"sourceW":32,"sourceH":38},
+"7":{"x":57,"y":37,"w":26,"h":37,"offX":2,"offY":1,"sourceW":30,"sourceH":38},
+"8":{"x":0,"y":36,"w":28,"h":37,"offX":2,"offY":0,"sourceW":32,"sourceH":38},
+"9":{"x":61,"y":0,"w":28,"h":37,"offX":2,"offY":1,"sourceW":32,"sourceH":38},
+" ":{"x":117,"y":0,"w":5,"h":5,"offX":0,"offY":0,"sourceW":9,"sourceH":38}}}

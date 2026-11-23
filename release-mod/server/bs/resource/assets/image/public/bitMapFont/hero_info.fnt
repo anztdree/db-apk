@@ -1,0 +1,13 @@
+{"file":"hero_info.png","frames":{
+"/":{"x":0,"y":64,"w":17,"h":31,"offX":2,"offY":0,"sourceW":21,"sourceH":32},
+"1":{"x":109,"y":0,"w":17,"h":32,"offX":2,"offY":0,"sourceW":21,"sourceH":32},
+"2":{"x":78,"y":32,"w":25,"h":32,"offX":2,"offY":0,"sourceW":29,"sourceH":32},
+"3":{"x":83,"y":0,"w":26,"h":32,"offX":2,"offY":0,"sourceW":30,"sourceH":32},
+"4":{"x":0,"y":0,"w":29,"h":32,"offX":2,"offY":0,"sourceW":33,"sourceH":32},
+"5":{"x":26,"y":32,"w":26,"h":32,"offX":2,"offY":0,"sourceW":30,"sourceH":32},
+"6":{"x":0,"y":32,"w":26,"h":32,"offX":2,"offY":0,"sourceW":30,"sourceH":32},
+"7":{"x":103,"y":32,"w":25,"h":32,"offX":2,"offY":0,"sourceW":29,"sourceH":32},
+"8":{"x":56,"y":0,"w":27,"h":32,"offX":2,"offY":0,"sourceW":31,"sourceH":32},
+"9":{"x":52,"y":32,"w":26,"h":32,"offX":2,"offY":0,"sourceW":30,"sourceH":32},
+"0":{"x":29,"y":0,"w":27,"h":32,"offX":2,"offY":0,"sourceW":31,"sourceH":32},
+" ":{"x":17,"y":64,"w":5,"h":5,"offX":0,"offY":0,"sourceW":5,"sourceH":32}}}
