@@ -27,6 +27,9 @@ import java.util.concurrent.CountDownLatch;
  * - v3 (Bagian 18): DiskWriter NDJSON diinisialisasi PALING AWAL — semua entry
  *   (BOOT/EXTRACT/bind/HTTP/WS) tertulis di <serverRoot>/logs/ dari detik pertama
  * - SEMUA exception ditelan (dilaporkan ke logger) — jangan pernah crash app
+ * - v17: CrashHook (crash luar server terekam) + OverlayFixer (izin overlay —
+ *   kandidat utama crash 'setelah sdk selesai LOADING': dialog auto-login
+ *   SDK memakai window TYPE_APPLICATION_OVERLAY tanpa cek izin)
  */
 public final class LocalServerStarter {
     private static volatile boolean started = false;
@@ -44,7 +47,19 @@ public final class LocalServerStarter {
 
             // v3: arsip NDJSON siap SEBELUM apapun jalan
             DiskWriter.init(new File(serverRoot, "logs"));
-            logBoot("BOOT", "LocalServerStarter.start dipanggil (Application.onCreate) — MOD-LOCALSERVER v16 — serverRoot=" + serverRoot);
+            logBoot("BOOT", "LocalServerStarter.start dipanggil (Application.onCreate) — MOD-LOCALSERVER v17 — serverRoot=" + serverRoot);
+
+            // v17: penangkap crash — SEMUA crash Java proses ini (termasuk kode
+            // SDK/game asli) terekam ke logs/crash-*.txt + banner dashboard.
+            // Jawaban diagnosis "setelah sdk selesai LOADING force close":
+            // crash terjadi di kode SDK (classes.dex, forbidden zone) pada jalur
+            // auto-login sesi tersimpan — tanpa HTTP berikutnya, logger HTTP
+            // buta; hook ini yang membuatnya TERLIHAT.
+            CrashHook.install();
+
+            // v17: context utk OverlayFixer + cek izin overlay di boot
+            OverlayFixer.ctx = ctx;
+            OverlayFixer.checkAndLog();
             // Bagian 30: DB = sdk/data/ — dibuka di boot supaya migrasi lokasi
             // lama (server/data/ v13/v14 -> sdk/data/) selesai SEBELUM listener
             // mana pun melayani request.

@@ -1,0 +1,45 @@
+BAKSMALI-DIFF v17 vs ORIGINAL (Bagian 32)
+=========================================
+Tanggal : 23 Nov 2026
+Metode  : apktool 2.9.3 decode KEDUA APK (fresh), sha256 per file smali
+Original: db-local(Original-DO NOT DELETE!).apk  (decode: tools/out/dA16)
+v17     : db-local(MOD-LOCALSERVER-v17).apk       (decode: tools/out/dV17)
+
+== classes.dex (smali/) — SDK smali FORBIDDEN ZONE ==
+sha256 classes.dex v17 == v16 == v11 : 1df64d91219c01db... (BYTE-IDENTIK)
+hanya di original : 0 file
+hanya di v17      : 0 file
+berubah           : 1 file
+  com/zhuhuan/game/Application.smali  (+2 baris — starter, persis v11-v16)
+    +    invoke-static {p0}, Lcom/db/local/server/LocalServerStarter;->start(Landroid/content/Context;)V
+    +
+
+== smali_classes2/ (server MOD v17 — seluruhnya milik APK mod, bukan SDK) ==
+39 class, dibangun dari rebuild-src/javasrc (ECJ 3.33.0 -source 8 -target 8,
+stub android: Context/AssetManager/Intent/Uri/Settings/Cursor/SQLiteDatabase)
+-> D8 8.3.37 --release --min-api 21 -> classes2.dex 144.304 B (v16: 135.116 B)
+
+== ZIP v16 vs v17 (signed final) ==
+entri sama           : 6.424 (semua assets/resources/manifest/lib identik)
+beda isi             : classes2.dex + META-INF/DBLOCALM.RSA + DBLOCALM.SF
+                       + MANIFEST.MF (signature ulang keystore sama)
+classes.dex          : byte-identik
+resources.arsc       : byte-identik
+assets/QHinfo        : byte-identik
+
+== SIGN ==
+uber-apk-signer 1.3.0 + dblocal-mod.keystore (alias dblocalmod, pass
+dblocalmod123) -> zipalign verified + signature verified [v1, v2, v3]
+CN=DB Local Mod, O=Owner, C=ID, exp 14 Nov 2056 (install-over OK)
+APK : release-mod/db-local(MOD-LOCALSERVER-v17).apk
+      sha256 d48a93d3ea9bca58f12e5ac5b31f6b10e73fac49baf950f0fd48b2299c381490
+      202.683.252 B (202.113.643 B unsigned)
+
+== SMOKE DESKTOP ==
+82/82 PASS (69 kasus v14-v16 tetap + 13 baru v17):
+  v17-dashboard-200, v17-tabel-markup, v17-chip-tahap, v17-salin-tabel,
+  v17-banner-crash-js, v17-banner-overlay-js, v17-ver-dashboard,
+  v17-crash-route, v17-crash-sintetis, v17-crash-entry-logger,
+  v17-crash-file-disk, v17-stats-overlay, v17-fix-overlay-desktop
++ JS dashboard diuji runtime di node (rowHtml/describe/pass/verdict/salin-tabel
+  kolom sejajar) + node --check (syntax OK, 21.854 B script).

@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-# Smoke desktop v16 (Bagian 31) — FIX LAPORAN DEVICE 23 Nov:
-#  1. rawQuery(String,Object[]) -> String[] (bug NoSuchMethodError API 31 —
-#     tidak bisa diuji desktop karena desktop pakai backend DbJson;
-#     stub SQLiteDatabase kini deklarasinya = API framework asli).
-#  2. FIX 30001 'silent error': products += productCode ASLI client
-#     (75880787318053043365515388491588, rekam log device 23 Nov 16:54)
-#     + UPGRADE OTOMATIS profile.json bawaan v15 yang belum diedit owner.
-#  3. index.txt DIHAPUS dari sdk/ (keluhan owner: "berasa jadi sampah") —
-#     sisa instal v15 dibersihkan otomatis tiap boot.
-#  4. Dashboard v6 (banner masalah + tombol TERIMA PRODUCT + tampilan
-#     PENTING/MASALAH/SEMUA) + endpoint /sdkconfig/product-add.
+# Smoke desktop v17 (Bagian 32) — jawaban laporan device 23 Nov sore:
+#  "ituh log anda gk rapi susah di baca ... teks kaya tapi gak efisien !!!"
+#  + "setelah sdk selesai LOADING force close"
+#  1. DASHBOARD v7 = TABEL sungguhan (satu baris per peristiwa, header sticky,
+#     chip filter tahap, Salin tabel = kolom sejajar lebar tetap).
+#  2. CRASH CAPTURE (CrashHook): semua crash Java proses game (termasuk kode
+#     SDK/game asli) terekam logs/crash-*.txt + banner merah dashboard (GET
+#     /crash). Diuji dgn laporan crash sintetis.
+#  3. FIX IZIN OVERLAY (OverlayFixer): dialog auto-login SDK = window
+#     TYPE_APPLICATION_OVERLAY (2008) tanpa cek izin (bukti smali d/e.smali)
+#     = kandidat utama crash "setelah loading". Cek canDrawOverlays di boot +
+#     banner + tombol 1-klik BUKA SETTINGS (POST /fix/overlay).
+#  (uji v14-v16 tetap — 69 kasus lama harus tetap PASS)
 import base64, hashlib, json, os, shutil, signal, subprocess, sys, time, urllib.request, urllib.error, urllib.parse
 
 SECRET = "0b2a18e45d7df321"
@@ -112,7 +114,7 @@ open(ROOT + "/sdk/profile.json", "w").write(V15_PROFILE)
 open(ROOT + "/sdk/index.txt", "w").write("SAMPAH v15 — harus dihapus v16")
 
 proc = subprocess.Popen(
-    ["java", "-cp", BUILD, "SmokeMain", ROOT, DOCROOT],
+    ["java", "-cp", BUILD, "SmokeMain", ROOT, DOCROOT, "synthcrash"],
     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, preexec_fn=os.setpgrp)
 time.sleep(2.0)
 
@@ -311,7 +313,7 @@ try:
     check("panel-api-file-init", "payTypes" in api["files"]["init.json"])
     check("panel-api-qhinfo", api["files"]["QHinfo"] == "http://127.0.0.1:9530")
     # v16: api membawa status product
-    check("v16-panel-api-ver", api.get("ver") == "v16", bd[:80])
+    check("v17-panel-api-ver", api.get("ver") == "v17", bd[:80])
     check("v16-panel-api-products", PRODUCT_ASLI in api.get("products", []))
 
     # v16: endpoint product-add — tambah kode + validasi
@@ -357,10 +359,60 @@ try:
     # file asing TIDAK dibuat (anti path traversal)
     check("panel-tidak-buat-file-asing", not os.path.exists(ROOT + "/evil"))
 
+    # ============ Bagian 32: DASHBOARD v7 TABEL + CRASH + OVERLAY ============
+    st, hd, bd = get400("/")
+    check("v17-dashboard-200", st == 200 and "MONITOR SERVER" in bd)
+    check("v17-tabel-markup", "<table id=tbl" in bd and "PERISTIWA" in bd
+          and "<tbody id=tb>" in bd, bd[:80])
+    check("v17-chip-tahap", "renderStages" in bd and "stagechips" in bd)
+    check("v17-salin-tabel", "copyTable" in bd and "Salin tabel" in bd)
+    check("v17-banner-crash-js", "renderCrash" in bd and "SALIN TRACE" in bd
+          and "fetch('/crash')" in bd)
+    check("v17-banner-overlay-js", "renderOverlay" in bd
+          and "/fix/overlay" in bd and "BUKA SETTINGS OVERLAY" in bd)
+    check("v17-ver-dashboard", "v17" in bd)
+
+    # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
+    # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
+    st, hd, bd = get400("/crash")
+    cj = json.loads(bd)
+    check("v17-crash-route", st == 200 and "files" in cj, bd[:120])
+    if cj.get("latest"):
+        check("v17-crash-sintetis", "uji-crash-sintetis-v17" in cj["latest"]["text"]
+              and "STACK TRACE" in cj["latest"]["text"]
+              and "LOG TERAKHIR" in cj["latest"]["text"],
+              cj["latest"]["text"][:200])
+    else:
+        # belum sempat ditulis (race) — tunggu sebentar lalu cek lagi
+        time.sleep(2.0)
+        st, hd, bd = get400("/crash")
+        cj = json.loads(bd)
+        check("v17-crash-sintetis", bool(cj.get("latest"))
+              and "uji-crash-sintetis-v17" in cj["latest"]["text"], bd[:200])
+    # entri CRASH masuk buffer logger
+    st, hd, bd = get400("/logs?limit=100")
+    lg = json.loads(bd)
+    check("v17-crash-entry-logger", any(e.get("kind") == "CRASH" for e in lg["entries"]),
+          str(lg["entries"][-1])[:200] if lg["entries"] else "kosong")
+    # file crash fisik ada di logs/
+    crash_files = [f for f in os.listdir(ROOT + "/logs") if f.startswith("crash-")]
+    check("v17-crash-file-disk", len(crash_files) >= 1, str(crash_files))
+
+    # /stats membawa status overlay
+    st, hd, bd = get400("/stats")
+    stats = json.loads(bd)
+    check("v17-stats-overlay", "overlay" in stats, bd[-120:])
+
+    # /fix/overlay di desktop (tanpa context) -> result:false jujur
+    st, hd, bd = form_post("/fix/overlay", {})
+    j = json.loads(bd)
+    check("v17-fix-overlay-desktop", st in (200, 400) and j["result"] is False
+          and "bukan Android" in j.get("error", ""), bd)
+
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
 
-print("\n===== SMOKE v16: %d PASS, %d FAIL =====" % (len(PASS), len(FAIL)))
+print("\n===== SMOKE v17: %d PASS, %d FAIL =====" % (len(PASS), len(FAIL)))
 if FAIL:
     print("GAGAL:", FAIL)
     sys.exit(1)

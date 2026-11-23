@@ -114,6 +114,9 @@ public final class LoggerCore {
     public static volatile String serverRootPath = "";
     public static volatile boolean extracted = false;
     public static volatile long extractedFiles = 0;
+    /** v17 — status izin overlay (kandidat utama crash dialog auto-login SDK). */
+    public static volatile boolean overlayChecked = false;
+    public static volatile boolean overlayGranted = true;
     /** entri terbuang dari ring buffer (tidak hilang di disk — DiskWriter menulis semua) */
     public static volatile long droppedGlobal = 0;
     public static final long[] droppedPort = new long[6];
@@ -239,6 +242,8 @@ public final class LoggerCore {
             }
         }
         b.append("},\"disk\":").append(DiskWriter.statsJson())
+         .append(",\"overlay\":{\"checked\":").append(overlayChecked)
+         .append(",\"granted\":").append(overlayGranted).append('}')
          .append(",\"selfLogged\":false}");
         return b.toString();
     }

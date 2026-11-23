@@ -18,4 +18,12 @@ public class Context {
     public android.content.res.AssetManager getAssets() {
         throw new RuntimeException("stub");
     }
+
+    public String getPackageName() {
+        throw new RuntimeException("stub");
+    }
+
+    public void startActivity(Intent intent) {
+        throw new RuntimeException("stub");
+    }
 }
