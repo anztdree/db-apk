@@ -1,0 +1,47 @@
+MOD-LOCALSERVER v18 — LAPORAN CRASH
+waktu : 2026-11-23 20:08:22.801
+thread: main
+root  : /storage/emulated/0/Android/data/com.db.local/server
+
+exception: java.lang.NullPointerException
+message  : Attempt to read from field 'boolean com.quickgame.android.sdk.model.d.worktopichardtails' on a null object reference in method 'void com.quickgame.android.sdk.activity.HWLoginActivity.singersmooth()'
+
+===== STACK TRACE =====
+java.lang.NullPointerException: Attempt to read from field 'boolean com.quickgame.android.sdk.model.d.worktopichardtails' on a null object reference in method 'void com.quickgame.android.sdk.activity.HWLoginActivity.singersmooth()'
+	at com.quickgame.android.sdk.activity.HWLoginActivity.singersmooth(SourceFile:11)
+	at com.quickgame.android.sdk.activity.awfulcongratulatepunishment.run(SourceFile:3)
+	at android.os.Handler.handleCallback(Handler.java:938)
+	at android.os.Handler.dispatchMessage(Handler.java:99)
+	at android.os.Looper.loopOnce(Looper.java:201)
+	at android.os.Looper.loop(Looper.java:288)
+	at android.app.ActivityThread.main(ActivityThread.java:7996)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:553)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1003)
+
+===== 50 LOG TERAKHIR (seq waktu kind port status path) =====
+#1 2026-11-23 20:08:18.057 BOOT 4000 0 LocalServerStarter.start dipanggil (Application.onCreate) — MOD-LOCALSERVER v18 — serverRoot=/storage/emulated/0/Android/data/com.db.local/server
+#2 2026-11-23 20:08:18.064 SYS 4000 0 exit lalu[2/3] reason=USER_REQUESTED desc=remove task waktu=2026-11-23 20:08:12.804
+#3 2026-11-23 20:08:18.064 SYS 4000 500 exit lalu[1/3] reason=CRASH desc=crash waktu=2026-11-23 19:40:17.770  <-- SESI SEBELUMNYA MATI ABNORMAL
+#4 2026-11-23 20:08:18.065 SYS 4000 0 exit lalu[0/3] reason=USER_REQUESTED desc=remove task waktu=2026-11-23 18:08:21.188
+#5 2026-11-23 20:08:18.065 BOOT 4000 0 CrashHook terpasang — crash Java seluruh proses terekam ke logs/crash-*.txt + banner dashboard
+#6 2026-11-23 20:08:18.072 SYS 9530 0 DB-BACKEND sqlite dir=/storage/emulated/0/Android/data/com.db.local/server/sdk/data
+#7 2026-11-23 20:08:18.072 BOOT 4000 0 DB siap di boot: backend=sqlite dir=sdk/data
+#8 2026-11-23 20:08:18.074 SYS 4000 0 port 9527 — config bin (mirror configus…:443) — AKTIF
+#9 2026-11-23 20:08:18.075 SYS 4000 0 port 9528 — CDN game (mirror dragonh5cdn…:443) — AKTIF
+#10 2026-11-23 20:08:18.075 SYS 4000 0 port 5050 — login socket.io v2.1.2 EIO=3 + loginchecknative (mirror login…:610) — AKTIF
+#11 2026-11-23 20:08:18.075 SYS 4000 0 port 5051 — server game socket.io v2.1.2 EIO=3 (serverItem.url — Bagian 21) — AKTIF
+#12 2026-11-23 20:08:18.075 SYS 4000 0 port 9530 — API SDK t4game (mirror qsdk.t4game.com:80) — AKTIF
+#13 2026-11-23 20:08:18.075 SYS 4000 0 port 4000 — logger 2 mode — AKTIF
+#14 2026-11-23 20:08:18.075 BOOT 4000 0 mini-server aktif; logger di port 4000; arsip NDJSON: /storage/emulated/0/Android/data/com.db.local/server/logs
+#15 2026-11-23 20:08:18.217 HTTP 9527 200 /bs/db/android/setting_BS_Android.bin?rnd=0.499323
+#16 2026-11-23 20:08:18.245 HTTP 9527 200 /bs/db/android/com_db_local.bin?rnd=0.748422
+#17 2026-11-23 20:08:18.253 HTTP 9527 200 /bs/db/android/setting_BS_Android.bin?rnd=0.444894
+#18 2026-11-23 20:08:18.259 HTTP 9527 200 /bs/db/android/com_db_local.bin?rnd=0.113976
+#19 2026-11-23 20:08:18.403 HTTP 9528 200 /bs/upgrade/base.version?rnd=0.236911
+#20 2026-11-23 20:08:18.410 HTTP 9528 200 /bs/upgrade/resource.version?rnd=0.884154
+#21 2026-11-23 20:08:19.008 HTTP 9530 200 /v1/system/init
+#22 2026-11-23 20:08:19.015 HTTP 9530 200 /v1/system/getNotice
+#23 2026-11-23 20:08:22.223 HTTP 9530 200 /v1/user/autoLogin
+
+AKHIR LAPORAN — kirim/unduh dari dashboard 4000 (banner merah CRASH)

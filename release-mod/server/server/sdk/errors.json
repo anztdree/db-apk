@@ -1,0 +1,14 @@
+{
+ "note": "Katalog error LIVE server asli (rekam 23 Nov 2026). IDs lokal server (20001, 20004, 20005) dipilih di luar katalog asli supaya tidak bentrok arti. 20002 di server asli = SIGN, jadi salah kata sandi lokal pakai 20004.",
+ "live": {
+   "20000": "Params error",
+   "20002": "Params sign error",
+   "20003": "LostSomeMustParams:<nama param>",
+   "30001": "Product doesn't exist"
+ },
+ "lokal": {
+   "20001": "Email/akun belum terdaftar / sudah terdaftar (tergantung endpoint)",
+   "20004": "Kata sandi salah",
+   "20005": "Fitur tidak tersedia di server lokal"
+ }
+}

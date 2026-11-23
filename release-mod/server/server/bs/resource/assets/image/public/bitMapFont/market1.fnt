@@ -1,0 +1,14 @@
+{"file":"market1.png","frames":{
+"(":{"x":97,"y":79,"w":23,"h":43,"offX":2,"offY":0,"sourceW":27,"sourceH":43},
+"0":{"x":0,"y":39,"w":33,"h":40,"offX":2,"offY":0,"sourceW":37,"sourceH":43},
+"1":{"x":100,"y":0,"w":27,"h":39,"offX":2,"offY":1,"sourceW":31,"sourceH":43},
+"2":{"x":33,"y":40,"w":32,"h":40,"offX":2,"offY":0,"sourceW":36,"sourceH":43},
+"3":{"x":65,"y":40,"w":32,"h":40,"offX":2,"offY":0,"sourceW":36,"sourceH":43},
+"4":{"x":0,"y":0,"w":34,"h":39,"offX":2,"offY":1,"sourceW":38,"sourceH":43},
+"5":{"x":32,"y":80,"w":32,"h":39,"offX":2,"offY":1,"sourceW":36,"sourceH":43},
+"6":{"x":34,"y":0,"w":33,"h":40,"offX":2,"offY":0,"sourceW":37,"sourceH":43},
+"7":{"x":97,"y":40,"w":31,"h":39,"offX":2,"offY":1,"sourceW":35,"sourceH":43},
+"8":{"x":67,"y":0,"w":33,"h":40,"offX":2,"offY":0,"sourceW":37,"sourceH":43},
+"9":{"x":0,"y":79,"w":32,"h":40,"offX":2,"offY":0,"sourceW":36,"sourceH":43},
+")":{"x":64,"y":80,"w":23,"h":43,"offX":2,"offY":0,"sourceW":27,"sourceH":43},
+" ":{"x":120,"y":79,"w":5,"h":5,"offX":0,"offY":0,"sourceW":7,"sourceH":43}}}

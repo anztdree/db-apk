@@ -1,0 +1,12 @@
+{"file":"outDoorsGame.png","frames":{
+"0":{"x":32,"y":47,"w":31,"h":48,"offX":2,"offY":0,"sourceW":35,"sourceH":48},
+"1":{"x":31,"y":96,"w":24,"h":46,"offX":2,"offY":1,"sourceW":28,"sourceH":48},
+"2":{"x":0,"y":192,"w":30,"h":47,"offX":2,"offY":0,"sourceW":34,"sourceH":48},
+"3":{"x":0,"y":144,"w":31,"h":48,"offX":2,"offY":0,"sourceW":35,"sourceH":48},
+"4":{"x":64,"y":0,"w":32,"h":46,"offX":2,"offY":1,"sourceW":36,"sourceH":48},
+"5":{"x":32,"y":0,"w":32,"h":47,"offX":2,"offY":1,"sourceW":36,"sourceH":48},
+"6":{"x":0,"y":0,"w":32,"h":48,"offX":2,"offY":0,"sourceW":36,"sourceH":48},
+"7":{"x":96,"y":0,"w":27,"h":46,"offX":2,"offY":1,"sourceW":31,"sourceH":48},
+"8":{"x":0,"y":96,"w":31,"h":48,"offX":2,"offY":0,"sourceW":35,"sourceH":48},
+"9":{"x":0,"y":48,"w":32,"h":48,"offX":2,"offY":0,"sourceW":36,"sourceH":48},
+" ":{"x":123,"y":0,"w":5,"h":5,"offX":0,"offY":0,"sourceW":10,"sourceH":48}}}

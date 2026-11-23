@@ -1,0 +1,16 @@
+{"file":"arena1.png","frames":{
+"/":{"x":0,"y":0,"w":44,"h":58,"offX":2,"offY":3,"sourceW":48,"sourceH":61},
+"+":{"x":76,"y":155,"w":36,"h":48,"offX":2,"offY":7,"sourceW":40,"sourceH":61},
+"-":{"x":61,"y":203,"w":36,"h":16,"offX":2,"offY":23,"sourceW":40,"sourceH":61},
+"~":{"x":27,"y":202,"w":34,"h":26,"offX":2,"offY":18,"sourceW":38,"sourceH":61},
+"0":{"x":0,"y":110,"w":38,"h":50,"offX":2,"offY":5,"sourceW":42,"sourceH":61},
+"1":{"x":0,"y":160,"w":27,"h":51,"offX":2,"offY":3,"sourceW":31,"sourceH":61},
+"2":{"x":38,"y":154,"w":38,"h":48,"offX":2,"offY":5,"sourceW":42,"sourceH":61},
+"3":{"x":38,"y":104,"w":39,"h":50,"offX":2,"offY":4,"sourceW":43,"sourceH":61},
+"4":{"x":83,"y":50,"w":38,"h":53,"offX":2,"offY":2,"sourceW":42,"sourceH":61},
+"5":{"x":83,"y":0,"w":41,"h":50,"offX":2,"offY":3,"sourceW":45,"sourceH":61},
+"6":{"x":83,"y":103,"w":38,"h":52,"offX":2,"offY":1,"sourceW":42,"sourceH":61},
+"7":{"x":0,"y":58,"w":38,"h":52,"offX":2,"offY":1,"sourceW":42,"sourceH":61},
+"8":{"x":44,"y":53,"w":39,"h":51,"offX":2,"offY":1,"sourceW":43,"sourceH":61},
+"9":{"x":44,"y":0,"w":39,"h":53,"offX":2,"offY":0,"sourceW":43,"sourceH":61},
+" ":{"x":121,"y":50,"w":5,"h":5,"offX":0,"offY":0,"sourceW":14,"sourceH":61}}}
