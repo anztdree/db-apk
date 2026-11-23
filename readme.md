@@ -2967,3 +2967,111 @@ di akhir Bagian 39: classes2.dex baru → APK v4 → siap tes.
 Catatan: `release-mod/db-local(MOD-LOCALSERVER-v3).apk` DIPERTAHANKAN sebagai
 jalur rollback bila v4 bermasalah di device — owner bebas menghapusnya
 setelah v4 lolos uji.
+
+---
+
+## Bagian 41 — HOTFIX v5: LOG TIDAK MUNCUL + PORT 4000 MURNI LOG MONITORING (23 Nov 2026 malam)
+
+### 41.1 Laporan device APK v4 (kata-kata persis owner)
+
+1. *"LOG GAK MUNCUL SAMA SEKALI , EMOJI STYLE ITUU LOG NYAA !!
+   TOMBOLNYA YAA ICON LAH ."*
+2. *"DAN ITU LAGI CONFIG SDK YG MUNCUL DI WEBSITE.. ITU DI LUAR
+   PERSETUJUAN SAYA KARENA AI CACAT SEBELUMNYA.. SEMENTARA PORT 4000
+   CUMA UNTUK LOG MONITORING"*
+
+### 41.2 Akar bug "log gak muncul sama sekali" — DITEMUKAN & DIBUKTIKAN
+
+Dashboard MONITOR v4 (Bagian 39) memasang listener ke elemen yang TIDAK ADA
+di HTML: `$('probn').addEventListener('click',…)` sementara HTML hanya punya
+`notices`, `crashbn`, `sesbn`. Di browser `$('probn')` = `null` → **TypeError
+→ seluruh script dashboard mati di baris itu** → `poll()` (pengambil log,
+interval 1,2 dtk) TIDAK PERNAH DIJADWALKAN → tabel kosong permanen, pill
+selamanya "🟢 cek …", semua tombol mati. Smoke 119/119 lama lolos karena test
+JS hanya menguji fungsi LOGIKA (stub DOM memaafkan null) dan `node --check`
+hanya cek sintaks — celah verifikasi yang kini ditutup (41.4-3).
+
+### 41.3 Perubahan (semua arahan owner dikerjakan)
+
+1. **Bug render**: elemen `<div id=probn>` ditambahkan ke `#bwrap`;
+   `renderBanner()` menulis ke sana. Handler `[data-fix]` dihapus sama
+   sekali (tombol "TERIMA PRODUCT" = aksi SDK CONFIG, keluar dari monitor).
+2. **PORT 4000 MURNI LOG MONITORING** — dihapus total dari dashboard:
+   tombol `🛠️ SDK CONFIG` di header, `sysline()` (fetch `/sdkconfig/api`,
+   info DB/product/tamu/akun/sesi), `renderSession()` + banner sesi,
+   `fixCode()`, `post()`, bullet panduan "Panel SDK CONFIG". Halaman
+   `/sdkconfig` tetap ada server-side TANPA tautan apa pun dari monitor
+   (endpoint tersembunyi; owner berhak minta dihapus menyeluruh nanti).
+3. **TOMBOL ICON-ONLY** (semua + `title` tooltip): ⭐ ❌ 📜 · ⏸️/▶️ · 🧹 ·
+   📖 · ⚙️ (filter lanjutan) · 📋 📄 💾 (footer) · 📋 ✖️ (modal) · 📋
+   (tombol trace crash) · chip tahap: 🌐 ⚙️ 🌐 🛡️ 🔑 🎮 🧭 (icon saja).
+   Placeholder cari cukup `🔍`.
+4. **EMOJI STYLE DI ENTRI LOG** — kini benar-benar terlihat (bug render
+   hilang): verdict ✅ OK / ❌ GAGAL / ⚠️ CEK / ℹ️ INFO / ⚙️ SYS, badge tahap
+   ⚙️ KONFIG 🌐 CDN 🛡️ SDK 🔑 LOGIN 🎮 GAME 🧭 SISTEM 📋 LOGGER, deskripsi
+   beremoji per kategori (🚀 🔌 📦 🧾 🔢 🔖 📥 🖼️ 🛡️ 👤 🔐 🤝 ✅ 📨 💓 🎮 🔄 🌙 💥 📟 📄),
+   baris error merah di dalam PERISTIWA.
+5. **Penanda versi** → `v5` (BOOT, laporan crash, judul dashboard).
+
+### 41.4 Verifikasi (semua dijalankan di sesi ini)
+
+1. **Kompilasi javac 21** (30 file) — PASS.
+2. **Smoke desktop** — **124/124 PASS**, termasuk 4 test baru `v41-*`:
+   `v41-no-sdkconfig-leak` (nol string "sdkconfig"/"SDK CONFIG" di halaman),
+   `v41-icon-buttons`, `v41-probn-ada`, `v41-modal-icon`, + 3 test lama
+   diperbarui ke perilaku baru (banner sesi/sysline dihapus, tombol crash
+   icon). Test `v17-ver-dashboard` → v5.
+3. **GUARD REGRESI BARU `v41-js-id-semua-ada`**: setiap id yang dirujuk
+   `$('…')` di JS dashboard WAJIB ada di HTML (cpcrash dinamis dikecualikan)
+   — kelas bug `$('probn')` tidak akan bisa lolos lagi.
+4. **UJI DINAMIS JS (node + stub DOM + HTML ter-serve asli)** — bukti
+   end-to-end bug hilang: eval JS **TANPA EXCEPTION**, 7 chip tahap render,
+   **tabel merender 2 baris log**, emoji ada di baris, verdict overlay =
+   **INFO (bukan error)**, `poll()` terjadwal, handler tombol terpasang.
+   (Dulu: TypeError di `$('probn')` → tabel kosong permanen.)
+5. **Dashboard ter-serve 30.310 B — nol kemunculan "sdkconfig"**.
+6. **D8** → `classes2.dex` **158.988 B** sha256 `0428fde8…` (v4: 161.564 B;
+   −2.576 B = panel/banner/aksi SDK CONFIG keluar dari dashboard).
+7. **Repack v5** (`rebuild-src/scripts/repack_v5.py`) di atas dasar v3:
+   diff zip v3→v5 (signed) = **tepat 4** (`classes2.dex` + 3 META-INF);
+   classes.dex proven `1df64d91…` utuh; QHinfo/clientversion/serversetting/
+   setting bin byte-identik.
+8. **Sign**: zipalign + **[v1, v2, v3] verified**, sertifikat sama
+   (CN=DB Local Mod, exp 14 Nov 2056) — install-over aman.
+
+### 41.5 APK v5
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v5).apk` |
+| Ukuran | **202.691.550 B** |
+| sha256 | `60c2f1bd468aebe065f2ddac3c9c63ba224a155f0cb59e0f670bbb74c9b0cf0d` |
+| classes2.dex | 158.988 B sha `0428fde8…` — monitor v5 murni log |
+| Penanda | BOOT/crash/dashboard = **v5** |
+| Sign | v1+v2+v3, keystore sama |
+
+### 41.6 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v5).apk` langsung di atas v4
+   (keystore sama, tanpa uninstall).
+2. Boot game → buka `http://127.0.0.1:4000` → **🐉 DB MONITOR v5** →
+   baris log HARUS muncul otomatis (poll 1,2 dtk) — 🚀 Server mulai,
+   ⚙️ KONFIG, 🌐 CDN, 🛡️ SDK, dst. beremoji.
+3. Header kini HANYA: judul + pill status + strip uptime/arsip/overlay —
+   TANPA tombol SDK CONFIG; toolbar tombol semua ICON (⭐ ❌ 📜 ⏸️ 🧹 📖 ⚙️).
+4. Ketuk baris = modal detail beremoji; 📋 = salin tabel rapi; 💾 = arsip.
+
+### 41.7 File berubah
+
+1. `release-mod/db-local(MOD-LOCALSERVER-v5).apk` — APK hotfix (LFS).
+2. `rebuild-src/scripts/repack_v5.py` — skrip repack + verifikasi (baru).
+3. `rebuild-src/javasrc/com/db/local/server/LoggerHandler.java` — fix
+   `probn`, hapus SDK CONFIG dari monitor, tombol icon-only, marker v5.
+4. `rebuild-src/javasrc/com/db/local/server/{CrashHook,LocalServerStarter}.java`
+   — penanda versi v5.
+5. `rebuild-src/smoke/run_smoke.py` — 4 test v41 baru + guard id + 6 test
+   lama disesuaikan perilaku baru.
+6. `readme.md` — Bagian 41 (file ini).
+
+Catatan: APK v4 (rusak — log tidak tampil) dan v3 masih di `release-mod/`
+sebagai arsip; owner bebas menghapus v4 karena tidak ada gunanya.

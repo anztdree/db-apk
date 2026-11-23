@@ -21,6 +21,7 @@
 #     eksklusi eksplisit di isProblem, banner merah overlay dihapus,
 #     teks OverlayFixer/SessionReset dinetralkan.
 import base64, hashlib, json, os, shutil, signal, subprocess, sys, time, urllib.request, urllib.error, urllib.parse
+import re
 
 SECRET = "0b2a18e45d7df321"
 BASE = "http://127.0.0.1:9530"
@@ -394,15 +395,15 @@ try:
           and "<tbody id=tb>" in bd, bd[:80])
     check("v17-chip-tahap", "renderStages" in bd and "stagechips" in bd)
     check("v17-salin-tabel", "copyTable" in bd and "Salin tabel" in bd)
-    check("v17-banner-crash-js", "renderCrash" in bd and "SALIN TRACE" in bd
-          and "fetch('/crash')" in bd)
+    check("v17-banner-crash-js", "renderCrash" in bd and "fetch('/crash')" in bd
+          and "id=cpcrash" in bd)  # Bagian 41: tombol icon-only 📋
     # Bagian 39 — overlay bukan lagi banner merah: renderOverlay DIHAPUS,
     # status overlay tampil netral di sysline ("overlay OFF (normal)");
     # endpoint POST /fix/overlay tetap ada (kompatibilitas API)
     check("v17-banner-overlay-js", "renderOverlay" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd
           and "overlay OFF (normal)" in bd)
-    check("v17-ver-dashboard", "v4" in bd and "/v1/system/init" in bd)  # v4: penanda versi dinaikkan (Bagian 40)
+    check("v17-ver-dashboard", "v5" in bd and "/v1/system/init" in bd)  # v5: penanda versi dinaikkan (Bagian 41)
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
@@ -462,10 +463,11 @@ try:
     # dashboard monitor: banner sesi + fungsi renderSession + ver v18
     st, hd, bd = get400("/")
     check("v1-ver-dashboard", "v1" in bd, bd[:80])
-    check("v18-banner-sesi-js", "renderSession" in bd and "sesbn" in bd
-          and "SESI SDK DIRESET OTOMATIS" in bd, bd[:80])
-    check("v18-sysline-sesi", "sesi SDK" in bd and "overlay" in bd, bd[:80])
-    check("v17-banner-crash-js-masih", "renderCrash" in bd and "SALIN TRACE" in bd)
+    check("v41-banner-sesi-dihapus", "renderSession" not in bd and "sesbn" not in bd
+          and "SESI SDK DIRESET OTOMATIS" not in bd)  # Bagian 41: sesi reset kini hanya entri log SYS (SESI-RESET)
+    check("v41-sysline-dihapus", "sysline" not in bd
+          and "sdkconfig" not in bd)  # Bagian 41: data SDK CONFIG keluar dari monitor
+    check("v41-banner-crash-js-masih", "renderCrash" in bd and "id=cpcrash" in bd)
 
     # panel /sdkconfig: seksi SESI SDK + tombol RESET + JS sesReset
     st, hd, bd = get400("/sdkconfig")
@@ -580,8 +582,8 @@ try:
           and "BUKA SETTINGS OVERLAY" not in bd
           and "tombol merah BUKA SETTINGS" not in bd, "")
     # 3. banner sesi reset = info amber (class note), heading tetap dikenali
-    check("v39-sesi-note-amber", "class=note" in bd and "renderSession" in bd
-          and "SESI SDK DIRESET OTOMATIS" in bd, "")
+    check("v40-sesi-lewat-log", "renderSession" not in bd
+          and "SESI SDK DIRESET OTOMATIS" not in bd, "")
     # 4. tabel baru 7 kolom: STATUS + PERISTIWA (tanpa kolom ERROR terpisah)
     check("v39-tabel-status", "<th>STATUS</th>" in bd
           and "<th>PERISTIWA</th>" in bd and "vEmoji" in bd, "")
@@ -592,6 +594,34 @@ try:
     #    deskripsi: teks baru ada di JS describe untuk SYS/OVERLAY)
     check("v39-describe-overlay-info", "Izin overlay</b> — '+esc(p)" in bd, "")
 
+
+    # ================= Bagian 41 — port 4000 MURNI log monitoring ==========
+    # Arahan owner (kata-kata persis):
+    #  "LOG GAK MUNCUL SAMA SEKALI , EMOJI STYLE ITUU LOG NYAA !!
+    #   TOMBOLNYA YAA ICON LAH"
+    #  "DAN ITU LAGI CONFIG SDK YG MUNCUL DI WEBSITE.. ITU DI LUAR
+    #   PERSETUJUAN SAYA KARENA AI CACAT SEBELUMNYA.. SEMENTARA PORT 4000
+    #   CUMA UNTUK LOG MONITORING"
+    st, hd, bd = get400("/")
+    # 1. NOL jejak SDK CONFIG di halaman monitor (link/tombol/sysline/data)
+    check("v41-no-sdkconfig-leak", "sdkconfig" not in bd and "SDK CONFIG" not in bd
+          and "renderSession" not in bd and "fixCode" not in bd, bd[:100])
+    # 2. tombol toolbar icon-only (tanpa label teks panjang)
+    check("v41-icon-buttons", ">\u2b50</button>" in bd and ">\u274c</button>" in bd
+          and ">\U0001f4dc</button>" in bd and "PENTING</button>" not in bd
+          and "MASALAH</button>" not in bd and "Salin tabel</button>" not in bd, "")
+    # 3. GUARD REGRESI — akar bug "log gak muncul": $('id') tanpa elemen HTML
+    #    = TypeError = seluruh JS mati = poll log tidak pernah jalan.
+    #    Setiap id dirujuk $('...') di JS WAJIB ada di HTML (cpcrash dinamis).
+    js = bd[bd.find("<script>"):bd.find("</script>")]
+    html = bd[:bd.find("<script>")]
+    ids_js = set(re.findall(r"\$\('([A-Za-z0-9_-]+)'\)", js))
+    ids_html = set(re.findall(r"id=[\"']?([A-Za-z0-9_-]+)", html))
+    missing = sorted(ids_js - ids_html - set(["cpcrash"]))
+    check("v41-js-id-semua-ada", not missing, "hilang: %s" % missing)
+    # 4. elemen probn ada (banner masalah) + tombol modal icon
+    check("v41-probn-ada", "id=probn" in html and "id=crashbn" in html, "")
+    check("v41-modal-icon", ">\U0001f4cb</button>" in bd and ">\u2716\ufe0f</button>" in bd, "")
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
 
