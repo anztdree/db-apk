@@ -2726,3 +2726,149 @@ productConfig 10 field / version 6 field / first_install+countryCode).
    `/socket.io/?EIO=3&transport=polling` di port 9528 — dulu tidak pernah ada).
 4. Bila masih ada popup/stuck: buka `127.0.0.1:4000` → SALIN TRACE/tabel →
    kirim. Log kini mencatat handshake socket.io = titik macet terlihat persis.
+
+---
+
+## Bagian 39 — LOGGER v3: REDESIGN TOTAL DASHBOARD PORT 4000 (23 Nov 2026 malam)
+
+### 39.1 Arahan owner (kata-kata persis)
+
+1. *"lebih baik anda bersihkan direktori anda lalu fresh clone . lalu
+   rencanakan ulang pembenahan pada loggers monitoring di port4000
+   tampilan sungguh jelek dan tidak efisien"*
+2. *"bagi saya pribadi overlay izin gk perlu di tandai error karena emang
+   game aslinya gak pernah perntahkan untuk overlay dan sdk tetap berjalan
+   normal"*
+3. *"yg jelas efisien itu teks harus jelas, mudah di baca tata letak
+   terstruktur dan rapi, emoji stylish"*
+4. *"gak usah pake preview segala .. nanti waktu implementasi kalau ada yg
+   gak sesuai di benerin"*
+
+Sesi ini dibuka dengan direktori kerja dibersihkan lalu **fresh clone** dari
+GitHub (HEAD `f4825b1`, working tree bersih, tanpa pekerjaan belum di-push
+— dicek dulu sebelum hapus, sesuai rule backup). Sandbox tidak punya
+`javac` → JDK 21 diunduh sebagai `.deb` dan diekstrak lokal (`/tmp/jdk`)
+agar SEMUA perubahan bisa dikompilasi + di-smoke sebelum commit.
+
+### 39.2 Koreksi IZIN OVERLAY = INFO, BUKAN error (koreksi pemahaman)
+
+Fakta yang menegaskan owner: game asli TIDAK PERNAH meminta izin overlay
+dan SDK tetap berjalan normal tanpa itu. Konsekuensi di seluruh logger:
+
+1. **OverlayFixer.checkAndLog()** — teks entri log dinetralkan:
+   `"Izin overlay OFF — NORMAL. Game asli tidak memerlukan izin overlay;
+   SDK tetap berjalan normal."` (dulu: ancaman CRASH + perintah buka
+   Settings + tombol merah).
+2. **Dashboard `isProblem()`** — EKSKLUSI EKSPLISIT paling atas:
+   `SYS+OVERLAY` → selalu `false` (tidak pernah masuk hitungan
+   "🔴 N MASALAH" maupun banner masalah).
+3. **`verdictOf()`** — entri OVERLAY baru verdict **`ℹ️ INFO`** (class
+   `v-i`, abu-abu netral), bukan merah.
+4. **`describe()`** — OVERLAY tampil `"ℹ️ Izin overlay — …"` tanpa styling
+   error.
+5. **Banner merah overlay DIHAPUS total** (`renderOverlay` tidak ada lagi);
+   status overlay kini hanya satu baris netral di strip sistem:
+   `🛡️ overlay OFF (normal)` / `🛡️ overlay ON`. Endpoint `POST /fix/overlay`
+   tetap dipertahankan (kompatibilitas API) tanpa tombol.
+6. **SessionReset.autoGuard()** — dua pesan guard dinetralkan (fokus ke
+   reset sesi + LOGIN MANUAL, tanpa menyalahkan overlay); teks reset:
+   `"(jalur aman). Akun di sdk/data TIDAK dihapus."`
+7. **Banner sesi direset** — dari merah → **info amber** `🔄 SESI SDK
+   DIRESET OTOMATIS` (class `note`): itu tindakan pelindung, bukan error.
+8. **Panel SDK CONFIG** — chip sesi: `overlay OFF (normal)` netral (dulu
+   merah).
+
+### 39.3 Redesign visual MONITOR v3 (teks jelas · terstruktur · emoji stylish)
+
+- **Header**: `🐉 DB MONITOR v3` + pill status `🟢 SEMUA NORMAL` /
+  `🔴 N MASALAH` + tombol `🛠️ SDK CONFIG` + strip info
+  (`⏱️ uptime · 💾 arsip · 🛡️ overlay`).
+- **Chip layanan beremoji**: `⚙️ KONFIG 9527 · 🌐 CDN 9528 · 🔑 LOGIN 5050 ·
+  🎮 GAME 5051 · 🛡️ SDK 9530 · 📋 LOGGER 4000` (dot hijau menyala bila
+  pernah melayani, plus hitungan req/gagal).
+- **Tabel 7 kolom bersih**: `# | ⏰ WAKTU | TAHAP | PORT | STATUS | ⏱️ |
+  PERISTIWA` — kolom ERROR terpisah dihapus, error kini baris kedua merah
+  di dalam PERISTIWA (teks lebih lebar, mudah dibaca); header sticky;
+  zebra halus; kolom # dan ⏱️ disembunyikan otomatis di layar sempit.
+- **Badge tahap beremoji**: ⚙️ KONFIG · 🌐 CDN · 🛡️ SDK · 🔑 LOGIN ·
+  🎮 GAME · 🧭 SISTEM · 📋 LOGGER (chip filter tahap sama).
+- **Verdict beremoji**: `✅ OK` `❌ GAGAL` `⚠️ CEK` `ℹ️ INFO` `⚙️ SYS`.
+- **Deskripsi manusia beremoji per kategori**: 🚀 server mulai · 🔌 port
+  aktif · 📦 ekstraksi · 🧾 konfig · 🔢 versi · 🔖 clientversion (baru) ·
+  📥 paket update · 🖼️ UI game · 🛡️ inisialisasi SDK · 👤 akun tamu ·
+  🔐 login otomatis · 🤝 handshake · ✅ verifikasi akun · 📨 event ·
+  💓 keep-alive · 🎮 masuk server · 🔄 reset sesi · 🌙 exitinfo ·
+  💥 crash · 📟 logcat · 📄 skrip/aset.
+- **Toolbar**: `⭐ PENTING / ❌ MASALAH / 📜 SEMUA` + `🔍 cari` +
+  `⏸️ Jeda/▶️ Lanjut` + `🧹 Bersihkan` + `📖 Panduan` + `⚙️ filter lanjutan`.
+- **Footer**: `📋 Salin tabel` (kolom sejajar lebar tetap — rapi di
+  WhatsApp) + `📄 Salin JSON` + `💾 Unduh arsip`.
+- **Modal detail** beremoji: `📨 REQUEST / 📬 RESPON / 🗂️ EXTRA / ❌ ERROR /
+  📃 SEMUA (teks polos)` + JSON auto-pretty + tombol `📋 Salin`.
+- Palet baru lebih kontras (bg `#0b1015`, teks utama `#dde5ee`, aksen
+  emerald `#43d17c/#7ee2a8`, merah `#f87171` khusus error sungguhan,
+  amber `#f5b942` untuk CEK/info) — font 13–14px, radius 8–14px,
+  tombol min 36px (touch-friendly).
+
+### 39.4 Perbaikan teks tambahan (efisiensi)
+
+- **BUG lama tertangani**: entri socket.io game dicatat kind=`WS`, sehingga
+  `describe()` branch WS generik selalu menutupi deskripsi spesifik —
+  `enterGame` tidak pernah tampil "Masuk server 1" di tabel (hanya di baris
+  "Terakhir penting"). Kini branch WS mengecek event dulu:
+  `enterGame` → `🎮 Masuk server 1 — data pemain diterima (N KB)` (bila ACK
+  `ret:0`), event lain → `📨 Event game/login <aksi> — dijawab/dikirim`,
+  ping-pong → `💓 Keep-alive (ping-pong) — sehat`.
+- Deskripsi `clientversion.json` ditambah: `🔖 Cek versi client — popup
+  pengingat tidak muncul lagi` + masuk mode PENTING.
+- Baris "Terakhir penting" kini dipipihkan dulu (`plain()`) dan beremoji.
+
+### 39.5 Yang TIDAK berubah (kompatibilitas penuh)
+
+- Semua endpoint logger: `/`, `/stats`, `/health`, `/logs?mode&port&limit&since`,
+  `/download`, `/crash`, `/sdkconfig*`, `POST /fix/overlay`,
+  `POST /sdkconfig/session-reset` — kontrak JSON identik.
+- Mekanisme efisiensi: poll incremental `?since=SEQ` (1.2 dtk), `/stats`
+  tiap 3 poll, ring buffer + cap 3000 baris DOM, anti-pollution logger.
+- classes.dex (kode game) tidak tersentuh sama sekali — perubahan hanya
+  javasrc server (classes2.dex pada repack berikutnya).
+
+### 39.6 Verifikasi (semua dijalankan di sesi ini)
+
+1. **Fresh clone** `f4825b1` — bersih, tanpa pekerjaan hilang.
+2. **Kompilasi javac 21** (30 file: stubs + javasrc + SmokeMain,
+   `-encoding UTF-8`) — PASS (baseline lama juga dilakukan dulu: PASS).
+3. **Smoke desktop** `rebuild-src/smoke/run_smoke.py` — **119/119 PASS**
+   (107 lama + 12 test baru `v39-*` + 3 test diperbarui ke perilaku baru
+   yang memang disengaja: judul `DB MONITOR`, banner overlay dihapus,
+   penanda versi).
+4. **Test v39 baru**: title/emoji verdict/emoji stage/emoji tombol,
+   `v39-overlay-info-verdict` (verdict INFO), `v39-overlay-not-problem`
+   (eksklusi isProblem), `v39-overlay-banner-dihapus` (string banner merah
+   lama TIDAK ADA), `v39-sesi-note-amber`, `v39-tabel-status`,
+   `v39-sysline-overlay-normal`, `v39-panduan-overlay`,
+   `v39-describe-overlay-info`.
+5. **Sintaks JS dashboard** — `node --check` PASS.
+6. **28 test logika JS** (di node, stub DOM) — PASS: overlay tidak pernah
+   masalah + verdict INFO, masalah sungguhan (404/crash/result:false) tetap
+   terdeteksi, verdict/stage/ikon, deskripsi per kategori beremoji,
+   enterGame kind=WS → `🎮 Masuk server 1`, event ACK → `— dijawab`,
+   ping-pong → `💓`, important() beremoji.
+7. 15 emoji kunci diverifikasi ada di HTML ter-serve.
+
+### 39.7 File berubah
+
+1. `rebuild-src/javasrc/com/db/local/server/LoggerHandler.java` —
+   dashboard `dashboardHtml()` + `Js()` ditulis ulang total (MONITOR v3);
+   javadoc + chip sesi SDK CONFIG dinetralkan.
+2. `rebuild-src/javasrc/com/db/local/server/OverlayFixer.java` — teks entri
+   OVERLAY netral + javadoc status.
+3. `rebuild-src/javasrc/com/db/local/server/SessionReset.java` — 3 pesan
+   guard/reset dinetralkan (tanpa menyalahkan overlay).
+4. `rebuild-src/smoke/run_smoke.py` — header + 12 test v39 baru + 3 test
+   diperbarui ke perilaku baru.
+5. `readme.md` — Bagian 39 (file ini).
+
+Uji device berikutnya: rebuild APK (classes2.dex dari javasrc terbaru via
+ECJ+D8, lalu `repack_v3.py`) — dashboard baru langsung terlihat di
+`http://127.0.0.1:4000` tanpa perubahan cara pakai.

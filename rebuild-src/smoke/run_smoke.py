@@ -12,6 +12,14 @@
 #     = kandidat utama crash "setelah loading". Cek canDrawOverlays di boot +
 #     banner + tombol 1-klik BUKA SETTINGS (POST /fix/overlay).
 #  (uji v14-v16 tetap — 69 kasus lama harus tetap PASS)
+# Bagian 39 — logger v3 (arahan owner 23 Nov malam):
+#  4. REDESIGN total dashboard: 🐉 DB MONITOR v3 — teks jelas, tata letak
+#     terstruktur & rapi, emoji stylish (chip layanan, badge tahap, verdict
+#     ✅❌⚠️ℹ️⚙️, tombol & banner beremoji).
+#  5. IZIN OVERLAY = INFO, BUKAN error (arahan owner: game asli tidak
+#     pernah minta overlay; SDK tetap berjalan normal): verdict ℹ️ INFO,
+#     eksklusi eksplisit di isProblem, banner merah overlay dihapus,
+#     teks OverlayFixer/SessionReset dinetralkan.
 import base64, hashlib, json, os, shutil, signal, subprocess, sys, time, urllib.request, urllib.error, urllib.parse
 
 SECRET = "0b2a18e45d7df321"
@@ -380,16 +388,21 @@ try:
 
     # ============ Bagian 32: DASHBOARD v7 TABEL + CRASH + OVERLAY ============
     st, hd, bd = get400("/")
-    check("v17-dashboard-200", st == 200 and "MONITOR SERVER" in bd)
+    # Bagian 39 — judul dashboard baru "DB MONITOR v3"
+    check("v17-dashboard-200", st == 200 and "DB MONITOR" in bd)
     check("v17-tabel-markup", "<table id=tbl" in bd and "PERISTIWA" in bd
           and "<tbody id=tb>" in bd, bd[:80])
     check("v17-chip-tahap", "renderStages" in bd and "stagechips" in bd)
     check("v17-salin-tabel", "copyTable" in bd and "Salin tabel" in bd)
     check("v17-banner-crash-js", "renderCrash" in bd and "SALIN TRACE" in bd
           and "fetch('/crash')" in bd)
-    check("v17-banner-overlay-js", "renderOverlay" in bd
-          and "/fix/overlay" in bd and "BUKA SETTINGS OVERLAY" in bd)
-    check("v17-ver-dashboard", "v17" in bd)
+    # Bagian 39 — overlay bukan lagi banner merah: renderOverlay DIHAPUS,
+    # status overlay tampil netral di sysline ("overlay OFF (normal)");
+    # endpoint POST /fix/overlay tetap ada (kompatibilitas API)
+    check("v17-banner-overlay-js", "renderOverlay" not in bd
+          and "BUKA SETTINGS OVERLAY" not in bd
+          and "overlay OFF (normal)" in bd)
+    check("v17-ver-dashboard", "v3" in bd and "/v1/system/init" in bd)
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
@@ -544,6 +557,40 @@ try:
     check("v3-bind-label-cdn-chain", any(
         "CDN game + socket.io login" in (e.get("path") or "")
         for e in lg["entries"]), "")
+
+    # ================= Bagian 39 — logger v3 (dashboard redesign) ==========
+    # Arahan owner: overlay = INFO (bukan error); teks jelas, mudah dibaca;
+    # tata letak terstruktur & rapi; emoji stylish; efisien.
+    st, hd, bd = get400("/")
+    # 1. identitas + emoji stylish
+    check("v39-title-monitor", "DB MONITOR" in bd and "\U0001f409" in bd, bd[:80])
+    check("v39-emoji-verdict", "\u2705" in bd and "\u274c" in bd
+          and "\u26a0\ufe0f" in bd and "\u2139\ufe0f" in bd, "")
+    check("v39-emoji-stage", "\u2699\ufe0f" in bd and "\U0001f310" in bd
+          and "\U0001f3ae" in bd, "")
+    check("v39-emoji-buttons", "\U0001f4cb" in bd and "\U0001f4be" in bd
+          and "\U0001f9f9" in bd, "")
+    # 2. overlay = INFO bukan error: verdict INFO + eksklusi eksplisit
+    #    isProblem + banner merah overlay lama DIHAPUS
+    check("v39-overlay-info-verdict",
+          "m=='OVERLAY'" in bd and "['INFO','i']" in bd, "")
+    check("v39-overlay-not-problem", "=='OVERLAY')return false" in bd, "")
+    check("v39-overlay-banner-dihapus",
+          "IZIN Display over other apps OFF" not in bd
+          and "BUKA SETTINGS OVERLAY" not in bd
+          and "tombol merah BUKA SETTINGS" not in bd, "")
+    # 3. banner sesi reset = info amber (class note), heading tetap dikenali
+    check("v39-sesi-note-amber", "class=note" in bd and "renderSession" in bd
+          and "SESI SDK DIRESET OTOMATIS" in bd, "")
+    # 4. tabel baru 7 kolom: STATUS + PERISTIWA (tanpa kolom ERROR terpisah)
+    check("v39-tabel-status", "<th>STATUS</th>" in bd
+          and "<th>PERISTIWA</th>" in bd and "vEmoji" in bd, "")
+    # 5. sysline overlay netral + panduan menyatakan overlay normal
+    check("v39-sysline-overlay-normal", "overlay OFF (normal)" in bd, "")
+    check("v39-panduan-overlay", "Izin overlay OFF = <b>NORMAL</b>" in bd, "")
+    # 6. log entri OverlayFixer sendiri berbunyi netral (uji unit fungsi
+    #    deskripsi: teks baru ada di JS describe untuk SYS/OVERLAY)
+    check("v39-describe-overlay-info", "Izin overlay</b> — '+esc(p)" in bd, "")
 
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)

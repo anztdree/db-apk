@@ -115,9 +115,12 @@ public final class SessionReset {
                  .append(t.getClass().getSimpleName());
             }
 
+            // Bagian 39 — teks dinetralkan (arahan owner): fokus ke RESET SESI
+            // + LOGIN MANUAL, tanpa menyalahkan izin overlay (game asli tidak
+            // memerlukannya — SDK tetap berjalan normal).
             String info = (auto ? "OTOMATIS" : "MANUAL via panel") + " — " + d
-                    + " — game berikutnya membuka UI LOGIN MANUAL (tanpa dialog "
-                    + "auto-login = tanpa izin overlay). Akun di sdk/data TIDAK dihapus.";
+                    + " — game berikutnya membuka UI LOGIN MANUAL (jalur aman). "
+                    + "Akun di sdk/data TIDAK dihapus.";
             lastResetInfo = info;
             if (auto) autoResetDone = true;
 
@@ -171,17 +174,16 @@ public final class SessionReset {
                 String err = reset(ctx, true);
                 if (err == null) {
                     CrashHook.markCrashHandled(unhandled);
-                    guardLog("SESI SDK DIRESET OTOMATIS — izin overlay OFF + crash terekam "
-                            + "sebelumnya + sesi tersimpan. Buka game: LOGIN MANUAL (aman tanpa "
-                            + "izin). Solusi permanen: aktifkan izin overlay (tombol merah "
-                            + "dashboard). Trace crash tetap terlihat di banner CRASH.");
+                    guardLog("SESI SDK DIRESET OTOMATIS — crash terekam sebelumnya "
+                            + "+ sesi tersimpan. Buka game: LOGIN MANUAL (jalur aman). "
+                            + "Akun tetap ada. Trace crash: banner CRASH dashboard.");
                 } else {
                     guardLog("SESI-GUARD gagal reset: " + err);
                 }
             } else if (hasSession) {
-                guardLog("IZIN overlay OFF + sesi SDK tersimpan — auto-login berisiko crash "
-                        + "(dialog window 2008). Bila game crash setelah loading: BUKA GAME LAGI "
-                        + "— sesi direset otomatis lalu LOGIN MANUAL. Solusi permanen: izin overlay.");
+                guardLog("Izin overlay OFF (normal — info, bukan error) + sesi SDK "
+                        + "tersimpan — game memakai sesi tersimpan. Bila crash setelah "
+                        + "loading: buka game lagi — sesi direset otomatis lalu LOGIN MANUAL.");
             } else if (!unhandled.isEmpty()) {
                 guardLog("Crash terekam sebelumnya (tanpa sesi tersimpan) — buka dashboard 4000: "
                         + "banner CRASH berisi trace penyebab persisnya.");

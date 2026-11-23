@@ -23,7 +23,11 @@ public final class OverlayFixer {
     /** Application context (diisi LocalServerStarter di boot; null di desktop). */
     public static volatile Context ctx;
 
-    /** sejak cek terakhir: false = izin perlu (dashboard menampilkan banner). */
+    /**
+     * sejak cek terakhir: false = izin OFF. Bagian 39 — dashboard menampilkan
+     * ini sebagai INFO netral ("OFF (normal)"), BUKAN banner error: game
+     * asli tidak memerlukan overlay dan SDK tetap berjalan normal.
+     */
     public static volatile boolean lastCheckOk = true;
     public static volatile boolean checked = false;
 
@@ -56,10 +60,12 @@ public final class OverlayFixer {
                 e.port = LoggerCore.PORT_LOGGER;
                 e.kind = "SYS";
                 e.method = "OVERLAY";
-                e.path = "IZIN 'Display over other apps' OFF — dialog auto-login SDK "
-                        + "(window type 2008) akan CRASH 'setelah loading'. FIX: buka "
-                        + "dashboard 4000 -> tombol merah BUKA SETTINGS OVERLAY -> "
-                        + "aktifkan izin utk 'DB - Local' -> kembali ke game";
+                // Bagian 39 — arahan owner: izin overlay BUKAN error. Game
+                // asli tidak pernah meminta overlay dan SDK tetap berjalan
+                // normal — entri ini info netral; dashboard menampilkannya
+                // sebagai "ℹ️ INFO" (eksklusi eksplisit di isProblem).
+                e.path = "Izin overlay OFF — NORMAL. Game asli tidak memerlukan "
+                        + "izin overlay; SDK tetap berjalan normal.";
                 e.status = 0;
                 LoggerCore.log(e);
             }
