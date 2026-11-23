@@ -64,8 +64,49 @@ public final class SdkConfig {
         return null;
     }
 
+    /**
+     * v2 — KOREKSI OWNER 23 Nov (crash device 21:49: java.lang.NullPointerException
+     * "Attempt to read from field 'boolean com.quickgame.android.sdk.model.d
+     * .worktopichardtails' on a null object reference in method
+     * 'void com.quickgame.android.sdk.activity.HWLoginActivity.singersmooth()'):
+     * seed default = MIRROR PENUH respons init server ORIGINAL — BUKAN minimal.
+     * Bukti smali fresh-decode original: model/e.smali:166 mem-parse
+     * "productConfig" -> model/d (10 field :74-:92), :156 "version" -> model/g;
+     * HWLoginActivity.smali:4111-4136 membaca e.singersmooth (model/d)
+     * .worktopichardtails (= guestShowBind, model/d.smali:296-:331) TANPA
+     * null-check -> init tanpa productConfig = CRASH PASTI.
+     * Byte-identik dgn repo sdk/v1/system/init.json (bukti owner + replay 26.3).
+     */
     public static final String DEFAULT_INIT =
-            "{\"result\":true,\"data\":{\"payTypes\":[],\"loginTypes\":[\"1\"]}}";
+            "{\n"
+            + "  \"result\": true,\n"
+            + "  \"data\": {\n"
+            + "    \"payTypes\": [],\n"
+            + "    \"loginTypes\": [\"1\"],\n"
+            + "    \"first_install\": 1,\n"
+            + "    \"countryCode\": \"HK\",\n"
+            + "    \"productConfig\": {\n"
+            + "      \"guestShowBind\": \"1\",\n"
+            + "      \"isShowFloat\": \"0\",\n"
+            + "      \"useSms\": \"0\",\n"
+            + "      \"useServiceCenter\": \"0\",\n"
+            + "      \"single_play\": \"0\",\n"
+            + "      \"adZhifuSwt\": \"0\",\n"
+            + "      \"initCZurl\": \"\",\n"
+            + "      \"serviceInfo\": \"\",\n"
+            + "      \"logo\": \"\",\n"
+            + "      \"title\": \"\"\n"
+            + "    },\n"
+            + "    \"version\": {\n"
+            + "      \"versionNo\": \"empty\",\n"
+            + "      \"versionName\": \"empty\",\n"
+            + "      \"versionUrl\": \"empty\",\n"
+            + "      \"updateTime\": \"empty\",\n"
+            + "      \"isMust\": \"empty\",\n"
+            + "      \"updateTips\": \"empty\"\n"
+            + "    }\n"
+            + "  }\n"
+            + "}\n";
     public static final String DEFAULT_CKREG =
             "{\"result\":true,\"data\":{\"isReged\":0},\"error\":{\"id\":0,\"message\":\"\"}}";
     public static final String DEFAULT_FALLBACK =
@@ -228,7 +269,13 @@ public final class SdkConfig {
         }
     }
 
-    /** Preset eksperimen loginTypes (E1/E2/E3) — membangun init.json utuh. */
+    /**
+     * Preset eksperimen loginTypes (E1/E2/E3) — v2 KOREKSI OWNER: preset TIDAK
+     * boleh mengecilkan init.json ke format minimal 2-field — struktur penuh
+     * ORIGINAL wajib dipertahankan (productConfig 10 field + version 6 field;
+     * bukti crash 23 Nov: HWLoginActivity.singersmooth NPE saat productConfig
+     * absen). Hanya loginTypes yang diganti — sisanya persis DEFAULT_INIT.
+     */
     public static String presetInitJson(String typesCsv) {
         if (typesCsv == null) return null;
         String[] parts = typesCsv.split(",");
@@ -241,8 +288,8 @@ public final class SdkConfig {
             arr.append('"').append(t).append('"');
         }
         if (arr.length() == 0) return null;
-        return "{\"result\":true,\"data\":{\"payTypes\":[],\"loginTypes\":["
-                + arr + "]}}";
+        return DEFAULT_INIT.replace("\"loginTypes\": [\"1\"]",
+                "\"loginTypes\": [" + arr + "]");
     }
 
     /**

@@ -408,7 +408,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("@media(max-width:640px){#tbl .c-seq,#tbl .c-dur{display:none}#flow{max-height:calc(100vh - 300px)}}\n")
          .append("@media(max-width:480px){#tbl .c-port{display:none}#tbl td,#tbl thead th{padding:4px 6px}body{padding:6px}}\n")
          .append("</style></head><body>\n")
-         .append("<div id=top><span id=title>MONITOR SERVER<span class=ver>v1</span></span>")
+         .append("<div id=top><span id=title>MONITOR SERVER<span class=ver>v2</span></span>")
          .append("<span id=pill class=g>cek …</span>")
          .append("<a href=/sdkconfig><button>SDK CONFIG</button></a>")
          .append("<span id=statsbar>memuat …</span></div>\n")
@@ -808,7 +808,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
         SdkConfig.ensureIndex();
         Db db = Db.open(LoggerCore.serverRootPath);
         StringBuilder b = new StringBuilder(8192);
-        b.append("{\"ver\":\"v1\"")
+        b.append("{\"ver\":\"v2\"")
          .append(",\"backend\":\"").append(db.backend()).append('"')
          .append(",\"dbDir\":\"").append(JsonUtil.esc(LoggerCore.serverRootPath))
          .append("/sdk/data\"");

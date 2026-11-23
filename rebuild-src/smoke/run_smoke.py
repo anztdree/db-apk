@@ -127,6 +127,16 @@ try:
     j = json.loads(bd)
     check("init-default-loginTypes", j["data"]["loginTypes"] == ["1"], bd)
     check("init-payTypes-wajib", "payTypes" in j.get("data", {}), bd)
+    # v2 KOREKSI OWNER (crash HWLoginActivity NPE model.d.worktopichardtails):
+    # seed default = mirror PENUH original — productConfig + version + lainnya
+    check("v2-init-penuh-productConfig", "productConfig" in j.get("data", {})
+          and j["data"]["productConfig"].get("guestShowBind") == "1"
+          and len(j["data"]["productConfig"]) == 10, bd)
+    check("v2-init-penuh-version", j["data"].get("version", {}).get("versionNo") == "empty"
+          and j["data"].get("version", {}).get("isMust") == "empty"
+          and len(j["data"].get("version", {})) == 6, bd)
+    check("v2-init-penuh-first-install-country", j["data"].get("first_install") == 1
+          and j["data"].get("countryCode") == "HK", bd)
     check("sdk-files-seeded", os.path.exists(ROOT + "/sdk/v1/system/init.json")
           and os.path.exists(ROOT + "/sdk/profile.json")
           and os.path.exists(ROOT + "/sdk/errors.json")
@@ -313,7 +323,7 @@ try:
     check("panel-api-file-init", "payTypes" in api["files"]["init.json"])
     check("panel-api-qhinfo", api["files"]["QHinfo"] == "http://127.0.0.1:9530")
     # v16: api membawa status product
-    check("v1-panel-api-ver", api.get("ver") == "v1", bd[:80])
+    check("v2-panel-api-ver", api.get("ver") == "v2", bd[:80])
     check("v16-panel-api-products", PRODUCT_ASLI in api.get("products", []))
 
     # v16: endpoint product-add — tambah kode + validasi
@@ -407,7 +417,7 @@ try:
     # /sdkconfig/api: ver=v18 + overlay + session
     st, hd, bd = get400("/sdkconfig/api")
     api = json.loads(bd)
-    check("v1-api-ver", api.get("ver") == "v1", api.get("ver"))
+    check("v2-api-ver", api.get("ver") == "v2", api.get("ver"))
     check("v1-api-overlay-session", "overlay" in api and "session" in api
           and set(api["session"]) >= {"saved", "resetAuto", "resetInfo"}, bd[-200:])
     check("v1-api-desktop-sesi", api["session"]["saved"] is False
@@ -465,7 +475,7 @@ try:
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
 
-print("\n===== SMOKE v1: %d PASS, %d FAIL =====" % (len(PASS), len(FAIL)))
+print("\n===== SMOKE v2: %d PASS, %d FAIL =====" % (len(PASS), len(FAIL)))
 if FAIL:
     print("GAGAL:", FAIL)
     sys.exit(1)

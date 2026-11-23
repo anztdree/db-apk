@@ -123,11 +123,16 @@ unnecessarysperrylites/seventygenom.smali
      :74-:276 versionNo/versionName/versionUrl/isMust/updateTips/updateTime;
      `:59` sentinel literal `"empty"` MILIK SDK SENDIRI — server asli mengirim
      `"empty"` karena itulah nilai banding SDK).
-   - Field `productConfig`/`version` diekstraksi dgn `has()`+`getJSONObject()` —
-     TIDAK ada di respons = objek tetap `null`, TIDAK crash, tapi fitur di
-     belakangnya mati diam-diam. **Koreksi owner 23 Nov**: init.json minimal
-     2-field TIDAK menerus — sekarang mirror penuh respons original (perbandingan
-     lengkap + bukti: docs/SDK-CONFIG.md §5, log readme Bagian 36).
+   - Field `productConfig`/`version` diekstraksi dgn `has()`+`getJSONObject()` di
+     parser — TAPI pemakai field-nya TIDAK dijaga: **CRASH NYATA 23 Nov 21:49**
+     (laporan crash device, init.json minimal tanpa productConfig):
+     `NullPointerException: Attempt to read from field 'boolean model.d
+     .worktopichardtails' in 'void HWLoginActivity.singersmooth()'` —
+     HWLoginActivity.smali:4111-4136 baca `e.singersmooth` (model/d) lalu
+     `.worktopichardtails` (= guestShowBind, model/d.smali:296-:331) TANPA
+     null-check; runnable `awfulcongratulatepunishment.run` via Handler.
+     Koreksi: APK v2 — seed DEFAULT dex + preset = mirror PENUH original
+     (SdkConfig.java v2); log readme Bagian 37.
    - `first_install` = 0 hit di seluruh smali (tidak diparse client; dikirim
      mirror asli). `countryCode` = param request init
      (psalmicvolleyball/singersmooth.smali:171) + ikut di respons asli.
@@ -172,8 +177,9 @@ unnecessarysperrylites/seventygenom.smali
    `profile.json`, `v1/system/init.json`, `v1/user/ckRegVistor.json`, `fallback.json`,
    `errors.json`. Folder `sdk/` siap-download ada di repo (folder `sdk/`) —
    `init.json` di sana = **mirror PENUH respons init original** (koreksi owner
-   23 Nov; perbandingan field-per-field: docs/SDK-CONFIG.md §5). Seed default
-   DI DALAM dex v1 masih minimal — file hasil tempelan SELALU menang
+   23 Nov; perbandingan field-per-field: docs/SDK-CONFIG.md §5). APK v2:
+   seed DEFAULT di dex JUGA mirror penuh (SdkConfig.DEFAULT_INIT v2) —
+   fresh install v2 aman tanpa tempel; file tempelan tetap selalu menang
    (contract(), SdkConfig.java:142-153).
 3. **`sdk/QHinfo` = catatan/sumber kebenaran** — perubahan TIDAK memengaruhi client
    kecuali direbuild ke `assets/QHinfo` (bukti §2).

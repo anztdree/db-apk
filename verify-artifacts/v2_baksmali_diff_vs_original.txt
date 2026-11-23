@@ -1,0 +1,36 @@
+# BAKSMALI DIFF — v2 vs ORIGINAL (fresh decode apktool, 2026-11-23 15:24 UTC)
+# original : db-local(Original-DO NOT DELETE!).apk sha256 b308c44d…
+# v2       : db-local(MOD-LOCALSERVER-v2).apk sha256 2155b4cd…
+
+=== A. diff -r smali/ (classes.dex — KODE GAME+SDK, FORBIDDEN ZONE) ===
+Files work/dec_orig/smali/com/zhuhuan/game/Application.smali and work/dec_v2/smali/com/zhuhuan/game/Application.smali differ
+exit-diff=1
+
+=== B. smali_classes2/ (mini-server v2 — SISTEM TERPISAH, baru) ===
+42
+file (semua BARU — bukan bagian original)
+
+=== C. diff isi Application.smali (satu-satunya file classes.dex yang beda) ===
+20a21,22
+>     invoke-static {p0}, Lcom/db/local/server/LocalServerStarter;->start(Landroid/content/Context;)V
+> 
+(tepat +2 baris starter — sama dengan v1; sisanya 100% original)
+
+=== D. PERBANDINGAN CRC LEVEL ZIP (semua entri) ===
+IDENTIK : 3662 | BEDA-CRC: 4 | TAMBAHAN: 2761 | HILANG: 2
+BEDA    : classes.dex (starter), assets/config_BS.properties (endpoint 9527),
+          assets/QHinfo (endpoint 9530), META-INF/MANIFEST.MF (sign ulang)
+TAMBAHAN: assets/server_root/** 2758 file + classes2.dex (mini-server v2,
+          158.564 B sha256 d5d2bde5…) + META-INF/DBLOCALM.SF + DBLOCALM.RSA (sign baru)
+HILANG  : 2 = SF/RSA signature lama original (diganti sign dblocalmod)
+AndroidManifest.xml, resources.arsc, lib/**, res/**, kotlin/** = IDENTIK.
+
+=== E. SMOKE DESKTOP v2 ===
+===== SMOKE v2: 100 PASS, 0 FAIL ===== (97 lama + 3 baru: init penuh productConfig/
+version/first_install+countryCode — pertahanan terhadap crash model.d null)
+
+=== F. SIGN ===
+zipalign verified; signature verified [v1, v2, v3]; CN=DB Local Mod, exp 2056
+(keystore SAMA dgn v1 — install-over OK)
+APK: release-mod/db-local(MOD-LOCALSERVER-v2).apk — 202.691.444 B
+sha256 2155b4cdc9d9855d490d25aa74f51e47d3b965b58526f7c19112e6bbdab8ebdc

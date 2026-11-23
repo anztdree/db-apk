@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-# REBUILD BERSIH "v1" — SATU PASS dari APK ORIGINAL (permintaan owner 23 Nov:
+# REBUILD "v2" — SATU PASS dari APK ORIGINAL (permintaan owner 23 Nov:
 #  "apk 1x Rebuild, apk originalnya hanya edit endpoint, jangan lakukan di luar itu!!"
-#  + "penamaan versi mulai ulang dari 1" + "ukuran 190mb di awal sudah cukup").
+#  + koreksi crash 23 Nov 21:49: init.json minimal -> NPE model.d
+#  (HWLoginActivity.singersmooth) -> DEFAULT_INIT dex = mirror PENUH original).
 #
 # PRINSIP (sesuai keputusan owner):
 #   A. APK ORIGINAL hanya DIEDIT ENDPOINT (tidak ada di luar itu):
@@ -26,7 +27,7 @@ import zipfile, os, hashlib, sys, time
 ORIG = 'work/original.apk'
 V18  = 'work/v18.apk'
 NEWDEX = 'tools/out/dex/classes.dex'
-OUT  = 'tools/out/db-local(MOD-LOCALSERVER-v1)-unsigned.apk'
+OUT  = 'tools/out/db-local(MOD-LOCALSERVER-v2)-unsigned.apk'
 
 def sha(b): return hashlib.sha256(b).hexdigest()
 
@@ -90,10 +91,10 @@ added += 1
 zout.close(); zo.close(); zv.close()
 
 size = os.path.getsize(OUT)
-print('REPACK v1 OK: %d byte-identik + %d diganti (endpoint+starter) + %d tambahan (mini-server)' %
+print('REPACK v2 OK: %d byte-identik + %d diganti (endpoint+starter) + %d tambahan (mini-server)' %
       (kept, replaced, added))
 for f, a, b in changed_report:
     print('  GANTI %-32s %d -> %d B' % (f, a, b))
-print('classes2.dex v1: %d B' % len(newdex))
+print('classes2.dex v2: %d B' % len(newdex))
 print('unsigned: %s (%d B) sha256 %s' % (OUT, size, sha(open(OUT,"rb").read())[:16]))
 print('durasi %.1fs' % (time.time() - t0))

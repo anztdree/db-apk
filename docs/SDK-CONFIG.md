@@ -6,10 +6,14 @@
 > **KOREKSI OWNER 23 Nov (Bagian 36 readme)**: `init.json` lama hanya 2 field
 > (`payTypes`+`loginTypes`) padahal SERVER ORIGINAL mengirim SEMUA field di
 > bawah — semua field itu DIPARSE SDK (bukti smali §5). Folder `sdk/` repo
-> sekarang = **mirror penuh respons init original**. Catatan jujur: seed
-> DEFAULT di dalam dex APK v1 masih minimal (dex TIDAK disentuh — nol rebuild);
-> file hasil tempelan SELALU menang karena `contract()` baca file dulu
-> (SdkConfig.java:142-153) — jadi WAJIB tempel file ini ke device.
+> sekarang = **mirror penuh respons init original**.
+>
+> **KOREKSI v2 (Bagian 37 readme)**: crash device 23 Nov 21:49 —
+> `NullPointerException model.d.worktopichardtails` di `HWLoginActivity.singersmooth()`
+> — membuktikan klaim lama "field hilang = tidak crash" SALAH. APK v2:
+> seed DEFAULT di dex = mirror PENUH (SdkConfig.DEFAULT_INIT) + preset E1/E2/E3
+> menahan struktur penuh. Fresh install v2 = langsung aman TANPA tempel;
+> folder `sdk/` repo tetap sumber kebenaran bila file di device rusak/dihapus.
 
 ## 1. LOKASI PERSIS DI DEVICE (BUKTI KODE, JANGAN KESALAH TEMPAT)
 
@@ -79,13 +83,13 @@ Android/data/com.db.local/server/
 7. Edit lebih praktis dari browser HP: panel `http://127.0.0.1:4000/sdkconfig`
    (edit file yang sama + preset E1/E2/E3 + tabel akun) — folder `sdk/` ini adalah
    versi OFFLINE dari panel itu.
-8. **AWAS preset E1/E2/E3 di panel** — tombol itu MENIMPA `init.json` dengan
-   format MINIMAL (`{"result":..,"data":{payTypes,loginTypes}}`, bukti
-   `SdkConfig.presetInitJson`). Setelah pakai preset, tempel ulang `init.json`
-   dari folder ini untuk kembali ke mirror penuh original.
+8. **Preset E1/E2/E3 di panel AMAN sejak APK v2** — preset membangun init.json
+   struktur PENUH (hanya loginTypes berubah, sisanya persis original — bukti
+   `SdkConfig.presetInitJson` v2 = `DEFAULT_INIT.replace(loginTypes)`).
+   Di APK v1 preset masih menimpa dengan format minimal — pakai v2.
 9. **Bila file `init.json` dihapus/dirusak** di device -> server seed ulang
-   DEFAULT MINIMAL dari dex (DEFAULT_INIT, tidak bisa diubah tanpa rebuild) ->
-   tempel ulang file dari folder ini.
+   DEFAULT dari dex. Di APK **v2** default itu = MIRROR PENUH original (sama
+   dengan file repo). Di APK v1 default masih minimal — pakai v2 atau tempel ulang.
 
 ## 5. PERBANDINGAN — SERVER ORIGINAL vs KITA (koreksi owner 23 Nov)
 
@@ -108,14 +112,28 @@ replay sukses 23 Nov, readme Bagian 26.3) vs yang kita kirim:
   (`:152-:207`: downloadUrl/title/lightPackage/payFast/otherpayType/requestIp/
   showDiscount/serverInfoData/showShare/isNotGift/removeEmail/deleteAccount/
   serverInfo/nodes). Ekstraksi pakai `JSONObject.has()` + `getJSONObject()` —
-  field hilang = TIDAK crash, tapi objek itu tetap `null` (fitur di
-  belakangnya mati diam-diam) — inilah efek init.json minimal.
+  di dalam parser memang dijaga `has()`, TAPI PEMAKAI FIELD-NYA TIDAK DIJAGA:
+  **CRASH NYATA terbukti 23 Nov 21:49** (laporan crash device):
+  `HWLoginActivity.singersmooth()` (HWLoginActivity.smali:4111-4136, dipanggil
+  runnable `awfulcongratulatepunishment.run` via Handler) membaca
+  `e.singersmooth` (objek model/d hasil parse productConfig) lalu
+  `.worktopichardtails` TANPA null-check — init tanpa productConfig = NPE PASTI.
+  (Klaim lama "field hilang = tidak crash" SALAH — dikoreksi.)
 - `model/d.smali` (parser `productConfig`) — SEMUA 10 field owner diparse:
   `:74` adZhifuSwt, `:76` initCZurl, `:78` single_play, `:80` guestShowBind,
   `:82` isShowFloat, `:84` serviceInfo, `:86` useSms, `:88` logo, `:90` title,
-  `:92` useServiceCenter. Dibandingkan dgn konstanta perilaku `"1"` (`:114`),
-  awalan `"http"` (`:190`), `"0"` (`:309`) — artinya NILAI dari server
-  original-lah yang menentukan cabang UI (prompt bind tamu, halaman bayar, dsb).
+  `:92` useServiceCenter. Peta field obfuscated (bukti iput per blok):
+  `guestShowBind` -> **`worktopichardtails`** (`:296-:331` — inilah field yang
+  NULL saat crash), `isShowFloat` -> `feedtonight` (`:243-:280`),
+  `useServiceCenter` -> `cointhreat` (`:63-:89`), `single_play` ->
+  `pursetruechild` (`:347-:382`), `initCZurl` ->
+  `reweavingsiamesedpropertylessnesses` (`:398-:433`), `adZhifuSwt` ->
+  `dishbesideshockey` (`:449-:482`), `useSms` -> `nationalcommunitymissing`
+  (`:170-:189`), `serviceInfo` -> `ironoriginhoblike` (String `:193-:210`),
+  `logo` -> `seventygenom` (String `:93-:108`), `title` -> `singersmooth`
+  (String `:124-:154`). Nilai dibandingkan dgn konstanta perilaku `"1"`
+  (`:114`), awalan `"http"` (`:190`), `"0"` (`:309`) — NILAI server original
+  yang menentukan cabang UI.
 - `model/g.smali` (parser `version`) — `:59` konstanta literal `"empty"`
   (sentinel milik SDK SENDIRI — itulah kenapa server original mengirim
   `"empty"`), `:74` versionNo, `:118` versionName, `:152` versionUrl,

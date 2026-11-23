@@ -2590,3 +2590,71 @@ perbandingannya — dan koreksinya TANPA rebuild APK.
   dengan format minimal → setelah pakai preset, tempel ulang init.json.
 - `loginTypes ["1"]` = keputusan owner (form email + TAMU); struktur field lain
   TIDAK boleh dikurangi lagi.
+
+## Bagian 37 — APK v2: FIX CRASH SDK (init.json minimal → NPE model.d) (23 Nov 2026)
+
+Perintah owner: *"Bemein duluuu apknya !! karena ksalahan anda !! benerin duluuu
+SDKnya !!! config masih salah!! ... SAYA GAK MAU TAU SDK HARUS BENER SEMPURNA!!
+LIHAT DARI CONFI ASLINYA SERVER MEREKA !!! BACA BAIK-BAIK LALU IMPLEMENTASI YG
+BNAR !! BUKAN MALAH LIHAT LOCAL !!"* — benar. Laporan crash device 21:49:14:
+
+```
+java.lang.NullPointerException: Attempt to read from field 'boolean
+com.quickgame.android.sdk.model.d.worktopichardtails' on a null object
+reference in method 'void com.quickgame.android.sdk.activity.HWLoginActivity.singersmooth()'
+```
+
+### 37.1 Akar crash (100% bukti, nol asumsi)
+
+1. Device masih memakai init.json hasil seed DEX v1 = MINIMAL 57 B
+   (`{"result":true,"data":{"payTypes":[],"loginTypes":["1"]}}` — log seed
+   18:07:53.422 "57 B") → respons `/v1/system/init` TANPA `productConfig`.
+2. `model/e.smali:166` — `has("productConfig")` false → objek model/d TIDAK
+   dibuat (field `e.singersmooth` tetap null).
+3. `HWLoginActivity.smali:4111-4136` (method `singersmooth()`, dipanggil
+   runnable `awfulcongratulatepunishment.run` via Handler setelah autoLogin)
+   membaca `e.singersmooth.worktopichardtails` TANPA null-check → **NPE PASTI**.
+4. Peta field: `worktopichardtails` = `guestShowBind` (model/d.smali:296-:331).
+5. Klaim lama saya "field hilang = TIDAK crash" (Bagian 36) **SALAH** — parser
+   dijaga `has()`, tapi PEMAKAI field tidak dijaga. Dikoreksi di semua docs.
+
+### 37.2 Yang diganti di dex (classes2.dex — mini-server v2, kode SDK/game NOL sentuhan)
+
+| Item | v1 (salah) | v2 (benar) |
+|---|---|---|
+| `SdkConfig.DEFAULT_INIT` (seed default dex) | minimal 2 field | **mirror PENUH respons original** (persis owner + replay 26.3 — byte-identik repo `sdk/v1/system/init.json`) |
+| `SdkConfig.presetInitJson` (preset E1/E2/E3 panel) | menimpa init.json jadi minimal | **menahan struktur PENUH** — hanya loginTypes berubah (`DEFAULT_INIT.replace(loginTypes)`) |
+| Marker versi | `MOD-LOCALSERVER v1` | `MOD-LOCALSERVER v2` (BOOT, dashboard, API `ver`, header laporan crash) |
+
+classes2.dex v2: **158.564 B** (v1: 159.196 B), sha256 `d5d2bde5…`.
+Smoke desktop: **SMOKE v2 — 100 PASS, 0 FAIL** (97 lama + 3 baru: seed penuh
+productConfig 10 field / version 6 field / first_install+countryCode).
+
+### 37.3 Repack satu-pass + verifikasi (arsip `verify-artifacts/v2_baksmali_diff_vs_original.txt`)
+
+- Satu pass dari `work/original.apk` (script sama, output v2): 3662 entri
+  byte-identik + 3 diganti (QHinfo 9530, config_BS 9527, classes.dex starter
+  +2 baris) + 2759 tambahan (server_root 2758 + classes2.dex).
+- baksmali-diff fresh-decode vs original = **tepat 1 file** Application.smali
+  (+2 baris starter) — sama dengan v1; forbidden zone utuh.
+- CRC ZIP: beda hanya classes.dex / QHinfo / config_BS.properties /
+  MANIFEST.MF; tambahan hanya server_root + classes2.dex + SF/RSA baru;
+  AndroidManifest/resources.arsc/lib/res/kotlin IDENTIK.
+- Sign v1+v2+v3 verified, zipalign OK, keystore SAMA (CN=DB Local Mod,
+  exp 2056) → **install-over di atas v1 tanpa uninstall**.
+- APK: `release-mod/db-local(MOD-LOCALSERVER-v2).apk` — **202.691.444 B**
+  (193.3 MiB), sha256 `2155b4cdc9d9855d490d25aa74f51e47d3b965b58526f7c19112e6bbdab8ebdc`.
+- APK v1 ditarik dari `release-mod/` (riwayat git tetap ada).
+
+### 37.4 Uji device (tanpa PC)
+
+1. Install `db-local(MOD-LOCALSERVER-v2).apk` LANGSUNG di atas v1 (keystore sama).
+2. Boot → dashboard `127.0.0.1:4000` judul **v2**, log BOOT `MOD-LOCALSERVER v2`.
+3. Fresh seed otomatis menulis init.json PENUH (±533 B, bukan 57 B) — CEK:
+   panel SDK CONFIG → kolom init.json harus berisi `productConfig` + `version`.
+4. Buka game → autoLogin/layar login → **TIDAK ADA NPE** `model.d
+   .worktopichardtails` lagi; TAMU/DAFTAR/LOGIN jalan.
+5. Bila device punya init.json LAMA (minimal) dari instal v1: seed dex v2 hanya
+   jalan bila file TIDAK ada — hapus manual `Android/data/com.db.local/server/
+   sdk/v1/system/init.json` sekali, atau tempel file repo `sdk/`, atau clear
+   data. Setelah itu v2 menjaga file tetap penuh.
