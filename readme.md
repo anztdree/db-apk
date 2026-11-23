@@ -2164,3 +2164,95 @@ tapi juga register login bekerja sempurna. walaupun emang gak perlu konfirmasi e
 4. Keluar, buka lagi → **autoLogin** (akun terakhir) tanpa layar login.
 5. **LOGIN** → email+sandi yang terdaftar → masuk sebagai akun itu (data karakter per-akun).
 6. Dashboard `:4000` → panel **Panduan login** (baru) + deskripsi tiap endpoint baru.
+
+---
+
+## 29. Bagian 29 — v14: SDK CONFIG-FILE + SQLITE + MESIN KAWAT PHP-FAITHFUL
+
+> Keputusan owner 23 Nov: *"kalau server aslinya php artinya kita juga harus secara php, kalau
+> error ya error. kalau work ya work, kalau alurnya A ya A. **tidak ada bypass**"* lalu
+> *"jika php berat kita harus realistis cari yg setara misal sqlite"*.
+
+**Terjemahan arsitektur** (engine boleh realistis, PERILAKU kawat tidak boleh):
+
+| Server asli (fingerprint live 22–23 Nov) | Server lokal v14 | Prinsip |
+|---|---|---|
+| PHP 5.4.37 (engine) | Java embedded (classes2.dex) | Selalu HTTP 200; header `X-Powered-By: PHP/5.4.37` + `Content-Type: text/json`; error di body |
+| MySQL (dugaan storage) | **SQLite** bawaan Android (`data/db.sqlite`, `android.database.sqlite`) | Nol dependensi/berat; migrasi otomatis dari JSON legacy |
+| Config hardcode | **File `server/sdk/`** bisa diedit (permintaan lama: config = file seperti bs/ & logs/) | Self-seeding; dibaca ulang tiap request |
+
+### 29.1 KONTRAK LIVE SERVER ASLI — direkam 23 Nov (server masih hidup, diprobe dgn sign valid)
+
+Sign direkonstruksi dari smali `unnecessarysperrylites.seventygenom.nationalcommunitymissing`:
+TreeMap sort → `k=v&` per entry (null→"") → append secret **`0b2a18e45d7df321`** → MD5 lowercase.
+**Request ber-sign kita DITERIMA server asli** (error yang balik = param, bukan 20002) = bukti
+algoritma + secret benar.
+
+| Kasus probe live | Respons server asli (PERSIS) |
+|---|---|
+| `data` kosong/tak valid | `{"id":20000,"message":"Params error"}` |
+| Param wajib kosong (bertahap) | `{"id":20003,"message":"LostSomeMustParams:sdkVersion"}` → `:productCode` → `:authToken` (urutan ASLI; semantik PHP `empty()`) |
+| productCode tak dikenal (10 kandidat, termasuk default client `會員帳戶註冊` = `hw_tomato_register` 0x7f0c0143) | `{"id":30001,"message":"Product doesn't exist"}` — **product DB server asli sudah dikosongkan** (shutdown prep); sukses init TIDAK lagi terekam live |
+| 20002 | `Params sign error` (capture 14.A#8) |
+
+Param universal builder (smali `bindcommunist.singersmooth`): `sdkVersion=223 (0xdf), gameVersion,
+deviceId, serialNum, devIDShort, platform=1, productCode, channelCode, authToken
+(=MD5(currentMillis) saat fresh install), clientLang, suggestCurrency, time` + param per-endpoint.
+Arsip lengkap: `verify-artifacts/LIVE_CONTRACT_20261123.md` + `qsdk_live_contract_probe_20261123.json`.
+
+### 29.2 Gerbang kontrak v14 (urutan = oracle live; semua kasus terobservasi direkap)
+
+`decode data (20000) → verify sign (20002) → must-params sdkVersion/productCode/authToken
+(20003) → product terdaftar (30001) → logika endpoint`. Katalog lokal digeser agar tidak bentrok
+arti katalog asli: **salah sandi 20002→20004, findPassByEmail 20003→20005** (didokumentasikan di
+`sdk/errors.json`). GET tanpa body `data+sign` = jalur diagnostik (dashboard/curl), dicatat
+`GET-TEST`; alur game POST selalu lewat gerbang penuh.
+
+### 29.3 SDK CONFIG-FILE: `Android/data/com.db.local/server/sdk/`
+
+| File | Isi | Efek edit |
+|---|---|---|
+| `index.txt` | panduan bahasa manusia | — |
+| `profile.json` | poweredBy / contentType / verifySign / signSecret / **products** | header & gerbang berubah langsung |
+| `v1/system/init.json` | `loginTypes ["1"]` (default = perilaku v13) | **eksperimen crash tanpa rebuild**: `["12"]`=tamu-only, `["1","13"]`=mirror replay asli; `payTypes` WAJIB (parser model/e) |
+| `v1/user/ckRegVistor.json` | mirror replay asli `{isReged:0}` | — |
+| `fallback.json` | envelope path belum dipetakan | — |
+| `errors.json` | katalog live vs lokal | — |
+
+Self-seeding = dibuat bila tak ada (editan TIDAK pernah ditimpa; ekstraksi assets tiap boot tidak
+menyentuh folder ini karena sdk/ sengaja TIDAK dikirim via assets). Dibaca ulang **tiap request**.
+
+### 29.4 SQLite (pilihan owner "setara misal sqlite")
+
+- `Db` (abstract; pabrik + log `DB-BACKEND sqlite|json`) → **DbSqlite** (`data/db.sqlite`,
+  bawaan Android API 1+, bind-args anti-injection) + **DbJson** fallback desktop smoke
+  (semantik identik; device selalu sqlite).
+- **Migrasi otomatis** boot pertama: `data/account.json` (tamu) + `data/accounts.json` (email)
+  v8–v13 → tabel `accounts` — **uid/token pemain TIDAK berubah** (progres game aman); log
+  `MIGRASI ...` di dashboard.
+- `bindMail` = UPDATE in-place → uid+token tetap; setelah bind, tamu lama jadi akun email dan
+  TAMU baru berikutnya = uid baru (semantik jelas & konsisten kedua backend).
+
+### 29.5 Verifikasi
+
+| Item | Hasil |
+|---|---|
+| Smoke desktop **37/37 PASS** | gerbang 20000/20002/20003 bertahap (urutan asli)/30001; header PHP + live-reload profile.json & init.json; migrasi legacy uid/nama/token; register/dup/salah-sandi 20004/belum-daftar; autoLogin tamu+email+fallback; getUserInfo; bindMail **uid+token awet** + tamu baru beda uid; changePassword; ckRegVistor; fallback; backend json fallback |
+| classes.dex | **byte-identik v11** (sha256 `1df64d91…`) = original + starter — SDK smali game 100% original (SDK smali 禁区/forbidden zone dihormati) |
+| baksmali-diff vs original | tepat 1 file: `Application.smali` (+2 baris starter) — arsip `verify-artifacts/v14_baksmali_diff_vs_original.txt` |
+| classes2.dex | **113.220 B** sha256 `1889c688…` — +3 class baru (Db*, SdkConfig, SdkSign) + refactor AccountStore/UserAccounts/SdkHandler di atasnya; `android.database.sqlite` hanya direferensikan `DbSqlite` (isolasi fallback desktop) |
+| APK final | `release-mod/db-local(MOD-LOCALSERVER-v14).apk` — **202675060 B**, sha256 `c64056683292bc2a1eabae053e1cd0e765f467468a5552adbd47c641beec4683` (signed), sign v1v2v3 zipalign verified, keystore sama exp 2056 |
+| Toolchain | ECJ 3.33.0 + D8 8.3.37 + stub `android/database` + smali/baksmali 2.5.2 + git-lfs 3.5.1 |
+| Source | `rebuild-src/javasrc/` +5 class baru (`Db.java`, `DbSqlite.java`, `DbJson.java`, `SdkConfig.java`, `SdkSign.java`), `rebuild-src/stubs/`, `rebuild-src/smoke/run_smoke.py` (37 uji), `rebuild-src/scripts/repack_v14.py` |
+
+### 29.6 Langkah uji device v14 (tanpa PC)
+
+1. Install-over v14 → boot → cek dashboard/log: `DB-BACKEND sqlite` + `MIGRASI legacy ...`
+   (uid/token tamu lama tetap) + `SDK-CONFIG seed ...`.
+2. Layar login tetap seperti v13 (init default `["1"]`).
+3. **Eksperimen crash (jika tombol login/register/guest masih force close)**: buka
+   `Android/data/com.db.local/server/sdk/v1/system/init.json` dengan file manager, ganti
+   `"loginTypes":["1"]` → `["12"]` → restart game → bandingkan; coba juga `["1","13"]`
+   (mirror replay asli). Catat hasil — SATU variabel per percobaan.
+4. REGISTER/LOGIN email dkk. seperti Bagian 28.4 — kini tersimpan di `data/db.sqlite`.
+5. Jika ingin mematikan cek sign (darurat): `sdk/profile.json` → `"verifySign": false`.

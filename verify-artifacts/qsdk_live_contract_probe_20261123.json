@@ -1,0 +1,5 @@
+{
+ "/v1/system/init": "{\"result\":false,\"data\":[],\"error\":{\"id\":30001,\"message\":\"Product doesn't exist\"}}",
+ "/v1/user/ckRegVistor": "{\"result\":false,\"data\":[],\"error\":{\"id\":30001,\"message\":\"Product doesn't exist\"}}",
+ "/v1/user/registerVisitor": "{\"result\":false,\"data\":[],\"error\":{\"id\":30001,\"message\":\"Product doesn't exist\"}}"
+}

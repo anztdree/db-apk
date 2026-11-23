@@ -8,65 +8,53 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Listener 9530 — mirror qsdk.t4game.com:80 (API SDK t4game: 33 path /v1/* + /v2/purchase,
- * kontrak 14.A#8).
+ * Listener 9530 — mirror qsdk.t4game.com:80 (API SDK t4game).
  *
- * Bagian 28 — SDK FULL-FITUR (tamu + DAFTAR + LOGIN email, tanpa konfirmasi email):
- *  1. init loginTypes ["12"] -> ["1"] (mirror server asli qsdk.t4game.com yang
- *     mengirim ["1","13"] — replay 22 Nov). Bukti smali model/e.cointhreat:
- *       - "1"  (contains "\"1\"") -> penggate tombol TAMU (fl_guest/ib_guest)
- *         & tv_freePlay DILOGIN FRAGMENT (f/a/d :cond_298 / :cond_2d1 —
- *         "hide guestFL login" hanya bila "1" ABSEN).
- *       - "12" -> mode tamu-only: email_password_layout + tv_login +
- *         ll_forgot_regist DISIMPAN GONE (rawturn=true :goto_242) dan
- *         cdkey_edit_layout DITAMPILKAN (psalmicvolleyball=true) — persis
- *         layar v11/v12 (tombol TAMU + Kode Migrasi, form email tak ada).
- *       - Dengan ["1"]: form email+sandi MUNCUL (default visible layout
- *         hw_view_login_email_with_password_a), tv_login + tv_register +
- *         tv_forgot muncul, Kode Migrasi hilang (cdkey_edit_layout default
- *         vis=2 GONE — hanya "12" yang menampilkannya).
- *  2. /v1/user/registerUser — daftar email+sandi (navyshop -> ironoriginhoblike:
- *     params username(email), password=MD5, vcode (isNeedVerify tidak ada di
- *     manifest meta-data -> gangclothing=false -> vcode TIDAK diwajibkan;
- *     konfirmasi email tidak ada — permintaan owner).
- *  3. /v1/user/loginByName — login email+sandi (timidcompletely -> gangclothing).
- *  4. /v1/user/autoLogin — match authToken -> akun tamu / akun email.
- *  5. /v1/auth/bindMail, /v1/auth/changePassword, /v1/auth/getUserInfo,
- *     /v1/user/sendCodeByEmail, /v1/user/findPassByEmail.
+ * Bagian 29 — MESIN KAWAT PHP-FAITHFUL (keputusan owner: "kalau server aslinya
+ * php artinya kita juga harus secara php, kalau error ya error ... tidak ada
+ * bypass" + "jika php berat kita harus realistis cari yg setara misal sqlite").
+ * Engine PHP 5.4.37 diganti engine Java, TETAPI perilaku kawat ditiru
+ * SETIA ke rekaman live server asli (23 Nov 2026, server masih hidup):
+ *
+ *  1. SELALU HTTP 200 — error di dalam body (bukti live).
+ *  2. Header mirror live: X-Powered-By: PHP/5.4.37 + Content-Type: text/json
+ *     (via sdk/profile.json — bisa diedit owner).
+ *  3. Body format: sv=v2&data=<base64(JSON)>&sign=<md5>  (bukti smali
+ *     bindcommunist/singersmooth).
+ *  4. Urutan validasi = MIROR LIVE (semua kasus yang terobservasi direkap):
+ *       a. data kosong/tak bisa diparse  -> 20000 "Params error"
+ *       b. sign salah                    -> 20002 "Params sign error"
+ *          (algoritma TreeMap k=v&+secret, DIVERIFIKASI diterima server asli)
+ *       c. param wajib kosong            -> 20003 "LostSomeMustParams:<nama>"
+ *          urutan ASLI dari oracle live: sdkVersion -> productCode -> authToken
+ *       d. productCode tak dikenal       -> 30001 "Product doesn't exist"
+ *       e. barulah logika endpoint
+ *  5. Storage akun = SQLite (DbSqlite, bawaan Android) — "setara realistis"
+ *     pilihan owner; file legacy JSON dimigrasi otomatis.
+ *  6. Kontrak file (sdk/) — init.json/ckRegVistor.json/fallback.json dibaca
+ *     tiap request, bisa diedit owner TANPA rebuild (eksperimen loginTypes!).
  *
  * FORMAT REQUEST (bukti smali bindcommunist/singersmooth.singersmooth):
  *   POST application/x-www-form-urlencoded
- *   body: sv=v2&data=<URLEncoder(Base64(JSON params))>&sign=<...>
+ *   body: sv=v2&data=<URLEncoder(Base64(JSON params))>&sign=<md5>
  *   → decode: pecah '&', URLDecoder.decode nilai, Base64-decode "data".
+ *
+ * GET DIAGNOSTIK: request tanpa body data+sign (curl/dashboard) lewat jalur
+ * uji tanpa cek kontrak — dicatat "GET-TEST" di log; alur game (POST) selalu
+ * lewat cek kontrak penuh di atas.
  */
 public final class SdkHandler implements HttpWorker.Handler {
 
-    /** Envelope capture live 14.A#8 — fallback untuk path yang belum dipetakan. */
-    public static final String ENVELOPE =
-            "{\"result\":false,\"data\":[],\"error\":{\"id\":20000,\"message\":\"Params error\"}}";
+    /* ===================== kontrak statis (mirror live) ===================== */
 
-    /**
-     * Init sukses — Bagian 28: loginTypes ["1"] (bukan lagi ["12"]).
-     * payTypes kunci WAJIB parser model/e (tanpa itu -> return null -> stuck).
-     * TANPA version (hindari runnable 'version update'), TANPA nodes.
-     */
-    public static final String INIT_OK =
-            "{\"result\":true,\"data\":{\"payTypes\":[],\"loginTypes\":[\"1\"]}}";
-
-    /** Sukses kosong — getNotice/dmsg/onNewToken/getAgreement/sendCodeByEmail. */
-    public static final String OK_EMPTY = "{\"result\":true,\"data\":\"\"}";
-
-    /** Bagian 27 — cek pendaftaran kode migrasi: mirror PERSIS respons live server asli. */
-    public static final String CKREG_OK =
-            "{\"result\":true,\"data\":{\"isReged\":0},\"error\":{\"id\":0,\"message\":\"\"}}";
-
-    /* ===================== util respons ===================== */
-
-    /** envelope error format server asli (capture 14.A#8) dengan pesan manusiawi. */
-    static String err(int id, String msg) {
+    /** Katalog error live — teks PERSIS server asli (rekam 23 Nov 2026). */
+    static String errLive(int id, String msg) {
         return "{\"result\":false,\"data\":[],\"error\":{\"id\":" + id
                 + ",\"message\":\"" + JsonUtil.esc(msg) + "\"}}";
     }
+
+    /** Sukses kosong — getNotice/dmsg/onNewToken/getAgreement/sendCodeByEmail. */
+    public static final String OK_EMPTY = "{\"result\":true,\"data\":\"\"}";
 
     /* ===================== decode request ===================== */
 
@@ -98,9 +86,7 @@ public final class SdkHandler implements HttpWorker.Handler {
     }
 
     /**
-     * Gabung query params (?uid=...&username=...) ke map — agar endpoint
-     * tetap bisa diuji via GET curl tanpa body POST (SDK selalu POST form;
-     * query hanya jalur kenyamanan uji/dashboard).
+     * Gabung query params (?uid=...&username=...) ke map — jalur GET diagnostik.
      */
     static void mergeQuery(Map<String, String> m, String rawPath) {
         if (rawPath == null) return;
@@ -164,6 +150,65 @@ public final class SdkHandler implements HttpWorker.Handler {
         return v != null && v.length() >= 16 && v.matches("[0-9a-fA-F]+");
     }
 
+    /* ===================== gerbang kontrak (mirror live) ===================== */
+
+    /** PHP empty() — null atau "" dianggap kosong. */
+    private static boolean empty(String v) {
+        return v == null || v.trim().isEmpty();
+    }
+
+    /**
+     * Gerbang kontrak POST game: data -> sign -> must-params -> product.
+     * Return body error, atau null bila LOLOS (lanjut ke logika endpoint).
+     * Urutan merekap semua respons live yang terobservasi 23 Nov 2026.
+     */
+    static String contractGate(Map<String, String> m, StringBuilder trace) {
+        String json = m.get("json");
+        boolean hasData = m.containsKey("data");
+        boolean hasSign = !empty(m.get("sign"));
+        if (!hasData && !hasSign) return null;      // GET diagnostik — tanpa gerbang
+
+        // (a) data wajib bisa diparse jadi objek — kalau tidak: 20000
+        Map<String, String> params = JsonUtil.scanFlat(json);
+        if (params == null) {
+            trace.append("GERBANG-20000(data)");
+            return errLive(20000, "Params error");
+        }
+
+        // (b) sign — algoritma TreeMap k=v& + secret, MD5 lowercase
+        if (SdkConfig.profileBool("verifySign", true)) {
+            String secret = SdkConfig.profileString("signSecret", "0b2a18e45d7df321");
+            if (!SdkSign.valid(params, m.get("sign"), secret)) {
+                trace.append("GERBANG-20002(sign)");
+                return errLive(20002, "Params sign error");
+            }
+        }
+
+        // (c) must-params urutan ASLI live: sdkVersion -> productCode -> authToken
+        String must = mustMissing(params);
+        if (must != null) {
+            trace.append("GERBANG-20003(").append(must).append(')');
+            return errLive(20003, "LostSomeMustParams:" + must);
+        }
+
+        // (d) productCode terdaftar
+        if (!SdkConfig.productKnown(params.get("productCode"))) {
+            trace.append("GERBANG-30001(product)");
+            return errLive(30001, "Product doesn't exist");
+        }
+        trace.append("GERBANG-LOLOS");
+        return null;
+    }
+
+    /** nama param wajib pertama yang kosong, atau null bila lengkap. */
+    static String mustMissing(Map<String, String> params) {
+        String[] order = {"sdkVersion", "productCode", "authToken"};
+        for (int i = 0; i < order.length; i++) {
+            if (empty(params.get(order[i]))) return order[i];
+        }
+        return null;
+    }
+
     /* ===================== handler ===================== */
 
     @Override
@@ -177,6 +222,8 @@ public final class SdkHandler implements HttpWorker.Handler {
         e.headers = req.headersStr;
         if (req.body.length > 0) e.reqPreview = StaticHandler.preview(req.body);
 
+        SdkConfig.ensureIndex();   // seed sdk/index.txt + errors.json sekali
+
         String p = (req.path == null || req.path.isEmpty()) ? req.rawPath : req.path;
         int q = p.indexOf('?');
         if (q >= 0) p = p.substring(0, q);
@@ -186,35 +233,46 @@ public final class SdkHandler implements HttpWorker.Handler {
         int status = 200;
         Map<String, String> m = decodeSdkBody(req.body);
         mergeQuery(m, req.rawPath);
+        StringBuilder trace = new StringBuilder(64);
 
-        if (p.equals("/v1/system/init")) {
-            body = INIT_OK;
-            extra = "INIT-SUCCESS 28 | loginTypes=[\"1\"] MIRROR SERVER ASLI (replay 22 Nov: "
-                    + "[\"1\",\"13\"]; \"1\" = form LOGIN/DAFTAR email + tombol TAMU tampil; "
-                    + "\"12\" lama = mode tamu-only yang menyembunyikan form email) "
-                    + "| payTypes kunci WAJIB parser model/e | TANPA version/nodes "
-                    + "| respCT=application/json";
+        // GET diagnostik = tanpa body data DAN tanpa sign — lewat tanpa gerbang
+        String signV = m.get("sign");
+        boolean getTest = !m.containsKey("data")
+                && (signV == null || signV.trim().isEmpty());
+        String gate = getTest ? null : contractGate(m, trace);
+
+        if (gate != null) {
+            body = gate;
+            extra = trace + " | kontrak mirror live 23 Nov | respCT=text/json";
+        } else if (p.equals("/v1/system/init")) {
+            body = SdkConfig.initJson();
+            extra = "INIT-SUCCESS (file sdk/v1/system/init.json — bisa diedit owner) "
+                    + "| loginTypes menentukan layar login: [\"1\"]=form email+TAMU, "
+                    + "[\"12\"]=tamu-only, [\"1\",\"13\"]=mirror replay server asli "
+                    + "| payTypes kunci WAJIB parser model/e | GET-TEST=" + getTest
+                    + " | respCT=text/json";
         } else if (p.equals("/v1/user/registerVisitor")) {
             AccountStore a = AccountStore.loadOrCreate();
             body = a.sdkDataResponse(a.isNewUser);
-            extra = "REGISTER-VISITOR (tombol TAMU) | akun tamu PERSISTEN server/data/account.json "
+            extra = "REGISTER-VISITOR (tombol TAMU) | akun tamu PERSISTEN SQLite "
+                    + "(" + Db.open(LoggerCore.serverRootPath).backend() + ") "
                     + "(uid tetap antar restart) | session: authToken+userData kontrak "
-                    + "psalmicvolleyball/cointhreat | respCT=application/json";
+                    + "psalmicvolleyball/cointhreat | " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/user/registerUser")) {
             // navyshop -> dishbesideshockey$ironoriginhoblike: vcode?, username(email), password(MD5)
             String email = field(m, "username").trim();
             String pass  = field(m, "password").trim();
             String vcode = field(m, "vcode").trim();
             if (email.isEmpty() || email.indexOf('@') < 0) {
-                body = err(20000, "Email tidak valid — isi email yang benar di kolom pendaftaran.");
+                body = errLive(20000, "Params error");
             } else if (!md5ok(pass)) {
-                body = err(20000, "Kata sandi kosong atau tidak valid.");
+                body = errLive(20000, "Params error");
             } else if (UserAccounts.find(email) != null) {
-                body = err(20001, "Email sudah terdaftar — silakan LOGIN dengan email tersebut.");
+                body = errLive(20001, "Email sudah terdaftar — silakan LOGIN dengan email tersebut.");
             } else {
                 UserAccounts.Rec r = UserAccounts.create(email, pass.toLowerCase());
                 if (r == null) {
-                    body = err(20000, "Pendaftaran gagal — coba lagi.");
+                    body = errLive(20000, "Params error");
                 } else {
                     AccountStore.setCurrent(r.uid, r.email, r.token, "0");
                     body = AccountStore.sessionResponse(r.uid, r.email, r.token, "1", "0");
@@ -224,31 +282,30 @@ public final class SdkHandler implements HttpWorker.Handler {
             extra = "REGISTER-USER (tombol DAFTAR di form email) | tanpa konfirmasi email "
                     + "(isNeedVerify tidak ada di manifest meta-data — vcode opsional"
                     + (vcode.isEmpty() ? ", tidak dikirim" : ", diabaikan server") + ") "
-                    + "| sukses = session isGuest:0 openType:1 isNewUser:0 | "
-                    + "akun tersimpan server/data/accounts.json | respCT=application/json";
+                    + "| sukses = session isGuest:0 openType:1 | akun tersimpan SQLite "
+                    + "| " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/user/loginByName")) {
             // timidcompletely -> dishbesideshockey$gangclothing: username, password(MD5)
             String email = field(m, "username").trim();
             String pass  = field(m, "password").trim();
-            if (email.isEmpty()) {
-                body = err(20000, "Email masih kosong — isi email dan kata sandi.");
-            } else if (!md5ok(pass)) {
-                body = err(20000, "Kata sandi masih kosong.");
+            if (email.isEmpty() || !md5ok(pass)) {
+                body = errLive(20000, "Params error");
             } else {
                 UserAccounts.Rec r = UserAccounts.find(email);
                 if (r == null) {
-                    body = err(20001, "Email belum terdaftar — tekan DAFTAR (Register) untuk membuat akun baru.");
+                    body = errLive(20001, "Email belum terdaftar — tekan DAFTAR (Register) untuk membuat akun baru.");
                 } else if (!r.passMd5.equals(pass.toLowerCase())) {
-                    body = err(20002, "Kata sandi salah — cek ulang atau gunakan akun lain.");
+                    body = errLive(20004, "Kata sandi salah — cek ulang atau gunakan akun lain.");
                 } else {
                     AccountStore.setCurrent(r.uid, r.email, r.token, "0");
+                    Db.open(LoggerCore.serverRootPath).touchLogin(r.uid);
                     body = AccountStore.sessionResponse(r.uid, r.email, r.token, "1", "0");
                     UserAccounts.sysLog("AKUN-LOGIN-EMAIL uid=" + r.uid + " email=" + r.email);
                 }
             }
             extra = "LOGIN-BY-NAME (tombol LOGIN di form email) | verifikasi email+sandi "
-                    + "di server/data/accounts.json | sukses = session isGuest:0 openType:1 "
-                    + "| respCT=application/json";
+                    + "di SQLite | 20004 = salah sandi (20002 LIVE = sign, jangan bentrok) "
+                    + "| sukses = session isGuest:0 openType:1 | " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/user/autoLogin")) {
             // QuickGameSdkService: params authToken (token tersimpan klien)
             String authTok = field(m, "authToken").trim();
@@ -256,19 +313,19 @@ public final class SdkHandler implements HttpWorker.Handler {
             if (authTok.length() > 0 && authTok.equals(g.token)) {
                 body = g.sdkDataResponse(false);
                 extra = "AUTO-LOGIN (tamu) | authToken cocok akun tamu tersimpan "
-                        + "(hardlinerspare -> service.cointruth) | respCT=application/json";
+                        + "(hardlinerspare -> service.cointruth) | " + trace + " | respCT=text/json";
             } else {
                 UserAccounts.Rec r = authTok.length() > 0 ? UserAccounts.findByToken(authTok) : null;
                 if (r != null) {
                     AccountStore.setCurrent(r.uid, r.email, r.token, "0");
                     body = AccountStore.sessionResponse(r.uid, r.email, r.token, "1", "0");
                     extra = "AUTO-LOGIN (email) | authToken cocok akun terdaftar " + r.email
-                            + " | session isGuest:0 openType:1 | respCT=application/json";
+                            + " | session isGuest:0 openType:1 | " + trace + " | respCT=text/json";
                 } else {
                     body = g.sdkDataResponse(false);
                     extra = "AUTO-LOGIN fallback ke akun tamu (authToken tidak cocok "
                             + (authTok.isEmpty() ? "- kosong" : "- tidak dikenal")
-                            + "; jalur launch pertama / clear data) | respCT=application/json";
+                            + "; jalur launch pertama / clear data) | " + trace + " | respCT=text/json";
                 }
             }
         } else if (p.equals("/v1/user/sendCodeByEmail")) {
@@ -276,19 +333,20 @@ public final class SdkHandler implements HttpWorker.Handler {
             body = OK_EMPTY;
             extra = "SEND-CODE-BY-EMAIL | server lokal tidak mengirim email; vcode TIDAK "
                     + "diperlukan (meta-data isNeedVerify tidak ada) — kode apapun diterima "
-                    + "| respCT=application/json";
+                    + "| " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/user/findPassByEmail")) {
             String email = field(m, "username").trim();
             if (email.isEmpty()) email = field(m, "email").trim();
-            if (UserAccounts.find(email) == null) {
-                body = err(20001, "Email tidak ditemukan — belum terdaftar di server lokal ini.");
+            if (email.isEmpty() || UserAccounts.find(email) == null) {
+                body = errLive(20001, "Email tidak ditemukan — belum terdaftar di server lokal ini.");
             } else {
-                body = err(20003, "Lupa kata sandi lewat email tidak tersedia di server lokal "
+                // 20005 = lokal (20003 LIVE = LostSomeMustParams — jangan bentrok)
+                body = errLive(20005, "Lupa kata sandi lewat email tidak tersedia di server lokal "
                         + "(tidak ada email keluar). Gunakan Ganti Kata Sandi di Pusat Akun, "
                         + "atau daftar dengan email lain.");
             }
             extra = "FIND-PASS-BY-EMAIL | server lokal TANPA email keluar — jawaban jujur "
-                    + "biar UI tidak menggantung | respCT=application/json";
+                    + "biar UI tidak menggantung | " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/auth/getUserInfo")) {
             String uid = field(m, "uid").trim();
             AccountStore g = AccountStore.loadOrCreate();
@@ -307,85 +365,83 @@ public final class SdkHandler implements HttpWorker.Handler {
                             + "\",\"token\":\"" + JsonUtil.esc(r.token)
                             + "\",\"isGuest\":\"0\",\"openType\":\"1\"}}";
                 } else {
-                    body = err(20001, "Akun tidak ditemukan di server lokal.");
+                    body = errLive(20001, "Akun tidak ditemukan di server lokal.");
                 }
             }
             extra = "GET-USER-INFO (Pusat Akun) | info akun by uid (tamu/email) "
-                    + "| respCT=application/json";
+                    + "| " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/auth/changePassword")) {
             // dishbesideshockey$famediscussionsmall: uid, oldPassword(MD5), newPassword(MD5)
             String uid = field(m, "uid").trim();
             String oldP = field(m, "oldPassword").trim();
             String newP = field(m, "newPassword").trim();
-            if (uid.isEmpty()) {
-                body = err(20000, "uid kosong — bukan dari sesi yang sah.");
+            if (uid.isEmpty() || !md5ok(newP)) {
+                body = errLive(20000, "Params error");
             } else if (AccountStore.loadOrCreate().uid.equals(uid)) {
-                body = err(20004, "Akun TAMU tidak punya kata sandi. Gunakan Pusat Akun -> "
+                body = errLive(20004, "Akun TAMU tidak punya kata sandi. Gunakan Pusat Akun -> "
                         + "Bind Email untuk menambah email+sandi ke akun ini.");
-            } else if (!md5ok(newP)) {
-                body = err(20000, "Kata sandi baru tidak valid.");
             } else if (!UserAccounts.changePassword(uid, oldP.toLowerCase(), newP.toLowerCase())) {
-                body = err(20002, "Kata sandi lama salah.");
+                body = errLive(20004, "Kata sandi lama salah.");
             } else {
                 body = OK_EMPTY;
                 UserAccounts.sysLog("SANDI-GANTI uid=" + uid);
             }
             extra = "CHANGE-PASSWORD (Pusat Akun) | verifikasi oldPassword -> set newPassword "
-                    + "di accounts.json | respCT=application/json";
+                    + "di SQLite | " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/auth/bindMail")) {
             // dishbesideshockey$reweavingsiamesedpropertylessnesses: uid, email, code, password(MD5)
             String uid = field(m, "uid").trim();
             String email = field(m, "email").trim();
             String code = field(m, "code").trim();
             String pass = field(m, "password").trim();
-            if (email.isEmpty() || email.indexOf('@') < 0) {
-                body = err(20000, "Email tidak valid.");
-            } else if (!md5ok(pass)) {
-                body = err(20000, "Kata sandi tidak valid.");
+            if (email.isEmpty() || email.indexOf('@') < 0 || !md5ok(pass)) {
+                body = errLive(20000, "Params error");
             } else if (UserAccounts.find(email) != null) {
-                body = err(20001, "Email sudah dipakai akun lain.");
+                body = errLive(20001, "Email sudah dipakai akun lain.");
             } else if (UserAccounts.bindToExistingUid(uid, email, pass.toLowerCase()) == null) {
-                body = err(20000, "Bind email gagal — akun tidak dikenal.");
+                body = errLive(20000, "Params error");
             } else {
                 body = OK_EMPTY;
                 UserAccounts.sysLog("BIND-MAIL uid=" + uid + " email=" + email.toLowerCase()
-                        + " (code diabaikan: " + (code.isEmpty() ? "kosong" : "dikirim") + ")");
+                        + " (uid/token TIDAK berubah — progres game aman; kode diabaikan: "
+                        + (code.isEmpty() ? "kosong" : "dikirim") + ")");
             }
-            extra = "BIND-MAIL (Pusat Akun — tambah email+sandi ke akun AKTIF) | uid/token "
-                    + "akun TIDAK berubah (progres game aman), email jadi cara login baru "
-                    + "| kode verifikasi diabaikan (tanpa email keluar) | respCT=application/json";
+            extra = "BIND-MAIL (Pusat Akun — tambah email+sandi ke akun AKTIF) | v29: UPDATE "
+                    + "in-place di SQLite, uid/token tetap | kode verifikasi diabaikan "
+                    + "(tanpa email keluar) | " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/system/getNotice")) {
             body = OK_EMPTY;
             extra = "getNotice kosong: result=true data=\"\" (len 0 <=2 -> callback skip notice, "
-                    + "try/catch aman) | respCT=application/json";
+                    + "try/catch aman) | " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/system/dmsg") || p.equals("/v1/system/onNewToken")
                 || p.equals("/v1/system/getAgreement")) {
             body = OK_EMPTY;
-            extra = "system path lain -> sukses kosong | respCT=application/json";
+            extra = "system path lain -> sukses kosong | " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/auth/setGameRoleInfo")) {
             body = OK_EMPTY;
             extra = "SET-GAME-ROLE | laporan role game (cointhreat.smali setGameRoleInfo) "
-                    + "-> result:true kosong | respCT=application/json";
+                    + "-> result:true kosong | " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/user/ckRegVistor")) {
             // Bagian 27 — tombol Kode Migrasi (onCDKeyClicked -> MSG_CHECK_REG_VISITOR).
-            // Mirror PERSIS server asli (replay 23 Nov: result:true, data:{isReged:0}).
-            // Dengan loginTypes ["1"] tombol ini tidak tampil lagi di layar login.
-            body = CKREG_OK;
+            // Kontrak dari file sdk/v1/user/ckRegVistor.json (mirror PERSIS replay
+            // live server asli 23 Nov: result:true, data:{isReged:0}).
+            body = SdkConfig.ckRegJson();
             extra = "CK-REG-VISITOR (Kode Migrasi) | mirror PERSIS server asli "
-                    + "(result:true isReged:0) | tombol ini sudah TIDAK ditampilkan "
-                    + "sejak loginTypes [\"1\"] | respCT=application/json";
+                    + "(file sdk/v1/user/ckRegVistor.json) | tombol tidak tampil "
+                    + "sejak loginTypes [\"1\"] | " + trace + " | respCT=text/json";
         } else if (p.equals("/v1/user/getServerAgreement")) {
             body = OK_EMPTY;
             extra = "agreement kosong (dishbesideshockey/dishbesideshockey) | "
-                    + "respCT=application/json";
+                    + trace + " | respCT=text/json";
         } else {
-            body = ENVELOPE;
-            extra = "endpoint BELUM tersedia di server lokal (result:false, SDK tidak mendapat "
-                    + "jawaban valid) | SDK memanggil tombol/fitur yang belum dipetakan "
-                    + "| respCT=application/json";
+            body = SdkConfig.fallbackJson();
+            extra = "endpoint BELUM tersedia (file sdk/fallback.json) | SDK memanggil "
+                    + "fitur yang belum dipetakan | " + trace + " | respCT=text/json";
         }
 
-        Map<String, String> h = HttpWorker.baseHeaders("application/json");
+        // Header mirror live server asli (profile.json — bisa diedit owner)
+        Map<String, String> h = HttpWorker.baseHeaders(SdkConfig.contentType());
+        h.put("X-Powered-By", SdkConfig.poweredBy());
         h.put("Access-Control-Allow-Origin", "*");
         byte[] bb = HttpWorker.text(body);
         HttpWorker.writeResponse(out, status, "OK", h, bb);

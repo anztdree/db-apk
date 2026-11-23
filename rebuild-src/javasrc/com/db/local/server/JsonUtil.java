@@ -26,6 +26,114 @@ public final class JsonUtil {
         return b.toString();
     }
 
+    /**
+     * Bagian 29 — scan objek JSON TOP-LEVEL FLAT -> map (urutan kemunculan).
+     * Nilai: string (di-unescape), angka (teks literal — cocok dgn
+     * Integer.toString/Long.toString yang dipakai client saat menandatangani),
+     * true/false (teks literal), null -> "". Objek/array nested dijadikan teks
+     * JSON mentah (best effort — client SDK tidak pernah mengirim nested).
+     * Return null bila bukan objek ({...}) / tidak bisa diparse.
+     */
+    public static java.util.LinkedHashMap<String, String> scanFlat(String json) {
+        if (json == null) return null;
+        String s = json.trim();
+        if (!s.startsWith("{") || !s.endsWith("}")) return null;
+        java.util.LinkedHashMap<String, String> out = new java.util.LinkedHashMap<String, String>();
+        int i = 1, n = s.length() - 1;
+        while (i < n) {
+            // lewati pemisah
+            while (i < n && (s.charAt(i) == ',' || s.charAt(i) == ' '
+                    || s.charAt(i) == '\n' || s.charAt(i) == '\r' || s.charAt(i) == '\t')) i++;
+            if (i >= n) break;
+            if (s.charAt(i) != '"') return out.isEmpty() && s.charAt(i) == '}' ? out : null;
+            // key
+            StringBuilder kb = new StringBuilder();
+            i++;
+            while (i < n) {
+                char c = s.charAt(i);
+                if (c == '\\' && i + 1 < n) { i = unescAt(s, i, kb); continue; }
+                if (c == '"') { i++; break; }
+                kb.append(c); i++;
+            }
+            // ':' 
+            while (i < n && (s.charAt(i) == ' ' || s.charAt(i) == ':')) i++;
+            if (i >= n) return null;
+            // value
+            String val;
+            char c0 = s.charAt(i);
+            if (c0 == '"') {
+                StringBuilder vb = new StringBuilder();
+                i++;
+                while (i < n) {
+                    char c = s.charAt(i);
+                    if (c == '\\' && i + 1 < n) { i = unescAt(s, i, vb); continue; }
+                    if (c == '"') { i++; break; }
+                    vb.append(c); i++;
+                }
+                val = vb.toString();
+            } else if (c0 == '{' || c0 == '[') {
+                int close = rawBlock(s, i);
+                if (close < 0) return null;
+                val = s.substring(i, close + 1).replaceAll("\\s+", "");
+                i = close + 1;
+            } else {
+                int e = i;
+                while (e < n && ",}".indexOf(s.charAt(e)) < 0) e++;
+                String lit = s.substring(i, e).trim();
+                if (lit.equals("null")) val = "";
+                else val = lit;   // angka / true / false — teks literal
+                i = e;
+            }
+            if (kb.length() == 0) return null;
+            out.put(kb.toString(), val);
+        }
+        return out;
+    }
+
+    private static char unesc(char c) {
+        switch (c) {
+            case 'n': return '\n';
+            case 'r': return '\r';
+            case 't': return '\t';
+            case 'b': return '\b';
+            case 'f': return '\f';
+            default: return c;      // \" \\ \/ 
+        }
+    }
+
+    /** handle escape mulai di posisi '\\' (i); pos balik = index karakter berikut. */
+    private static int unescAt(String s, int i, StringBuilder b) {
+        char n1 = s.charAt(i + 1);
+        if (n1 == 'u' && i + 5 < s.length()) {
+            try {
+                b.append((char) Integer.parseInt(s.substring(i + 2, i + 6), 16));
+                return i + 6;
+            } catch (Throwable t) { /* jatuh ke escape biasa */ }
+        }
+        b.append(unesc(n1));
+        return i + 2;
+    }
+
+    /** index penutup blok {..} / [..] mulai di open (menghitung string). */
+    private static int rawBlock(String s, int open) {
+        char openC = s.charAt(open);
+        char closeC = openC == '{' ? '}' : ']';
+        int depth = 0;
+        boolean inStr = false;
+        for (int i = open; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (inStr) {
+                if (c == '\\') { i++; continue; }
+                if (c == '"') inStr = false;
+                continue;
+            }
+            if (c == '"') { inStr = true; continue; }
+            if (c == openC) depth++;
+            else if (c == closeC) { depth--; if (depth == 0) return i; }
+        }
+        return -1;
+    }
+
     /** nama file → Content-Type HTTP (peta minimum untuk isi game egret) */
     public static String contentType(String path) {
         String p = path.toLowerCase();

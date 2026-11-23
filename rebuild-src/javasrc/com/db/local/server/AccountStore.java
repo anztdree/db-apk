@@ -1,13 +1,9 @@
 package com.db.local.server;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
 /**
- * Bagian 21 — penyimpanan akun tamu lokal yang PERSISTEN.
+ * Bagian 21->29 — AKUN TAMU AKTIF, kini di atas lapisan Db (SQLite di device).
  *
  * Kontrak dari smali (bukti, bukan karangan):
  *  - psalmicvolleyball/cointhreat.cointruth(String) (parser session):
@@ -24,8 +20,9 @@ import java.util.Random;
  *  - pursetruechild/nationalcommunitymissing (loginchecknative): body mentah
  *    disimpan sebagai thirdParams untuk JS, lalu divalidasi getInt("code")==0.
  *
- * Akun disimpan di <serverRoot>/data/account.json sehingga UID/TOKEN tetap sama
- * antar restart — perilaku "online" yang wajar (akun tamu menetap).
+ * Perubahan v29: persistensi pindah ke Db (backend sqlite|json, pilih otomatis).
+ * File data/account.json lama DIMIGRASI DbSqlite (uid/token tetap). Field publik
+ * dan SEMUA method publik dipertahankan — SocketIoHandler/SdkHandler tak berubah.
  */
 public final class AccountStore {
 
@@ -72,106 +69,68 @@ public final class AccountStore {
         return a;
     }
 
-    private static final Object LOCK = new Object();
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
     public static AccountStore loadOrCreate() {
-        synchronized (LOCK) {
-            AccountStore a = read();
-            if (a != null) {
+        Db db = Db.open(LoggerCore.serverRootPath);
+        synchronized (Db.LOCK) {
+            Db.Row g = db.guest();
+            if (g != null) {
+                AccountStore a = new AccountStore();
+                a.uid = g.uid;
+                a.token = g.token;
+                a.username = g.username == null || g.username.isEmpty() ? g.uid : g.username;
+                a.createTime = g.createTime;
                 a.isNewUser = false;
                 return a;
             }
-            a = new AccountStore();
+            AccountStore a = new AccountStore();
             a.createTime = System.currentTimeMillis();
             a.uid = String.valueOf(a.createTime);
             a.token = randomToken();
             a.username = "Guest" + (1000 + new Random().nextInt(9000));
             a.isNewUser = true;
-            write(a);
+            Db.Row r = new Db.Row();
+            r.uid = a.uid;
+            r.token = a.token;
+            r.username = a.username;
+            r.email = "";
+            r.passMd5 = "";
+            r.isGuest = true;
+            r.createTime = a.createTime;
+            r.lastLogin = a.createTime;
+            db.putGuest(r);
             log("AKUN-BARU uid=" + a.uid + " username=" + a.username);
             return a;
         }
     }
 
-    private static File file() {
-        String root = LoggerCore.serverRootPath;
-        File dir = new File(root == null || root.isEmpty()
-                ? "." : root, "data");
-        if (!dir.exists()) dir.mkdirs();
-        return new File(dir, "account.json");
-    }
-
-    private static AccountStore read() {
-        File f = file();
-        if (!f.exists()) return null;
-        FileInputStream in = null;
-        try {
-            byte[] buf = new byte[(int) f.length()];
-            in = new FileInputStream(f);
-            int off = 0;
-            while (off < buf.length) {
-                int r = in.read(buf, off, buf.length - off);
-                if (r < 0) break;
-                off += r;
-            }
-            String s = new String(buf, 0, off, StandardCharsets.UTF_8);
-            AccountStore a = new AccountStore();
-            a.uid = jsonStr(s, "uid");
-            a.token = jsonStr(s, "token");
-            a.username = jsonStr(s, "username");
-            a.createTime = jsonLong(s, "createTime");
-            if (a.uid == null || a.token == null || a.uid.isEmpty() || a.token.isEmpty()) {
-                return null;
-            }
-            log("AKUN-LOAD uid=" + a.uid + " username=" + a.username);
-            return a;
-        } catch (Throwable t) {
-            log("AKUN-READ-GAGAL " + t);
-            return null;
-        } finally {
-            if (in != null) try { in.close(); } catch (Exception ignored) {}
-        }
-    }
-
-    private static void write(AccountStore a) {
-        FileOutputStream out = null;
-        try {
-            String s = "{\"uid\":\"" + JsonUtil.esc(a.uid) + "\",\"token\":\""
-                    + JsonUtil.esc(a.token) + "\",\"username\":\""
-                    + JsonUtil.esc(a.username) + "\",\"createTime\":" + a.createTime + "}";
-            byte[] b = s.getBytes(StandardCharsets.UTF_8);
-            File tmp = new File(file().getAbsolutePath() + ".tmp");
-            out = new FileOutputStream(tmp);
-            out.write(b);
-            out.flush();
-            out.getFD().sync();
-            out.close();
-            out = null;
-            File f = file();
-            if (f.exists()) f.delete();
-            tmp.renameTo(f);
-        } catch (Throwable t) {
-            log("AKUN-WRITE-GAGAL " + t);
-        } finally {
-            if (out != null) try { out.close(); } catch (Exception ignored) {}
-        }
-    }
-
     /** Ambil satu nilai string dari JSON kecil tanpa parser penuh. */
     static String jsonStr(String s, String key) {
-        int i = s.indexOf("\"" + key + "\"");
-        if (i < 0) return null;
-        i = s.indexOf('"', s.indexOf(':', i) + 1);
-        if (i < 0) return null;
-        StringBuilder b = new StringBuilder();
-        for (int k = i + 1; k < s.length(); k++) {
-            char c = s.charAt(k);
-            if (c == '\\') { k++; if (k < s.length()) b.append(s.charAt(k)); continue; }
-            if (c == '"') break;
-            b.append(c);
+        if (s == null) return null;
+        int k0 = s.indexOf("\"" + key + "\"");
+        if (k0 < 0) return null;
+        int c = s.indexOf(':', k0);
+        if (c < 0) return null;
+        int p = c + 1;
+        while (p < s.length() && (s.charAt(p) == ' ' || s.charAt(p) == '\t')) p++;
+        if (p >= s.length()) return null;
+        char first = s.charAt(p);
+        if (first == '"') {
+            StringBuilder b = new StringBuilder();
+            for (int k = p + 1; k < s.length(); k++) {
+                char ch = s.charAt(k);
+                if (ch == '\\') { k++; if (k < s.length()) b.append(s.charAt(k)); continue; }
+                if (ch == '"') break;
+                b.append(ch);
+            }
+            return b.toString();
         }
-        return b.toString();
+        // nilai literal (angka/bool/null) — teks sampai pemisah
+        int e = p;
+        while (e < s.length() && ",}]".indexOf(s.charAt(e)) < 0) e++;
+        String lit = s.substring(p, e).trim();
+        return lit.equals("null") ? null : lit;
     }
 
     static long jsonLong(String s, String key) {

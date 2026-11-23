@@ -1,0 +1,4 @@
+Files /tmp/smali-v14check/com/zhuhuan/game/Application.smali and smali-pristine/com/zhuhuan/game/Application.smali differ
+v14 classes.dex vs v11: IDENTIK (diff exit 0)
+classes.dex sha256: 1df64d91219c01db729b13449a606ad88326d1aa260f3fa316aa44dc6ead787e (= v11 = original + starter LocalServerStarter)
+classes2.dex sha256: 1889c688e3335d967c5dac4aadf41e2e3f8f8130ca20bcc3b8a66217550a5dc6 (server v14 Baru)
