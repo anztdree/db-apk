@@ -2539,3 +2539,54 @@ Lokasi tempel di device (bukti LocalServerStarter.java:47-49):
 jadi edit = berlaku langsung tanpa restart. Panduan lengkap: **docs/SDK-CONFIG.md**.
 Catatan jujur (bukti §35.2): file `sdk/QHinfo` = catatan; client membaca endpoint
 dari assets/QHinfo DI DALAM APK — ganti endpoint client tetap butuh rebuild.
+
+## Bagian 36 — KOREKSI OWNER: `init.json` HANYA 2 FIELD → MIRROR PENUH ORIGINAL (23 Nov 2026)
+
+Owner menangkap kesalahan fatal: *"perbandingannya tuh apaaa!! sdk original dan
+sdk kita lah .. itu gk ada bedanya revisi anda sekarang!!"* — benar. `init.json`
+yang kita kirim hanya `{"result":true,"data":{"payTypes":[],"loginTypes":["1"]}}`,
+padahal respons `/v1/system/init` SERVER ORIGINAL mengirim jauh lebih banyak field
+(bukti: JSON persis dari owner + replay sukses 23 Nov, Bagian 26.3). Ini log
+perbandingannya — dan koreksinya TANPA rebuild APK.
+
+### 36.1 Perbandingan field (ORIGINAL vs kita)
+
+| Field `data` | SERVER ORIGINAL | KITA DULU | KITA SEKARANG |
+|---|---|---|---|
+| `payTypes` | `[]` | `[]` ✔ | `[]` |
+| `loginTypes` | `["1"]` (owner; replay asli `["1","13"]`) | `["1"]` ✔ | `["1"]` |
+| `first_install` | `1` | **TIDAK ADA** ✗ | `1` |
+| `countryCode` | `"HK"` | **TIDAK ADA** ✗ | `"HK"` |
+| `productConfig` (10 field) | `guestShowBind:"1"`, `isShowFloat:"0"`, `useSms:"0"`, `useServiceCenter:"0"`, `single_play:"0"`, `adZhifuSwt:"0"`, `initCZurl:""`, `serviceInfo:""`, `logo:""`, `title:""` | **TIDAK ADA** ✗ | persis original |
+| `version` (6 field) | `versionNo/versionName/versionUrl/updateTime/isMust/updateTips` = semua `"empty"` | **TIDAK ADA** ✗ | persis original |
+
+### 36.2 Bukti field itu DIPARSE SDK (kenapa ini fatal, decode fresh original)
+
+- `model/e.smali` (parser respons init): `:171` payTypes, `:195` loginTypes,
+  `:166` productConfig, `:156` version (ekstraksi `has()`+`getJSONObject()` —
+  field hilang = objek `null`, TIDAK crash, tapi fiturnya mati diam-diam).
+- `model/d.smali` (parser productConfig): SEMUA 10 field diparse `:74`-`:92`
+  (adZhifuSwt, initCZurl, single_play, guestShowBind, isShowFloat, serviceInfo,
+  useSms, logo, title, useServiceCenter); dibandingkan konstanta `"1"` (`:114`),
+  `"http"` (`:190`), `"0"` (`:309`) — nilai server original yang menentukan
+  cabang UI (prompt bind tamu, halaman bayar, dll).
+- `model/g.smali` (parser version): 6 field `:74`-`:276`; `:59` konstanta
+  literal `"empty"` = sentinel MILIK SDK SENDIRI — itu sebabnya server asli
+  mengirim `"empty"`.
+- `first_install`: grep seluruh smali = 0 hit (tidak diparse client; dikirim
+  murni sebagai mirror asli).
+- `countryCode`: param REQUEST init (psalmicvolleyball/singersmooth.smali:171),
+  di respons asli ikut dikirim — kita mirror apa adanya.
+
+### 36.3 Koreksi (TANPA rebuild APK)
+
+- `sdk/v1/system/init.json` di repo diganti = JSON original PERSIS (verbatim).
+- Server membaca file itu TIAP request (`contract()`, SdkConfig.java:142-153) —
+  owner cukup download folder `sdk/` dan tempel ke
+  `Android/data/com.db.local/server/sdk/` (panduan: docs/SDK-CONFIG.md).
+- Jujur dicatat: seed DEFAULT di dalam dex APK v1 masih minimal (dex tidak
+  disentuh — nol rebuild). File tempelan SELALU menang; bila file dihapus,
+  minimal ter-seed ulang → tempel ulang. Preset E1/E2/E3 di panel juga menimpa
+  dengan format minimal → setelah pakai preset, tempel ulang init.json.
+- `loginTypes ["1"]` = keputusan owner (form email + TAMU); struktur field lain
+  TIDAK boleh dikurangi lagi.

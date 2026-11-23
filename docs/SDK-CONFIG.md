@@ -2,9 +2,14 @@
 
 > Permintaan owner: *"tanpa perlu rebuild apk .. anda buat folder sdk isinya nanti
 > full config yg akan saya download dan tempelkan ke android/data/sdk"*.
-> Folder `sdk/` di repo ini = isi config lengkap, **terverifikasi byte-per-byte
-> identik** dengan yang di-seed server lokal v1 (uji: server dijalankan, semua 6
-> file IDENTIK dgn hasil seed — bukti di readme Bagian 35).
+>
+> **KOREKSI OWNER 23 Nov (Bagian 36 readme)**: `init.json` lama hanya 2 field
+> (`payTypes`+`loginTypes`) padahal SERVER ORIGINAL mengirim SEMUA field di
+> bawah — semua field itu DIPARSE SDK (bukti smali §5). Folder `sdk/` repo
+> sekarang = **mirror penuh respons init original**. Catatan jujur: seed
+> DEFAULT di dalam dex APK v1 masih minimal (dex TIDAK disentuh — nol rebuild);
+> file hasil tempelan SELALU menang karena `contract()` baca file dulu
+> (SdkConfig.java:142-153) — jadi WAJIB tempel file ini ke device.
 
 ## 1. LOKASI PERSIS DI DEVICE (BUKTI KODE, JANGAN KESALAH TEMPAT)
 
@@ -54,7 +59,7 @@ Android/data/com.db.local/server/
 | File | Efek |
 |---|---|
 | `profile.json` | Gerbang `/v1/system/init`: daftar `products` (30001), `verifySign`, `signSecret`, header PHP. Menambah productCode = edit array `products` |
-| `v1/system/init.json` | `loginTypes` menentukan UI login SDK: `["1"]` = email+TAMU (default v1), `["12"]` = TAMU saja, `["1","13"]` = mirror server asli (+Kode Migrasi). `payTypes` WAJIB ada (parser `model/e`) |
+| `v1/system/init.json` | **Mirror PENUH respons init server original** (isinya lihat §5). `loginTypes` menentukan UI login SDK: `["1"]` = email+TAMU (keputusan owner, struktur original), `["12"]` = TAMU saja, `["1","13"]` = replay asli (+Kode Migrasi). `payTypes` WAJIB ada (parser `model/e.smali:171`); `productConfig`+`version` juga diparse (`model/e.smali:166/:156`) |
 | `v1/user/ckRegVistor.json` | Kontrak cek tamu (`isReged`) |
 | `fallback.json` | Jawaban endpoint yang belum dipetakan (result:false 20000) |
 | `errors.json` | Katalog error (dokumentasi live server asli) |
@@ -74,3 +79,57 @@ Android/data/com.db.local/server/
 7. Edit lebih praktis dari browser HP: panel `http://127.0.0.1:4000/sdkconfig`
    (edit file yang sama + preset E1/E2/E3 + tabel akun) — folder `sdk/` ini adalah
    versi OFFLINE dari panel itu.
+8. **AWAS preset E1/E2/E3 di panel** — tombol itu MENIMPA `init.json` dengan
+   format MINIMAL (`{"result":..,"data":{payTypes,loginTypes}}`, bukti
+   `SdkConfig.presetInitJson`). Setelah pakai preset, tempel ulang `init.json`
+   dari folder ini untuk kembali ke mirror penuh original.
+9. **Bila file `init.json` dihapus/dirusak** di device -> server seed ulang
+   DEFAULT MINIMAL dari dex (DEFAULT_INIT, tidak bisa diubah tanpa rebuild) ->
+   tempel ulang file dari folder ini.
+
+## 5. PERBANDINGAN — SERVER ORIGINAL vs KITA (koreksi owner 23 Nov)
+
+Respons `/v1/system/init` server original (bukti: JSON persis dari owner +
+replay sukses 23 Nov, readme Bagian 26.3) vs yang kita kirim:
+
+| Field `data` | ORIGINAL | KITA DULU (SALAH) | KITA SEKARANG |
+|---|---|---|---|
+| `payTypes` | `[]` | `[]` ✔ | `[]` |
+| `loginTypes` | `["1"]` (owner; replay asli 26.3 pernah `["1","13"]`) | `["1"]` ✔ | `["1"]` |
+| `first_install` | `1` | **TIDAK ADA** ✗ | `1` |
+| `countryCode` | `"HK"` | **TIDAK ADA** ✗ | `"HK"` |
+| `productConfig` (10 field) | ada semua: `guestShowBind:"1"`, `isShowFloat:"0"`, `useSms:"0"`, `useServiceCenter:"0"`, `single_play:"0"`, `adZhifuSwt:"0"`, `initCZurl:""`, `serviceInfo:""`, `logo:""`, `title:""` | **TIDAK ADA** ✗ | ada semua, persis |
+| `version` (6 field) | semua `"empty"`: `versionNo`, `versionName`, `versionUrl`, `updateTime`, `isMust`, `updateTips` | **TIDAK ADA** ✗ | semua `"empty"`, persis |
+
+**Bukti field-field itu DIPARSE SDK (decode fresh APK original, nol asumsi):**
+
+- `model/e.smali` (parser respons init) — `:171` `"payTypes"`, `:195`
+  `"loginTypes"`, `:166` `"productConfig"`, `:156` `"version"` + field lain
+  (`:152-:207`: downloadUrl/title/lightPackage/payFast/otherpayType/requestIp/
+  showDiscount/serverInfoData/showShare/isNotGift/removeEmail/deleteAccount/
+  serverInfo/nodes). Ekstraksi pakai `JSONObject.has()` + `getJSONObject()` —
+  field hilang = TIDAK crash, tapi objek itu tetap `null` (fitur di
+  belakangnya mati diam-diam) — inilah efek init.json minimal.
+- `model/d.smali` (parser `productConfig`) — SEMUA 10 field owner diparse:
+  `:74` adZhifuSwt, `:76` initCZurl, `:78` single_play, `:80` guestShowBind,
+  `:82` isShowFloat, `:84` serviceInfo, `:86` useSms, `:88` logo, `:90` title,
+  `:92` useServiceCenter. Dibandingkan dgn konstanta perilaku `"1"` (`:114`),
+  awalan `"http"` (`:190`), `"0"` (`:309`) — artinya NILAI dari server
+  original-lah yang menentukan cabang UI (prompt bind tamu, halaman bayar, dsb).
+- `model/g.smali` (parser `version`) — `:59` konstanta literal `"empty"`
+  (sentinel milik SDK SENDIRI — itulah kenapa server original mengirim
+  `"empty"`), `:74` versionNo, `:118` versionName, `:152` versionUrl,
+  `:186` isMust, `:240` updateTips, `:276` updateTime.
+- `first_install` — grep seluruh smali APK = **0 hit** (tidak diparse client;
+  tetap dikirim karena mirror asli, bukan karena dipakai).
+- `countryCode` — dikirim client sebagai PARAM REQUEST init
+  (psalmicvolleyball/singersmooth.smali:171); di RESPONS ikut dikirim server
+  asli — kita mirror apa adanya.
+
+Isi `init.json` sekarang (persis bukti owner, bisa dilihat langsung di file):
+`payTypes []`, `loginTypes ["1"]`, `first_install 1`, `countryCode "HK"`,
+`productConfig` 10 field, `version` 6 field `"empty"`.
+
+**loginTypes**: `["1"]` = keputusan owner (form email + TAMU). Server asli
+(23 Nov, 26.3) mengirim `["1","13"]`. Ganti kapan pun lewat file/panel —
+struktur field lain jangan dikurangi.

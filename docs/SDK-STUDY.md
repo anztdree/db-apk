@@ -115,7 +115,22 @@ unnecessarysperrylites/seventygenom.smali
 2. **Baca QHinfo** -> base URL (`§2`). Di APK v1 = `http://127.0.0.1:9530`.
 3. **`/v1/system/init`** (psalmicvolleyball/singersmooth.smali:388) = gerbang pertama.
    - Gagal 30001 (product tidak ada) => SDK BERHENTI DI SINI (silent error v15 — bukti live + log device 23 Nov 16:54).
-   - Lolos => jawaban init diparse ke `model/e`: `:171` `"payTypes"`, `:195` `"loginTypes"`.
+   - Lolos => jawaban init diparse ke `model/e`: `:171` `"payTypes"`, `:195` `"loginTypes"`,
+     `:166` `"productConfig"` -> `model/d.smali` (10 field: :74-:92 adZhifuSwt,
+     initCZurl, single_play, guestShowBind, isShowFloat, serviceInfo, useSms,
+     logo, title, useServiceCenter; dibandingkan konstanta `"1"` :114, `"http"`
+     :190, `"0"` :309) dan `:156` `"version"` -> `model/g.smali` (6 field
+     :74-:276 versionNo/versionName/versionUrl/isMust/updateTips/updateTime;
+     `:59` sentinel literal `"empty"` MILIK SDK SENDIRI — server asli mengirim
+     `"empty"` karena itulah nilai banding SDK).
+   - Field `productConfig`/`version` diekstraksi dgn `has()`+`getJSONObject()` —
+     TIDAK ada di respons = objek tetap `null`, TIDAK crash, tapi fitur di
+     belakangnya mati diam-diam. **Koreksi owner 23 Nov**: init.json minimal
+     2-field TIDAK menerus — sekarang mirror penuh respons original (perbandingan
+     lengkap + bukti: docs/SDK-CONFIG.md §5, log readme Bagian 36).
+   - `first_install` = 0 hit di seluruh smali (tidak diparse client; dikirim
+     mirror asli). `countryCode` = param request init
+     (psalmicvolleyball/singersmooth.smali:171) + ikut di respons asli.
 4. **loginTypes menentukan UI login** yang muncul di `HWLoginActivity` (konsumen `model/e`:
    `HWLoginActivity.smali`, `HWLoginActivity$pursetruechild.smali`, `d/d`, `d/e`, `d/k`, `d/l`).
    Nilai dari `sdk/v1/system/init.json` di device (bisa diedit tanpa rebuild):
@@ -155,7 +170,11 @@ unnecessarysperrylites/seventygenom.smali
 2. **Config yang bisa diubah TANPA rebuild** = file di
    `Android/data/com.db.local/server/sdk/` (dibaca ulang tiap request — SdkConfig.java:17):
    `profile.json`, `v1/system/init.json`, `v1/user/ckRegVistor.json`, `fallback.json`,
-   `errors.json`. Folder `sdk/` siap-download ada di repo (folder `sdk/`).
+   `errors.json`. Folder `sdk/` siap-download ada di repo (folder `sdk/`) —
+   `init.json` di sana = **mirror PENUH respons init original** (koreksi owner
+   23 Nov; perbandingan field-per-field: docs/SDK-CONFIG.md §5). Seed default
+   DI DALAM dex v1 masih minimal — file hasil tempelan SELALU menang
+   (contract(), SdkConfig.java:142-153).
 3. **`sdk/QHinfo` = catatan/sumber kebenaran** — perubahan TIDAK memengaruhi client
    kecuali direbuild ke `assets/QHinfo` (bukti §2).
 4. **Kalau JSON config rusak** -> server auto-seed ulang default (SdkConfig.java:148).
