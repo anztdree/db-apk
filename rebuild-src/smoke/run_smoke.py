@@ -313,7 +313,7 @@ try:
     check("panel-api-file-init", "payTypes" in api["files"]["init.json"])
     check("panel-api-qhinfo", api["files"]["QHinfo"] == "http://127.0.0.1:9530")
     # v16: api membawa status product
-    check("v17-panel-api-ver", api.get("ver") in ("v17", "v18"), bd[:80])
+    check("v1-panel-api-ver", api.get("ver") == "v1", bd[:80])
     check("v16-panel-api-products", PRODUCT_ASLI in api.get("products", []))
 
     # v16: endpoint product-add — tambah kode + validasi
@@ -407,10 +407,10 @@ try:
     # /sdkconfig/api: ver=v18 + overlay + session
     st, hd, bd = get400("/sdkconfig/api")
     api = json.loads(bd)
-    check("v18-api-ver", api.get("ver") == "v18", api.get("ver"))
-    check("v18-api-overlay-session", "overlay" in api and "session" in api
+    check("v1-api-ver", api.get("ver") == "v1", api.get("ver"))
+    check("v1-api-overlay-session", "overlay" in api and "session" in api
           and set(api["session"]) >= {"saved", "resetAuto", "resetInfo"}, bd[-200:])
-    check("v18-api-desktop-sesi", api["session"]["saved"] is False
+    check("v1-api-desktop-sesi", api["session"]["saved"] is False
           and api["session"]["resetAuto"] is False, str(api["session"]))
     check("v18-api-overlay-desktop", api["overlay"]["checked"] is False
           and api["overlay"]["granted"] is True, str(api["overlay"]))
@@ -429,7 +429,7 @@ try:
 
     # dashboard monitor: banner sesi + fungsi renderSession + ver v18
     st, hd, bd = get400("/")
-    check("v18-ver-dashboard", "v18" in bd, bd[:80])
+    check("v1-ver-dashboard", "v1" in bd, bd[:80])
     check("v18-banner-sesi-js", "renderSession" in bd and "sesbn" in bd
           and "SESI SDK DIRESET OTOMATIS" in bd, bd[:80])
     check("v18-sysline-sesi", "sesi SDK" in bd and "overlay" in bd, bd[:80])
@@ -465,7 +465,7 @@ try:
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
 
-print("\n===== SMOKE v17: %d PASS, %d FAIL =====" % (len(PASS), len(FAIL)))
+print("\n===== SMOKE v1: %d PASS, %d FAIL =====" % (len(PASS), len(FAIL)))
 if FAIL:
     print("GAGAL:", FAIL)
     sys.exit(1)

@@ -408,7 +408,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("@media(max-width:640px){#tbl .c-seq,#tbl .c-dur{display:none}#flow{max-height:calc(100vh - 300px)}}\n")
          .append("@media(max-width:480px){#tbl .c-port{display:none}#tbl td,#tbl thead th{padding:4px 6px}body{padding:6px}}\n")
          .append("</style></head><body>\n")
-         .append("<div id=top><span id=title>MONITOR SERVER<span class=ver>v18</span></span>")
+         .append("<div id=top><span id=title>MONITOR SERVER<span class=ver>v1</span></span>")
          .append("<span id=pill class=g>cek …</span>")
          .append("<a href=/sdkconfig><button>SDK CONFIG</button></a>")
          .append("<span id=statsbar>memuat …</span></div>\n")
@@ -434,7 +434,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("<b style=color:#8fd48f>PANDUAN CEPAT (server lokal)</b>\n")
          .append("<ul style=margin:6px 0 2px 18px;padding:0;font-size:12.5px;color:#c7d1da>\n")
          .append("<li>Alur normal: konfigurasi 9527 → resource 9528 → SDK 9530 → layar login → TAMU/DAFTAR/LOGIN → verifikasi 5050 → game 5051.</li>\n")
-         .append("<li><b>CRASH setelah loading?</b> cek banner merah CRASH di atas (trace lengkap + Salin). Penyebab umum: izin <b>Display over other apps</b> OFF — aktifkan lewat banner IZIN OVERLAY (1 klik), atau biarkan v18 mereset sesi otomatis lalu LOGIN MANUAL.</li>\n")
+         .append("<li><b>CRASH setelah loading?</b> cek banner merah CRASH di atas (trace lengkap + Salin). Penyebab umum: izin <b>Display over other apps</b> OFF — aktifkan lewat banner IZIN OVERLAY (1 klik), atau biarkan v1 mereset sesi otomatis lalu LOGIN MANUAL.</li>\n")
          .append("<li>Di layar login SDK: <b>TAMU</b> = langsung main; <b>DAFTAR</b> = akun baru; <b>LOGIN</b> = akun terdaftar.</li>\n")
          .append("<li>Panel <b>SDK CONFIG</b>: edit kontrak + preset loginTypes E1/E2/E3 (eksperimen crash, satu variabel per restart).</li>\n")
          .append("</ul>\n</div>\n")
@@ -659,7 +659,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" else w.innerHTML=''}\n")
          .append("function renderSession(j){var w=$('sesbn');var ov=j.overlay,ss=j.session;if(!ov||!ss){w.innerHTML='';return}\n")
          .append(" if(ss.resetAuto){w.innerHTML='<div class=prob><div class=ph>SESI SDK DIRESET OTOMATIS</div><div class=pm>'+esc(ss.resetInfo||'sesi login tersimpan SDK dihapus — akibat crash sebelumnya + izin overlay OFF')+'<br>Buka game: LOGIN MANUAL (TAMU/DAFTAR/LOGIN). Akun tetap ada di database.</div></div>';return}\n")
-         .append(" if(ov.checked&&!ov.granted&&ss.saved){w.innerHTML='<div class=prob><div class=ph>SESI SDK TERSIMPAN + IZIN OVERLAY OFF</div><div class=pm>Auto-login SDK menampilkan dialog window type 2008 — tanpa izin ini game bisa CRASH tepat setelah loading. Bila terjadi: BUKA GAME LAGI — v18 mereset sesi otomatis lalu game buka LOGIN MANUAL (tetap bisa main tanpa izin). Solusi permanen: aktifkan izin di banner IZIN OVERLAY.</div></div>';return}\n")
+         .append(" if(ov.checked&&!ov.granted&&ss.saved){w.innerHTML='<div class=prob><div class=ph>SESI SDK TERSIMPAN + IZIN OVERLAY OFF</div><div class=pm>Auto-login SDK menampilkan dialog window type 2008 — tanpa izin ini game bisa CRASH tepat setelah loading. Bila terjadi: BUKA GAME LAGI — v1 mereset sesi otomatis lalu game buka LOGIN MANUAL (tetap bisa main tanpa izin). Solusi permanen: aktifkan izin di banner IZIN OVERLAY.</div></div>';return}\n")
          .append(" w.innerHTML=''}\n")
          .append("function renderCrash(){fetch('/crash').then(function(r){return r.json()}).then(function(j){\n")
          .append(" var w=$('crashbn');if(!j||!j.latest){w.innerHTML='';return}\n")
@@ -808,7 +808,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
         SdkConfig.ensureIndex();
         Db db = Db.open(LoggerCore.serverRootPath);
         StringBuilder b = new StringBuilder(8192);
-        b.append("{\"ver\":\"v18\"")
+        b.append("{\"ver\":\"v1\"")
          .append(",\"backend\":\"").append(db.backend()).append('"')
          .append(",\"dbDir\":\"").append(JsonUtil.esc(LoggerCore.serverRootPath))
          .append("/sdk/data\"");
@@ -916,9 +916,9 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("<button id=p3 onclick=preset('1,13')>E3 [\"1\",\"13\"] mirror server asli</button>\n")
          .append("</div>\n")
 
-         .append("<div class=sec><div class=sech><span>SESI SDK (auto-login — v18)</span><span id=seschip class=m></span></div>\n")
+         .append("<div class=sec><div class=sech><span>SESI SDK (auto-login — v1)</span><span id=seschip class=m></span></div>\n")
          .append("<div class=bd><button class=pr onclick=sesReset()>RESET SESI SDK (keluar akun SDK)</button>\n")
-         .append("<div class=hint>Menghapus sesi login tersimpan SDK (prefs qg_Users + info.qg) — AKUN DI DATABASE TIDAK DIHAPUS. Fungsi: memutus siklus crash auto-login (dialog window type 2008 butuh izin overlay; SDK asli tidak pernah mengecek). Setelah reset, game membuka UI LOGIN MANUAL yang terbukti aman. v18 juga mereset OTOMATIS saat boot bila: izin overlay OFF + crash terekam + sesi ada.</div></div></div>\n")
+         .append("<div class=hint>Menghapus sesi login tersimpan SDK (prefs qg_Users + info.qg) — AKUN DI DATABASE TIDAK DIHAPUS. Fungsi: memutus siklus crash auto-login (dialog window type 2008 butuh izin overlay; SDK asli tidak pernah mengecek). Setelah reset, game membuka UI LOGIN MANUAL yang terbukti aman. v1 juga mereset OTOMATIS saat boot bila: izin overlay OFF + crash terekam + sesi ada.</div></div></div>\n")
 
          .append("<div class=sec><div class=sech><span>v1/system/init.json</span><button class=pr onclick=saveFile('init.json','t_init')>SIMPAN</button></div>\n")
          .append("<div class=bd><textarea id=t_init spellcheck=false></textarea>\n")

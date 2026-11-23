@@ -1,0 +1,51 @@
+VERIFIKASI v1 (REBUILD BERSIH — SATU PASS dari APK ORIGINAL)
+Tanggal: 23 Nov 2026 — Workspace: /home/z/db-apk
+
+APK        : release-mod/db-local(MOD-LOCALSERVER-v1).apk
+Ukuran     : 202.691.444 B (193.3 MiB — sama dgn ukuran awal, owner: "190mb di awal sudah cukup")
+SHA256     : 4ec8630ebf3844166de7f9f16abc1bc1d6da387069778a7eb4cf3b0c8f942b2c
+Sign       : uber-apk-signer 1.3.0 — v1+v2+v3 VERIFIED, zipalign VERIFIED
+Cert       : CN=DB Local Mod, O=Owner, C=ID — sha256 f5:8a:5b:9a… — exp 14 Nov 2056 (keystore SAMA)
+versionName/versionCode: 1.0.1 / 1 (AndroidManifest.xml BYTE-IDENTIK original)
+
+BAKSMALI-DIFF vs ORIGINAL (fresh decode apktool kedua APK):
+  smali/ (classes.dex) = TEPAT 1 FILE: com/zhuhuan/game/Application.smali
+  --- /tmp/diff_smali_classes.txt ---
+  20a21,22
+  >     invoke-static {p0}, Lcom/db/local/server/LocalServerStarter;->start(Landroid/content/Context;)V
+  >
+  (stater +2 baris — satu-satunya perubahan classes.dex; SDK smali game 100% original)
+  classes.dex sha256 = 1df64d91219c01db729b13449a606ad88326d1aa260f3fa316aa44dc6ead787e
+  = BYTE-IDENTIK rantai v11..v18 (forbidden zone dihormati)
+  smali_classes2/ (mini-server v1) = 42 file smali — SISTEM TERPISAH, nol gangguan
+
+IDENTITAS DECODE vs ORIGINAL:
+  lib/           IDENTIK
+  res/           IDENTIK
+  kotlin/        IDENTIK
+  unknown/       IDENTIK
+  AndroidManifest.xml  IDENTIK (decode + byte)
+  resources.arsc       IDENTIK (decode + byte)
+  assets/        beda HANYA: (1) + assets/server_root/ (mini-server), (2) QHinfo, (3) config_BS.properties
+
+ZIP-LEVEL vs ORIGINAL (3666 entri sama-sama ada; CRC beda hanya):
+  assets/QHinfo               (endpoint edit: qsdk.t4game.com -> 127.0.0.1:9530)
+  assets/config_BS.properties (endpoint edit: EntryPoint -> base64 http://127.0.0.1:9527)
+  classes.dex                 (starter +2 baris)
+  META-INF/MANIFEST.MF        (sign ulang)
+  hilang : META-INF/CERT.RSA, META-INF/CERT.SF (signature lama)
+  tambah : META-INF/DBLOCALM.RSA, META-INF/DBLOCALM.SF (sign baru v1v2v3),
+           classes2.dex (server v1, 159.196 B),
+           assets/server_root/** (2758 file — web root server lokal)
+
+SMOKE DESKTOP (ECJ 3.33.0 build, server v1):
+  ===== SMOKE v1: 97 PASS, 0 FAIL =====
+  (login/register/guest/autoLogin/bindMail/changePassword/getUserInfo/ckRegVistor/
+   gerbang kontrak 20000/20002/20003/30001 — perilaku identik v18 terbukti device)
+
+PENAMAAN VERSI MULAI ULANG DARI 1 (permintaan owner):
+  - BOOT marker  : "MOD-LOCALSERVER v1"
+  - Dashboard    : <span class=ver>v1</span>, API {"ver":"v1"}
+  - Laporan crash: "MOD-LOCALSERVER v1 — LAPORAN CRASH"
+  - Nama APK     : db-local(MOD-LOCALSERVER-v1).apk
+  Rantai lama v8..v18 = sejarah git; seri baru mulai v1.

@@ -2436,3 +2436,54 @@ dari original → SEMUA izin Android reset default):
    (TAMU/DAFTAR/LOGIN) → main tanpa perlu izin apa pun.
 4. Solusi permanen (opsional): banner IZIN OVERLAY → tombol BUKA SETTINGS →
    aktifkan untuk "DB - Local" → auto-login dialog jalan normal.
+
+---
+
+## Bagian 34 — RESET PENAMAAN: REBUILD BERSIH v1 (SATU PASS dari APK ORIGINAL)
+
+Perintah owner (23 Nov 2026): *"lebih baik perbaiki dulu yg sudah anda acak-acak.
+ukuran 190mb di awal sudah cukup. daripada pada penamaan versi yg kacau. penamaan
+versi mulai ulang dari 1. sdk wajib berfungsi sempurna, login/register/guest.
+apk 1x Rebuild, apk originalnya hanya edit endpoint, jangan lakukan di luar itu!!
+karena mini-server kita beda system dari originalnya tapi tetap dalam 1 apk."*
+
+### 34.1 Yang berubah
+
+| Item | Sebelum (kacau) | Sekarang (bersih) |
+|---|---|---|
+| Penamaan | rantai iteratif v8→v18 (v15-v17 dihapus, rebase, penamaan berpindah-pindah) | **SERI BARU mulai v1** — APK: `db-local(MOD-LOCALSERVER-v1).apk`, BOOT `MOD-LOCALSERVER v1`, dashboard `v1` |
+| Cara buang | rantai: v17 → ganti classes2.dex → v18 → … | **SATU PASS**: original.apk + edit endpoint + tambah mini-server → jadi, sekali |
+| Ukuran | — | **202.691.444 B = 193.3 MiB** (sama dgn "190mb di awal" — TIDAK ditambah apa pun) |
+
+### 34.2 Isi APK v1 (satukali repack, `rebuild-src/scripts/repack_v1_clean.py`)
+
+- **3662 entri byte-identik original** (semua kecuali signature lama).
+- **HANYA 3 entri original yang diedit (endpoint, tidak ada di luar itu):**
+  1. `assets/QHinfo` — `http://qsdk.t4game.com` → `http://127.0.0.1:9530`
+  2. `assets/config_BS.properties` — EntryPoint → `http://127.0.0.1:9527`
+  3. `classes.dex` — 100% original + starter `LocalServerStarter.start` (smali-diff
+     = 1 file Application.smali, +2 baris; sha `1df64d91` identik rantai v11–v18).
+- **Mini-server = sistem terpisah, nol gangguan, tetap dalam 1 APK:**
+  `classes2.dex` (159.196 B, ECJ 3.33.0 + D8 8.3.37 min-api 21) +
+  `assets/server_root/**` (2758 file — web root server lokal, data).
+- `AndroidManifest.xml`, `resources.arsc`, `lib/**`, `res/**`, `kotlin/**`:
+  **byte-identik original**. versionName/versionCode tetap `1.0.1 / 1`.
+
+### 34.3 Verifikasi (arsip: `verify-artifacts/v1_baksmali_diff_vs_original.txt`)
+
+- baksmali-diff fresh-decode vs original = **tepat 1 file** Application.smali.
+- ZIP-level: 3666 entri sama; CRC beda HANYA QHinfo + config_BS.properties +
+  classes.dex + MANIFEST.MF (sign ulang); tambahan hanya server_root + classes2.dex.
+- SMOKE DESKTOP **97/97 PASS** (login/register/guest/autoLogin/bindMail/
+  changePassword/getUserInfo/ckRegVistor + gerbang kontrak PHP-faithful).
+- Sign v1+v2+v3 zipalign verified — keystore SAMA (CN=DB Local Mod, exp 2056).
+- APK `release-mod/db-local(MOD-LOCALSERVER-v1).apk` 202.691.444 B, sha256 `4ec8630e…`.
+- APK v18 ditarik dari `release-mod/` (riwayat git tetap ada) — seri lama ditutup.
+
+### 34.4 Uji device (tanpa PC)
+
+1. Install `db-local(MOD-LOCALSERVER-v1).apk` (uninstall dulu bila datang dari APK
+   sign lain; install-over OK bila sebelumnya v11–v18 keystore sama).
+2. Boot → log `MOD-LOCALSERVER v1` di dashboard `127.0.0.1:4000`.
+3. Buka game → layar LOGIN: **TAMU / DAFTAR / LOGIN** → semuanya jalan lokal.
+4. Panel `127.0.0.1:4000/sdkconfig` — DB-BACKEND sqlite, tabel akun, preset E1/E2/E3.
