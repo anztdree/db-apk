@@ -94,6 +94,15 @@ def envelope(id_, msg):
 shutil.rmtree(ROOT, ignore_errors=True)
 os.makedirs(ROOT + "/data", exist_ok=True)
 os.makedirs(DOCROOT, exist_ok=True)
+# v3 FIX STUCK: isi CDN persis assets/server_root/bs/... — clientversion.json
+# (bunuh popup 404 "Server clientversion is Not Exist") + serversetting.json
+# loginserver → 9528 (origin halaman — satu-satunya port yang terbukti dicapai
+# runtime XHR Egret di log device)
+os.makedirs(DOCROOT + "/bs/resource/properties", exist_ok=True)
+open(DOCROOT + "/bs/resource/properties/clientversion.json", "w").write(
+    '{\n\t"clientVersion": "202109150935"\n}\n')
+open(DOCROOT + "/bs/resource/properties/serversetting.json", "w").write(
+    '{\n\t"loginserver": "http://127.0.0.1:9528",\n\t"requireSDK": false\n}\n')
 # legacy migration source (v8-v13 formats)
 GUEST_UID, GUEST_TOKEN, GUEST_NAME = "1700000000001", "a" * 32, "Guest1234"
 EMAIL_UID, EMAIL_TOKEN, EMAIL_PW = "1700000000002", "b" * 32, hashlib.md5(b"rahasia123").hexdigest()
@@ -323,7 +332,7 @@ try:
     check("panel-api-file-init", "payTypes" in api["files"]["init.json"])
     check("panel-api-qhinfo", api["files"]["QHinfo"] == "http://127.0.0.1:9530")
     # v16: api membawa status product
-    check("v2-panel-api-ver", api.get("ver") == "v2", bd[:80])
+    check("v2-panel-api-ver", api.get("ver") == "v3", bd[:80])
     check("v16-panel-api-products", PRODUCT_ASLI in api.get("products", []))
 
     # v16: endpoint product-add — tambah kode + validasi
@@ -417,7 +426,7 @@ try:
     # /sdkconfig/api: ver=v18 + overlay + session
     st, hd, bd = get400("/sdkconfig/api")
     api = json.loads(bd)
-    check("v2-api-ver", api.get("ver") == "v2", api.get("ver"))
+    check("v2-api-ver", api.get("ver") == "v3", api.get("ver"))
     check("v1-api-overlay-session", "overlay" in api and "session" in api
           and set(api["session"]) >= {"saved", "resetAuto", "resetInfo"}, bd[-200:])
     check("v1-api-desktop-sesi", api["session"]["saved"] is False
@@ -471,6 +480,70 @@ try:
     st, hd, bd = get400("/crash")
     cj = json.loads(bd)
     check("v18-crash-route-masih", st == 200 and ("files" in cj), bd[:120])
+
+    # ================= v3 FIX STUCK + FIX POPUP 404 =================
+    # 1. clientversion.json dilayani 9528 — request 404 inilah sumber POPUP
+    #    pengingat (smali LaunchActivity memetakan 404 → string "404" → popup;
+    #    readme Bagian 19 — pola sama dgn "Server base.version is Not Exist")
+    with urllib.request.urlopen(
+            "http://127.0.0.1:9528/bs/resource/properties/clientversion.json",
+            timeout=10) as r:
+        cvst, cvbd = r.status, r.read().decode()
+    check("v3-clientversion-200", cvst == 200 and "clientVersion" in cvbd, cvbd[:80])
+
+    # 2. serversetting.json loginserver → 9528 (dulu 5050 — tak pernah dicapai JS)
+    with urllib.request.urlopen(
+            "http://127.0.0.1:9528/bs/resource/properties/serversetting.json",
+            timeout=10) as r:
+        ssst, ssbd = r.status, r.read().decode()
+    ssj = json.loads(ssbd)
+    check("v3-serversetting-9528", ssst == 200
+          and ssj.get("loginserver") == "http://127.0.0.1:9528", ssbd[:100])
+
+    # 3. chain /socket.io/ DI 9528: OPEN handshake dijawab listener CDN
+    sock_base = "http://127.0.0.1:9528"
+    with urllib.request.urlopen(sock_base + "/socket.io/?EIO=3&transport=polling"
+                                + "&t=smoke" + str(int(time.time() * 1000) % 100000),
+                                timeout=10) as r:
+        opst, opbd = r.status, r.read().decode()
+    check("v3-sockio-open-9528", opst == 200 and ":0{" in opbd and ":40" in opbd,
+          opbd[:120])
+    sid = ""
+    try:
+        import re as _re
+        msid = _re.search(r'"sid":"([A-Za-z0-9]+)"', opbd)
+        if msid:
+            sid = msid.group(1)
+    except Exception:
+        sid = ""
+    check("v3-sockio-sid-9528", len(sid) == 20, opbd[:120])
+
+    # 4. GetServerList via 9528 → ACK serverItem.url = http://127.0.0.1:9528
+    msg = json.dumps({"type": "User", "action": "GetServerList",
+                      "userId": "1700000000001", "subChannel": "",
+                      "channel": "quick"}, separators=(",", ":"))
+    pkt = '421["handler.process",' + msg + ']'
+    body = "".join("%d:%s" % (len(p), p) for p in (pkt,))
+    req = urllib.request.Request(
+        sock_base + "/socket.io/?EIO=3&transport=polling&sid=" + sid,
+        data=body.encode(), method="POST")
+    req.add_header("Content-Type", "text/plain; charset=UTF-8")
+    with urllib.request.urlopen(req, timeout=10) as r:
+        postst, postbd = r.status, r.read().decode()
+    check("v3-sockio-post-ok", postst == 200 and postbd == "ok", postbd[:40])
+    with urllib.request.urlopen(
+            sock_base + "/socket.io/?EIO=3&transport=polling&sid=" + sid,
+            timeout=10) as r:
+        plst, plbd = r.status, r.read().decode()
+    check("v3-sockio-ack-serverlist", plst == 200 and "serverList" in plbd
+          and "127.0.0.1:9528" in plbd, plbd[:200])
+
+    # 5. bind label 9528 baru (BIND tercatat di BOOT — ambil arsip awal)
+    st, hd, bd = get400("/logs?limit=2000")
+    lg = json.loads(bd)
+    check("v3-bind-label-cdn-chain", any(
+        "CDN game + socket.io login" in (e.get("path") or "")
+        for e in lg["entries"]), "")
 
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)

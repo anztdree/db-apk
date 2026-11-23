@@ -151,3 +151,20 @@ Isi `init.json` sekarang (persis bukti owner, bisa dilihat langsung di file):
 **loginTypes**: `["1"]` = keputusan owner (form email + TAMU). Server asli
 (23 Nov, 26.3) mengirim `["1","13"]`. Ganti kapan pun lewat file/panel —
 struktur field lain jangan dikurangi.
+
+## 6. v3 — clientversion.json + serversetting loginserver 9528 (23 Nov malam)
+
+Dua kontrak BARU/DIUBAH di pohon `bs/` (bukan folder `sdk/`):
+
+| File | Isi | Efek |
+|---|---|---|
+| `bs/resource/properties/clientversion.json` | `{"clientVersion":"202109150935"}` | Baru. Sebelumnya 404 → popup native "Server clientversion is Not Exist" (peta 404→popup di smali game, pola Bagian 19). |
+| `bs/resource/properties/serversetting.json` | `loginserver: http://127.0.0.1:9528` | Dulu `:5050` — tidak pernah sekali pun dicapai runtime XHR JS di 6 log device. 9528 = origin halaman (terbukti). |
+| `bs/db/android/setting_BS_Android.bin` | `loginPort: 9528`, `loginWebPort: 5050` | Split smali: JS socket = loginPort; `/loginchecknative` native = loginWebPort. XOR "DragonBall" tetap, 687 B. |
+
+Socket.io kini dijawab DI 9528 juga (chain path-based di ServerCore) —
+handshake, GetServerList, dan game socket (serverItem.url) semua lewat origin
+halaman. Listener 5050/5051 tetap hidup (native loginchecknative + fallback).
+
+Smoke desktop 107/107 PASS (uji baru: clientversion 200, serversetting 9528,
+OPEN+40 handshake di 9528, GetServerList ACK url 9528, bind label).

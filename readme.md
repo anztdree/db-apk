@@ -2658,3 +2658,71 @@ productConfig 10 field / version 6 field / first_install+countryCode).
    jalan bila file TIDAK ada — hapus manual `Android/data/com.db.local/server/
    sdk/v1/system/init.json` sekali, atau tempel file repo `sdk/`, atau clear
    data. Setelah itu v2 menjaga file tetap penuh.
+
+## Bagian 38 — v3: POPUP PENGINGAT + STUCK "SELESAI LOADING" (2 akar, 2 fix)
+
+### 38.1 Bukti dari log device owner (23 Nov, sesi 20:37 + 22:43 — arsip `release-mod/server/logs/` di riwayat git)
+
+- POPUP: sesi 20:37 — `/bs/resource/properties/clientversion.json` → **404**
+  (1 entry, tanpa query). Smali `reweavingsiamesedpropertylessnesses.smali:573`
+  + `LaunchActivity.smali` memetakan exception/HTTP "404" → string "404" →
+  POPUP "Server <file> is Not Exist" (pola PERSIS "Server base.version is Not
+  Exist" yang sudah ditangani anti-race Bagian 19). File ini TIDAK ada di
+  ekstraksi kita, tapi ADA di CDN original → server original TIDAK PERNAH
+  menampilkan popup ini (kata owner: "GAK PERNAH ADA SERVER ORIGINAL PUN
+  MUNCUL TEKS PENGINGAT!!").
+- STUCK: 22:43:29.040 "Muat UI game (index-native.html)" = entri TERAKHIR —
+  tidak ada satu pun request socket.io (5050/5051) di 6 sesi device dari 18:07
+  s.d. 22:43. Game JS membaca `serversetting.json` sebagai FALLBACK karena
+  `getLoginServer()` kosong → lalu `io.connect("http://127.0.0.1:5050")` — dan
+  TIDAK PERNAH menghasilkan request di log = runtime XHR Egret tidak pernah
+  mencapai port selain ORIGIN HALAMAN (semua request JS di semua sesi = 9528).
+- Kunci split port (bukti smali `pursetruechild/ironoriginhoblike`):
+  `cointhreat()` = `loginServer + loginPort` → dipakai JS (socket.io);
+  `seventygenom()` = `loginServer + loginWebPort` → dipakai native Java
+  HttpURLConnection untuk `/loginchecknative` (TERBUKTI sampai 5050 di semua
+  log device). Jadi loginPort dan loginWebPort BISA dibedakan.
+
+### 38.2 Fix v3 (semua di server/ + classes2 — forbidden zone tetap utuh)
+
+1. **clientversion.json BARU** `bs/resource/properties/clientversion.json`
+   = `{"clientVersion":"202109150935"}` — 404 hilang → popup pengingat hilang.
+2. **serversetting.json** `loginserver` → `http://127.0.0.1:9528` (origin
+   halaman — satu-satunya port yang terbukti dicapai runtime XHR).
+3. **setting_BS_Android.bin** (XOR "DragonBall", ukuran tetap 687 B):
+   `loginPort` 5050 → **9528** (JS socket), `loginWebPort` **tetap 5050**
+   (loginchecknative native Java — jalan yang sudah terbukti).
+4. **ServerCore** — listener 9528 kini chain path-based: `/socket.io/…` →
+   SocketIoHandler (login), sisanya → StaticHandler. Handshake socket.io
+   DIJAWAB DI PORT YANG SAMA, baik runtime menghormati URL absolut maupun
+   memaksa origin halaman.
+5. **GetServerList** `serverItem.url` → `http://127.0.0.1:9528` (game socket
+   juga naik ke origin — 5051 tetap hidup sebagai fallback).
+
+### 38.3 Verifikasi
+
+- Smoke desktop **107/107 PASS** (102 lama + 5 baru): clientversion 200,
+  serversetting 9528, handshake socket.io OPEN+40 di 9528, POST
+  GetServerList → ACK berisi `serverList` + url 9528, bind label baru.
+- classes.dex = **byte-identik rantai proven** (sha `1df64d91…`, starter +2
+  baris saja — forbidden zone utuh, diff baksmali = 1 file).
+- Diff zip v2→v3 = **1 file baru** (clientversion.json) + 5 beda (3 META-INF
+  sign + serversetting.json + setting bin + classes2.dex). AndroidManifest /
+  resources.arsc / lib / res / semua asset game byte-identik.
+- classes2.dex v3 = **159.064 B** sha `a01f6c87…`.
+- APK: `release-mod/db-local(MOD-LOCALSERVER-v3).apk` — **202.691.550 B**,
+  sha256 `b2a802716cb6952e221556dbde24f1035f36157fa8f62f9ba668e16927a2e2d0`
+  (sign v1+v2+v3 verified, keystore sama, exp 2056). Dashboard/boot/crash
+  marker = **v3** (verifikasi versi device gampang). Repack script:
+  `rebuild-src/scripts/repack_v3.py`; classes2.dex final sha `bde64a32…`.
+
+### 38.4 Uji device (tanpa PC)
+
+1. Install `db-local(MOD-LOCALSERVER-v3).apk` LANGSUNG di atas v2 (keystore
+   sama — tanpa uninstall, akun dan progres aman).
+2. Boot → log BIND `port 9528 — CDN game + socket.io login … AKTIF`.
+3. Buka game → daftar/login email → layar loading habis → **TIDAK ADA POPUP
+   PENGINGAT** → game lanjut ke daftar server (cek log: kini ADA entri
+   `/socket.io/?EIO=3&transport=polling` di port 9528 — dulu tidak pernah ada).
+4. Bila masih ada popup/stuck: buka `127.0.0.1:4000` → SALIN TRACE/tabel →
+   kirim. Log kini mencatat handshake socket.io = titik macet terlihat persis.

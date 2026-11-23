@@ -11,8 +11,16 @@ import java.util.concurrent.CountDownLatch;
 /**
  * Inti mini-server: SATU proses, 5 listener, SEMUA bind 127.0.0.1 (peta 16.5):
  *   9527 → StaticHandler (config bin, XOR DragonBall decode di log)
- *   9528 → StaticHandler (CDN game + upgrade + serversetting.json)
- *   5050 → SocketIoHandler LOGIN (socket.io v2.1.2 EIO=3 + /loginchecknative)
+ *   9528 → StaticHandler + SocketIoHandler-login (path /socket.io/ saja —
+ *          v3 FIX STUCK: runtime XHR Egret terbukti log device 6 sesi HANYA
+ *          pernah mencapai origin halaman (9528); io.connect ke 127.0.0.1:5050
+ *          TIDAK PERNAH menghasilkan satu pun request di log = game stuck
+ *          "selesai loading" selamanya. serversetting.json loginserver +
+ *          config bin loginPort kini 9528 (origin halaman) — socket.io dijawab
+ *          DI PORT YANG SAMA, apa pun perilaku parser URL runtime.
+ *   5050 → SocketIoHandler LOGIN (socket.io v2.1.2 EIO=3 + /loginchecknative —
+ *          tetap: URL native Java = loginServer + loginWebPort, HttpURLConnection
+ *          terbukti sampai 5050 di semua log device)
  *   5051 → SocketIoHandler GAME  (socket.io v2.1.2 EIO=3 — serverItem.url, Bagian 21)
  *   9530 → SdkHandler (33 path API SDK, envelope capture live)
  *   4000 → LoggerHandler (fallback 4001 bila bind gagal — 15.2/16.2)
@@ -60,8 +68,21 @@ public final class ServerCore {
         final ServerSocket fLoggerSock = loggerSock;
         final LoggerHandler fLoggerHandler = new LoggerHandler(fLoggerPort);
 
+        // v3 FIX STUCK — chain path-based di 9528: /socket.io/ → SocketIoHandler
+        // (login), sisanya → StaticHandler. Alasan: satu-satunya host:port yang
+        // runtime XHR Egret bukti tercapai = origin halaman (semua request JS di
+        // 6 log device = 9528); socket.io client mengirim URL absolut
+        // http://127.0.0.1:9528/socket.io/ — tercapai baik bila runtime
+        // menghormati URL absolut MAUPUN bila ia memaksa origin halaman.
+        final HttpWorker.Handler cdnChain = (req, out, sock) -> {
+            String p = (req.path == null || req.path.isEmpty()) ? req.rawPath : req.path;
+            if (p != null && (p.startsWith("/socket.io/") || p.startsWith("/socket.io?"))) {
+                return login.handle(req, out, sock);
+            }
+            return cdnHandler.handle(req, out, sock);
+        };
         bindAndServe(LoggerCore.PORT_CONFIG, configHandler, "config bin (mirror configus…:443)");
-        bindAndServe(LoggerCore.PORT_CDN, cdnHandler, "CDN game (mirror dragonh5cdn…:443)");
+        bindAndServe(LoggerCore.PORT_CDN, cdnChain, "CDN game + socket.io login (mirror dragonh5cdn…:443)");
         bindAndServe(LoggerCore.PORT_LOGIN, login, "login socket.io v2.1.2 EIO=3 + loginchecknative (mirror login…:610)");
         bindAndServe(LoggerCore.PORT_GAME, game, "server game socket.io v2.1.2 EIO=3 (serverItem.url — Bagian 21)");
         bindAndServe(LoggerCore.PORT_SDK, sdk, "API SDK t4game (mirror qsdk.t4game.com:80)");

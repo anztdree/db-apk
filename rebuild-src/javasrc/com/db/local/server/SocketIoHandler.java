@@ -531,13 +531,16 @@ public final class SocketIoHandler implements HttpWorker.Handler {
     /** Penyusun payload data game — kontrak dari UserDataParser.saveUserData (JS). */
     static final class GameData {
 
-        /** daftar server — item persis dipakai ServerListNode/selectServer/onLoginSuccess */
+        /** daftar server — item persis dipakai ServerListNode/selectServer/onLoginSuccess.
+         *  v3 FIX STUCK: url game socket → http://127.0.0.1:9528 (origin halaman,
+         *  port yang terbukti dicapai runtime XHR Egret di log device; 5051 tidak
+         *  pernah sekali pun dicapai JS — listener tetap hidup sebagai fallback). */
         static String serverListJson() {
             long now = System.currentTimeMillis() / 1000L;
             return "{\"serverList\":[{"
                     + "\"serverId\":1,\"name\":\"DragonBall Local\","
                     + "\"online\":true,\"hot\":true,\"new\":false,"
-                    + "\"url\":\"http://127.0.0.1:5051\","
+                    + "\"url\":\"http://127.0.0.1:9528\","
                     + "\"state\":1,\"recommend\":true,\"offlineReason\":\"\","
                     + "\"registerTime\":" + now + ",\"worldRoomId\":\"w1\",\"guildRoomId\":\"g1\""
                     + "}],\"history\":[]}";
