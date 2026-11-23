@@ -44,7 +44,7 @@ public final class LocalServerStarter {
 
             // v3: arsip NDJSON siap SEBELUM apapun jalan
             DiskWriter.init(new File(serverRoot, "logs"));
-            logBoot("BOOT", "LocalServerStarter.start dipanggil (Application.onCreate) — serverRoot=" + serverRoot);
+            logBoot("BOOT", "LocalServerStarter.start dipanggil (Application.onCreate) — MOD-LOCALSERVER v16 — serverRoot=" + serverRoot);
             // Bagian 30: DB = sdk/data/ — dibuka di boot supaya migrasi lokasi
             // lama (server/data/ v13/v14 -> sdk/data/) selesai SEBELUM listener
             // mana pun melayani request.

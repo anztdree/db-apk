@@ -1,0 +1,56 @@
+# v16 BAKSMALI-DIFF vs ORIGINAL — 23 Nov 2026 (Bagian 31)
+
+Metode: apktool 2.9.3 `d -f --no-res` pada kedua APK (decode FRESH kedua-duanya).
+  A = db-local(Original-DO NOT DELETE!).apk  sha256 b308c44de6ec082a… (original)
+  V = db-local(MOD-LOCALSERVER-v16).apk      sha256 b966e923073e1636… (202.679.156 B)
+
+## HASIL
+
+1. classes.dex (SDK/game smali — FORBIDDEN ZONE):
+   HANYA 1 file beda:
+     smali/com/zhuhuan/game/Application.smali
+       20a21,22
+       >     invoke-static {p0}, Lcom/db/local/server/LocalServerStarter;->start(Landroid/content/Context;)V
+     = persis pola v11/v13/v14/v15 (starter +2 baris). Tidak ada smali SDK lain
+     yang tersentuh (classes.dex = sha256 1df64d91… BYTE-IDENTIK v11).
+
+2. classes2.dex (server kita — entri BARU, tidak ada di original):
+     smali_classes2/com/db/local/server/ 30 class.
+     v16 FIX LAPORAN DEVICE 23 Nov 16:54:
+       - DbSqlite: rawQuery(String,[Ljava/lang/String;) — 3 invoke TERVERIFIKASI
+         di smali (stub lama deklarasi Object[] = tidak ada di runtime API 31
+         -> NoSuchMethodError "MIGRASI gagal"); migrasi legacy JSON kini
+         try/catch PER-SUMBER (account.json / accounts.json terpisah).
+       - SdkConfig: PRODUCT_CLIENT_ASLI 75880787318053043365515388491588 masuk
+         products + upgradeProfileDefaults (profil v15 yang belum diedit otomatis
+         dinaikkan — FIX "silent error" 30001) + productsList/productAdd +
+         tracking lastProductSeen/lastProductOk + ensureIndex TANPA index.txt
+         (dan MENGHAPUS sisa index.txt instal v15 — keluhan owner).
+       - SdkHandler: gerbang 30001 mencatat productCode ke trace + log SYS
+         "PRODUCT DITOLAK 30001 ... BUKA panel SDK CONFIG -> TERIMA PRODUCT".
+       - LoggerHandler: DASHBOARD v6 (pill SEMUA NORMAL/N MASALAH, BANNER
+         MASALAH + tombol TERIMA PRODUCT INI, tampilan PENTING/MASALAH/SEMUA,
+         verdict OK/GAGAL/CEK/SISTEM, deskripsi error dari envelope, chip
+         STATUS DB+PRODUCT, filter lanjutan dilipat) + panel SDK CONFIG seksi
+         PRODUCT + endpoint POST /sdkconfig/product-add + /sdkconfig/api +=
+         ver/productCode/productOk/products.
+       - LocalServerStarter: BOOT log + marker "MOD-LOCALSERVER v16".
+       - SMOKE DESKTOP 69/69 PASS (57 v15 + 12 baru: index-txt-dihapus,
+         upgrade-profile, init-product-asli-lolos, panel ver/products,
+         product-add ok/berlaku/tolak-koma/tolak-panjang/idempotent/satu-kali).
+       - classes2.dex 135116 B (v15: 127056 B) sha256 22650d14…, D8 8.3.37
+         min-api 21.
+
+3. ZIP-LEVEL v15 vs v16 (6423 entri, sama di keduanya):
+     entri hanya di v15 : []
+     entri hanya di v16 : []
+     isi beda: ['classes2.dex', 'META-INF/MANIFEST.MF', 'META-INF/DBLOCALM.SF',
+                'META-INF/DBLOCALM.RSA']
+     assets/** + classes.dex + resources.arsc + manifest: BYTE-IDENTIK v15/v14/v11.
+     (Ukuran total v16 = v15 = 202.679.156 B — kebetulan padding zip.)
+
+4. SIGN: v1+v2v3 zipalign verified uber-apk-signer 1.3.0, keystore
+   dblocal-mod.keystore alias dblocalmod (sha256 cert F5:8A:5B:9A…), exp 2056.
+
+5. rawQuery call-site audit seluruh dex: HANYA DbSqlite memakai rawQuery —
+   semuanya kini String[]; execSQL(String,Object[]) = API 1 asli (valid).

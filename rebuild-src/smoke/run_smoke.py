@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
-# Smoke desktop v14 (Bagian 29) — uji mesin kawat PHP-faithful + SQLite layer
-# (desktop pakai backend json; semantik sama dgn DbSqlite).
-import base64, hashlib, json, os, shutil, signal, subprocess, sys, time, urllib.request, urllib.error
+# Smoke desktop v16 (Bagian 31) — FIX LAPORAN DEVICE 23 Nov:
+#  1. rawQuery(String,Object[]) -> String[] (bug NoSuchMethodError API 31 —
+#     tidak bisa diuji desktop karena desktop pakai backend DbJson;
+#     stub SQLiteDatabase kini deklarasinya = API framework asli).
+#  2. FIX 30001 'silent error': products += productCode ASLI client
+#     (75880787318053043365515388491588, rekam log device 23 Nov 16:54)
+#     + UPGRADE OTOMATIS profile.json bawaan v15 yang belum diedit owner.
+#  3. index.txt DIHAPUS dari sdk/ (keluhan owner: "berasa jadi sampah") —
+#     sisa instal v15 dibersihkan otomatis tiap boot.
+#  4. Dashboard v6 (banner masalah + tombol TERIMA PRODUCT + tampilan
+#     PENTING/MASALAH/SEMUA) + endpoint /sdkconfig/product-add.
+import base64, hashlib, json, os, shutil, signal, subprocess, sys, time, urllib.request, urllib.error, urllib.parse
 
 SECRET = "0b2a18e45d7df321"
 BASE = "http://127.0.0.1:9530"
@@ -9,6 +18,19 @@ ROOT = "/tmp/v15root"
 WS = __file__[:__file__.rfind("/")] + "/.."   # rebuild-src/
 BUILD = WS + "/build-smoke"
 DOCROOT = "/tmp/v15doc"   # smoke tidak uji CDN — folder kosong cukup
+
+# profile.json default v15 SEBELUM upgrade (harus PERSIS dgn V15_PROFILE di
+# SdkConfig.java — trim-compare)
+V15_PROFILE = """{
+ "poweredBy": "PHP/5.4.37",
+ "contentType": "text/json",
+ "alwaysHttp200": true,
+ "verifySign": true,
+ "signSecret": "0b2a18e45d7df321",
+ "products": ["會員帳戶註冊"],
+ "note": "profil kawat server asli qsdk.t4game.com (rekam live 23 Nov 2026). products = daftar productCode yang dianggap ada; client mengirim default 會員帳戶註冊 (hw_tomato_register). verifySign=false = matikan cek sign."
+}"""
+PRODUCT_ASLI = "75880787318053043365515388491588"
 
 
 def sign_of(p):
@@ -83,6 +105,11 @@ open(ROOT + "/data/accounts.json", "w").write(json.dumps({"accounts": [{
 # (disalin, bukan dipindah) ke sdk/data/db.sqlite oleh migrateFromOldLocation
 OLD_DB = "DB-SQLITE-LAMA-v14-ini-hanya-junk-untuk-uji-copy-file"
 open(ROOT + "/data/db.sqlite", "w").write(OLD_DB)
+# v16: simulasikan instalan v15 — profil lama (products tanpa kode client)
+# + index.txt sampah — harus di-upgrade / dibersihkan saat boot
+os.makedirs(ROOT + "/sdk", exist_ok=True)
+open(ROOT + "/sdk/profile.json", "w").write(V15_PROFILE)
+open(ROOT + "/sdk/index.txt", "w").write("SAMPAH v15 — harus dihapus v16")
 
 proc = subprocess.Popen(
     ["java", "-cp", BUILD, "SmokeMain", ROOT, DOCROOT],
@@ -100,10 +127,15 @@ try:
     check("init-payTypes-wajib", "payTypes" in j.get("data", {}), bd)
     check("sdk-files-seeded", os.path.exists(ROOT + "/sdk/v1/system/init.json")
           and os.path.exists(ROOT + "/sdk/profile.json")
-          and os.path.exists(ROOT + "/sdk/index.txt")
           and os.path.exists(ROOT + "/sdk/errors.json")
           and os.path.exists(ROOT + "/sdk/fallback.json")
           and os.path.exists(ROOT + "/sdk/v1/user/ckRegVistor.json"))
+    # v16: index.txt TIDAK ADA lagi (dibersihkan dari instalan lama)
+    check("v16-index-txt-dihapus", not os.path.exists(ROOT + "/sdk/index.txt"))
+    # v16: profile.json bawaan v15 di-upgrade otomatis (products += kode client)
+    prof = open(ROOT + "/sdk/profile.json").read()
+    check("v16-upgrade-profile-30001", PRODUCT_ASLI in prof, prof[:200])
+    check("v16-upgrade-profile-legacy-awet", "會員帳戶註冊" in prof)
     # Bagian 30: QHinfo masuk folder sdk/
     check("qhinfo-seeded", os.path.exists(ROOT + "/sdk/QHinfo"), bd)
     check("qhinfo-isi", open(ROOT + "/sdk/QHinfo").read().strip() == "http://127.0.0.1:9530")
@@ -151,6 +183,10 @@ try:
     # 7. POST sah -> lolos gerbang -> init sukses
     st, hd, bd = sdk_post("/v1/system/init", must_params())
     check("init-POST-lolos-gerbang", json.loads(bd)["result"] is True, bd)
+
+    # 7b. v16: POST sah dgn productCode ASLI client (rekam device 23 Nov)
+    st, hd, bd = sdk_post("/v1/system/init", must_params(product=PRODUCT_ASLI))
+    check("v16-init-product-asli-lolos", json.loads(bd)["result"] is True, bd)
 
     # 8. migrasi legacy: tamu = uid lama
     st, hd, bd = sdk_post("/v1/user/registerVisitor", must_params(token=GUEST_TOKEN))
@@ -274,6 +310,24 @@ try:
     check("panel-api-tamu", api["guest"] and api["guest"]["uid"] == GUEST_NOW, bd[:200])
     check("panel-api-file-init", "payTypes" in api["files"]["init.json"])
     check("panel-api-qhinfo", api["files"]["QHinfo"] == "http://127.0.0.1:9530")
+    # v16: api membawa status product
+    check("v16-panel-api-ver", api.get("ver") == "v16", bd[:80])
+    check("v16-panel-api-products", PRODUCT_ASLI in api.get("products", []))
+
+    # v16: endpoint product-add — tambah kode + validasi
+    st, hd, bd = form_post("/sdkconfig/product-add", {"code": "TestProd123"})
+    check("v16-product-add-ok", json.loads(bd)["result"] is True, bd)
+    st, hd, bd = get400("/sdkconfig/api")
+    api2 = json.loads(bd)
+    check("v16-product-add-berlaku", "TestProd123" in api2.get("products", []))
+    st, hd, bd = form_post("/sdkconfig/product-add", {"code": "a,b"})
+    check("v16-product-add-tolak-koma", json.loads(bd)["result"] is False, bd)
+    st, hd, bd = form_post("/sdkconfig/product-add", {"code": "x" * 65})
+    check("v16-product-add-tolak-panjang", json.loads(bd)["result"] is False, bd)
+    st, hd, bd = form_post("/sdkconfig/product-add", {"code": "TestProd123"})
+    check("v16-product-add-idempotent", json.loads(bd)["result"] is True, bd)
+    prof2 = open(ROOT + "/sdk/profile.json").read()
+    check("v16-product-add-satu-kali", prof2.count("\"TestProd123\"") == 1)
 
     # save init.json via panel -> live-reload
     new_init = json.dumps({"result": True, "data": {"payTypes": [], "loginTypes": ["12"]}})
@@ -306,7 +360,7 @@ try:
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
 
-print("\n===== SMOKE v15: %d PASS, %d FAIL =====" % (len(PASS), len(FAIL)))
+print("\n===== SMOKE v16: %d PASS, %d FAIL =====" % (len(PASS), len(FAIL)))
 if FAIL:
     print("GAGAL:", FAIL)
     sys.exit(1)

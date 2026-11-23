@@ -20,7 +20,7 @@ public class SQLiteDatabase {
 
     public void execSQL(String sql, Object[] bindArgs) { throw new RuntimeException("stub"); }
 
-    public Cursor rawQuery(String sql, Object[] bindArgs) { throw new RuntimeException("stub"); }
+    public Cursor rawQuery(String sql, String[] selectionArgs) { throw new RuntimeException("stub"); }
 
     public void close() { throw new RuntimeException("stub"); }
 }

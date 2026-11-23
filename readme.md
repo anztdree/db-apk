@@ -2319,3 +2319,40 @@ yang sudah aktif di APK (v8+), jadi tidak ada perubahan perilaku.
    `E3 ["1","13"]` = mirror persis server asli.
 4. Edit manual tetap bisa: `Android/data/com.db.local/server/sdk/v1/system/init.json`.
 5. REGISTER/LOGIN/BIND/GANTI SANDI seperti Bagian 28.4 — semuanya kini di `sdk/data/db.sqlite`.
+
+---
+
+## v16 — FIX LAPORAN DEVICE 23 Nov (Bagian 31)
+
+Laporan owner (log device 23 Nov 2026 16:54, itel S665L Android 12/API 31):
+silent error setelah update + keluhan index.txt "berasa jadi sampah" +
+dashboard 4000 "masih sulit dibaca". Diagnosa dari log device:
+
+| Temuan device | Akar | Fix v16 |
+|---|---|---|
+| `/v1/system/init` → `30001 Product doesn't exist` (silent error; SDK mati di gerbang pertama) | `products` di profile.json hanya memuat kandidat smali 會員帳戶註冊; client asli mengirim `75880787318053043365515388491588` (rekam device) | products += kode client; UPGRADE OTOMATIS profil v15 yang belum diedit (`SDK-CONFIG-UPGRADE`); gerbang 30001 TETAP (PHP-faithful); log SYS jelas + tombol `TERIMA PRODUCT INI` |
+| `MIGRASI gagal: NoSuchMethodError rawQuery(String,Object[])` | stub SQLiteDatabase salah deklarasi → kompilasi lolos, runtime API 31 tidak punya metode itu | stub = `rawQuery(String,String[])` (API 1 asli); 3 invoke terverifikasi di smali; migrasi legacy JSON try/catch per-sumber |
+| `sdk/index.txt` sampah | v15 men-seed dokumen | seed DIHAPUS + sisa instal v15 dihapus otomatis tiap boot (`SDK-CONFIG bersih`) |
+| dashboard "masih sulit dibaca" | v5 masih tabel teknis | DASHBOARD v6: pill `SEMUA NORMAL/N MASALAH`, BANNER MASALAH bahasa manusia + tombol fix 1-klik, tampilan `PENTING` (default, tanpa noise aset CDN) / `MASALAH` / `SEMUA`, verdict kata OK/GAGAL, deskripsi error SDK dari envelope + petunjuk aksi, chip status DB+PRODUCT, filter lanjutan dilipat |
+
+Endpoint baru: `POST /sdkconfig/product-add`; `/sdkconfig/api` += `ver`,
+`productCode` (terakhir dikirim client), `productOk`, `products`.
+Panel `/sdkconfig` += seksi PRODUCT (daftar kode + input + TERIMA PRODUCT).
+BOOT log memuat marker `MOD-LOCALSERVER v16`.
+
+Build: ECJ 3.33.0 (-source/-target 8, stub android kini signature ASLI
+framework) → D8 8.3.37 (`--min-api 21`) → classes2.dex **135.116 B** sha256
+`22650d14…` (+8.060 B vs v15); classes.dex BYTE-IDENTIK v11 (`1df64d91…` =
+SDK smali game 100% original, forbidden zone dihormati).
+baksmali-diff vs original (fresh decode kedua APK): tepat 1 file —
+`Application.smali` (+2 baris starter). Zip v15 vs v16 (6423 entri): beda
+HANYA classes2.dex + 3 META-INF. SMOKE DESKTOP **69/69 PASS** (12 kasus baru:
+index-txt-dihapus, upgrade-profile-30001, init-product-asli-lolos,
+panel-api-ver/products, product-add ok/berlaku/tolak-koma/tolak-panjang/
+idempotent/satu-kali). Sign v1v2v3 zipalign verified keystore sama exp2056.
+APK release-mod/db-local(MOD-LOCALSERVER-v16).apk 202679156 B sha256
+`b966e923…`. Arsip: verify-artifacts/v16_baksmali_diff_vs_original.txt.
+
+Uji device: install-over v16 → boot log `MOD-LOCALSERVER v16` + `SDK-CONFIG-UPGRADE`
+→ game jalan → layar login muncul (init lolos) → TAMU/DAFTAR/LOGIN →
+monitor 127.0.0.1:4000 (TAMPILAN PENTING; banner merah = masalah + tombol fix).

@@ -51,82 +51,93 @@ public final class DbSqlite extends Db {
     private void migrateLegacy() {
         synchronized (LOCK) {
             try {
-                Cursor c = db.rawQuery("SELECT COUNT(*) FROM accounts", null);
+                Cursor c = db.rawQuery("SELECT COUNT(*) FROM accounts", (String[]) null);
                 long n = 0;
                 if (c.moveToFirst()) n = c.getLong(0);
                 c.close();
                 if (n > 0) return;   // sudah ada isi — jangan sentuh
 
-                boolean any = false;
-                File acc = new File(dataDir, "account.json");
-                if (acc.exists()) {
-                    String s = readFile(acc);
-                    String uid = AccountStore.jsonStr(s, "uid");
-                    String token = AccountStore.jsonStr(s, "token");
-                    String uname = AccountStore.jsonStr(s, "username");
-                    if (uid != null && !uid.isEmpty() && token != null && !token.isEmpty()) {
-                        Row r = new Row();
-                        r.uid = uid;
-                        r.username = uname == null || uname.isEmpty() ? uid : uname;
-                        r.email = "";
-                        r.passMd5 = "";
-                        r.token = token;
-                        r.isGuest = true;
-                        r.createTime = AccountStore.jsonLong(s, "createTime");
-                        r.lastLogin = r.createTime;
-                        putGuest(r);
-                        any = true;
-                        Db.log("MIGRASI tamu account.json uid=" + uid + " username=" + r.username);
-                    }
-                }
-                File accs = new File(dataDir, "accounts.json");
-                if (accs.exists()) {
-                    String s = readFile(accs);
-                    int arr = s.indexOf('[');
-                    int end = s.lastIndexOf(']');
-                    if (arr >= 0 && end > arr) {
-                        int i = arr + 1;
-                        while (i < end) {
-                            int open = s.indexOf('{', i);
-                            if (open < 0 || open >= end) break;
-                            int close = closeObj(s, open);
-                            if (close < 0) break;
-                            String obj = s.substring(open, close + 1);
-                            String email = AccountStore.jsonStr(obj, "email");
-                            String uid = AccountStore.jsonStr(obj, "uid");
-                            String token = AccountStore.jsonStr(obj, "token");
-                            String pass = AccountStore.jsonStr(obj, "passMd5");
-                            if (email != null && uid != null && token != null
-                                    && !email.isEmpty() && !uid.isEmpty()) {
-                                Row r = new Row();
-                                r.uid = uid;
-                                r.username = email;
-                                r.email = email;
-                                r.passMd5 = pass == null ? "" : pass;
-                                r.token = token;
-                                r.isGuest = false;
-                                r.createTime = AccountStore.jsonLong(obj, "createTime");
-                                r.lastLogin = r.createTime;
-                                // bind bila uid sama dgn tamu (hasil bindMail v13);
-                                // INSERT bila uid belum ada
-                                Row ex = byUid(r.uid);
-                                if (ex != null) {
-                                    db.execSQL("UPDATE accounts SET email=?, pass_md5=?,"
-                                            + " is_guest=0, token=?, create_time=?,"
-                                            + " last_login=? WHERE uid=?", new Object[]{
-                                            r.email, r.passMd5, r.token, r.createTime,
-                                            r.lastLogin, r.uid});
-                                } else {
-                                    insertAccount(r);
-                                }
-                                any = true;
-                                Db.log("MIGRASI akun email uid=" + uid + " email=" + email);
-                            }
-                            i = close + 1;
+                final boolean[] any = {false};
+                // v16: tiap sumber legacy try/catch TERPISAH — satu file rusak
+                // tidak menggagalkan sumber lain (bug device 23 Nov: exception
+                // tunggal menghentikan SEMUA migrasi).
+                try {
+                    File acc = new File(dataDir, "account.json");
+                    if (acc.exists()) {
+                        String s = readFile(acc);
+                        String uid = AccountStore.jsonStr(s, "uid");
+                        String token = AccountStore.jsonStr(s, "token");
+                        String uname = AccountStore.jsonStr(s, "username");
+                        if (uid != null && !uid.isEmpty() && token != null && !token.isEmpty()) {
+                            Row r = new Row();
+                            r.uid = uid;
+                            r.username = uname == null || uname.isEmpty() ? uid : uname;
+                            r.email = "";
+                            r.passMd5 = "";
+                            r.token = token;
+                            r.isGuest = true;
+                            r.createTime = AccountStore.jsonLong(s, "createTime");
+                            r.lastLogin = r.createTime;
+                            putGuest(r);
+                            any[0] = true;
+                            Db.log("MIGRASI tamu account.json uid=" + uid + " username=" + r.username);
                         }
                     }
+                } catch (Throwable t) {
+                    Db.log("MIGRASI account.json gagal: " + t);
                 }
-                if (any) Db.log("MIGRASI legacy JSON -> SQLite SELESAI (uid/token asli dipertahankan)");
+                try {
+                    File accs = new File(dataDir, "accounts.json");
+                    if (accs.exists()) {
+                        String s = readFile(accs);
+                        int arr = s.indexOf('[');
+                        int end = s.lastIndexOf(']');
+                        if (arr >= 0 && end > arr) {
+                            int i = arr + 1;
+                            while (i < end) {
+                                int open = s.indexOf('{', i);
+                                if (open < 0 || open >= end) break;
+                                int close = closeObj(s, open);
+                                if (close < 0) break;
+                                String obj = s.substring(open, close + 1);
+                                String email = AccountStore.jsonStr(obj, "email");
+                                String uid = AccountStore.jsonStr(obj, "uid");
+                                String token = AccountStore.jsonStr(obj, "token");
+                                String pass = AccountStore.jsonStr(obj, "passMd5");
+                                if (email != null && uid != null && token != null
+                                        && !email.isEmpty() && !uid.isEmpty()) {
+                                    Row r = new Row();
+                                    r.uid = uid;
+                                    r.username = email;
+                                    r.email = email;
+                                    r.passMd5 = pass == null ? "" : pass;
+                                    r.token = token;
+                                    r.isGuest = false;
+                                    r.createTime = AccountStore.jsonLong(obj, "createTime");
+                                    r.lastLogin = r.createTime;
+                                    // bind bila uid sama dgn tamu (hasil bindMail v13);
+                                    // INSERT bila uid belum ada
+                                    Row ex = byUid(r.uid);
+                                    if (ex != null) {
+                                        db.execSQL("UPDATE accounts SET email=?, pass_md5=?,"
+                                                + " is_guest=0, token=?, create_time=?,"
+                                                + " last_login=? WHERE uid=?", new Object[]{
+                                                r.email, r.passMd5, r.token, r.createTime,
+                                                r.lastLogin, r.uid});
+                                    } else {
+                                        insertAccount(r);
+                                    }
+                                    any[0] = true;
+                                    Db.log("MIGRASI akun email uid=" + uid + " email=" + email);
+                                }
+                                i = close + 1;
+                            }
+                        }
+                    }
+                } catch (Throwable t) {
+                    Db.log("MIGRASI accounts.json gagal: " + t);
+                }
+                if (any[0]) Db.log("MIGRASI legacy JSON -> SQLite SELESAI (uid/token asli dipertahankan)");
             } catch (Throwable t) {
                 Db.log("MIGRASI gagal: " + t);
             }
@@ -162,6 +173,20 @@ public final class DbSqlite extends Db {
         return -1;
     }
 
+    /**
+     * v16 FIX DEVICE 23 Nov: rawQuery(String, Object[]) TIDAK ADA di runtime
+     * Android asli (NoSuchMethodError di API 31 — hanya ada di android.jar
+     * API 33+, stub lama salah deklarasi). API framework yang benar sejak
+     * API 1 = rawQuery(String, String[]). Semua query lalui sini; argumen
+     * dikonversi String.valueOf (execSQL TETAP Object[] — itu API 1 asli).
+     */
+    private static String[] sa(Object[] a) {
+        if (a == null) return null;
+        String[] r = new String[a.length];
+        for (int i = 0; i < a.length; i++) r[i] = a[i] == null ? null : String.valueOf(a[i]);
+        return r;
+    }
+
     /* ==================== mapping row ==================== */
 
     private static Row map(Cursor c) {
@@ -182,7 +207,7 @@ public final class DbSqlite extends Db {
 
     private Row one(String sql, Object[] args) {
         synchronized (LOCK) {
-            Cursor c = db.rawQuery(sql, args);
+            Cursor c = db.rawQuery(sql, sa(args));
             try {
                 if (!c.moveToFirst()) return null;
                 return map(c);
@@ -195,7 +220,7 @@ public final class DbSqlite extends Db {
     private List<Row> many(String sql, Object[] args) {
         synchronized (LOCK) {
             List<Row> out = new ArrayList<Db.Row>();
-            Cursor c = db.rawQuery(sql, args);
+            Cursor c = db.rawQuery(sql, sa(args));
             try {
                 boolean ok = c.moveToFirst();
                 while (ok && !c.isAfterLast()) {

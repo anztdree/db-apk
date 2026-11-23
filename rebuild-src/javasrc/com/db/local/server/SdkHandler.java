@@ -192,8 +192,21 @@ public final class SdkHandler implements HttpWorker.Handler {
         }
 
         // (d) productCode terdaftar
-        if (!SdkConfig.productKnown(params.get("productCode"))) {
-            trace.append("GERBANG-30001(product)");
+        String prod = params.get("productCode");
+        boolean prodOk = SdkConfig.productKnown(prod);
+        SdkConfig.lastProductSeen = prod == null ? "" : prod;
+        SdkConfig.lastProductOk = prodOk;
+        if (!prodOk) {
+            trace.append("GERBANG-30001(product=").append(prod == null ? "" : prod).append(')');
+            String pl = prod == null ? "" : prod;
+            if (!pl.equals(SdkConfig.lastRejectLogged)) {
+                SdkConfig.lastRejectLogged = pl;
+                Db.log("PRODUCT DITOLAK 30001: productCode=" + pl
+                        + " tidak ada di sdk/profile.json (products="
+                        + SdkConfig.productsList().toString()
+                        + ") — BUKA panel SDK CONFIG 127.0.0.1:4000/sdkconfig"
+                        + " -> tombol TERIMA PRODUCT INI");
+            }
             return errLive(30001, "Product doesn't exist");
         }
         trace.append("GERBANG-LOLOS");

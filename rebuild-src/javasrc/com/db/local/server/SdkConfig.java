@@ -17,13 +17,16 @@ import java.nio.charset.StandardCharsets;
  *  - Dibaca ULANG setiap request (edit langsung berlaku tanpa restart app).
  *
  * File kontrak:
- *  sdk/index.txt                  — panduan manusiawi (dibuat sekali, tak dibaca)
  *  sdk/profile.json               — profil kawat PHP: poweredBy/contentType/
  *                                   verifySign/signSecret/products
  *  sdk/v1/system/init.json        — jawaban init (loginTypes! eksperimen crash)
  *  sdk/v1/user/ckRegVistor.json   — kontrak isReged (mirror server asli)
  *  sdk/fallback.json              — jawaban path yang belum dipetakan
  *  sdk/errors.json                — katalog error (dokumentasi live 23 Nov)
+ *  sdk/QHinfo                     — endpoint SDK (dibakar ke assets/QHinfo)
+ *  sdk/data/                      — db.sqlite (tabel accounts)
+ *  (v16: index.txt DIHAPUS — keluhan owner "berasa jadi sampah";
+ *   sisa instal lama dibersihkan otomatis saat boot.)
  */
 public final class SdkConfig {
 
@@ -38,6 +41,13 @@ public final class SdkConfig {
      *  verify-artifacts/verify_total.txt A) — berarti nilai file ini dibakar ke
      *  assets/QHinfo pada rebuild APK berikutnya, bukan live-reload. */
     public static final String DEFAULT_QHINFO = "http://127.0.0.1:9530";
+
+    /* v16 — tracking productCode terakhir yang lolos gerbang (untuk panel):
+     * lastProductSeen = terakhir dilihat di request game (boleh ditolak),
+     * lastProductOk = apakah itu diterima, lastRejectLogged = anti-spam log. */
+    public static volatile String lastProductSeen = "";
+    public static volatile boolean lastProductOk = false;
+    public static volatile String lastRejectLogged = "";
 
     /** Nama file yang boleh diedit lewat panel /sdkconfig (anti path-traversal).
      *  Kunci = nama API panel; nilai = path relatif di sdk/. */
@@ -60,7 +70,35 @@ public final class SdkConfig {
             "{\"result\":true,\"data\":{\"isReged\":0},\"error\":{\"id\":0,\"message\":\"\"}}";
     public static final String DEFAULT_FALLBACK =
             "{\"result\":false,\"data\":[],\"error\":{\"id\":20000,\"message\":\"Params error\"}}";
+
+    /** v16 — productCode ASLI yang dikirim client game di device (rekam log
+     *  device 23 Nov 2026 16:54, /v1/system/init). Server asli sempat menolak
+     *  SEMUA kandidat (30001) karena DB product dikosongkan shutdown — jadi
+     *  satu-satunya kebenaran = kode yang dikirim client asli ini. Server
+     *  lokal MENERIMA kode client (perilaku server asli sebelum shutdown)
+     *  + legacy 會員帳戶註冊 (kandidat smali hw_tomato_register). */
+    public static final String PRODUCT_CLIENT_ASLI = "75880787318053043365515388491588";
+
     public static final String DEFAULT_PROFILE =
+            "{\n"
+            + " \"poweredBy\": \"PHP/5.4.37\",\n"
+            + " \"contentType\": \"text/json\",\n"
+            + " \"alwaysHttp200\": true,\n"
+            + " \"verifySign\": true,\n"
+            + " \"signSecret\": \"0b2a18e45d7df321\",\n"
+            + " \"products\": [\"" + PRODUCT_CLIENT_ASLI + "\", \"會員帳戶註冊\"],\n"
+            + " \"note\": \"profil kawat server asli qsdk.t4game.com. products = daftar"
+            + " productCode yang dianggap ada. " + PRODUCT_CLIENT_ASLI
+            + " = kode ASLI yang dikirim client game (rekam device 23 Nov) — inilah"
+            + " penyebab 30001 'silent error' v15 saat daftar products belum"
+            + " memuatnya. verifySign=false = matikan cek sign.\"\n"
+            + "}";
+
+    /** v16 — profil default v15 SEBELUM fix 30001. Bila file di device masih
+     *  persis ini (artinya owner BELUM PERNAH mengedit) -> otomatis dinaikkan
+     *  ke DEFAULT_PROFILE baru dgn productCode client. Bila owner sudah
+     *  mengedit -> TIDAK disentuh (hormati editan). */
+    public static final String V15_PROFILE =
             "{\n"
             + " \"poweredBy\": \"PHP/5.4.37\",\n"
             + " \"contentType\": \"text/json\",\n"
@@ -90,64 +128,6 @@ public final class SdkConfig {
             + "   \"20005\": \"Fitur tidak tersedia di server lokal\"\n"
             + " }\n"
             + "}";
-    public static final String DEFAULT_INDEX =
-            "SDK CONFIG — server lokal (Bagian 30)\n"
-            + "============================================================\n"
-            + "Folder ini = SEMUA milik SDK dalam satu folder (koreksi owner\n"
-            + "23 Nov): CONFIG + DATA + QHinfo. File bisa diedit di file\n"
-            + "manager ATAU lewat panel SDK CONFIG di dashboard 4000\n"
-            + "(browser HP: http://127.0.0.1:4000/sdkconfig).\n"
-            + "Path lengkap di device: Android/data/com.db.local/server/sdk/\n"
-            + "Semua file kontrak dibaca ULANG setiap request — edit = langsung\n"
-            + "berlaku TANPA restart game (kecuali profile.json ttg sign).\n"
-            + "Kalau file dihapus, dibuat ulang otomatis dgn isi default.\n"
-            + "\n"
-            + "ISI:\n"
-            + " QHinfo                  — endpoint SDK (sumber kebenaran owner).\n"
-            + "                           CATATAN: client asli membaca QHinfo dari\n"
-            + "                           DALAM APK (QuickGameManager.initThirdDataSDK\n"
-            + "                           — xref 1 pemakai), jadi nilai file ini\n"
-            + "                           dibakar ke assets/QHinfo saat rebuild APK\n"
-            + "                           berikutnya (bukan live-reload). Nilai\n"
-            + "                           sekarang = nilai yang sudah di APK.\n"
-            + " data/                   — db.sqlite (tabel accounts) + legacy\n"
-            + "                           account.json/accounts.json (Bagian 30:\n"
-            + "                           pindah dari server/data/; migrasi otomatis\n"
-            + "                           dari lokasi lama, uid/token pemain tetap)\n"
-            + " profile.json            — profil kawat PHP (header X-Powered-By,\n"
-            + "                           Content-Type text/json, cek sign, daftar\n"
-            + "                           productCode yang dianggap valid)\n"
-            + " v1/system/init.json     — jawaban /v1/system/init. loginTypes MENENTUKAN\n"
-            + "                           TAMPILAN LAYAR LOGIN:\n"
-            + "                             [\"1\"]     = form email+TAMU (v13 sekarang)\n"
-            + "                             [\"12\"]   = mode tamu-only (tampilan v11/v12)\n"
-            + "                             [\"1\",\"13\"] = mirror persis replay server asli\n"
-            + "                           EKSPERIMEN CRASH (bila tombol login/register/\n"
-            + "                           guest masih force close): ganti isi array ini\n"
-            + "                           (BISA KLIK dari panel SDK CONFIG di dashboard\n"
-            + "                           4000 — tombol preset E1/E2/E3), restart game,\n"
-            + "                           catat hasil ke log dashboard.\n"
-            + "                           payTypes WAJIB ADA (parser model/e game).\n"
-            + " v1/user/ckRegVistor.json— jawaban tombol Kode Migrasi (mirror server asli)\n"
-            + " fallback.json           — jawaban endpoint yang belum dipetakan\n"
-            + " errors.json             — katalog error: live server asli vs lokal\n"
-            + "\n"
-            + "PERILAKU KAWAT (fidelity PHP 5.4.37, bukan bypass):\n"
-            + "  - Selalu HTTP 200; error di dalam body {result:false,data:[],error:{}}\n"
-            + "  - Header X-Powered-By: PHP/5.4.37 + Content-Type: text/json\n"
-            + "  - Sign request diverifikasi: MD5(\"k=v&\" sort + secret) — algoritma\n"
-            + "    dari smali client, DIVERIFIKASI diterima server asli 23 Nov\n"
-            + "  - Param wajib kosong -> 20003 LostSomeMustParams:<nama> (urutan asli:\n"
-            + "    sdkVersion -> productCode -> authToken)\n"
-            + "  - productCode tak dikenal -> 30001 Product doesn't exist\n"
-            + "\n"
-            + "GET TEST: akses GET tanpa body (browser/dashboard/curl) lewat jalur\n"
-            + "diagnostik — tanpa cek sign/product. Alur game (POST sv=v2&data=..&sign=..)\n"
-            + "SELALU lewat cek kontrak lengkap.\n"
-            + "\n"
-            + "PANEL SDK CONFIG: http://127.0.0.1:4000/sdkconfig (browser HP) —\n"
-            + "edit 4 file kontrak + QHinfo, tombol preset E1/E2/E3, lihat isi\n"
-            + "tabel accounts + backend aktif. Setiap edit tercatat SDK-CONFIG-EDIT.\n";
 
     /* ===================== API ===================== */
 
@@ -265,20 +245,28 @@ public final class SdkConfig {
                 + arr + "]}}";
     }
 
-    /** panduan index.txt + seed SEMUA kontrak — dipanggil tiap request (murah). */
+    /**
+     * v16 — seed SEMUA kontrak sekali + PEMBERSIHAN:
+     *  - index.txt DIHAPUS (keluhan owner 23 Nov: "berasa jadi sampah") —
+     *    sisa instal v15 di device dibersihkan otomatis tiap boot.
+     *  - profile.json bawaan v15 (products = ["會員帳戶註冊"] saja) otomatis
+     *    dinaikkan ke profil v16 (products += productCode asli client) BILA
+     *    owner belum pernah mengedit — inilah fix "silent error" 30001.
+     * Dipanggil tiap request (murah: compare string + exists).
+     */
     public static void ensureIndex() {
         synchronized (LOCK) {
             File f = new File(dir(), "index.txt");
-            if (!f.exists()) {
-                writeFile(f, DEFAULT_INDEX);
-                Db.log("SDK-CONFIG seed: index.txt");
+            if (f.exists()) {
+                if (f.delete())
+                    Db.log("SDK-CONFIG bersih: index.txt dihapus (tidak dipakai lagi)");
             }
             File e = new File(dir(), "errors.json");
             if (!e.exists()) {
                 writeFile(e, DEFAULT_ERRORS);
                 Db.log("SDK-CONFIG seed: errors.json");
             }
-            // Bagian 30 (koreksi owner): QHinfo masuk folder sdk/
+            // QHinfo masuk folder sdk/ (koreksi owner Bagian 30)
             File qh = new File(dir(), "QHinfo");
             if (!qh.exists()) {
                 writeFile(qh, DEFAULT_QHINFO);
@@ -287,9 +275,78 @@ public final class SdkConfig {
             // seed semua kontrak sejak request pertama — tree lengkap langsung
             // terlihat owner di file manager (init/profile/ckReg/fallback)
             initJson();
-            profileJson();
             ckRegJson();
             fallbackJson();
+            upgradeProfileDefaults();
+            profileJson();
+        }
+    }
+
+    /**
+     * v16 — naikkan profile.json lama ke profil baru (products += kode client)
+     * HANYA bila isinya masih persis default v15 (owner belum mengedit).
+     * Return true bila upgrade dilakukan.
+     */
+    public static boolean upgradeProfileDefaults() {
+        File f = new File(dir(), "profile.json");
+        if (!f.exists()) return false;
+        String cur = readFile(f);
+        if (!cur.trim().equals(V15_PROFILE.trim())) return false;
+        writeFile(f, DEFAULT_PROFILE);
+        Db.log("SDK-CONFIG-UPGRADE profile.json: products += " + PRODUCT_CLIENT_ASLI
+                + " (productCode ASLI client — FIX silent error 30001)");
+        return true;
+    }
+
+    /** daftar productCode di profile.json (urutan file). Tak pernah null. */
+    public static java.util.ArrayList<String> productsList() {
+        java.util.ArrayList<String> out = new java.util.ArrayList<String>();
+        String s = profileJson();
+        int i = s.indexOf("\"products\"");
+        if (i < 0) return out;
+        int a = s.indexOf('[', i);
+        int b = s.indexOf(']', a);
+        if (a < 0 || b <= a) return out;
+        String arr = s.substring(a + 1, b);
+        int j = 0;
+        while ((j = arr.indexOf('\"', j)) >= 0) {
+            int k = arr.indexOf('\"', j + 1);
+            if (k < 0) break;
+            out.add(arr.substring(j + 1, k));
+            j = k + 1;
+        }
+        return out;
+    }
+
+    /**
+     * v16 — tambah productCode ke products di profile.json (tombol
+     * "TERIMA PRODUCT" di panel SDK CONFIG). Return null bila OK.
+     */
+    public static String productAdd(String code) {
+        if (code == null) return "kode kosong";
+        code = code.trim();
+        if (code.isEmpty()) return "kode kosong";
+        if (code.length() > 64) return "kode terlalu panjang (maks 64)";
+        if (code.indexOf('"') >= 0 || code.indexOf('\\') >= 0 || code.indexOf(',') >= 0
+                || code.indexOf('{') >= 0 || code.indexOf('}') >= 0
+                || code.indexOf('[') >= 0 || code.indexOf(']') >= 0
+                || code.indexOf('&') >= 0 || code.indexOf(' ') >= 0)
+            return "kode mengandung karakter tidak sah";
+        synchronized (LOCK) {
+            if (productKnown(code)) return null;   // sudah ada — idempotent
+            String s = profileJson();
+            int i = s.indexOf("\"products\"");
+            int a = i < 0 ? -1 : s.indexOf('[', i);
+            int b = a < 0 ? -1 : s.indexOf(']', a);
+            if (a < 0 || b <= a) return "profile.json tidak punya array products";
+            String arr = s.substring(a + 1, b);
+            String ins = arr.trim().isEmpty()
+                    ? "\"" + code + "\"" : arr + ", \"" + code + "\"";
+            String ns = s.substring(0, a + 1) + ins + s.substring(b);
+            writeFile(new File(dir(), "profile.json"), ns);
+            Db.log("SDK-CONFIG-EDIT profile.json: products += " + code
+                    + " (via panel dashboard — productCode kini DITERIMA)");
+            return null;
         }
     }
 

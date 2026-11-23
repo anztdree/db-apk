@@ -91,6 +91,16 @@ public final class LoggerHandler implements HttpWorker.Handler {
             body = HttpWorker.text(err == null
                     ? "{\"result\":true,\"loginTypes\":\"" + JsonUtil.esc(types) + "\"}"
                     : "{\"result\":false,\"error\":\"" + JsonUtil.esc(err) + "\"}");
+        } else if ("/sdkconfig/product-add".equals(p) && "POST".equalsIgnoreCase(req.method)) {
+            // v16 — tombol TERIMA PRODUCT (banner masalah + panel SDK CONFIG):
+            // tambah productCode yang ditolak 30001 ke products di profile.json.
+            String code = formParam(req, "code");
+            String err = SdkConfig.productAdd(code);
+            status = err == null ? 200 : 400;
+            h = HttpWorker.baseHeaders("application/json");
+            body = HttpWorker.text(err == null
+                    ? "{\"result\":true,\"code\":\"" + JsonUtil.esc(code) + "\"}"
+                    : "{\"result\":false,\"error\":\"" + JsonUtil.esc(err) + "\"}");
         } else {
             status = 404;
             h = HttpWorker.baseHeaders("application/json");
@@ -211,46 +221,62 @@ public final class LoggerHandler implements HttpWorker.Handler {
         return b.toString();
     }
 
-    /* ================= dashboard v5 (Bagian 21) =================
-     * Keluhan owner 22 Nov 2026 (setelah v4): "soal log monitoring bagi saya
-     * masih terasa sulit di baca". Jawaban v5 — TAMPILAN MANUSIA, bukan tabel
-     * teknis mentah:
-     *  - KARTU ALUR (timeline): tiap kejadian = kartu berbahasa Indonesia
-     *    ("Buat akun tamu", "Cek versi base — sukses", "Unduh paket update 19.4MB",
-     *     "Masuk server 1 — data pemain diterima") dengan BADAN TAHAP
-     *    (SISTEM/KONFIG/CDN/SDK/LOGIN/GAME) + titik warna (hijau/kuning/merah).
-     *  - Deskripsi ramah diturunkan dari port+path+kind (fungsi describe() di JS),
-     *    detail teknis tetap ada di balik klik (REQUEST/RESPON/EXTRA/ERROR + salin).
-     *  - STATUS SERVER: chip per port (AKTIF/MATI + jumlah request + error).
-     *  - RINGKASAN: kalimat terakhir yang penting ("Game: masuk server…").
-     *  - Semua kemampuan v4 dipertahankan: filter, jeda, salin TSV/JSON,
-     *    unduh NDJSON, klik = blok detail terstruktur, JSON auto-pretty.
+    /* ================= dashboard v6 (Bagian 31) =================
+     * Keluhan owner 23 Nov 2026 (setelah v5): "log monitoring port 4000 itu
+     * bagi saya juga masih terasa sulit di baca dan gak jelas". Jawaban v6:
+     *  - STATUS SATU KALIMAT: pill hijau "SEMUA NORMAL" / merah "N MASALAH".
+     *  - BANNER MASALAH teratas: kartu merah bahasa manusia + tombol FIX
+     *    langsung (30001 -> satu klik "TERIMA PRODUCT INI" dari banner).
+     *  - TIGA MODE TAMPILAN: PENTING (default — alur sesi, noise aset CDN
+     *    disembunyikan), MASALAH, SEMUA (teknis lengkap = perilaku v5).
+     *  - VERDICT KATA bukan angka: OK / GAGAL / CEK / SISTEM.
+     *  - Deskripsi error SDK dari envelope (error.id+message) + petunjuk
+     *    aksi per kode (30001/20003/20002/...).
+     *  - Chip STATUS: DB backend + productCode terakhir (dilihat/diterima).
+     *  - FILTER LANJUTAN dilipat (details) — tahap/status/cari/limit/port,
+     *    salin TSV/JSON, unduh arsip tetap ada.
      */
 
     private String dashboardHtml() {
-        StringBuilder b = new StringBuilder(28672);
+        StringBuilder b = new StringBuilder(32768);
         b.append("<!DOCTYPE html><html><head><meta charset='utf-8'>\n")
          .append("<meta name='viewport' content='width=device-width,initial-scale=1'>\n")
          .append("<title>MONITOR SERVER</title>\n")
          .append("<style>\n")
          .append("*{box-sizing:border-box}\n")
          .append("body{font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#0f141a;color:#dbe4ec;margin:0;padding:10px;font-size:14px;line-height:1.45;user-select:text;-webkit-user-select:text}\n")
-         .append("#top{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;margin-bottom:8px}\n")
+         .append("#top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}\n")
          .append("#title{color:#8fd48f;font-weight:700;font-size:18px}\n")
-         .append("#statsbar{color:#8a97a5;font-size:12px}\n")
+         .append("#title .ver{color:#7f8c9a;font-size:12px;font-weight:400;margin-left:4px}\n")
+         .append("#pill{font-size:12px;font-weight:700;border-radius:14px;padding:3px 12px}\n")
+         .append("#pill.g{background:#123a1f;color:#9fe6a8;border:1px solid #2f7a44}\n")
+         .append("#pill.r{background:#3a1214;color:#ff9e94;border:1px solid #7a2f34}\n")
+         .append("#statsbar{color:#8a97a5;font-size:12px;flex-basis:100%}\n")
          .append(".panel{background:#161d26;border:1px solid #2a333d;border-radius:10px;padding:10px 12px;margin-bottom:10px}\n")
          .append("#chips{display:flex;flex-wrap:wrap;gap:8px}\n")
          .append(".chip{display:inline-flex;align-items:center;gap:6px;background:#1b2530;border:1px solid #2a333d;border-radius:20px;padding:4px 12px;font-size:12px}\n")
          .append(".chip b{font-weight:600}\n")
-         .append(".dot{width:10px;height:10px;border-radius:50%;display:inline-block}\n")
-         .append(".dot.g{background:#4cd964}.dot.r{background:#ff5252}.dot.m{background:#8a97a5}\n")
-         .append("#summary{font-size:14px;color:#cfe3cf}\n")
-         .append("#summary b{color:#8fd48f}\n")
+         .append(".chip.bad{border-color:#7a2f34;color:#ff9e94}\n")
+         .append(".chip.ok{border-color:#2f7a44;color:#9fe6a8}\n")
+         .append("#sysline{color:#8a97a5;font-size:12px;margin-top:6px}\n")
+         .append("#sysline b{color:#c7d1da}\n")
+         .append("#banner{margin-bottom:10px}\n")
+         .append(".prob{background:#1e0e10;border:1px solid #7a2f34;border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:13.5px}\n")
+         .append(".prob .ph{color:#ff9e94;font-weight:600}\n")
+         .append(".prob .pm{color:#c7d1da;margin-top:2px;font-size:12.5px}\n")
+         .append(".prob button{margin-top:6px;background:#3a1214;color:#ff9e94;border:1px solid #7a2f34;font-weight:600}\n")
+         .append(".prob button:hover{border-color:#a04a50}\n")
          .append("#ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}\n")
          .append("label{color:#9fb0c0;font-size:12px}\n")
          .append("select,input,button{background:#1b222b;color:#dbe4ec;border:1px solid #2a333d;border-radius:6px;padding:6px 9px;font-family:inherit;font-size:13px}\n")
-         .append("button{cursor:pointer;min-height:30px}button:hover{border-color:#4a5a6a}\n")
-         .append("#flow{max-height:calc(100vh - 240px);overflow-y:auto;border:1px solid #2a333d;border-radius:10px}\n")
+         .append("button{cursor:pointer;min-height:32px}button:hover{border-color:#4a5a6a}\n")
+         .append(".vb{font-weight:600}\n")
+         .append(".vb.on{background:#123a1f;border-color:#2f7a44;color:#9fe6a8}\n")
+         .append("#adv summary{color:#9fb0c0;font-size:12px;cursor:pointer}\n")
+         .append("#adv .in{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}\n")
+         .append("#summary{font-size:14px;color:#cfe3cf}\n")
+         .append("#summary b{color:#8fd48f}\n")
+         .append("#flow{max-height:calc(100vh - 300px);overflow-y:auto;border:1px solid #2a333d;border-radius:10px}\n")
          .append("#flow::-webkit-scrollbar{width:10px}#flow::-webkit-scrollbar-thumb{background:#2a333d;border-radius:5px}\n")
          .append(".card{border-bottom:1px solid #1d2530;padding:8px 12px;display:flex;gap:10px;align-items:flex-start}\n")
          .append(".card:hover{background:#1a222c;cursor:pointer}\n")
@@ -263,10 +289,10 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(".desc{font-size:14px}\n")
          .append(".desc .fail{color:#ff8a80;font-weight:600}\n")
          .append(".desc .warn{color:#ffd180}\n")
+         .append(".desc .m{color:#8a97a5;font-size:12px}\n")
          .append(".meta{color:#7f8c9a;font-size:11.5px;margin-top:2px}\n")
-         .append(".card .st{font-size:12px;font-weight:700;width:34px;text-align:right;flex-shrink:0}\n")
+         .append(".card .st{font-size:11px;font-weight:700;width:44px;text-align:right;flex-shrink:0}\n")
          .append(".card .st.g{color:#4cd964}.card .st.w{color:#ffd180}.card .st.r{color:#ff5252}.card .st.m{color:#8a97a5}\n")
-         .append("tr.det>td{background:#0b0f14;white-space:normal;padding:6px 10px}\n")
          .append(".sec{margin:0 0 8px;border:1px solid #232b34;border-radius:6px}\n")
          .append(".sech{background:#161c23;color:#8fd48f;padding:3px 9px;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;border-radius:6px 6px 0 0}\n")
          .append(".sec pre{margin:0;padding:7px 9px;white-space:pre-wrap;word-break:break-word;max-height:320px;overflow:auto;font-size:12px;color:#c7d1da;font-family:Menlo,Consolas,monospace}\n")
@@ -274,33 +300,44 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("#notices{font-size:12px;margin:4px 0}\n")
          .append(".n-warn{color:#ffd180}.n-err{color:#ff8a80}\n")
          .append("#toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#123a1f;color:#9fe6a8;border:1px solid #2f7a44;padding:7px 16px;border-radius:8px;display:none;z-index:50;font-size:13px}\n")
+         .append("#toast.err{background:#3a1214;color:#ff9e94;border-color:#7a2f34}\n")
          .append("#modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.72);display:none;z-index:40}\n")
          .append("#modalbox{background:#12181f;border:1px solid #2a333d;border-radius:10px;max-width:760px;margin:40px auto;padding:10px}\n")
          .append("#modalhead{display:flex;justify-content:space-between;color:#8fd48f;margin-bottom:6px;font-size:13px}\n")
          .append("#modalpre{max-height:60vh;overflow:auto;white-space:pre-wrap;word-break:break-word;background:#0b0f14;padding:8px;font-size:12px;color:#c7d1da;font-family:Menlo,Consolas,monospace}\n")
          .append("</style></head><body>\n")
-         .append("<div id=top><span id=title>MONITOR SERVER</span><span id=statsbar>memuat …</span></div>\n")
+         .append("<div id=top><span id=title>MONITOR SERVER<span class=ver>v16</span></span>")
+         .append("<span id=pill class=g>cek …</span>")
+         .append("<a href=/sdkconfig><button>SDK CONFIG</button></a>")
+         .append("<span id=statsbar>memuat …</span></div>\n")
 
-         .append("<div class=panel><div id=chips></div></div>\n")
+         .append("<div class=panel><div id=chips></div><div id=sysline></div></div>\n")
+         .append("<div id=banner></div>\n")
          .append("<div class=panel id=summary>…</div>\n")
 
          .append("<div class=panel id=ctl>\n")
+         .append("<button id=vimp class=vb on>TAMPILAN PENTING</button>")
+         .append("<button id=vmal class=vb>MASALAH</button>")
+         .append("<button id=vall class=vb>SEMUA</button>")
+         .append("<button id=pause>Jeda</button> <button id=reset>Bersihkan</button> ")
+         .append("<button id=guidebtn>Panduan login</button>\n")
+         .append("<details id=adv><summary>filter lanjutan + salin / unduh</summary><div class=in>\n")
          .append("<label>Tahap <select id=stage><option value=''>semua</option><option>SISTEM</option><option>KONFIG</option><option>CDN</option><option>SDK</option><option>LOGIN</option><option>GAME</option></select></label>\n")
          .append("<label>Status <select id=st><option value=''>semua</option><option value=2>sukses (2xx)</option><option value=4>gagal (4xx)</option><option value=5>rusak (5xx)</option><option value=e>bermasalah</option></select></label>\n")
          .append("<label>Cari <input id=q size=14 placeholder=subset></label>\n")
          .append("<label>Jumlah <select id=limit><option>100</option><option selected>500</option><option>2000</option><option value=0>semua buffer</option></select></label>\n")
          .append("<label>Port <select id=port><option value=9527>9527 konfig</option><option value=9528>9528 CDN</option>")
          .append("<option value=5050>5050 login</option><option value=5051>5051 game</option><option value=9530>9530 SDK</option><option value=4000>4000 logger</option></select></label>\n")
-         .append("<button id=pause>Jeda</button> <button id=reset>Bersihkan</button>\n")
-         .append("<button id=cpts>Salin daftar</button> <button id=cpjs>Salin JSON</button>\n")
-         .append("<button id=dl>Unduh arsip</button> <button id=guidebtn>Panduan login</button>\n")
-         .append("<div class=panel id=guide style=display:none>\n")
+         .append("<button id=cpts>Salin daftar</button> <button id=cpjs>Salin JSON</button> ")
+         .append("<button id=dl>Unduh arsip</button>\n")
+         .append("</div></details>\n")
+         .append("<div class=panel id=guide style=display:none;margin-top:8px>\n")
          .append("<b style=color:#8fd48f>CARA LOGIN YANG BENAR (server lokal)</b>\n")
          .append("<ul style=margin:6px 0 2px 18px;padding:0;font-size:12.5px;color:#c7d1da>\n")
-         .append("<li>Di layar login SDK: tekan tombol <b>TAMU (Guest)</b> \u2014 game langsung lanjut offline.</li>\n")
-         .append("<li>Tombol <b>Kode Migrasi</b> = untuk pindahkan akun lama (butuh kode migrasi). Kalau tidak punya kodenya JANGAN dipakai \u2014 server membalas persis seperti server asli (device belum terdaftar) dan SDK diam.</li>\n")
-         .append("<li>Tombol Facebook/Google/Naver dll. butuh layanan online \u2014 disembunyikan otomatis sesuai config loginTypes server.</li>\n")
-         .append("<li>Alur normal: konfigurasi 9527 \u2192 resource 9528 \u2192 SDK 9530 \u2192 layar login \u2192 TAMU \u2192 verifikasi 5050 \u2192 game 5051.</li>\n")
+         .append("<li>Di layar login SDK: tekan tombol <b>TAMU (Guest)</b> — langsung main.</li>\n")
+         .append("<li><b>DAFTAR</b> = buat akun email baru; <b>LOGIN</b> = masuk akun terdaftar.</li>\n")
+         .append("<li>Jika SDK crash/tombol mati: buka <b>SDK CONFIG</b> → preset E1/E2/E3 (loginTypes) → force-stop &amp; buka game, satu variabel per coba.</li>\n")
+         .append("<li>Alur normal: konfigurasi 9527 → resource 9528 → SDK 9530 → layar login → TAMU → verifikasi 5050 → game 5051.</li>\n")
          .append("</ul>\n</div>\n")
          .append("</div>\n")
 
@@ -318,9 +355,9 @@ public final class LoggerHandler implements HttpWorker.Handler {
     }
 
     private static String Js() {
-        StringBuilder s = new StringBuilder(16384);
-        s.append("var S={since:0,stage:'',st:'',q:'',limit:500,auto:true};\n")
-         .append("var ENT={},DET={};var MAXC=3000;var pollN=0;var LASTSUM='';\n")
+        StringBuilder s = new StringBuilder(20480);
+        s.append("var S={since:0,view:'penting',stage:'',st:'',q:'',limit:500,auto:true};\n")
+         .append("var ENT={},DET={};var MAXC=3000;var pollN=0;var LASTSUM='';var API=null;\n")
          .append("function $(id){return document.getElementById(id)}\n")
          .append("function esc(x){return (x==null?'':''+x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}\n")
          .append("function attr(x){return esc(x).replace(/\\\"/g,'&quot;')}\n")
@@ -331,7 +368,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("function prettyExtra(x){var i=(''+x).indexOf('DECODED-XOR: ');\n")
          .append(" if(i>=0){try{return x.substring(0,i+13)+'\\n'+JSON.stringify(JSON.parse(x.substring(i+13).trim()),null,2)}catch(y){}}\n")
          .append(" return ''+x}\n")
-         .append("/* ---- v5 inti: tahap + deskripsi manusia ---- */\n")
+         .append("/* ---- tahap + deskripsi manusia (v5, diperluas v6) ---- */\n")
          .append("function stageOf(e){\n")
          .append(" if(e.kind=='BOOT'||e.kind=='SYS'||e.kind=='EXTRACT')return 'SISTEM';\n")
          .append(" if(e.port==9527)return 'KONFIG'; if(e.port==9528)return 'CDN';\n")
@@ -339,13 +376,36 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" if(e.port==5051)return 'GAME'; return 'LOGGER'}\n")
          .append("function pathOf(e){var p=(''+(e.path||''));var i=p.indexOf('?');return i>=0?p.substring(0,i):p}\n")
          .append("function ms2(n){var mb=n/1048576;return mb>=1?mb.toFixed(1)+'MB':Math.round(n/1024)+'KB'}\n")
+         .append("function sdkErr(e){var m=/\\\"error\\\":\\{\\\"id\\\":(\\d+),\\\"message\\\":\\\"(.*?)\\\"/.exec(''+(e.respPreview||''));\n")
+         .append(" return m?{id:+m[1],msg:m[2]}:{id:0,msg:''}}\n")
+         .append("function errWhy(id,msg){\n")
+         .append(" var m=''+(msg||'');\n")
+         .append(" if(id==20000)return 'server tidak bisa membaca data (Params error)';\n")
+         .append(" if(id==20002)return 'tanda tangan (sign) salah — cek signSecret di SDK CONFIG';\n")
+         .append(" if(id==20003){var mm=/LostSomeMustParams:(\\w+)/.exec(m);return 'param wajib kosong: <b>'+(mm?mm[1]:'?')+'</b>'}\n")
+         .append(" if(id==30001)return 'PRODUCT TIDAK DITERIMA — productCode game belum ada di daftar profile.json. Tekan tombol MERAH TERIMA PRODUCT INI di atas, lalu force-stop & buka game';\n")
+         .append(" if(id)return m||('error '+id);\n")
+         .append(" return 'request gagal'}\n")
+         .append("function epName(p){\n")
+         .append(" if(p.indexOf('/v1/system/init')>=0)return 'Inisialisasi SDK';\n")
+         .append(" if(p.indexOf('registerVisitor')>=0)return 'Buat akun TAMU';\n")
+         .append(" if(p.indexOf('registerUser')>=0)return 'Pendaftaran (DAFTAR)';\n")
+         .append(" if(p.indexOf('loginByName')>=0)return 'Login (LOGIN)';\n")
+         .append(" if(p.indexOf('autoLogin')>=0)return 'Login otomatis';\n")
+         .append(" if(p.indexOf('getUserInfo')>=0)return 'Info akun';\n")
+         .append(" if(p.indexOf('changePassword')>=0)return 'Ganti sandi';\n")
+         .append(" if(p.indexOf('bindMail')>=0)return 'Bind email';\n")
+         .append(" if(p.indexOf('ckRegVistor')>=0)return 'Cek Kode Migrasi';\n")
+         .append(" if(p.indexOf('sendCodeByEmail')>=0)return 'Kirim kode email';\n")
+         .append(" if(p.indexOf('findPassByEmail')>=0)return 'Lupa sandi';\n")
+         .append(" return 'SDK '+p.substring(0,40)}\n")
          .append("function describe(e){\n")
          .append(" var p=pathOf(e),k=e.kind||'HTTP',m=e.method||'',st=e.status||0,fail=st>=400,extra=e.extra||'';\n")
          .append(" if(k=='BOOT')return '<b>Server mulai</b> — '+esc(p);\n")
          .append(" if(k=='SYS'&&m=='BIND')return (st==0?'<b>Port aktif:</b> ':'<b style=color:#ff8a80>Port GAGAL:</b> ')+esc(p);\n")
-         .append(" if(k=='SYS')return esc(p);\n")
+         .append(" if(k=='SYS'){var t=esc(p);if(/gagal|ditolak|rusak/i.test(p))t='<span class=fail>'+t+'</span>';return t}\n")
          .append(" if(k=='EXTRACT')return '<b>Ekstraksi aset game</b> — '+esc(p);\n")
-         .append(" if(k=='LOGCAT')return '<b>Rekaman logcat</b> \u2014 diagnostik otomatis (log sistem ponsel, direkam 8 detik setelah login \u2014 aman diabaikan)';\n")
+         .append(" if(k=='LOGCAT')return '<b>Rekaman logcat</b> — diagnostik otomatis (aman diabaikan)';\n")
          .append(" if(k=='WS')return 'Koneksi WebSocket (login/game) — '+(e.respPreview=='pong'?'ping-pong sehat':esc((e.extra||'').substring(0,120)));\n")
          .append(" if(e.port==9527){\n")
          .append("  if(p.indexOf('setting_BS')>=0)return 'Baca <b>konfigurasi game</b> (setting) — alamat server diarahkan ke 127.0.0.1';\n")
@@ -364,22 +424,24 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  if(p.indexOf('/resource/')>=0)return 'Muat aset game — '+esc(p.split('/').pop().substring(0,40));\n")
          .append("  return 'CDN: '+esc(p)}\n")
          .append(" if(e.port==9530){\n")
-         .append("  if(p.indexOf('/v1/system/init')>=0)return (fail?'<span class=fail>SDK init GAGAL</span>':'<b>Inisialisasi SDK</b> — sukses, login tamu diizinkan');\n")
+         .append("  var er=sdkErr(e),bad=(e.respPreview||'').indexOf('\\\"result\\\":false')>=0;\n")
+         .append("  if(fail||bad){var nm=epName(p);return '<span class=fail>'+nm+' GAGAL</span> — '+errWhy(er.id,er.msg)+(er.id?' <span class=m>(id '+er.id+')</span>':'')}\n")
+         .append("  if(p.indexOf('/v1/system/init')>=0)return '<b>Inisialisasi SDK</b> — sukses, layar login mengikuti loginTypes';\n")
          .append("  if(p.indexOf('registerVisitor')>=0)return '<b>Buat akun tamu</b> — uid '+esc(uin(extra))+' tersimpan permanen';\n")
          .append("  if(p.indexOf('autoLogin')>=0)return '<b>Login otomatis</b> — akun '+esc(una(extra))+' (tersimpan)';\n")
          .append("  if(p.indexOf('getNotice')>=0)return 'Cek pengumuman SDK — tidak ada';\n")
          .append("  if(p.indexOf('setGameRoleInfo')>=0)return 'Lapor data karakter ke SDK';\n")
-         .append("  if(p.indexOf('ckRegVistor')>=0)return 'Cek <b>pendaftaran</b> (tombol <b>Kode Migrasi</b>) \u2014 device belum terdaftar (isReged:0, respons = persis server asli) \u2014 untuk mulai main: tekan tombol <b>TAMU</b>';\n")
-         .append("  return '<b style=color:#ffd180>Endpoint SDK belum tersedia</b> \u2014 '+esc(p)+' (SDK tidak mendapat jawaban valid; pakai tombol TAMU)'}\n")
+         .append("  if(p.indexOf('ckRegVistor')>=0)return 'Cek <b>pendaftaran</b> (Kode Migrasi) — isReged:0 = persis server asli';\n")
+         .append("  return epName(p)+' — sukses'}\n")
          .append(" if(e.port==5050){\n")
-         .append("  if(p.indexOf('loginchecknative')>=0)return '<b>Verifikasi akun</b> (loginchecknative) — code 0, game dilanjutkan';\n")
+         .append("  if(p.indexOf('loginchecknative')>=0)return '<b>Verifikasi akun</b> (loginchecknative) — game dilanjutkan';\n")
          .append("  if((e.path||'').indexOf('transport=polling')>=0&&e.respPreview&&e.respPreview.indexOf(':0{')>=0)return 'Handshake <b>server login</b> — sesi dibuat';\n")
          .append("  var ev=evName(e.extra);if(ev)return 'Event login <b>'+esc(ev.a)+'</b>'+(ev.ack?' — dijawab':' — dikirim');\n")
          .append("  if((e.extra||'').indexOf('ping→pong')>=0)return 'Keep-alive login (ping-pong)';\n")
          .append("  return 'Server login: '+esc(p.substring(0,60))}\n")
          .append(" if(e.port==5051){\n")
          .append("  var ev=evName(e.extra);\n")
-         .append("  if(ev&&ev.a=='enterGame')return (e.respPreview&&e.respPreview.indexOf('ret\\\":0')>=0||e.respPreview&&e.respPreview.indexOf('\"ret\":0')>=0)?'<b>Masuk server 1</b> — data pemain baru dikirim ('+ms2(e.respLen||0)+')':'Masuk server — '+ms2(e.respLen||0);\n")
+         .append("  if(ev&&ev.a=='enterGame')return (e.respPreview&&e.respPreview.indexOf('ret\\\":0')>=0||e.respPreview&&e.respPreview.indexOf('\\\"ret\\\":0')>=0)?'<b>Masuk server 1</b> — data pemain diterima ('+ms2(e.respLen||0)+')':'Masuk server — '+ms2(e.respLen||0);\n")
          .append("  if(ev)return 'Event game <b>'+esc(ev.a)+'</b>'+(ev.ack?' — dijawab':' — dikirim');\n")
          .append("  return 'Server game: '+esc(p.substring(0,60))}\n")
          .append(" return esc(p)}\n")
@@ -388,6 +450,32 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("function evName(extra){var s=''+(extra||'');var i=s.indexOf('EVENT: 42');if(i<0)return null;\n")
          .append(" var m=/action\":\"([A-Za-z]+)/.exec(s.substring(i));var ack=s.indexOf('ACK: 43',i)>=0;\n")
          .append(" return m?{a:m[1],ack:ack}:{a:'?',ack:ack}}\n")
+         .append("/* ---- v6: masalah / penting / verdict ---- */\n")
+         .append("function isProblem(e){\n")
+         .append(" if((e.error||'').length)return true;\n")
+         .append(" var k=e.kind||'';\n")
+         .append(" if(k=='SYS'||k=='BOOT'||k=='EXTRACT'){var t=(''+(e.path||'')).toLowerCase();return t.indexOf('gagal')>=0||t.indexOf('ditolak')>=0||t.indexOf('rusak')>=0}\n")
+         .append(" if(k=='HTTP'||k=='WS'){\n")
+         .append("  if((e.status||0)>=400)return true;\n")
+         .append("  if((e.respPreview||'').indexOf('\\\"result\\\":false')>=0)return true}\n")
+         .append(" return false}\n")
+         .append("function isImportant(e){\n")
+         .append(" var k=e.kind||'';\n")
+         .append(" if(k=='BOOT'||k=='SYS'||k=='EXTRACT'||k=='LOGCAT')return true;\n")
+         .append(" if(e.port==9527||e.port==9530)return true;\n")
+         .append(" if(e.port==9528){var p=pathOf(e);\n")
+         .append("  return p.indexOf('base.version')>=0||p.indexOf('resource.version')>=0||p.indexOf('upgrade.json')>=0||p.indexOf('size.json')>=0||p.indexOf('all.zip')>=0||p.indexOf('index-native')>=0||p.indexOf('serversetting')>=0}\n")
+         .append(" if(e.port==5050){if((e.extra||'').indexOf('ping→pong')>=0)return false;return true}\n")
+         .append(" if(e.port==5051)return true;\n")
+         .append(" return false}\n")
+         .append("function verdictOf(e){\n")
+         .append(" var k=e.kind||'';\n")
+         .append(" if(k!='HTTP'&&k!='WS')return isProblem(e)?['CEK','w']:['SISTEM','m'];\n")
+         .append(" if(isProblem(e))return ['GAGAL','r'];\n")
+         .append(" if((e.status||0)>=300)return ['CEK','w'];\n")
+         .append(" if(e.status==0)return ['-','m'];\n")
+         .append(" return ['OK','g']}\n")
+         .append("function plain(h){return (''+h).replace(/<[^>]*>/g,'')}\n")
          .append("function allText(e){var L=[];\n")
          .append(" L.push('#'+e.seq+'  '+e.time+'  port '+e.port+'  '+e.kind);\n")
          .append(" if(e.kind=='HTTP')L.push((e.method||'')+' http://127.0.0.1:'+e.port+(e.path||''));else L.push(e.method||e.kind);\n")
@@ -409,22 +497,22 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" d.push({l:'SEMUA (teks polos)',t:allText(e)});\n")
          .append(" return d}\n")
          .append("function stCls(e){if(e.kind!='HTTP'&&e.kind!='WS')return 'm';\n")
-         .append(" if(e.port==9530&&(e.respPreview||'').indexOf('\"result\":false')>=0)return 'r';\n")
+         .append(" if(e.port==9530&&(e.respPreview||'').indexOf('\\\"result\\\":false')>=0)return 'r';\n")
          .append(" if(e.error)return 'r'; if(e.status>=500)return 'r'; if(e.status>=400)return 'r';\n")
          .append(" if(e.status>=300)return 'w'; if(e.status==0)return 'm'; return 'g'}\n")
          .append("function important(e){var p=pathOf(e);\n")
-         .append(" if(e.status>=400)return '⚠ '+describe(e);\n")
-         .append(" if(e.port==9530&&p.indexOf('registerVisitor')>=0)return '✔ '+describe(e);\n")
-         .append(" if(e.port==5050&&p.indexOf('loginchecknative')>=0)return '✔ '+describe(e);\n")
-         .append(" if(e.port==5051&&(e.extra||'').indexOf('enterGame')>=0)return '✔ '+describe(e);\n")
-         .append(" if(e.port==9528&&p.indexOf('index-native')>=0)return '✔ '+describe(e);\n")
+         .append(" if(e.status>=400)return '! '+plain(describe(e));\n")
+         .append(" if(e.port==9530&&p.indexOf('registerVisitor')>=0)return 'OK '+describe(e);\n")
+         .append(" if(e.port==5050&&p.indexOf('loginchecknative')>=0)return 'OK '+describe(e);\n")
+         .append(" if(e.port==5051&&(e.extra||'').indexOf('enterGame')>=0)return 'OK '+describe(e);\n")
+         .append(" if(e.port==9528&&p.indexOf('index-native')>=0)return 'OK '+describe(e);\n")
          .append(" return null}\n")
          .append("function cardHtml(e){\n")
-         .append(" var sg=stageOf(e),d=describe(e),c=stCls(e);\n")
+         .append(" var sg=stageOf(e),d=describe(e),c=stCls(e),v=verdictOf(e);\n")
          .append(" var h='<div class=card data-seq='+e.seq+'>+'\n")
-         .append("  +'<div class=st '+c+'>'+(e.kind=='HTTP'||e.kind=='WS'?(e.status||0):'·')+'</div>'\n")
-         .append("  +'<div class=main><div class=desc><span class=\"stage st-'+sg+'\">'+sg+'</span>'+(e.status>=400?'<span class=fail>':'')+d+(e.status>=400?'</span>':'')+'</div>'\n")
-         .append("  +'<div class=meta>#'+e.seq+' · '+esc(e.time)+' · '+e.durMs+'ms · kirim '+(e.reqLen||0)+'B terima '+(e.respLen||0)+'B'+(e.error?' · <span style=color:#ff8a80>error</span>':'')+'</div></div>'\n")
+         .append("  +'<div class=st '+v[1]+'>'+v[0]+'</div>'\n")
+         .append("  +'<div class=main><div class=desc><span class=\"stage st-'+sg+'\">'+sg+'</span>'+d+'</div>'\n")
+         .append("  +'<div class=meta>#'+e.seq+' · '+esc(e.time)+' · '+e.durMs+'ms · kirim '+(e.reqLen||0)+'B terima '+(e.respLen||0)+'B'+(e.kind=='HTTP'||e.kind=='WS'?' · HTTP '+(e.status||0):'')+(e.error?' · <span style=color:#ff8a80>error</span>':'')+'</div></div>'\n")
          .append("  +'<button class=cp data-seq='+e.seq+' data-k=all>salin</button></div>';\n")
          .append(" var det=detOf(e);DET[e.seq]=det;\n")
          .append(" var dd='<div class=det style=display:none><div style=padding:8px 12px>';\n")
@@ -432,6 +520,8 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" dd+='</div></div>';\n")
          .append(" return h+dd}\n")
          .append("function pass(e){\n")
+         .append(" if(S.view=='masalah'&&!isProblem(e))return false;\n")
+         .append(" if(S.view=='penting'&&!isImportant(e))return false;\n")
          .append(" if(S.stage&&stageOf(e)!=S.stage)return false;\n")
          .append(" if(S.st=='2'&&!(e.status>=200&&e.status<300))return false;\n")
          .append(" if(S.st=='4'&&!(e.status>=400&&e.status<500))return false;\n")
@@ -444,6 +534,22 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  var show=e?pass(e):true;cs[i].style.display=show?'':'none';\n")
          .append("  var det=cs[i].nextSibling;\n")
          .append("  if(det&&det.className=='det')det.style.display=(show&&det.style.display!='none')?'':'none';}}\n")
+         .append("function refreshPill(){var n=0;for(var k in ENT)if(isProblem(ENT[k]))n++;\n")
+         .append(" var p=$('pill');if(n==0){p.textContent='SEMUA NORMAL';p.className='g'}\n")
+         .append(" else{p.textContent=n+' MASALAH';p.className='r'}}\n")
+         .append("function fixCode(e){var m=/GERBANG-30001\\(product=([0-9A-Za-z]+)\\)/.exec(''+(e.extra||''));\n")
+         .append(" if(m)return m[1];\n")
+         .append(" if(API&&API.productCode&&!API.productOk)return API.productCode;\n")
+         .append(" return ''}\n")
+         .append("function renderBanner(){var w=$('banner');var list=[];\n")
+         .append(" for(var k in ENT){if(isProblem(ENT[k]))list.push(ENT[k])}\n")
+         .append(" list.sort(function(a,b){return b.seq-a.seq});list=list.slice(0,3);\n")
+         .append(" if(!list.length){w.innerHTML='';return}\n")
+         .append(" var h='';for(var i=0;i<list.length;i++){var e=list[i];\n")
+         .append("  h+='<div class=prob><div class=ph>MASALAH #'+e.seq+' · '+esc(e.time)+'</div><div class=pm>'+plain(describe(e))+'</div>';\n")
+         .append("  var fc=fixCode(e);if(fc)h+='<button data-fix=\\\"'+esc(fc)+'\\\">TERIMA PRODUCT INI ('+esc(fc.substring(0,10))+'…)</button>';\n")
+         .append("  h+='</div>'}\n")
+         .append(" w.innerHTML=h}\n")
          .append("function append(list){var w=$('flow');\n")
          .append(" var pin=w.scrollTop+w.clientHeight>=w.scrollHeight-60;\n")
          .append(" for(var i=0;i<list.length;i++){var e=list[i];ENT[e.seq]=e;\n")
@@ -452,7 +558,8 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  var im=important(e);if(im)LASTSUM=im;}\n")
          .append(" var cs=w.querySelectorAll('.card');var over=cs.length-MAXC*2;\n")
          .append(" for(var j=0;j<over;j++)w.removeChild(w.firstChild);\n")
-         .append(" applyFilter();if(LASTSUM)$('summary').innerHTML='<b>Terakhir penting:</b> '+LASTSUM;if(pin)w.scrollTop=w.scrollHeight}\n")
+         .append(" applyFilter();refreshPill();renderBanner();\n")
+         .append(" if(LASTSUM)$('summary').innerHTML='<b>Terakhir penting:</b> '+LASTSUM;if(pin)w.scrollTop=w.scrollHeight}\n")
          .append("function visible(){var out=[];var cs=$('flow').querySelectorAll('.card');\n")
          .append(" for(var i=0;i<cs.length;i++){if(cs[i].style.display=='none')continue;\n")
          .append("  var e=ENT[cs[i].getAttribute('data-seq')];if(e)out.push(e)}\n")
@@ -479,7 +586,8 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" var r=document.createRange();r.selectNodeContents($('modalpre'));\n")
          .append(" var sc=window.getSelection();sc.removeAllRanges();try{sc.addRange(r)}catch(x){}}\n")
          .append("var tt=null;\n")
-         .append("function toast(m){var el=$('toast');el.textContent=m;el.style.display='block';clearTimeout(tt);tt=setTimeout(function(){el.style.display='none'},1800)}\n")
+         .append("function toast(m,err){var el=$('toast');el.textContent=m;el.className=err?'err':'';el.style.display='block';clearTimeout(tt);tt=setTimeout(function(){el.style.display='none'},2600)}\n")
+         .append("function post(url,body){return fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body}).then(function(r){return r.json()})}\n")
          .append("$('flow').addEventListener('click',function(ev){\n")
          .append(" var n=ev.target;\n")
          .append(" while(n&&n.tagName!='BUTTON'&&!(n.className||'').toString().indexOf('card')>=0)n=n.parentNode;\n")
@@ -490,10 +598,24 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" if(!card)return;\n")
          .append(" var det=card.nextSibling;\n")
          .append(" if(det&&det.className=='det')det.style.display=(det.style.display=='none'?'':'none');});\n")
+         .append("$('banner').addEventListener('click',function(ev){\n")
+         .append(" var b2=ev.target.closest?ev.target.closest('[data-fix]'):null;\n")
+         .append(" if(!b2)return;var code=b2.getAttribute('data-fix');\n")
+         .append(" post('/sdkconfig/product-add','code='+encodeURIComponent(code)).then(function(j){\n")
+         .append("  if(j.result){toast('productCode DITERIMA — force-stop & buka game');renderBanner()}\n")
+         .append("  else toast(j.error||'gagal',true)}).catch(function(){toast('jaringan gagal',true)})});\n")
          .append("$('modalx').onclick=function(){$('modal').style.display='none'};\n")
          .append("$('modal').onclick=function(ev){if(ev.target.id=='modal')$('modal').style.display='none'};\n")
          .append("function sync(){S.stage=$('stage').value;S.st=$('st').value;S.q=$('q').value.toLowerCase();S.limit=parseInt($('limit').value);S.port=parseInt($('port').value)}\n")
-         .append("function reset(){$('flow').innerHTML='';ENT={};DET={};S.since=0;LASTSUM='';$('notices').innerHTML=''}\n")
+         .append("function reset(){$('flow').innerHTML='';ENT={};DET={};S.since=0;LASTSUM='';$('notices').innerHTML='';refreshPill();renderBanner()}\n")
+         .append("function setView(v){S.view=v;\n")
+         .append(" $('vimp').className='vb'+(v=='penting'?' on':'');\n")
+         .append(" $('vmal').className='vb'+(v=='masalah'?' on':'');\n")
+         .append(" $('vall').className='vb'+(v=='all'?' on':'');\n")
+         .append(" applyFilter();if(v=='masalah')$('flow').scrollTop=0}\n")
+         .append("$('vimp').onclick=function(){setView('penting')};\n")
+         .append("$('vmal').onclick=function(){setView('masalah')};\n")
+         .append("$('vall').onclick=function(){setView('all')};\n")
          .append("['stage','limit','port'].forEach(function(id){$(id).onchange=function(){\n")
          .append(" if(id=='stage'){S.stage=$('stage').value;applyFilter();return}\n")
          .append(" sync();reset()}});\n")
@@ -512,6 +634,12 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" var h='';for(var i=0;i<ids.length;i++){var p=ids[i][0],cc=j.ports[p];\n")
          .append("  h+='<span class=chip><span class=\"dot '+((cc&&cc.requests>0)?'g':'m')+'\"></span><b>'+ids[i][1]+'</b> '+p+(cc?(' · '+cc.requests+' req'+(cc.errors?' · <span style=color:#ff8a80>'+cc.errors+' gagal</span>':'')):' · 0 req')+'</span>'}\n")
          .append(" c.innerHTML=h}\n")
+         .append("function sysline(){fetch('/sdkconfig/api').then(function(r){return r.json()}).then(function(j){API=j;\n")
+         .append(" var h='DB <b>'+esc(j.backend)+'</b> ('+esc(j.dbDir)+') · PRODUCT: ';\n")
+         .append(" if(j.productCode){h+='<b class='+(j.productOk?'ok':'bad')+'>'+esc(j.productCode)+'</b> '+(j.productOk?'DITERIMA':'DITOLAK — lihat banner merah')}\n")
+         .append(" else h+='<span class=m>belum ada request game</span>';\n")
+         .append(" h+=' · tamu: '+(j.guest?esc(j.guest.uid):'-')+' · akun email: '+j.accounts.length;\n")
+         .append(" $('sysline').innerHTML=h}).catch(function(){})}\n")
          .append("function poll(){\n")
          .append(" if(!S.auto){setTimeout(poll,500);return}\n")
          .append(" fetch(url()).then(function(r){return r.json()}).then(function(j){\n")
@@ -526,7 +654,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" var up=Math.floor(j.uptimeMs/1000);\n")
          .append(" var t='uptime '+Math.floor(up/3600)+'h'+Math.floor(up%3600/60)+'m'+(up%60)+'s · seq '+j.seq;\n")
          .append(" if(j.disk&&j.disk.enabled)t+=' · arsip '+j.disk.file+' '+(j.disk.bytes>=1048576?(j.disk.bytes/1048576).toFixed(1)+'MB':Math.round(j.disk.bytes/1024)+'KB')+' · '+j.disk.lines+' baris';\n")
-         .append(" $('statsbar').textContent=t;chips(j)}).catch(function(){})}\n")
+         .append(" $('statsbar').textContent=t;chips(j);sysline()}).catch(function(){})}\n")
          .append("document.title='MONITOR SERVER :'+location.port;\n")
          .append("refreshStats();sync();poll();\n")
          .append("setTimeout(refreshStats,800);\n");
@@ -553,12 +681,13 @@ public final class LoggerHandler implements HttpWorker.Handler {
         return b.toString();
     }
 
-    /** State panel dalam satu JSON: backend, akun, isi semua file kontrak. */
+    /** State panel dalam satu JSON: backend, akun, isi semua file kontrak, status product. */
     private String sdkConfigApiJson() {
         SdkConfig.ensureIndex();
         Db db = Db.open(LoggerCore.serverRootPath);
         StringBuilder b = new StringBuilder(8192);
-        b.append("{\"backend\":\"").append(db.backend()).append('"')
+        b.append("{\"ver\":\"v16\"")
+         .append(",\"backend\":\"").append(db.backend()).append('"')
          .append(",\"dbDir\":\"").append(JsonUtil.esc(LoggerCore.serverRootPath))
          .append("/sdk/data\"");
         Db.Row g = db.guest();
@@ -568,6 +697,16 @@ public final class LoggerHandler implements HttpWorker.Handler {
         for (int i = 0; i < accs.size(); i++) {
             if (i > 0) b.append(',');
             b.append(rowJson(accs.get(i), true));
+        }
+        b.append(']');
+        // v16 — status product (gerbang 30001)
+        b.append(",\"productCode\":\"").append(JsonUtil.esc(SdkConfig.lastProductSeen)).append('"')
+         .append(",\"productOk\":").append(SdkConfig.lastProductOk)
+         .append(",\"products\":[");
+        java.util.ArrayList<String> prods = SdkConfig.productsList();
+        for (int i = 0; i < prods.size(); i++) {
+            if (i > 0) b.append(',');
+            b.append('"').append(JsonUtil.esc(prods.get(i))).append('"');
         }
         b.append(']');
         b.append(",\"files\":{");
@@ -635,6 +774,12 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("<div class=panel><div id=chips></div>\n")
          .append("<div class=hint>Eksperimen crash: klik preset, lalu <b>force-stop &amp; buka game</b> satu variabel per restart. Hasil dilihat di MONITOR SERVER (log SDK).</div></div>\n")
 
+         .append("<div class=sec><div class=sech><span>PRODUCT (gerbang 30001)</span><span id=prodchip class=m></span></div>\n")
+         .append("<div class=bd><div id=prodl></div>\n")
+         .append("<div style='display:flex;gap:6px;margin-top:6px;flex-wrap:wrap'><input id=prodin placeholder='productCode game' style='flex:1;min-width:180px'>\n")
+         .append("<button class=pr onclick=prodAdd()>TERIMA PRODUCT</button></div>\n")
+         .append("<div class=hint>productCode ASLI game (rekam device 23 Nov): 75880787318053043365515388491588 — sudah dimuat otomatis di profil v16. Tombol ini untuk menambah kode lain bila gerbang 30001 menolak lagi. Berlaku TANPA restart server (game tetap perlu force-stop &amp; buka).</div></div></div>\n")
+
          .append("<div class=panel>\n")
          .append("<div style='font-weight:700;color:#8fd48f;margin-bottom:6px'>PRESET loginTypes</div>\n")
          .append("<button id=p1 onclick=preset('1')>E1 [\"1\"] form email+TAMU</button> ")
@@ -671,11 +816,16 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("function toast(msg,err){var t=$('toast');t.textContent=msg;t.className=err?'err':'';t.style.display='block';clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none'},2600)}\n")
          .append("function post(url,body){return fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body}).then(function(r){return r.json()})}\n")
          .append("function preset(types){post('/sdkconfig/preset','types='+encodeURIComponent(types)).then(function(j){if(j.result){toast('init.json -> loginTypes ['+j.loginTypes+'] — force-stop & buka game');load()}else toast(j.error||'gagal',true)}).catch(function(){toast('jaringan gagal',true)})}\n")
+         .append("function prodAdd(){var v=$('prodin').value.trim();if(!v){toast('isi productCode dulu',true);return}post('/sdkconfig/product-add','code='+encodeURIComponent(v)).then(function(j){if(j.result){toast('productCode DITERIMA — force-stop & buka game');$('prodin').value='';load()}else toast(j.error||'gagal',true)}).catch(function(){toast('jaringan gagal',true)})}\n")
          .append("function saveFile(name,tid){var v=$(tid).value;post('/sdkconfig/save','name='+encodeURIComponent(name)+'&content='+encodeURIComponent(v)).then(function(j){if(j.result){toast(name+' tersimpan');load()}else toast(j.error||'gagal',true)}).catch(function(){toast('jaringan gagal',true)})}\n")
          .append("function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}\n")
          .append("function load(){fetch('/sdkconfig/api').then(function(r){return r.json()}).then(function(j){\n")
          .append(" $('statsbar').textContent='backend '+j.backend+' · '+j.dbDir;\n")
          .append(" $('chips').innerHTML='<span class=chip><b>DB-BACKEND</b>&nbsp;'+esc(j.backend)+'</span><span class=chip><b>tamu</b>&nbsp;'+(j.guest?esc(j.guest.uid)+' ('+esc(j.guest.username)+')':'belum ada')+'</span><span class=chip><b>akun email</b>&nbsp;'+j.accounts.length+'</span>';\n")
+         .append(" $('prodchip').textContent=j.productCode?('terakhir dikirim: '+j.productCode+(j.productOk?' — DITERIMA':' — DITOLAK (30001)')):'belum ada request game';\n")
+         .append(" $('prodchip').className=j.productCode?(j.productOk?'g':'r'):'m';\n")
+         .append(" var pl='';for(var pi=0;pi<(j.products||[]).length;pi++)pl+='<span class=chip style=margin:2px 4px 2px 0>'+esc(j.products[pi])+'</span>';\n")
+         .append(" $('prodl').innerHTML=pl||'<span class=m>kosong</span>';\n")
          .append(" $('t_init').value=j.files['init.json'];$('t_profile').value=j.files['profile.json'];$('t_ckreg').value=j.files['ckRegVistor.json'];$('t_fallback').value=j.files['fallback.json'];$('t_qh').value=j.files['QHinfo'];\n")
          .append(" var lt='';try{lt=JSON.parse(j.files['init.json']).data.loginTypes.join(',')}catch(e){}\n")
          .append(" $('p1').className='pr'+(lt=='1'?' on':'');$('p2').className='pr'+(lt=='12'?' on':'');$('p3').className='pr'+(lt=='1,13'?' on':'');\n")
