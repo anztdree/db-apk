@@ -315,6 +315,31 @@ public final class LoggerHandler implements HttpWorker.Handler {
      *     arsip NDJSON disk tetap jalan.
      */
 
+    /* ================= console v16 — FILTER ERROR + SALIN =================
+     * Arahan owner (kata-kata persis):
+     *   "filter error gak ada , tombol salin untuk di kirim ke anda juga gak
+     *    ada .."
+     *   "dan itu kenapa loginserver malah sudah di kerjakan PADAHAL belum di
+     *    kasih rencana kesana"
+     * PERUBAHAN v16 (console SAJA — server/logic NOL perubahan):
+     *  1. FILTER ERROR kembali (tombol oktagon merah): saat aktif hanya
+     *     WARN/ERROR yang tampil (status >=400, error, result:false, CRASH)
+     *     — berpasangan dgn filter cari. v15 menghapusnya; owner minta ada.
+     *  2. TOMBOL SALIN kembali (ikon copy): menyalin SEMUA baris tersaring
+     *     sebagai TEKS MENTAH protokol — time #seq port LEVEL COMP method
+     *     path status bytes dur + sub-baris headers/request/response/recv/
+     *     send/error/data verbatim — siap tempel ke chat dev. Clipboard:
+     *     navigator.clipboard bila ada, fallback textarea+execCommand
+     *     (aman WebView). NOL popup; konfirmasi lewat footer.
+     *  3. Tombol total TETAP 4 dan SEMUA berfungsi: cari, filter error,
+     *     salin, jeda. Ikon SVG, NOL emoji.
+     *  4. LOGIN SERVER (5050/9528) TIDAK disentuh di v16 — ia aktif sejak
+     *     v13 karena config game setting_BS_Android.bin (XOR "DragonBall")
+     *     menunjuk loginServer=127.0.0.1 loginPort=9528 loginWebPort=5050;
+     *     engine Egret menelepon sendiri saat boot dan SDK langsung auto
+     *     login GUEST. Bukan pekerjaan baru — menunggu rencana owner.
+     */
+
     private String dashboardHtml() {
         StringBuilder b = new StringBuilder(36000);
         b.append("<!DOCTYPE html><html><head><meta charset='utf-8'>\n")
@@ -341,6 +366,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(".ib .ic{width:16px;height:16px;vertical-align:0}\n")
          .append(".ib:hover{border-color:#2e4358;color:#dce6f1;background:#101c2a;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.4)}\n")
          .append(".ib.on{border-color:#1f5c37;color:#3ddc84;background:#08150d;box-shadow:0 0 12px rgba(61,220,132,.25)}\n")
+         .append(".ib.erron{border-color:#5c2630;color:#ff8484;background:#150b0e;box-shadow:0 0 12px rgba(255,93,93,.22)}\n")
          .append("#qwrap{display:inline-flex;align-items:center;gap:7px;background:#0b1420;border:1px solid #1c2a3a;border-radius:9px;padding:6px 11px;color:#7e919f;transition:border-color .18s}\n")
          .append("#qwrap:focus-within{border-color:#1f5c37}\n")
          .append("#qwrap .ic{width:14px;height:14px;color:#4fc3dd}\n")
@@ -417,16 +443,18 @@ public final class LoggerHandler implements HttpWorker.Handler {
 
          .append("<div id=hdr><div id=l1>")
          .append("<span id=logo><span data-ic=flame></span></span><span id=dot></span>")
-         .append("<span id=title>DB LOCAL SERVER</span><span id=ver>v15</span><span id=versub>· raw server log · com.db.local</span>")
+         .append("<span id=title>DB LOCAL SERVER</span><span id=ver>v16</span><span id=versub>· raw server log · com.db.local</span>")
          .append("<span id=sp></span>")
          .append("<label id=qwrap><span data-ic=search></span><input id=q placeholder='cari…'></label>")
+         .append("<button id=errf class=ib title='Filter: tampil warn/error saja'></button>")
+         .append("<button id=copy class=ib title='Salin log — tempel ke chat dev'></button>")
          .append("<button id=pause class=ib title='Jeda / lanjut pembaruan otomatis'></button>")
          .append("</div></div>\n")
 
          .append("<div id=crashbn></div>\n")
          .append("<div id=notices></div>\n")
          .append("<div id=stream>")
-         .append("<div id=banner><span id=blogo><span data-ic=flame></span></span><div><div class=b1>DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v15</div><div class=bl><span data-ic=terminal></span>raw server log — http://127.0.0.1:4000 — semua rincian tampil langsung</div></div></div>\n")
+         .append("<div id=banner><span id=blogo><span data-ic=flame></span></span><div><div class=b1>DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v16</div><div class=bl><span data-ic=terminal></span>raw server log — http://127.0.0.1:4000 — semua rincian tampil langsung</div></div></div>\n")
          .append("<div id=tb></div><div id=tail><span id=pausemark></span><span id=cursor> </span></div></div>\n")
 
          .append("<div id=ftr><span id=sum>…</span></div>\n")
@@ -440,7 +468,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
 
     private static String Js() {
         StringBuilder s = new StringBuilder(22000);
-        s.append("var S={since:0,q:'',auto:true};\n")
+        s.append("var S={since:0,q:'',auto:true,err:false};\n")
          .append("var ENT={},MAXC=3000,pollN=0,LASTSUM='',CRASHLATEST='',lastDrop=-1;\n")
          .append("function $(id){return document.getElementById(id)}\n")
          .append("function esc(x){return (x==null?'':''+x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}\n")
@@ -481,7 +509,9 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("function ic(n){return IC[n]||IC.info}\n")
          .append("function paintIcons(){var all=document.querySelectorAll('[data-ic]');\n")
          .append(" for(var i=0;i<all.length;i++)all[i].innerHTML=ic(all[i].getAttribute('data-ic'));\n")
-         .append(" $('pause').innerHTML=ic(S.auto?'pause':'play')}\n")
+         .append(" $('pause').innerHTML=ic(S.auto?'pause':'play');\n")
+         .append(" $('errf').innerHTML=ic('octagon');\n")
+         .append(" $('copy').innerHTML=ic('copy')}\n")
          .append("function compOf(e){\n")
          .append(" var k=e.kind||'';\n")
          .append(" if(k=='BOOT'||k=='SYS'||k=='EXTRACT'||k=='CRASH'||k=='LOGCAT')return {name:'CORE',icon:'cpu'};\n")
@@ -584,6 +614,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  +subHtml(e)\n")
          .append("  +'</div>'}\n")
          .append("function pass(e){\n")
+         .append(" if(S.err){var w=levelOf(e).word;if(w!='WARN'&&w!='ERROR')return false}\n")
          .append(" if(S.q){var t=((e.method||'')+' '+(e.path||'')+' '+(e.reqPreview||'')+' '+(e.respPreview||'')+' '+(e.extra||'')+' '+(e.error||'')).toLowerCase();if(t.indexOf(S.q)<0)return false}\n")
          .append(" return true}\n")
          .append("function applyFilter(){var rs=$('tb').children;\n")
@@ -607,8 +638,46 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" applyFilter();\n")
          .append(" if(LASTSUM)$('sum').innerHTML='<b>terakhir penting:</b> '+esc(LASTSUM);\n")
          .append(" if(pin)sc.scrollTop=sc.scrollHeight}\n")
-         .append("/* ---- v15: kontrol tinggal CARI + JEDA — dua-duanya berfungsi ---- */\n")
+         .append("/* ---- v16: 4 kontrol, SEMUA berfungsi: cari + filter error + salin + jeda ---- */\n")
          .append("$('q').oninput=function(){S.q=$('q').value.toLowerCase();applyFilter()};\n")
+         .append("$('errf').onclick=function(){S.err=!S.err;\n")
+         .append(" $('errf').classList.toggle('erron',S.err);applyFilter();\n")
+         .append(" flashSum(S.err?'filter ERROR aktif — tampil warn/error saja':'filter ERROR mati — tampil semua')};\n")
+         .append("function copyText(e){\n")
+         .append(" var k=e.kind||'HTTP',subs=[];\n")
+         .append(" var L=(e.time||'')+' #'+e.seq+' '+(e.port||0)+' '+levelOf(e).word+' '+compOf(e).name+' '+plainLine(e);\n")
+         .append(" if(e.headers)subs.push('  headers: '+e.headers);\n")
+         .append(" if(k=='HTTP'||(k=='WS'&&(e.method||'')!='WS')){\n")
+         .append("  if(e.reqPreview)subs.push('  request: '+e.reqPreview);\n")
+         .append("  else if((e.reqLen||0)>0)subs.push('  request: ('+fmtB(e.reqLen)+' binary)');\n")
+         .append("  if(e.respPreview)subs.push('  response: '+e.respPreview);\n")
+         .append("  else if((e.respLen||0)>0)subs.push('  response: ('+fmtB(e.respLen)+' binary)')}\n")
+         .append(" if(k=='WS'&&(e.method||'')=='WS'){\n")
+         .append("  if(e.reqPreview)subs.push('  recv: ('+fmtB(e.reqLen||0)+') '+e.reqPreview);\n")
+         .append("  else if((e.reqLen||0)>0)subs.push('  recv: ('+fmtB(e.reqLen)+' binary)');\n")
+         .append("  if(e.respPreview)subs.push('  send: ('+fmtB(e.respLen||0)+') '+e.respPreview)}\n")
+         .append(" if(e.error)subs.push('  error: '+e.error);\n")
+         .append(" if(e.extra)subs.push('  data: '+e.extra);\n")
+         .append(" return L+(subs.length?'\\n'+subs.join('\\n'):'')}\n")
+         .append("function flashSum(msg){$('sum').innerHTML='<b>'+esc(msg)+'</b>';\n")
+         .append(" setTimeout(function(){if(LASTSUM)$('sum').innerHTML='<b>terakhir penting:</b> '+esc(LASTSUM)},4000)}\n")
+         .append("function doCopy(){var rows=$('tb').children,out=[];\n")
+         .append(" for(var i=0;i<rows.length;i++){var e=ENT[rows[i].getAttribute('data-seq')];\n")
+         .append("  if(e&&pass(e))out.push(copyText(e))}\n")
+         .append(" if(!out.length){flashSum('kosong — tidak ada baris yang lolos filter');return}\n")
+         .append(" var txt=out.join('\\n'),n=out.length;\n")
+         .append(" var done=function(){flashSum('tersalin '+n+' baris — tempel ke chat dev')};\n")
+         .append(" if(navigator.clipboard&&navigator.clipboard.writeText){\n")
+         .append("  navigator.clipboard.writeText(txt).then(done,function(){fallbackCopy(txt,done)})}\n")
+         .append(" else fallbackCopy(txt,done)}\n")
+         .append("function fallbackCopy(txt,done){\n")
+         .append(" var ta=document.createElement('textarea');ta.value=txt;\n")
+         .append(" ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);\n")
+         .append(" ta.focus();ta.select();\n")
+         .append(" try{if(document.execCommand('copy'))done();else flashSum('gagal salin — pakai /download arsip')}\n")
+         .append(" catch(e){flashSum('gagal salin — pakai /download arsip')}\n")
+         .append(" document.body.removeChild(ta)}\n")
+         .append("$('copy').onclick=doCopy;\n")
          .append("$('pause').onclick=function(){S.auto=!S.auto;\n")
          .append(" $('pause').innerHTML=ic(S.auto?'pause':'play');\n")
          .append(" $('cursor').style.display=S.auto?'inline-block':'none';\n")

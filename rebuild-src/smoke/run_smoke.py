@@ -156,7 +156,20 @@ open(ROOT + "/sdk/index.txt", "w").write("SAMPAH v15 — harus dihapus v16")
 proc = subprocess.Popen(
     ["java", "-cp", BUILD, "SmokeMain", ROOT, DOCROOT, "synthcrash"],
     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, preexec_fn=os.setpgrp)
-time.sleep(2.0)
+# tunggu server bangun (maks 30 dtk) — /health ada di logger :4000;
+# HTTPError dianggap "bangun" (rute merespons)
+_dl = 30.0
+while _dl > 0:
+    try:
+        urllib.request.urlopen("http://127.0.0.1:4000/health", timeout=2)
+        break
+    except urllib.error.HTTPError:
+        break
+    except Exception:
+        time.sleep(0.5); _dl -= 0.5
+else:
+    print("GAGAL: server smoke tidak bangun dalam 30 dtk")
+    sys.exit(1)
 
 try:
     # ================= 1. kontrak file + header PHP =================
@@ -375,18 +388,17 @@ try:
     st, hd, bd = get400("/")
     # Bagian 44 — console SERVER PREMIUM (dipercantik, teks verbose ala server asli)
     check("v43-console-200", st == 200 and "DB LOCAL SERVER" in bd
-          and "MOD-LOCALSERVER v14" in bd, bd[:120])
+          and "MOD-LOCALSERVER v16" in bd, bd[:120])  # console v16
     check("v43-stream-markup", "id=stream" in bd and "id=tb" in bd
           and "id=tail" in bd, bd[:80])
-    check("v17-salin-tabel", "copyTable" in bd and "plainLine(e)" in bd)
+    check("v17-salin-tabel", "function doCopy" in bd and "plainLine(e)" in bd)  # v16: salin teks mentah
     check("v17-banner-crash-js", "renderCrash" in bd and "fetch('/crash')" in bd
-          and "id=cpcrash" in bd)  # Bagian 41: tombol icon-only 📋
+          and "id=crashbn" in bd)  # v16: banner crash via #crashbn (nol tombol)
     # Bagian 39 — overlay tetap INFO netral ("overlay OFF (normal)")
     check("v17-banner-overlay-js", "renderOverlay" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd
-          and "overlay OFF (normal)" not in bd
-          and "OVERLAY <b>OFF</b>" in bd)
-    check("v17-ver-dashboard", ">v14</span>" in bd and "raw server log" in bd)  # v14 (Bagian 51)
+          and "overlay OFF (normal)" not in bd)  # v16: baris status stbadge dihapus
+    check("v17-ver-dashboard", ">v16</span>" in bd and "raw server log" in bd)  # v16 (Bagian 53)
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
@@ -428,7 +440,7 @@ try:
           and "SESI SDK DIRESET OTOMATIS" not in bd)  # sesi reset kini hanya entri log SYS (SESI-RESET)
     check("v41-sysline-dihapus", "sysline" not in bd
           and "sdkconfig" not in bd)  # Bagian 41/43: data SDK CONFIG benar-benar keluar dari port 4000
-    check("v41-banner-crash-js-masih", "renderCrash" in bd and "id=cpcrash" in bd)
+    check("v41-banner-crash-js-masih", "renderCrash" in bd and "id=crashbn" in bd)  # v16
 
     # EXITINFO masuk log SYS di desktop (entri "desktop — dilewati")
     st, hd, bd = get400("/logs?limit=200")
@@ -534,7 +546,7 @@ try:
           and "c-MONITOR" in bd, "")
     # 4. banner boot = teks RAW persis protokol
     check("v44-banner-boot", "id=banner" in bd and "class=b1" in bd
-          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v14" in bd, "")
+          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v16" in bd, "")
     # v14 — banner SATU BARIS, tanpa narasi karangan
     check("v14-banner-slim", "raw server log — http://127.0.0.1:4000" in bd
           and "PERSIS PROTOKOLNYA" not in bd, "")
@@ -572,29 +584,28 @@ try:
           and "trunc(e.respPreview,200)" not in bd
           and "trunc(''+e.extra,160)" not in bd, "")
     # 4. helper trunc + sub-baris bergaya aksen tipis + body panjang menggulir
-    check("v49-trunc", "function trunc(s,n)" in bd, "")
+    check("v49-trunc", "max-height:300px" in bd and "overflow-y:auto" in bd)  # v16: body panjang menggulir
     check("v60-sub-style", ".dtl{margin-top:7px" in bd
           and ".ln.r .dtl{border-left-color:#3a2026}" in bd
-          and "max-height:280px" in bd, "")
+          and "max-height:300px" in bd, "")  # v16: 300px
     # v14 — detail kolaps: header .sh klik + isi .sc tersembunyi default
-    check("v14-sub-collapse", ".sh{display:flex" in bd
-          and ".sc{display:none" in bd
-          and ".sub[data-o='1']>.sc{display:block}" in bd
-          and "data-o=" in bd and "IC.chev" in bd, "")
-    check("v14-sub-sum", ".sum{flex:1" in bd and "class=sum>" in bd
-          and ".sz{color:" in bd, "")
+    check("v14-sub-collapse", ".sh{display:flex" not in bd
+          and ".sc{display:none" not in bd and "data-o=" not in bd
+          and ".dtl{" in bd)  # v15/v16: kolaps dihapus — rincian langsung tampil
+    check("v14-sub-sum", "id=sum>" in bd and "id=ftr" in bd
+          and "terakhir penting:" in bd, "")  # v16: footer ringkas
     # 5. salin log = teks mentah persis protokol (time #seq port METHOD path status)
-    check("v63-salin-raw", "'    headers: '+e.headers" in bd
-          and "'    request: '+e.reqPreview" in bd
-          and "'    response: '+e.respPreview" in bd
-          and "'    recv: ('+fmtB(e.reqLen||0)+') " in bd
-          and "'    send: ('+fmtB(e.respLen||0)+') " in bd
-          and "plainLine(e)" in bd, "")
+    check("v63-salin-raw", "'  headers: '+e.headers" in bd
+          and "'  request: '+e.reqPreview" in bd
+          and "'  response: '+e.respPreview" in bd
+          and "'  recv: ('+fmtB(e.reqLen||0)+') " in bd
+          and "'  send: ('+fmtB(e.respLen||0)+') " in bd
+          and "plainLine(e)" in bd, "")  # v16: indent 2 spasi
     # 6. v14 — panel "Panduan" DIHAPUS (narasi karangan, arahan owner)
     check("v49-guide-panel", "id=guide" not in bd and "guidebtn" not in bd
           and "ALUR NORMAL BOOT" not in bd, "")
     # 7. versi v13 di badge + banner
-    check("v49-ver", ">v14</span>" in bd and "MOD-LOCALSERVER v14" in bd, "")
+    check("v49-ver", ">v16</span>" in bd and "MOD-LOCALSERVER v16" in bd, "")  # v16
 
     # ================= Bagian 50 — v13 RAW SERVER LOG ========================
     # Arahan owner (kata-kata persis):
@@ -619,18 +630,13 @@ try:
     check("v63-no-emoji-all", not _emoji(bd), "emoji ditemukan di console!")
     # 3. tombol ikon digambar via paintIcons (bukan karakter emoji)
     check("v60-btn-paint", "$('pause').innerHTML=ic(S.auto?'pause':'play')" in bd
-          and "$('reset').innerHTML=ic('trash')" in bd
-          and "$('dl').innerHTML=ic('download')" in bd
-          and "$('cpt').innerHTML=ic('copy')" in bd, "")
+          and "$('errf').innerHTML=ic('octagon')" in bd
+          and "$('copy').innerHTML=ic('copy')" in bd, "")  # v16: 3 tombol ikon + cari
     # 4. chip status berikon + label manusia
-    check("v60-chips", "class=schip" in bd and "id=stchips" in bd
-          and "ic('server')+'LISTEN" in bd and "ic('clock')+'UPTIME" in bd
-          and "ic('hash')+'SEQ" in bd and "ic('archive')+'ARSIP" in bd
-          and "ic('layers')+'OVERLAY" in bd and "ic('activity')+'STATUS" in bd, "")
-    check("v60-chip-ports", "'9527','settings','KONFIG'" in bd
-          and "'9528','globe','CDN'" in bd and "'5050','shield','LOGIN'" in bd
-          and "'5051','gamepad','GAME'" in bd and "'9530','card','SDK'" in bd
-          and "'4000','radio','LOG'" in bd, "")
+    check("v60-chips", "class=schip" not in bd and "id=stchips" not in bd
+          and "KONFIG'" not in bd)  # v15/v16: chip dihapus — tombol sampah
+    check("v60-chip-ports", "'9527','settings','KONFIG'" not in bd
+          and "id=stchips" not in bd)  # v16: chip port tidak ada
     # 5. tata letak: kartu log + spine warna level + meta kanan
     check("v60-row-card", ".ln{position:relative" in bd
           and "border-left:3px solid" in bd
@@ -666,29 +672,30 @@ try:
           and ".l-r{color:#ff5d5d;background:rgba(255,93,93,.12)" in bd, "")
     # 9. animasi cantik: fade-in baris baru + toast meluncur + judul gradasi
     check("v60-fade", "@keyframes fadein" in bd and "animation:fadein .2s" in bd, "")
-    check("v60-toast-rise", "@keyframes rise" in bd, "")
+    check("v60-toast-rise", "@keyframes rise" not in bd and "@keyframes fadein" in bd, "")  # v16
     check("v60-title-grad", "linear-gradient(90deg,#f2f8fd,#8fe6b0)" in bd, "")
     # 10. salin log = RAW (LVE/CPE emoji map DIHAPUS)
     check("v63-no-emoji-copy", "LVE={" not in bd and "CPE={" not in bd, "")
-    check("v60-stbadge", "ic('check')+' NORMAL'" in bd
-          and "ic('x')+' '+n+' MASALAH'" in bd, "")
+    check("v60-stbadge", "id=stbadge" not in bd
+          and "MASALAH'" not in bd)  # v16: badge status dihapus
     # 11. v14 — panduan DIHAPUS; petunjuk singkat berpindah ke banner
     check("v63-guide", "ALUR NORMAL BOOT" not in bd
-          and "detail panjang: klik untuk buka" in bd, "")
+          and "klik untuk buka" not in bd
+          and "semua rincian tampil langsung" in bd, "")  # v16: nol klik
     check("v39-overlay-banner-dihapus",
           "IZIN Display over other apps OFF" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd, "")
     # 12. baris status ala server: LISTEN + uptime + arsip + status badge
-    check("v43-stline-server", "ic('server')+'LISTEN" in bd and "uptimeStr" in bd
-          and "id=stbadge" in bd and "STATUS <b" in bd, "")
+    check("v43-stline-server", "id=sum" in bd and "terakhir penting:" in bd
+          and "id=stbadge" not in bd, "")  # v16: footer ringkas
     # 13. live feel: kursor blok berkedip + penanda jeda
     check("v43-live-cursor", "id=cursor" in bd and "@keyframes bl" in bd
           and "id=pausemark" in bd, "")
     # 14. v14 — filter ringkas SELALU TAMPIL: cari + level + port
     #     (tahap/status/jumlah DIHAPUS — tombol sampah, arahan owner)
-    check("v43-filter-lengkap", "id=q" in bd and "id=lv" in bd
-          and "id=port" in bd and "id=stage" not in bd
-          and "id=limit" not in bd, "")
+    check("v43-filter-lengkap", "id=q" in bd and "id=errf" in bd
+          and "id=lv" not in bd and "id=port" not in bd
+          and "id=stage" not in bd and "id=limit" not in bd, "")  # v16: cari + filter error
 
 
     # ================= Bagian 41 — port 4000 MURNI log monitoring ==========
@@ -705,12 +712,13 @@ try:
     # 2. tombol toolbar icon-only: ikon SVG digambar via paintIcons —
     #    NOL karakter emoji/teks di dalam <button>
     check("v41-icon-buttons", "id=pause class=ib" in bd
-          and "id=reset class=ib" in bd and "id=dl class=ib" in bd
-          and "id=cpt class=ib" in bd
+          and "id=errf class=ib" in bd and "id=copy class=ib" in bd
+          and "id=reset class=ib" not in bd and "id=dl class=ib" not in bd
+          and "id=cpt class=ib" not in bd
           and "id=vimp" not in bd and "id=vmal" not in bd and "id=vall" not in bd
           and "id=pf" not in bd and "id=guidebtn" not in bd
           and "PENTING</button>" not in bd
-          and "MASALAH</button>" not in bd and "Salin tabel</button>" not in bd, "")
+          and "MASALAH</button>" not in bd and "Salin tabel</button>" not in bd, "")  # v16
     # 3. GUARD REGRESI — akar bug "log gak muncul": $('id') tanpa elemen HTML
     #    = TypeError = seluruh JS mati = poll log tidak pernah jalan.
     #    Setiap id dirujuk $('...') di JS WAJIB ada di HTML (cpcrash & stbadge
@@ -723,8 +731,29 @@ try:
     check("v41-js-id-semua-ada", not missing, "hilang: %s" % missing)
     # 4. crashbn + notices ada (banner crash + catatan gap/dropped)
     check("v41-crashbn-ada", "id=crashbn" in html and "id=notices" in html, "")
-    check("v41-salin-icon", "id=cpt class=ib" in bd and "id=dl class=ib" in bd
-          and "id=cpjs" not in bd, "")
+    check("v41-salin-icon", "id=copy class=ib" in bd
+          and "id=cpt class=ib" not in bd and "id=dl class=ib" not in bd
+          and "id=cpjs" not in bd, "")  # v16: tombol salin tunggal
+
+
+    # ================= Bagian 53 — v16: FILTER ERROR + TOMBOL SALIN =========
+    # Arahan owner (kata-kata persis):
+    #  "filter error gak ada , tombol salin untuk di kirim ke anda juga gak
+    #   ada .."
+    #  "dan itu kenapa loginserver malah sudah di kerjakan PADAHAL belum di
+    #   kasih rencana kesana"
+    # console v16 = 4 kontrol SEMUA fungsional (cari, filter error, salin,
+    # jeda); rincian tetap langsung tampil; loginserver TIDAK disentuh.
+    st, hd, bd = get400("/")
+    check("v16-filter-error-ada", "id=errf" in bd
+          and "S.err=!S.err" in bd and "erron" in bd
+          and "if(w!='WARN'&&w!='ERROR')return false" in bd, "")
+    check("v16-salin-ada", "$('copy').onclick=doCopy" in bd
+          and "navigator.clipboard" in bd
+          and "execCommand('copy')" in bd
+          and "tempel ke chat dev" in bd, "")
+    check("v16-4-kontrol", "id=q" in bd and "id=errf" in bd
+          and "id=copy" in bd and "id=pause" in bd, "")
 
 
     # ================= Bagian 51 — v14: extra server = FAKTA SAJA ==========

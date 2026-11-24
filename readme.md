@@ -4300,3 +4300,67 @@ dengan injeksi `LocalServerStarter.start` yang diketahui):
    tombol JEDA — tanpa pil, tanpa select, tanpa tombol mati.
 4. Setiap log: rincian `headers/request/response/recv/send/data/error` langsung
    terbuka penuh — TIDAK PERLU KLIK apa pun.
+### 53. BAGIAN 53 — v16: FILTER ERROR + TOMBOL SALIN (console SAJA)
+
+Arahan owner (kata-kata persis):
+
+- "filter error gak ada , tombol salin untuk di kirim ke anda juga gak ada .."
+- "dan itu kenapa loginserver malah sudah di kerjakan PADAHAL belum di kasih
+  rencana kesana"
+
+Jawaban v16 — console SAJA, server/logic NOL perubahan:
+
+1. **FILTER ERROR kembali** (tombol oktagon merah `#errf`): aktif → hanya
+   WARN/ERROR tampil (status ≥400, error, `result:false`, CRASH) —
+   berpasangan dengan filter cari. v15 menghapusnya; owner minta ada.
+2. **TOMBOL SALIN kembali** (ikon copy `#copy`): menyalin SEMUA baris
+   tersaring sebagai TEKS MENTAH protokol — `time #seq port LEVEL COMP
+   method path status bytes dur` + sub-baris `headers:/request:/response:/
+   recv:/send:/error:/data:` verbatim — siap tempel ke chat dev. Clipboard
+   `navigator.clipboard` + fallback `textarea+execCommand` (aman WebView);
+   konfirmasi lewat footer (NOL popup).
+3. **Tombol total 4, SEMUA fungsional**: cari (teks) · filter error · salin ·
+   jeda. Ikon SVG, NOL emoji.
+4. **LOGIN SERVER (5050/9528) TIDAK disentuh** — aktif sejak v13 karena
+   config game `setting_BS_Android.bin` (XOR "DragonBall") menunjuk
+   `loginServer=127.0.0.1 loginPort=9528 loginWebPort=5050`; engine Egret
+   menelepon sendiri saat boot + SDK auto login GUEST. Bukan pekerjaan baru —
+   menunggu rencana owner.
+
+Verifikasi:
+
+- **Smoke desktop: 168 PASS, 0 FAIL** (23 cek console era v14 diperbarui ke
+  kontrak v16 + 3 cek baru `v16-filter-error-ada` / `v16-salin-ada` /
+  `v16-4-kontrol`; server boot smoke diberi wait-loop /health 30 dtk).
+- **Browser verify (Playwright/Chromium headless): 21 PASS, 0 FAIL** —
+  badge+banner v16, tepat 3 tombol + cari, ikon SVG, NOL emoji, rincian
+  inline terlihat tanpa klik, filter error hanya WARN/ERROR + footer
+  konfirmasi, salin → clipboard berformat `2026-… #seq port LEVEL COMP …`
+  + sub-baris ikut, footer "tersalin N baris", jeda + mark, NOL error
+  console/page, mobile 375 px 3 tombol terlihat.
+
+#### 53.4 APK v16
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v16).apk` (LFS di repo; pola v1→…→v10→v12→v13→v14→v15→v16) |
+| Ukuran | **203.084.660 B** |
+| sha256 | `60e5c4c1dc61209b3afa67faf4d6c02800f7da71ec87522f44d3c8527d3635c3` |
+| classes.dex | 6.697.176 B sha `9db1bba3…533d642658` (patch airplane 4 unit — reproduksi deterministik `patch_airplane.py`, byte-identik v15) |
+| classes2.dex | 138.864 B sha `5a4f42d2…f475f649654` (console FILTER ERROR + SALIN v16) |
+| Penanda | BOOT/crash/dashboard/banner = **v16** |
+| Sign | v1+v2+v3, keystore `dblocalmod`, exp 2056 — install-over OK |
+
+#### 53.5 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v16).apk` langsung di atas v15/v14/v13
+   (keystore sama — tanpa uninstall).
+2. Boot game → buka `127.0.0.1:4000` → badge **v16**.
+3. Di atas log ada 4 kontrol saja: cari · filter error (oktagon, merah saat
+   aktif) · salin (hasil tempel ke chat dev) · jeda. Semua rincian log tampil
+   langsung — TANPA klik.
+4. Mode pesawat: tanpa dialog "network error" (patch dex tetap terpasang).
+
+Toolchain dibangun ulang pasca-reset: ECJ 3.33.0 (mirror Aliyun, jar TIDAK
+di-commit) + D8/r8 8.3.37 (sha `59753e70…439` sesuai dokumentasi) di
+`tools/`; git-lfs dibutuhkan lagi untuk push APK.
