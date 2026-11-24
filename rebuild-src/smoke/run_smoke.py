@@ -375,7 +375,7 @@ try:
     st, hd, bd = get400("/")
     # Bagian 44 — console SERVER PREMIUM (dipercantik, teks verbose ala server asli)
     check("v43-console-200", st == 200 and "DB LOCAL SERVER" in bd
-          and "MOD-LOCALSERVER v8" in bd, bd[:120])
+          and "MOD-LOCALSERVER v9" in bd, bd[:120])
     check("v43-stream-markup", "id=stream" in bd and "id=tb" in bd
           and "id=tail" in bd, bd[:80])
     check("v17-salin-tabel", "copyTable" in bd and "plain(describe(e))" in bd)
@@ -385,7 +385,7 @@ try:
     check("v17-banner-overlay-js", "renderOverlay" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd
           and "overlay OFF (normal)" in bd)
-    check("v17-ver-dashboard", ">v8</span>" in bd and "/v1/system/init" in bd)  # v8 (Bagian 44)
+    check("v17-ver-dashboard", ">v9</span>" in bd and "/v1/system/init" in bd)  # v9 (Bagian 47)
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
@@ -422,7 +422,7 @@ try:
     # Bagian 43: rute sdkconfig sudah dihapus — sesi reset kini HANYA terlihat
     # sebagai entri log SYS (SESI-RESET). Panel web di port 4000 tidak ada.
     st, hd, bd = get400("/")
-    check("v1-ver-dashboard", "v8" in bd, bd[:80])
+    check("v1-ver-dashboard", "v9" in bd, bd[:80])
     check("v41-banner-sesi-dihapus", "renderSession" not in bd and "sesbn" not in bd
           and "SESI SDK DIRESET OTOMATIS" not in bd)  # sesi reset kini hanya entri log SYS (SESI-RESET)
     check("v41-sysline-dihapus", "sysline" not in bd
@@ -543,13 +543,13 @@ try:
           and "c-SDK" in bd and "c-LOGIN" in bd and "c-GAME" in bd
           and "c-MONITOR" in bd, "")
     # 6. baris detail ↳ + salin log = teks format server persis
-    check("v44-detail-line", "class=dt>↳" in bd, "")
+    check("v44-detail-line", 'sub dt">↳' in bd, "")
     check("v44-salin-server", "compOf(e)+']  '" in bd
           and "plain(detailOf(e))" in bd, "")
     # 7. banner boot server ala console asli (dipercantik — bukan dipangkas;
     #    border CSS agar presisi di SEMUA font device)
     check("v44-banner-boot", "id=banner" in bd and "class=b1" in bd
-          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v8" in bd
+          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v9" in bd
           and "console log real-time" in bd, "")
     # 8. header premium: titik status bercahaya + badge versi
     check("v44-hdr-premium", "id=dot" in bd and "id=ver" in bd
@@ -558,6 +558,40 @@ try:
     check("v39-overlay-info-verdict",
           "m=='OVERLAY'" in bd and "['INFO','i']" in bd, "")
     check("v39-overlay-not-problem", "=='OVERLAY')return false" in bd, "")
+
+    # ================= Bagian 47 — v9 FULL DISCLOSURE (tanpa klik) ==========
+    # Arahan owner (kata-kata persis):
+    #  "UI website port 4000 itu elegan !! estetik !!!"
+    #  "dan kenapa harus di klik bagian tertentu baru muncul keterangan
+    #   lengkap . !! itu bukan definisi server log !!"
+    #  "yg bener lah !! banyak itu log gk jelas !!!"
+    st, hd, bd = get400("/")
+    # 1. modal klik-detail DIHAPUS TOTAL (bukan definisi server log)
+    check("v49-no-modal", "modal" not in bd.lower() and "openModal" not in bd
+          and "detOf" not in bd and "allText" not in bd, "")
+    check("v49-stream-no-click", "stream').addEventListener" not in bd, "")
+    # 2. SEMUA keterangan tampil INLINE di tiap entri
+    check("v49-inline-req", "→ req</b>" in bd and "sub rq" in bd
+          and "trunc(e.reqPreview,180)" in bd, "")
+    check("v49-inline-resp", "← resp</b>" in bd and "sub rs" in bd
+          and "trunc(e.respPreview,180)" in bd, "")
+    check("v49-inline-frame-ws", "← frame</b>" in bd, "")
+    check("v49-inline-extra", "· extra" in bd and "sub ex" in bd
+          and "trunc(''+e.extra,140)" in bd, "")
+    check("v49-bin-hint", "' biner)</div>'" in bd, "")
+    # 3. helper trunc + sub-baris bergaya aksen tipis (elegan)
+    check("v49-trunc", "function trunc(s,n)" in bd, "")
+    check("v49-sub-style", ".sub{display:block" in bd
+          and "border-left:2px solid #1e2c3a" in bd
+          and ".ln.bad .sub{border-left-color:#3a2026}" in bd, "")
+    # 4. salin log = format server PENUH (main + ↳ + req + resp + extra)
+    check("v49-salin-lengkap", "→ req '+trunc(e.reqPreview,180)" in bd
+          and "← resp '+trunc(e.respPreview,180)" in bd, "")
+    # 5. panduan inline (bukan modal) + menyebut definisi server log
+    check("v49-guide-panel", "id=guide" in bd and "definisi server log" in bd
+          and "guidebtn" in bd, "")
+    # 6. versi v9 di badge + banner
+    check("v49-ver", ">v9</span>" in bd and "MOD-LOCALSERVER v9" in bd, "")
     check("v39-overlay-banner-dihapus",
           "IZIN Display over other apps OFF" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd, "")
@@ -600,7 +634,7 @@ try:
     check("v41-js-id-semua-ada", not missing, "hilang: %s" % missing)
     # 4. crashbn + notices ada (banner crash + catatan gap/dropped)
     check("v41-crashbn-ada", "id=crashbn" in html and "id=notices" in html, "")
-    check("v41-modal-icon", ">\U0001f4cb</button>" in bd and ">\u2716\ufe0f</button>" in bd, "")
+    check("v41-salin-icon", ">\U0001f4cb</button>" in bd, "")
 
     # ================= Bagian 42 — popup "pengingat" DIHAPUS TOTAL ==========
     # Laporan owner (kata-kata persis):

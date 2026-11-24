@@ -15,7 +15,8 @@ import java.util.Map;
  *   "hadeeeh malah makin cacat. ini maunya saya di percantik bukan di
  *    pangkas.. teks yg muncul itu seperti teks layaknya server original..
  *    bukan teks yg output nya minimalis"
- * CONSOLE v8 — SERVER CONSOLE PREMIUM (dipercantik, TIDAK dipangkas):
+ * CONSOLE v8 — SERVER CONSOLE PREMIUM (Bagian 44; kini DISUPERSEDUI oleh
+ *   CONSOLE v9 di bawah — Bagian 47 FULL DISCLOSURE):
  *   - teks log kini VERBOSE seperti console server asli: TIAP PERISTIWA
  *     dijabarkan penuh — kalimat deskripsi lengkap + baris detail ↳ berisi
  *     METHOD PATH · STATUS · req/resp · durasi (contoh:
@@ -273,30 +274,34 @@ public final class LoggerHandler implements HttpWorker.Handler {
         }
     }
 
-    /* ================= console SERVER PREMIUM (Bagian 44) =================
+    /* ================= console FULL DISCLOSURE (Bagian 47, v9) =================
      * Arahan owner 24 Nov 2026 (kata-kata persis):
-     *   "hadeeeh malah makin cacat. ini maunya saya di percantik bukan di
-     *    pangkas.. teks yg muncul itu seperti teks layaknya server original..
-     *    bukan teks yg output nya minimalis"
-     * Jawaban v8 — konsol server premium (keseimbangan tepat atas dua arahan
-     * berturut-turut: Bagian 39 "stylish tapi gak natural" vs Bagian 44
-     * "dipercantik bukan dipangkas, teks seperti server original"):
-     *  1. TEKS VERBOSE seperti server asli — kalimat deskripsi penuh per
-     *     peristiwa + baris detail ↳ (METHOD PATH · STATUS · SIZE · DURASI);
-     *  2. FORMAT baris = WAKTU(ms) LEVEL [KOMPONEN] pesan:
-     *     - LEVEL: INFO hijau / DEBUG cyan / WARN amber / ERROR merah
-     *       (persis konvensi log server: DEBUG=traffic halus seperti aset
-     *       & heartbeat; WARN=4xx/redirect/perlu perhatian; ERROR=gagal);
-     *     - KOMPONEN: [CORE] [CONFIG] [CDN] [SDK] [LOGIN] [GAME] [MONITOR]
-     *       — tag berwarna khas per layanan seperti komponen server asli;
-     *  3. UI DIPERCANTIK: header premium + titik status bercahaya + badge
-     *     versi, banner boot server saat console dibuka, kursor blok
-     *     berkedip, baris detail terpisah rapi, baris masalah merah gelap;
-     *  4. SALIN LOG = teks format server persis (siap tempel);
+     *   "UI website port 4000 itu elegan !! estetik !!!"
+     *   "dan kenapa harus di klik bagian tertentu baru muncul keterangan
+     *    lengkap . !! itu bukan definisi server log !!"
+     *   "yg bener lah !! banyak itu log gk jelas !!!"
+     * Jawaban v9 — console server FULL DISCLOSURE:
+     *  1. SEMUA KETERANGAN TAMPIL INLINE — TANPA KLIK. Definisi server log:
+     *     tiap baris mandiri penuh. Modal klik-detail DIHAPUS TOTAL. Tiap
+     *     entri kini mengalir lengkap di stream:
+     *       WAKTU LEVEL [KOMPONEN] kalimat peristiwa penuh
+     *         ↳ METHOD PATH · STATUS · durasi · req · resp
+     *         → req {"body":"..."}          (selalu tampil)
+     *         ← resp {"result":...}         (selalu tampil)
+     *         · extra ...                    (selalu tampil bila ada)
+     *  2. UI ELEGAN & ESTETIK: palet gelap senyap, hierarki tipografi jelas
+     *     (baris utama terang, sub-baris dim dengan aksen tipis), pemisah
+     *     baris halus, badge level & komponen berwarna, header premium,
+     *     banner boot, kursor blok berkedip — dipercantik, bukan dipangkas.
+     *  3. LOG JELAS: kalimat peristiwa selalu lengkap (SIAPA-APA-HASIL);
+     *     fallback endpoint tak-dikenal pun dijabarkan utuh, tidak ada lagi
+     *     baris misterius.
+     *  4. SALIN LOG = teks PERSIS format server (main + ↳ + → req + ← resp
+     *     + · extra) — ditempel ke mana pun tetap terlihat log server asli.
      *  5. yang TIDAK berubah: overlay=INFO (39), tombol ikon (41), port
      *     4000 murni monitoring + rute sdkconfig/fix 404 (41/43), tanpa
      *     "tips" (42), poll incremental + filter lengkap + Salin JSON +
-     *     unduh arsip + banner CRASH (32).
+     *     unduh arsip + banner CRASH (32), level & komponen (44).
      */
 
     private String dashboardHtml() {
@@ -341,7 +346,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("#banner{display:inline-block;border:1px solid #245c3c;border-radius:6px;background:linear-gradient(180deg,#0a1410,#081008);box-shadow:0 0 18px rgba(63,143,92,.18);padding:7px 14px;margin:0 0 8px;color:#4fce7f;font-size:11.5px;line-height:1.65}\n")
          .append("#banner .b1{font-weight:700;letter-spacing:.4px}\n")
          .append("#banner .dim{color:#3d5547}\n")
-         .append(".ln{white-space:pre-wrap;word-break:break-word;padding:2px 5px;border-radius:4px}\n")
+         .append(".ln{white-space:pre-wrap;word-break:break-word;padding:5px 6px;border-radius:4px;border-bottom:1px solid rgba(27,40,54,.42)}\n")
          .append(".ln:hover{background:#0e1722}\n")
          .append(".ln.bad{background:#160a0e}\n")
          .append(".sq{display:inline-block;width:5.5ch;color:#39434d}\n")
@@ -353,7 +358,13 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(".ev{color:#c6d2de}\n")
          .append(".ev.w{color:#e0a93e}.ev.r{color:#e05d5d}.ev.d{color:#7f919e}\n")
          .append(".ev .f{color:#e05d5d;font-weight:700}\n")
-         .append(".dt{display:block;color:#51626f;font-size:11px;margin-left:30.5ch;white-space:pre-wrap;word-break:break-word}\n")
+         .append(".sub{display:block;margin-left:30.5ch;white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.5;border-left:2px solid #1e2c3a;padding-left:8px}\n")
+         .append(".dt{color:#51626f}\n")
+         .append(".rq{color:#6d7f8d}.rq b{color:#9db2c2;font-weight:600}\n")
+         .append(".rs{color:#5f8a74}.rs b{color:#8fcead;font-weight:600}\n")
+         .append(".ex{color:#586b7c}\n")
+         .append(".ln.bad .sub{border-left-color:#3a2026}\n")
+         .append(".ln:hover .sub{border-left-color:#2e4256}\n")
          .append("#cursor{display:inline-block;width:8px;height:14px;background:#43d17c;vertical-align:-2px;animation:bl 1.1s step-end infinite;box-shadow:0 0 8px rgba(67,209,124,.6)}\n")
          .append("@keyframes bl{50%{opacity:0}}\n")
          .append("#pausemark{color:#64778a;font-style:italic}\n")
@@ -362,15 +373,14 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("#sum b{color:#c6d2de;font-weight:600}\n")
          .append("#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#0a170f;color:#7ee2a8;border:1px solid #2f6e44;padding:7px 16px;border-radius:6px;display:none;z-index:50;font-size:12px;box-shadow:0 4px 18px rgba(0,0,0,.45)}\n")
          .append("#toast.err{background:#130a0c;color:#e05d5d;border-color:#4a262c}\n")
-         .append("#modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(3,6,10,.86);display:none;z-index:40}\n")
-         .append("#modalbox{background:#0a1018;border:1px solid #243447;border-radius:8px;max-width:780px;margin:30px auto;padding:12px;max-height:85vh;box-shadow:0 8px 40px rgba(0,0,0,.5)}\n")
-         .append("#modalhead{display:flex;justify-content:space-between;gap:8px;color:#43d17c;margin-bottom:8px;font-size:12px;align-items:center}\n")
-         .append("#modalpre{max-height:64vh;overflow:auto;white-space:pre-wrap;word-break:break-word;background:#070b11;padding:10px;font-size:12px;color:#c6d2de;border:1px solid #1b2836;border-radius:5px}\n")
-         .append("@media(max-width:640px){.sq{display:none}.dt{margin-left:2px}body{font-size:12px}#banner{font-size:10.5px;padding:6px 10px}}\n")
+         .append("#guide{display:none;padding:10px 14px;border-bottom:1px solid #1b2836;background:#0a1018;color:#8fa0b0;font-size:11.5px;line-height:1.7;white-space:pre-wrap}\n")
+         .append("#guide b{color:#43d17c}\n")
+         .append("#guide .gd{color:#5b6c7d}\n")
+         .append("@media(max-width:640px){.sq{display:none}.sub{margin-left:2px}body{font-size:12px}#banner{font-size:10.5px;padding:6px 10px}}\n")
          .append("</style></head><body>\n")
 
          .append("<div id=hdr><div id=l1>")
-         .append("<span id=dot></span><span id=title>DB LOCAL SERVER</span><span id=ver>v8</span><span id=versub>· live console · com.db.local</span>")
+         .append("<span id=dot></span><span id=title>DB LOCAL SERVER</span><span id=ver>v9</span><span id=versub>· live console · com.db.local</span>")
          .append("<span id=sp></span>")
          .append("<button id=vimp class=lbtn title='Tampilkan penting saja'>⭐</button>")
          .append("<button id=vmal class=lbtn title='Tampilkan masalah saja'>❌</button>")
@@ -394,7 +404,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("<div id=crashbn></div>\n")
          .append("<div id=notices></div>\n")
          .append("<div id=stream>")
-         .append("<div id=banner><span class=b1>DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v8</span><br>console log real-time · http://127.0.0.1:4000<br><span class=dim>server berjalan — log dari semua layanan mengalir otomatis (pembaruan tiap 1,2 dtk)</span></div>\n")
+         .append("<div id=banner><span class=b1>DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v9</span><br>console log real-time · http://127.0.0.1:4000<br><span class=dim>server berjalan — log dari semua layanan mengalir otomatis (pembaruan tiap 1,2 dtk)</span></div>\n")
          .append("<div id=tb></div><div id=tail><span id=pausemark></span><span id=cursor> </span></div></div>\n")
 
          .append("<div id=ftr>")
@@ -404,7 +414,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("<span id=sum>…</span></div>\n")
 
          .append("<div id=toast></div>\n")
-         .append("<div id=modal><div id=modalbox><div id=modalhead><span id=modaltitle></span><span><button id=modalcp class=lbtn title='Salin isi detail'>📋</button> <button id=modalx class=lbtn title='Tutup detail'>✖️</button></span></div><pre id=modalpre></pre></div></div>\n")
+         .append("<div id=guide><b>PANDUAN SINGKAT</b>\n\nAlur normal boot:\n  konfigurasi 9527 → CDN 9528 → SDK 9530 → layar login → TAMU / DAFTAR / LOGIN → verifikasi 5050 → game 5051\n\nWarna level log (ala server asli):\n  <b>INFO hijau</b> = alur normal · <b>DEBUG cyan</b> = traffic halus (aset game, heartbeat, konfigurasi kosong)\n  <b>WARN kuning</b> = perlu perhatian (4xx/redirect/product) · <b>ERROR merah</b> = gagal / crash\n\nTiap entri log lengkap tanpa klik (definisi server log):\n  baris utama = peristiwa · ↳ endpoint+status+durasi · → req body terkirim · ← resp jawaban server · · extra data protokol\n\nIzin overlay OFF = NORMAL (game asli tidak memerlukan overlay; SDK tetap berjalan normal).\nLayar login SDK: TAMU = langsung main; DAFTAR = akun baru; LOGIN = akun terdaftar.\nCRASH: banner merah di atas console menampilkan trace lengkap — salin dan kirim untuk analisis akar.\nTombol kiri bawah: salin log ala server / salin JSON / unduh arsip. Filter lanjutan: tombol gerigi kanan atas.</div>\n")
 
          .append("<script>\n")
          .append(Js())
@@ -416,17 +426,18 @@ public final class LoggerHandler implements HttpWorker.Handler {
     private static String Js() {
         StringBuilder s = new StringBuilder(24576);
         s.append("var S={since:0,view:'all',stage:'',st:'',q:'',limit:500,auto:true,port:0};\n")
-         .append("var ENT={},MAXC=3000,pollN=0,LASTSUM='',CRASHLATEST='',MODTXT='',lastDrop=-1;\n")
+         .append("var ENT={},MAXC=3000,pollN=0,LASTSUM='',CRASHLATEST='',lastDrop=-1;\n")
          .append("function $(id){return document.getElementById(id)}\n")
          .append("function esc(x){return (x==null?'':''+x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}\n")
          .append("function hdrLines(h){return h?(''+h).split('; ').join('\\n'):''}\n")
+         .append("function trunc(s,n){s=''+s;return s.length>n?s.substring(0,n)+'\u2026':s}\n")
          .append("function pretty(s){var t=(''+s).trim();var c=t.charAt(0);var e=t.charAt(t.length-1);\n")
          .append(" if((c=='{'&&e=='}')||(c=='['&&e==']')){try{return JSON.stringify(JSON.parse(t),null,2)}catch(x){}}\n")
          .append(" return ''+s}\n")
          .append("function prettyExtra(x){var i=(''+x).indexOf('DECODED-XOR: ');\n")
          .append(" if(i>=0){try{return x.substring(0,i+13)+'\\n'+JSON.stringify(JSON.parse(x.substring(i+13).trim()),null,2)}catch(y){}}\n")
          .append(" return ''+x}\n")
-         .append("/* ---- tahap, komponen, level, detail (SERVER PREMIUM v8) ---- */\n")
+         .append("/* ---- tahap, komponen, level, detail (FULL DISCLOSURE v9) ---- */\n")
          .append("function stageOf(e){\n")
          .append(" if(e.kind=='BOOT'||e.kind=='SYS'||e.kind=='EXTRACT')return 'SISTEM';\n")
          .append(" if(e.kind=='CRASH')return 'SISTEM';\n")
@@ -465,7 +476,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" if(p.indexOf('sendCodeByEmail')>=0)return 'Kirim kode email';\n")
          .append(" if(p.indexOf('findPassByEmail')>=0)return 'Lupa sandi';\n")
          .append(" return 'SDK '+p.substring(0,40)}\n")
-         .append("/* ---- deskripsi VERBOSE ala server asli (v8 — bukan output minimalis) ---- */\n")
+         .append("/* ---- deskripsi VERBOSE ala server asli (v9 — bukan output minimalis) ---- */\n")
          .append("function describe(e){\n")
          .append(" var p=pathOf(e),k=e.kind||'HTTP',m=e.method||'',st=e.status||0,extra=e.extra||'';\n")
          .append(" if(k=='CRASH')return '<b>CRASH terdeteksi</b> — proses game berhenti mendadak, trace lengkap tersimpan di logs/'+esc(p)+(e.error?'<br><span class=f>'+esc(e.error)+'</span>':'');\n")
@@ -562,42 +573,33 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" if(e.port==5051)return true;\n")
          .append(" return false}\n")
          .append("function plain(h){return (''+h).replace(/<[^>]*>/g,'')}\n")
-         .append("function allText(e){var L=[];\n")
-         .append(" L.push('#'+e.seq+'  '+e.time+'  port '+e.port+'  '+e.kind);\n")
-         .append(" if(e.kind=='HTTP')L.push((e.method||'')+' http://127.0.0.1:'+e.port+(e.path||''));else L.push(e.method||e.kind);\n")
-         .append(" L.push('status '+(e.status||0)+'  '+e.durMs+'ms  req '+(e.reqLen||0)+'B  resp '+(e.respLen||0)+'B');\n")
-         .append(" if(e.headers)L.push('headers:\\n'+hdrLines(e.headers));\n")
-         .append(" if(e.reqPreview)L.push('req:\\n'+e.reqPreview);\n")
-         .append(" if(e.respPreview)L.push('resp:\\n'+e.respPreview);\n")
-         .append(" if(e.extra)L.push('extra:\\n'+e.extra);\n")
-         .append(" if(e.error)L.push('error: '+e.error);\n")
-         .append(" return L.join('\\n')}\n")
+         .append("function durStr(e){if(!e.durMs)return '';return e.durMs>=1000?(e.durMs/1000).toFixed(1)+'s':e.durMs+'ms'}\n")
          .append("function detailOf(e){\n")
          .append(" var k=e.kind||'';\n")
-         .append(" if(k=='HTTP'){return (e.method||'GET')+' '+pathOf(e)+' · status '+(e.status||0)+' · req '+fmtB(e.reqLen||0)+' · resp '+fmtB(e.respLen||0)+(e.durMs?' · '+durStr(e):'')}\n")
-         .append(" if(k=='WS'){return 'socket.io port '+e.port+' · resp '+fmtB(e.respLen||0)+(e.durMs?' · '+durStr(e):'')}\n")
+         .append(" if(k=='HTTP'){return (e.method||'GET')+' '+pathOf(e)+' \u00b7 status '+(e.status||0)+' \u00b7 req '+fmtB(e.reqLen||0)+' \u00b7 resp '+fmtB(e.respLen||0)+(e.durMs?' \u00b7 '+durStr(e):'')}\n")
+         .append(" if(k=='WS'){return 'socket.io port '+e.port+' \u00b7 resp '+fmtB(e.respLen||0)+(e.durMs?' \u00b7 '+durStr(e):'')}\n")
          .append(" return 'port '+e.port}\n")
-         .append("function detOf(e){var d=[];\n")
-         .append(" if(e.kind!='HTTP'){d.push({l:'INFO',t:(e.path||'')+(e.respPreview?'\\n'+e.respPreview:'')});}\n")
-         .append(" else{var t=(e.method||'')+' http://127.0.0.1:'+e.port+(e.path||'')+'\\n'+hdrLines(e.headers);\n")
-         .append("  if(e.reqPreview)t+='\\n[body '+(e.reqLen||0)+'B]\\n'+pretty(e.reqPreview);\n")
-         .append("  d.push({l:'REQUEST',t:t});\n")
-         .append("  if(e.respPreview!=null)d.push({l:'RESPON',t:'status '+(e.status||0)+'\\n'+pretty(e.respPreview)});}\n")
-         .append(" if(e.extra)d.push({l:'EXTRA',t:prettyExtra(e.extra)});\n")
-         .append(" if(e.error)d.push({l:'ERROR',t:e.error});\n")
-         .append(" d.push({l:'SEMUA (teks polos)',t:allText(e)});\n")
-         .append(" return d}\n")
-         .append("function durStr(e){if(!e.durMs)return '';return e.durMs>=1000?(e.durMs/1000).toFixed(1)+'s':e.durMs+'ms'}\n")
+         .append("/* ---- SEMUA sub-baris tampil INLINE (definisi server log, tanpa klik) ---- */\n")
          .append("function lnHtml(e){\n")
          .append(" var lv=levelOf(e),comp=compOf(e),d=describe(e),er=e.error||'';\n")
          .append(" var ec=lv[1]=='r'?'r':lv[1]=='w'?'w':lv[1]=='d'?'d':'';\n")
+         .append(" var sub='<div class=\"sub dt\">↳ '+esc(detailOf(e))+'</div>';\n")
+         .append(" if(e.kind=='HTTP'){\n")
+         .append("  if(e.reqPreview)sub+='<div class=\"sub rq\"><b>→ req</b> '+esc(trunc(e.reqPreview,180))+'</div>';\n")
+         .append("  else if((e.reqLen||0)>0)sub+='<div class=\"sub rq\"><b>→ req</b> ('+fmtB(e.reqLen)+' biner)</div>';\n")
+         .append("  if(e.respPreview)sub+='<div class=\"sub rs\"><b>← resp</b> '+esc(trunc(e.respPreview,180))+'</div>';\n")
+         .append("  else if((e.respLen||0)>0)sub+='<div class=\"sub rs\"><b>← resp</b> ('+fmtB(e.respLen)+' biner)</div>';}\n")
+         .append(" if(e.kind=='WS'){\n")
+         .append("  if(e.respPreview)sub+='<div class=\"sub rs\"><b>← frame</b> '+esc(trunc(e.respPreview,180))+'</div>';\n")
+         .append("  else if((e.respLen||0)>0)sub+='<div class=\"sub rs\"><b>← frame</b> ('+fmtB(e.respLen)+' biner)</div>';}\n")
+         .append(" if(e.extra)sub+='<div class=\"sub ex\">· extra '+esc(trunc(''+e.extra,140))+'</div>';\n")
          .append(" return '<div class=\"ln'+(lv[1]=='r'?' bad':'')+'\" data-seq=\"'+e.seq+'\">'\n")
          .append("  +'<span class=sq>#'+e.seq+'</span>'\n")
          .append("  +'<span class=tm>'+esc((e.time||'').substring(11))+'</span>'\n")
          .append("  +'<span class=\"lv l-'+lv[1]+'\">'+lv[0]+'</span>'\n")
          .append("  +'<span class=\"cp c-'+comp+'\">['+comp+']</span>'\n")
          .append("  +'<span class=\"ev'+(ec?' '+ec:'')+'\">'+d+(er?'<br><span class=f>ERROR: '+esc(er.length>110?er.substring(0,110)+'…':er)+'</span>':'')+'</span>'\n")
-         .append("  +'<div class=dt>↳ '+esc(detailOf(e))+'</div></div>'}\n")
+         .append("  +sub+'</div>'}\n")
          .append("function important(e){var p=pathOf(e);\n")
          .append(" if((e.kind||'')=='CRASH')return 'CRASH — '+plain(describe(e));\n")
          .append(" if(e.status>=400)return 'GAGAL — '+plain(describe(e));\n")
@@ -646,11 +648,14 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" for(var i=0;i<rs.length;i++){if(rs[i].style.display=='none')continue;\n")
          .append("  var e=ENT[rs[i].getAttribute('data-seq')];if(e)out.push(e)}\n")
          .append(" return out}\n")
-         .append("/* ---- salin log = TEKS PERSIS FORMAT SERVER ASLI (v8) ---- */\n")
+         .append("/* ---- salin log = TEKS PERSIS FORMAT SERVER ASLI (v9) ---- */\n")
          .append("function copyTable(){var v=visible();var out=[];\n")
          .append(" for(var i=0;i<v.length;i++){var e=v[i],lv=levelOf(e);\n")
          .append("  out.push((e.time||'')+'  '+lv[0]+'  ['+compOf(e)+']  '+plain(describe(e)));\n")
          .append("  out.push('        ↳ '+plain(detailOf(e)));\n")
+         .append("  if(e.reqPreview)out.push('        → req '+trunc(e.reqPreview,180));\n")
+         .append("  if(e.respPreview)out.push('        ← resp '+trunc(e.respPreview,180));\n")
+         .append("  if(e.extra)out.push('        · extra '+trunc(''+e.extra,140));\n")
          .append("  if(e.error)out.push('        ERROR: '+(''+e.error).substring(0,120))}\n")
          .append(" copyText(out.join('\\n'))}\n")
          .append("function copyJSON(){copyText(JSON.stringify(visible(),null,1))}\n")
@@ -665,21 +670,9 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" var ok=false;try{ok=document.execCommand('copy')}catch(x){}\n")
          .append(" document.body.removeChild(ta);\n")
          .append(" if(ok)toast('tersalin '+t.length+' karakter');\n")
-         .append(" else openModal('Salin manual — Ctrl+C',t)}\n")
-         .append("function openModal(t2,t){MODTXT=t;$('modaltitle').textContent=t2;$('modalpre').textContent=t;$('modal').style.display='block';\n")
-         .append(" var r=document.createRange();r.selectNodeContents($('modalpre'));\n")
-         .append(" var sc=window.getSelection();sc.removeAllRanges();try{sc.addRange(r)}catch(x){}}\n")
+         .append(" else toast('salin gagal — izin clipboard ditolak, coba tombol Salin JSON',true)}\n")
          .append("var tt=null;\n")
          .append("function toast(m,err){var el=$('toast');el.textContent=m;el.className=err?'err':'';el.style.display='block';clearTimeout(tt);tt=setTimeout(function(){el.style.display='none'},2600)}\n")
-         .append("$('stream').addEventListener('click',function(ev){\n")
-         .append(" var tr=ev.target.closest?ev.target.closest('div.ln'):null;if(!tr)return;\n")
-         .append(" var e=ENT[tr.getAttribute('data-seq')];if(!e)return;\n")
-         .append(" var d=detOf(e);var s2='';\n")
-         .append(" for(var i=0;i<d.length;i++)s2+='===== '+d[i].l+' =====\\n'+d[i].t+'\\n\\n';\n")
-         .append(" openModal('#'+e.seq+' · '+e.time+' · port '+e.port,s2)});\n")
-         .append("$('modalx').onclick=function(){$('modal').style.display='none'};\n")
-         .append("$('modalcp').onclick=function(){copyText(MODTXT)};\n")
-         .append("$('modal').onclick=function(ev){if(ev.target.id=='modal')$('modal').style.display='none'};\n")
          .append("function sync(){S.st=$('st').value;S.q=$('q').value.toLowerCase();S.limit=parseInt($('limit').value);S.port=parseInt($('port').value)}\n")
          .append("function reset(){$('tb').innerHTML='';ENT={};S.since=0;LASTSUM='';$('notices').innerHTML='';refreshStatus()}\n")
          .append("function setView(v){S.view=v;\n")
@@ -699,9 +692,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" $('pause').textContent=S.auto?'⏸️':'▶️';\n")
          .append(" $('cursor').style.display=S.auto?'inline-block':'none';\n")
          .append(" $('pausemark').textContent=S.auto?'':'‖ jeda — pembaruan otomatis berhenti'};\n")
-         .append("$('guidebtn').onclick=function(){\n")
-         .append(" openModal('PANDUAN SINGKAT',\n")
-         .append("  'Alur normal boot:\\n  konfigurasi 9527 -> CDN 9528 -> SDK 9530 -> layar login\\n  -> TAMU / DAFTAR / LOGIN -> verifikasi 5050 -> game 5051.\\n\\nWarna level log (ala server asli):\\n  INFO hijau = alur normal · DEBUG cyan = traffic halus\\n  (aset game, heartbeat, konfigurasi kosong)\\n  WARN kuning = perlu perhatian (4xx/redirect/product)\\n  ERROR merah = gagal / crash\\n\\nIzin overlay OFF = NORMAL (game asli tidak memerlukan overlay;\\nSDK tetap berjalan normal).\\n\\nLayar login SDK: TAMU = langsung main; DAFTAR = akun baru;\\nLOGIN = akun terdaftar.\\n\\nCRASH: banner merah di atas console menampilkan trace lengkap —\\nsalin dan kirim untuk analisis akar.\\n\\nKlik baris log = detail REQUEST/RESPON/EXTRA (JSON rapi).\\nTombol kiri bawah: salin log ala server / salin JSON / unduh arsip.\\nFilter lanjutan: tombol gerigi di kanan atas.')};\n")
+         .append("$('guidebtn').onclick=function(){var g=$('guide');g.style.display=(g.style.display=='block'?'none':'block')};\n")
          .append("$('reset').onclick=reset;\n")
          .append("$('cpt').onclick=copyTable;\n")
          .append("$('cpjs').onclick=copyJSON;\n")

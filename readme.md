@@ -3648,3 +3648,79 @@ Skrip `rebuild_v8_raw.py` (metode baru, dipakai untuk build ini):
 - Commit ini MENGGANTI pointer LFS v8 lama di repo — owner download langsung
   dari repo seperti biasa. Asset pada tag `v8-mod-localserver` juga disinkronkan
   dengan build ini supaya tidak ada file rusak yang menggantung.
+
+## Bagian 47 — CONSOLE v9 FULL DISCLOSURE: semua keterangan INLINE tanpa klik + UI elegan (2026-11-24)
+
+### 47.1 Arahan owner (kata-kata persis)
+
+1. "UI website port 4000 itu elegan !! estetik !!!"
+2. "dan kenapa harus di klik bagian tertentu baru muncul keterangan lengkap . !! itu bukan definisi server log !!"
+3. "yg bener lah !! banyak itu log gk jelas !!!"
+
+### 47.2 Jawaban v9 — console FULL DISCLOSURE
+
+1. **MODAL KLIK-DETAIL DIHAPUS TOTAL** (CSS `#modal*`, elemen HTML, `openModal`,
+   `detOf`, `allText`, click-listener `#stream`, handler `modalx/modalcp` —
+   semuanya dibuang; `legacyCopy` tidak lagi jatuh ke modal).
+2. **SEMUA keterangan kini tampil INLINE di tiap entri** — definisi server log
+   yang benar: baris mandiri penuh, TANPA klik. Format tiap entri:
+   - baris utama: `WAKTU LEVEL [KOMPONEN] kalimat peristiwa penuh`;
+   - `↳ METHOD PATH · status · req · resp · durasi`;
+   - `→ req {body…}` — selalu tampil (preview 180 karakter, atau
+     `(N biner)` bila payload non-teks);
+   - `← resp {jawaban…}` / `← frame …` (socket.io) — selalu tampil;
+   - `· extra …` (data protokol) — selalu tampil bila ada.
+3. **UI ELEGAN & ESTETIK**: sub-baris diberi hierarki visual (aksen garis
+   tipis kiri, warna dim berbeda per jenis: `↳` abu, `→ req` biru-abu,
+   `← resp` hijau tua, `· extra` gelap), pemisah antar-entri halus, hover
+   konsisten, baris masalah tetap berlatar merah gelap dengan aksen merah;
+   header premium + banner boot + kursor berkedip dipertahankan.
+4. **LOG LEBIH JELAS**: kalimat peristiwa tetap SIAPA-APA-HASIL (warisan
+   v8) dan kini ditempel langsang di samping data mentahnya — tidak ada lagi
+   baris yang butuh penjelasan tersembunyi.
+5. **Salin log** = teks persis format server PENUH (main + ↳ + → req +
+   ← resp + · extra) — ditempel di mana pun tetap seperti log server asli.
+6. **Panduan** kini panel inline yang di-toggle tombol ❓ (bukan modal) dan
+   menjelaskan format sub-baris.
+7. TIDAK BERUBAH: overlay=INFO (39), tombol ikon (41), port 4000 murni
+   monitoring + 404 (41/43), tanpa "tips" (42), level & komponen (44).
+
+### 47.3 Proses + verifikasi
+
+- Toolchain pasca-reset berikutnya: git-lfs 3.5.1 (pulih lagi), javac
+  21.0.13 (deb headless diekstrak ulang; `-source 8 -target 8`), D8/r8
+  8.3.37 (storage.googleapis.com/r8-releases).
+- **Smoke desktop: 124/124 PASS** — semua guard lama tetap (112) + 12 guard
+  baru: `v49-no-modal` (tidak ada jejak modal/openModal/detOf/allText),
+  `v49-stream-no-click`, `v49-inline-req`, `v49-inline-resp`,
+  `v49-inline-frame-ws`, `v49-inline-extra`, `v49-bin-hint`, `v49-trunc`,
+  `v49-sub-style`, `v49-salin-lengkap`, `v49-guide-panel`, `v49-ver`.
+- **Repack RAW-COPY** (metode Bagian 46): base v7 `594caec9…`, SEMUA entri
+  disalin byte-per-byte, hanya `classes2.dex` diganti (D8 baru,
+  145.600 B, sha `8f179410…1aac`); zipalign + sign `dblocalmod` →
+  **zipalign verified + signature verified [v1, v2, v3]**, sertifikat
+  `CN=DB Local Mod, O=Owner, C=ID` exp 2056.
+- **Struktur v7 vs v9 dibedah**: metode kompresi `3471 deflate + 2957
+  stored` IDENTIK; `resources.arsc` tetap STORED aligned-4 di data_off
+  15923800; hanya `META-INF/DBLOCALM.RSA/.SF` beda (re-sign) +
+  `classes2.dex` (dex v9). Parse error mustahil terulang.
+
+### 47.4 APK v9
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v9).apk` (pola lama, LFS di repo; pointer v8 dihapus — pola v1→…→v8→v9) |
+| Ukuran | **202.687.454 B** |
+| sha256 | `9e09d2fec5bb7ae4b64c4e64bc476a9b3437b167545443701a95be7093b2cdde` |
+| classes2.dex | 145.600 B sha `8f1794103dbd5d6fbb1c18daf4b8fe94105bd8fdbf128e0619d050a620271aac` (console FULL DISCLOSURE v9) |
+| Penanda | BOOT/crash/dashboard/banner = **v9** |
+| Sign | v1+v2+v3, keystore `dblocalmod`, exp 2056 — install-over OK |
+
+### 47.5 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v9).apk` langsung di atas v8/v7
+   (keystore sama — tanpa uninstall).
+2. Boot game → buka `127.0.0.1:4000` → badge **v9**.
+3. Tiap baris log kini lengkap: kalimat peristiwa + ↳ endpoint + → req +
+   ← resp + · extra — SEMUA terlihat tanpa klik sedikit pun.
+4. Tombol ❓ = panduan inline; 📋 salin = teks format server penuh.
