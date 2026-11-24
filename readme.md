@@ -4193,3 +4193,110 @@ overlay`. Log English tetap English; NOL narasi Indonesia tersisa.
 4. Tombol 4 saja: jeda · bersihkan · unduh arsip · salin log. Filter: cari +
    level + port. Detail panjang (base64/HTML/JSON): klik sub-baris = isi
    penuh verbatim.
+
+---
+
+## Bagian 52 — v15: console TANPA tombol sampah + rincian LANGSUNG TAMPIL + airplane-mode GAK LOGIS DIPERBAIKI
+
+Tanggal: 24 Nov 2026 (Asia/Jakarta). Base = APK v13 `533aeded…` (proven chain).
+Arahan owner (kata-kata persis):
+> "astaga di atas log ituu hlo masih banyak tombol sampah . !!!"
+> "dan saya juga Sudah bilang kan !! log rinci jelas Natural !! masih ada log yg
+>  harus di klik baru muncul rincian !!"
+> "daan itu lagi running local kalau mode pesawat kok notifikasi error network
+>  dasar gk logis"
+
+Tiga masalah, tiga perbaikan:
+
+### 52.1 Tombol sampah DIHAPUS TOTAL — tinggal 2 kontrol yang berfungsi
+
+Console 4000 v15:
+- **HANYA CARI (search) + JEDA (pause)** — dua-duanya berfungsi nyata.
+- DIHAPUS dari v14: tombol bersihkan, tombol unduh arsip NDJSON, tombol salin
+  log, select level (INFO/WARN/ERROR), select port (7 pilihan), dan **seluruh
+  baris 12 chip status** (LISTEN, KONFIG/CDN/LOGIN/GAME/SDK/LOG, UPTIME, SEQ,
+  ARSIP, OVERLAY, STATUS) = yang owner sebut "tombol sampah" (pil-pil menumpuk
+  di atas log).
+- Banner CRASH tetap (data crash Java nyata) tapi TANPA tombol salin.
+- Arsip NDJSON di disk tetap jalan (log lengkap tidak hilang — hanya konsol
+  yang dibersihkan).
+
+### 52.2 Rincian LANGSUNG TAMPIL — NOL klik
+
+- Sub-baris `headers:` / `request:` / `response:` / `recv:` / `send:` /
+  `data:` / `error:` **semuanya langsung terbuka verbatim** — tidak ada lagi
+  "detail panjang: klik untuk buka" (v14), tidak ada chevron, tidak ada state
+  kolaps (`data-o`), tidak ada ringkasan 1 baris ber-ellipsis.
+- Isi capture mentah tampil utuh; yang sangat panjang menggulir sendiri
+  (max-height 300px per blok) supaya konsol tetap bisa dibaca.
+- Baris utama tetap PERSIS protokol: `GET /socket.io/?EIO=3&… 200 · 103 B · 4ms`.
+- NOL emoji; ikon SVG feather/lucide tetap.
+
+### 52.3 Airplane mode — akar "notifikasi error network dasar" DIBEDAH dan DIPATCH
+
+Diagnosis via xref dex buatan sendiri (parser DEX + scan invoke numpy, divalidasi
+dengan injeksi `LocalServerStarter.start` yang diketahui):
+- `Lcom/quickgame/android/sdk/feedtonight;.hoboismrelationbelow` (SDK init, dipanggil
+  dari QuickGameManager.onRequestPermissionsResult dll): `ConnectivityManager
+  .getActiveNetworkInfo` → `NetworkInfo.isConnected` → **false → AlertDialog$Builder
+  (setTitle/Message/PositiveButton/show) = dialog "network error"**.
+- `Lcom/quickgame/android/sdk/activity/HWLoginActivity;.onCreate`: pola sama.
+- GAK LOGIS karena seluruh server game sudah di 127.0.0.1 (config 9527, CDN 9528,
+  login 5050, game 5051, SDK 9530) — mode pesawat TIDAK mengganggu loopback, jadi
+  dialog itu cuma karangan SDK lama.
+- **PATCH 4 unit (ukuran dex IDENTIK, SHA1+adler header dihitung ulang)**:
+  | Site | Unit | Lama → Baru | Efek |
+  |---|---|---|---|
+  | feedtonight.hoboismrelationbelow pc0018 | offset if-eqz | +10 → +8 | NetworkInfo null → langsung init (bukan dialog) |
+  | feedtonight.hoboismrelationbelow pc0022 | move-result v0 | 0x000a → 0x1012 | isConnected dipaksa true |
+  | HWLoginActivity.onCreate pc0400 | offset if-eqz | +4 → +2 | hasil false → init (bukan dialog) |
+  | HWLoginActivity.onCreate pc0398 | move-result v12 | 0x0c0a → 0x1c12 | isConnected dipaksa true |
+- Verifikasi pasca-patch: disassembly ulang kedua metode menunjukkan
+  `const/4 v0,1` / `const/4 v12,1` menggantikan move-result; blok
+  AlertDialog network-error kini unreachable dari jalur cek jaringan.
+- classes.dex = original + injeksi LocalServerStarter (warisan) + 4 unit ini.
+  Sisanya 100% byte-identik.
+
+### 52.4 Proses + verifikasi
+
+- javac 21.0.13 (bundled, libjli via LD_LIBRARY_PATH) + D8/r8 8.3.37 + android.jar
+  API 21 + uber-apk-signer 1.3.0.
+- **Dex console v15**: `classes2.dex` **145.796 B** sha
+  `e8d02201b76760ebe8a30b599d34b89e8e03783b35608d719fad2c49235f9971`.
+  Verifikasi needle: `MOD-LOCALSERVER v15`, `semua rincian tampil langsung` ADA;
+  `MOD-LOCALSERVER v14`, `klik untuk buka`, `data-o=`, `copyTable`,
+  `refreshStats`, `stchips`, `unduh arsip`, `bersihkan tampilan`, `cpcrash`
+  NOL di dex.
+- **Repack RAW-COPY** (`rebuild-src/scripts/rebuild_v15_raw.py`): base v13,
+  SEMUA 6.428 entri byte-per-byte, beda HANYA `classes.dex` + `classes2.dex`;
+  `resources.arsc` tetap STORED aligned-4 (data_off 15919924); metode
+  **3471 deflate + 2957 stored** IDENTIK; zipalign + sign `dblocalmod`
+  → **zipalign verified + signature verified [v1, v2, v3]**, cert
+  `CN=DB Local Mod, O=Owner, C=ID` exp 2056.
+- classes.dex terpasang di APK terverifikasi ulang: sha
+  `9db1bba326132a8eff93429a54c11d0440ab2c53f4c84b7b131fb1533d642658`
+  (6697176 B — ukuran IDENTIK original, patch 4 unit murni).
+
+### 52.5 APK v15
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v15).apk` (LFS; rotasi: pointer v14 dihapus) |
+| Ukuran | **202.683.358 B** |
+| sha256 | `f4895bbcde3c5875626588d960176ea8d1b151f5b5cfb19c204c7d52758b79ba` |
+| classes.dex | 6.697.176 B sha `9db1bba3…` (original + injeksi + patch airplane 4 unit) |
+| classes2.dex | 145.796 B sha `e8d02201…` (console SERVER LOG BERSIH v15) |
+| Penanda | BOOT/crash/dashboard/banner = **v15** |
+| Sign | v1+v2+v3, keystore `dblocalmod`, exp 2056 — install-over OK |
+
+### 52.6 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v15).apk` langsung di atas v14/v13/v12
+   (keystore sama — tanpa uninstall).
+2. **Mode pesawat ON → boot game** → TIDAK ada lagi dialog "network error";
+   SDK init jalan langsung ke server lokal. (Fakta: loopback 127.0.0.1 tidak
+   butuh jaringan.)
+3. Buka `127.0.0.1:4000` → badge **v15**; di atas log hanya ada kotak CARI +
+   tombol JEDA — tanpa pil, tanpa select, tanpa tombol mati.
+4. Setiap log: rincian `headers/request/response/recv/send/data/error` langsung
+   terbuka penuh — TIDAK PERLU KLIK apa pun.

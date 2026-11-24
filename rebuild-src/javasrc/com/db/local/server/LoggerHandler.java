@@ -285,23 +285,34 @@ public final class LoggerHandler implements HttpWorker.Handler {
         }
     }
 
-    /* ================= console v14 — SERVER LOG RAPI =================
-     * Arahan owner (25 Nov 2026): "entah mengapa masih banyak teks sampah,
-     * dan gak rapi . banyak tombol juga tapi tombol sampah".
-     * PERUBAHAN v14 (data tetap MENTAH — NOL karangan, warisan v13 tetap):
-     *  1. DETAIL KOLAPS: sub-baris headers/request/response/recv/send/data/
-     *     error tampil RINGKAS 1 baris (ellipsis) — klik utk membuka isi
-     *     PENUH verbatim (scroll). Detail pendek (<=140 char) langsung
-     *     terbuka. NOL data hilang — Salin log tetap VERBATIM penuh.
-     *  2. TOMBOL HANYA YANG BERFUNGSI: jeda, bersihkan, unduh arsip, salin.
-     *     Dihapus: trio Penting/Masalah/Semua, panel filter tahap/status/
-     *     jumlah, salin JSON, panel "Panduan" (narasi karangan).
-     *  3. FILTER RINGKAS SELALU TAMPIL: cari + level (INFO/WARN/ERROR) + port.
-     *  4. BANNER SATU BARIS tanpa narasi; chips status tetap (data nyata).
-     *  5. extra server DIBERSIHKAN (SdkHandler/StaticHandler/SocketIo/Crash):
-     *     hanya fakta protokol (respCT / src= / gate saat ditolak) — komentar
-     *     "GATE-PASS", "owner editable", nama kode internal DIHAPUS.
-     *  6. JSON di log pretty-print 2 spasi (JsonUtil.pretty, cap 1200).
+    /* ================= console v15 — SERVER LOG BERSIH =================
+     * Arahan owner (25 Nov 2026, kata-kata persis):
+     *   "astaga di atas log itu masih banyak tombol sampah !!!"
+     *   "log rinci jelas Natural !! masih ada log yg harus di klik baru
+     *    muncul rincian !!"
+     *   "lagi running local kalau mode pesawat kok notifikasi error network
+     *    dasar gk logis"
+     * PERUBAHAN v15 (data tetap MENTAH — NOL karangan):
+     *  1. TOMBOL CUMA 2 dan dua-duanya berfungsi: CARI (filter teks) + JEDA
+     *     (hentikan/lanjut auto-scroll). DIHAPUS TOTAL: tombol bersihkan,
+     *     unduh arsip, salin, select level, select port, dan SELURUH baris
+     *     chips status (12 chip tumpuk di atas log = yang owner sebut
+     *     "tombol sampah"). Log tetap tersimpan utuh di arsip NDJSON disk.
+     *  2. RINCIAN LANGSUNG TAMPIL (NOL klik): sub-baris headers / request /
+     *     response / recv / send / data / error SEMUA langsung terbuka
+     *     verbatim — tidak ada lagi "klik untuk buka", tidak ada chevron,
+     *     tidak ada state kolaps. Yang panjang menggulir sendiri (max-height)
+     *     supaya konsol tetap bisa dibaca.
+     *  3. AIRPLANE MODE (classes.dex, bedah terpisah): QuickGame SDK cek
+     *     NetworkInfo.isConnected sebelum init → AlertDialog "network error"
+     *     padahal semua server sudah 127.0.0.1 — patch 4 unit di dex:
+     *     feedtonight.hoboismrelationbelow + HWLoginActivity.onCreate
+     *     (isConnected dipaksa true, null-check dilewati ke init).
+     *  4. yang TIDAK berubah: NOL emoji (ikon SVG registry), baris utama =
+     *     PERSIS protokol (METHOD full-path status · bytes · durasi), boot/
+     *     crash/logcat pesan server apa adanya, bahasa log mengikuti server
+     *     asli, poll incremental ?since=, banner CRASH (tanpa tombol salin),
+     *     arsip NDJSON disk tetap jalan.
      */
 
     private String dashboardHtml() {
@@ -330,21 +341,11 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(".ib .ic{width:16px;height:16px;vertical-align:0}\n")
          .append(".ib:hover{border-color:#2e4358;color:#dce6f1;background:#101c2a;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.4)}\n")
          .append(".ib.on{border-color:#1f5c37;color:#3ddc84;background:#08150d;box-shadow:0 0 12px rgba(61,220,132,.25)}\n")
-         .append("#stchips{margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}\n")
-         .append(".schip{display:inline-flex;align-items:center;gap:6px;background:rgba(13,21,31,.8);border:1px solid #1a2836;border-radius:9px;padding:5px 11px;font-size:11.5px;color:#93a5b8;font-weight:600;letter-spacing:.3px}\n")
-         .append(".schip .ic{width:13px;height:13px}\n")
-         .append(".schip b{color:#cfe0ef;font-weight:700}\n")
-         .append(".schip.up{border-color:rgba(61,220,132,.45);color:#63d990}\n")
-         .append(".schip.up b{color:#a9efc6}\n")
-         .append(".schip.dw{color:#44586a}\n")
-         .append("#stbadge.ok{color:#3ddc84}\n")
-         .append("#stbadge.bad{color:#ff5d5d}\n")
-         .append("#ctl{position:relative;z-index:1;display:flex;padding:9px 18px;border-bottom:1px solid #16222f;background:#070d15;gap:8px 16px;align-items:center;flex-wrap:wrap}\n")
-         .append("#ctl label{color:#7e919f;font-size:11.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px}\n")
-         .append("#ctl label .ic{color:#4fc3dd}\n")
-         .append("select,input{background:#0b1420;color:#dce6f1;border:1px solid #1c2a3a;border-radius:7px;padding:5px 10px;font-family:inherit;font-size:12px}\n")
-         .append("input{min-width:140px;flex:1;max-width:340px}\n")
-         .append("input:focus,select:focus{outline:none;border-color:#1f5c37}\n")
+         .append("#qwrap{display:inline-flex;align-items:center;gap:7px;background:#0b1420;border:1px solid #1c2a3a;border-radius:9px;padding:6px 11px;color:#7e919f;transition:border-color .18s}\n")
+         .append("#qwrap:focus-within{border-color:#1f5c37}\n")
+         .append("#qwrap .ic{width:14px;height:14px;color:#4fc3dd}\n")
+         .append("input{background:transparent;color:#dce6f1;border:none;outline:none;font-family:inherit;font-size:12px;min-width:110px;max-width:220px}\n")
+         .append("input::placeholder{color:#44586a}\n")
          .append("#crashbn{position:relative;z-index:1;display:none;padding:11px 18px;border-bottom:1px solid #4a262c;background:#130a0c}\n")
          .append("#crashbn .ch{color:#ff5d5d;font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:7px}\n")
          .append("#crashbn .cd{color:#9fb2c4;font-size:11.5px;margin-top:3px}\n")
@@ -393,66 +394,43 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(".ev .dim{color:#5d7183}\n")
          .append(".ev .s2{color:#3ddc84;font-weight:800}.ev .s3{color:#ffb454;font-weight:800}.ev .s4{color:#ff8484;font-weight:800}.ev .s5{color:#ff5d5d;font-weight:800}.ev .s0{color:#8fa0b0}\n")
          .append(".ev.w{color:#ffd9a0}.ev.r{color:#ffb3b3}.ev.d{color:#8fa3b5}\n")
-         .append(".dtl{margin-top:7px;border-left:2px solid #1b2836;padding-left:8px;display:flex;flex-direction:column;gap:4px}\n")
+         .append(".dtl{margin-top:7px;border-left:2px solid #1b2836;padding-left:8px;display:flex;flex-direction:column;gap:5px}\n")
          .append(".ln.r .dtl{border-left-color:#3a2026}\n")
-         .append(".sub{font-family:'JetBrains Mono','Roboto Mono',Menlo,Consolas,'Droid Sans Mono',monospace;font-size:11.5px;color:#7e919f}\n")
-         .append(".sh{display:flex;gap:7px;align-items:center;cursor:pointer;border-radius:6px;padding:2px 4px;margin:0 -4px;transition:background .15s}\n")
-         .append(".sh:hover{background:rgba(79,195,221,.07)}\n")
-         .append(".sh .ic{width:12px;height:12px;color:#4c5f70}\n")
+         .append(".sub{display:flex;gap:7px;align-items:flex-start;font-family:'JetBrains Mono','Roboto Mono',Menlo,Consolas,'Droid Sans Mono',monospace;font-size:11.5px;color:#93a7b9}\n")
+         .append(".sub>.ic{width:12px;height:12px;color:#4c5f70;flex:none;margin-top:2.5px}\n")
          .append(".lbl{color:#647a8d;font-weight:800;flex:none}\n")
          .append(".s-req .lbl{color:#4fc3dd}\n")
          .append(".s-res .lbl{color:#3ddc84}\n")
          .append(".s-ext .lbl{color:#d9c377}\n")
          .append(".s-err .lbl{color:#ff8484}\n")
-         .append(".sum{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#66798c}\n")
-         .append(".sz{color:#44586a;font-size:10.5px;flex:none;font-variant-numeric:tabular-nums}\n")
-         .append(".chev{color:#44586a;flex:none;display:inline-flex;transition:transform .15s}\n")
-         .append(".chev .ic{width:11px;height:11px}\n")
-         .append(".sub[data-o='1']>.sh .chev{transform:rotate(180deg)}\n")
-         .append(".sub[data-o='1']>.sh .sum{display:none}\n")
-         .append(".sc{display:none;margin:3px 0 2px 19px;padding:8px 10px;background:#070d14;border:1px solid #131f2b;border-radius:7px;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow-y:auto;color:#93a7b9;font-size:11.5px;line-height:1.55}\n")
-         .append(".sub[data-o='1']>.sc{display:block}\n")
-         .append(".sc::-webkit-scrollbar{width:8px;height:8px}\n")
-         .append(".sc::-webkit-scrollbar-thumb{background:#223143;border-radius:5px}\n")
+         .append(".txt{white-space:pre-wrap;word-break:break-word;min-width:0;max-height:300px;overflow-y:auto;line-height:1.55}\n")
+         .append(".txt::-webkit-scrollbar{width:8px;height:8px}\n")
+         .append(".txt::-webkit-scrollbar-thumb{background:#223143;border-radius:5px}\n")
          .append("#cursor{display:inline-block;width:8px;height:14px;background:#3ddc84;vertical-align:-2px;animation:bl 1.1s step-end infinite;box-shadow:0 0 8px rgba(61,220,132,.6)}\n")
          .append("@keyframes bl{50%{opacity:0}}\n")
          .append("#pausemark{color:#64778a;font-style:italic}\n")
          .append("#ftr{position:relative;z-index:2;padding:9px 18px;border-top:1px solid #16222f;background:rgba(8,14,22,.94);display:flex;gap:8px;align-items:center;box-shadow:0 -6px 24px rgba(0,0,0,.4)}\n")
          .append("#sum{color:#64778a;font-size:11.5px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n")
          .append("#sum b{color:#cfe0ef;font-weight:700}\n")
-         .append("#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#08150d;color:#7ee2a8;border:1px solid #1f5c37;padding:9px 18px;border-radius:9px;display:none;z-index:50;font-size:12px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.5),0 0 14px rgba(61,220,132,.2);animation:rise .2s ease-out}\n")
-         .append("#toast.err{background:#130a0c;color:#ff5d5d;border-color:#4a262c}\n")
-         .append("@keyframes rise{from{opacity:0;transform:translate(-50%,6px)}}\n")
-         .append("@media(max-width:680px){#stream{padding:10px 10px 14px}#hdr{padding:9px 12px}#ctl{padding:9px 12px}#ftr{padding:8px 12px}#notices{padding:0 12px}#versub{display:none}.sq{display:none}.ln{padding:8px 9px 8px 11px;border-radius:8px}.dtl{padding-left:6px}.ev{font-size:12px}.rmeta{font-size:10px}#banner{padding:10px 13px}}\n")
+         .append("@media(max-width:680px){#stream{padding:10px 10px 14px}#hdr{padding:9px 12px}#ftr{padding:8px 12px}#notices{padding:0 12px}#versub{display:none}.sq{display:none}.ln{padding:8px 9px 8px 11px;border-radius:8px}.dtl{padding-left:6px}.ev{font-size:12px}.rmeta{font-size:10px}#banner{padding:10px 13px}input{min-width:70px;max-width:150px}}\n")
          .append("</style></head><body>\n")
 
          .append("<div id=hdr><div id=l1>")
          .append("<span id=logo><span data-ic=flame></span></span><span id=dot></span>")
-         .append("<span id=title>DB LOCAL SERVER</span><span id=ver>v14</span><span id=versub>· server log · com.db.local</span>")
+         .append("<span id=title>DB LOCAL SERVER</span><span id=ver>v15</span><span id=versub>· raw server log · com.db.local</span>")
          .append("<span id=sp></span>")
+         .append("<label id=qwrap><span data-ic=search></span><input id=q placeholder='cari…'></label>")
          .append("<button id=pause class=ib title='Jeda / lanjut pembaruan otomatis'></button>")
-         .append("<button id=reset class=ib title='Bersihkan tampilan log'></button>")
-         .append("<button id=dl class=ib title='Unduh arsip NDJSON (log di disk)'></button>")
-         .append("<button id=cpt class=ib title='Salin log — teks mentah penuh'></button>")
-         .append("</div>\n")
-         .append("<div id=stchips><span class=schip><span data-ic=clock></span>menghubungkan …</span></div></div>\n")
-
-         .append("<div id=ctl>\n")
-         .append("<label><span data-ic=search></span><input id=q placeholder='cari…'></label>\n")
-         .append("<label><span data-ic=activity></span><select id=lv><option value=''>semua level</option><option>INFO</option><option>WARN</option><option>ERROR</option></select></label>\n")
-         .append("<label><span data-ic=server></span><select id=port><option value=0>semua port</option><option value=9527>9527 konfig</option><option value=9528>9528 CDN</option>")
-         .append("<option value=5050>5050 login</option><option value=5051>5051 game</option><option value=9530>9530 SDK</option><option value=4000>4000 logger</option></select></label>\n")
-         .append("</div>\n")
+         .append("</div></div>\n")
 
          .append("<div id=crashbn></div>\n")
          .append("<div id=notices></div>\n")
          .append("<div id=stream>")
-         .append("<div id=banner><span id=blogo><span data-ic=flame></span></span><div><div class=b1>DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v14</div><div class=bl><span data-ic=terminal></span>raw server log — http://127.0.0.1:4000 · detail panjang: klik untuk buka</div></div></div>\n")
+         .append("<div id=banner><span id=blogo><span data-ic=flame></span></span><div><div class=b1>DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v15</div><div class=bl><span data-ic=terminal></span>raw server log — http://127.0.0.1:4000 — semua rincian tampil langsung</div></div></div>\n")
          .append("<div id=tb></div><div id=tail><span id=pausemark></span><span id=cursor> </span></div></div>\n")
 
          .append("<div id=ftr><span id=sum>…</span></div>\n")
 
-         .append("<div id=toast></div>\n")
          .append("<script>\n")
          .append(Js())
          .append("</script>\n")
@@ -462,11 +440,10 @@ public final class LoggerHandler implements HttpWorker.Handler {
 
     private static String Js() {
         StringBuilder s = new StringBuilder(22000);
-        s.append("var S={since:0,lv:'',q:'',port:0,auto:true};\n")
+        s.append("var S={since:0,q:'',auto:true};\n")
          .append("var ENT={},MAXC=3000,pollN=0,LASTSUM='',CRASHLATEST='',lastDrop=-1;\n")
          .append("function $(id){return document.getElementById(id)}\n")
          .append("function esc(x){return (x==null?'':''+x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}\n")
-         .append("function trunc(s,n){s=''+s;return s.length>n?s.substring(0,n)+'\\u2026':s}\n")
          .append("/* ---- REGISTRY ICON SVG (chrome UI — ikon sungguhan, NOL emoji) ---- */\n")
          .append("function svg(p){return '<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">'+p+'</svg>'}\n")
          .append("var IC={};\n")
@@ -504,14 +481,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("function ic(n){return IC[n]||IC.info}\n")
          .append("function paintIcons(){var all=document.querySelectorAll('[data-ic]');\n")
          .append(" for(var i=0;i<all.length;i++)all[i].innerHTML=ic(all[i].getAttribute('data-ic'));\n")
-         .append(" $('pause').innerHTML=ic(S.auto?'pause':'play');\n")
-         .append(" $('reset').innerHTML=ic('trash');$('dl').innerHTML=ic('download');$('cpt').innerHTML=ic('copy')}\n")
-         .append("function stageOf(e){\n")
-         .append(" if(e.kind=='BOOT'||e.kind=='SYS'||e.kind=='EXTRACT')return 'SISTEM';\n")
-         .append(" if(e.kind=='CRASH')return 'SISTEM';\n")
-         .append(" if(e.port==9527)return 'KONFIG'; if(e.port==9528)return 'CDN';\n")
-         .append(" if(e.port==9530)return 'SDK'; if(e.port==5050)return 'LOGIN';\n")
-         .append(" if(e.port==5051)return 'GAME'; return 'LOGGER'}\n")
+         .append(" $('pause').innerHTML=ic(S.auto?'pause':'play')}\n")
          .append("function compOf(e){\n")
          .append(" var k=e.kind||'';\n")
          .append(" if(k=='BOOT'||k=='SYS'||k=='EXTRACT'||k=='CRASH'||k=='LOGCAT')return {name:'CORE',icon:'cpu'};\n")
@@ -538,18 +508,13 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" if((e.respLen||0)>0)t+=' <span class=dim>· '+fmtB(e.respLen)+'</span>';\n")
          .append(" t+=' <span class=dim>· '+durStr(e)+'</span>';\n")
          .append(" return t}\n")
-         .append("/* ---- v14: detail RINGKAS 1 baris (ellipsis) — klik = isi PENUH verbatim ----\n")
-         .append("   pendek (<=140 char) langsung terbuka; panjang ditutup + ukuran byte.\n")
-         .append("   NOL data hilang: Salin log tetap verbatim penuh. ---- */\n")
+         .append("/* ---- v15: rincian LANGSUNG TAMPIL — NOL klik, NOL kolaps ----\n")
+         .append("   isi capture mentah ditampilkan utuh verbatim; yang panjang\n")
+         .append("   menggulir sendiri (max-height .txt). ---- */\n")
          .append("function subRow(cls,icn,label,val,n){\n")
          .append(" var raw=''+val;if(n==null||isNaN(n))n=raw.length;\n")
-         .append(" var open=n<=140?1:0;\n")
-         .append(" return '<div class=\"sub '+cls+'\" data-o=\"'+open+'\">'\n")
-         .append("  +'<div class=sh>'+ic(icn)+'<span class=lbl>'+label+'</span>'\n")
-         .append("  +'<span class=sum>'+esc(trunc(raw,120))+'</span>'\n")
-         .append("  +(n>140?'<span class=sz>'+fmtB(n)+'</span>':'')\n")
-         .append("  +'<span class=chev>'+ic('chev')+'</span></div>'\n")
-         .append("  +'<div class=sc>'+esc(raw)+'</div></div>'}\n")
+         .append(" return '<div class=\"sub '+cls+'\">'+ic(icn)+'<span class=lbl>'+label+'</span>'\n")
+         .append("  +'<span class=txt>'+esc(raw)+'</span></div>'}\n")
          .append("function subHtml(e){\n")
          .append(" var k=e.kind||'HTTP',m=e.method||'',parts=[];\n")
          .append(" if(k=='HTTP'||(k=='WS'&&m!='WS')){\n")
@@ -619,24 +584,17 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  +subHtml(e)\n")
          .append("  +'</div>'}\n")
          .append("function pass(e){\n")
-         .append(" if(S.lv&&levelOf(e).word!=S.lv)return false;\n")
-         .append(" if(S.port&&e.port!=S.port)return false;\n")
          .append(" if(S.q){var t=((e.method||'')+' '+(e.path||'')+' '+(e.reqPreview||'')+' '+(e.respPreview||'')+' '+(e.extra||'')+' '+(e.error||'')).toLowerCase();if(t.indexOf(S.q)<0)return false}\n")
          .append(" return true}\n")
          .append("function applyFilter(){var rs=$('tb').children;\n")
          .append(" for(var i=0;i<rs.length;i++){var e=ENT[rs[i].getAttribute('data-seq')];\n")
          .append("  rs[i].style.display=(e&&!pass(e))?'none':''}}\n")
-         .append("function refreshStatus(){var n=0;for(var k in ENT)if(isProblem(ENT[k]))n++;\n")
-         .append(" var b=$('stbadge');if(!b)return;\n")
-         .append(" if(n==0){b.innerHTML=ic('check')+' NORMAL';b.className='ok'}\n")
-         .append(" else{b.innerHTML=ic('x')+' '+n+' MASALAH';b.className='bad'}}\n")
          .append("function renderCrash(){fetch('/crash').then(function(r){return r.json()}).then(function(j){\n")
          .append(" var w=$('crashbn');if(!j||!j.latest){w.style.display='none';w.innerHTML='';return}\n")
          .append(" if(j.latest.name==CRASHLATEST&&w.style.display=='block')return;\n")
          .append(" CRASHLATEST=j.latest.name;var t=j.latest.text||'';\n")
-         .append(" w.innerHTML='<div class=ch>'+ic('octagon')+' CRASH — '+esc(j.latest.name)+' ('+Math.round(j.latest.bytes/1024)+' KB)</div><div class=cd>crash Java di proses game — laporan mentah:</div><pre>'+esc(t)+'</pre><button id=cpcrash class=ib title=\"Salin trace crash\">'+ic('copy')+'</button>';\n")
-         .append(" w.style.display='block';\n")
-         .append(" $('cpcrash').onclick=function(){copyText(t)}}).catch(function(){})}\n")
+         .append(" w.innerHTML='<div class=ch>'+ic('octagon')+' CRASH — '+esc(j.latest.name)+' ('+Math.round(j.latest.bytes/1024)+' KB)</div><div class=cd>crash Java di proses game — laporan mentah:</div><pre>'+esc(t)+'</pre>';\n")
+         .append(" w.style.display='block'}).catch(function(){})}\n")
          .append("function append(list){var tb=$('tb'),sc=$('stream');\n")
          .append(" var pin=sc.scrollTop+sc.clientHeight>=sc.scrollHeight-60;\n")
          .append(" var html='',im=null;\n")
@@ -646,75 +604,17 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" if(im)LASTSUM=im;\n")
          .append(" var rs=tb.children;var over=rs.length-MAXC;\n")
          .append(" for(var j2=0;j2<over;j2++)tb.removeChild(rs[0]);\n")
-         .append(" applyFilter();refreshStatus();\n")
+         .append(" applyFilter();\n")
          .append(" if(LASTSUM)$('sum').innerHTML='<b>terakhir penting:</b> '+esc(LASTSUM);\n")
          .append(" if(pin)sc.scrollTop=sc.scrollHeight}\n")
-         .append("/* ---- salin log = TEKS MENTAH PENUH (verbatim — sama dgn isi detail saat dibuka) ---- */\n")
-         .append("function copyTable(){var v=[],rs=$('tb').children;\n")
-         .append(" for(var i=0;i<rs.length;i++){if(rs[i].style.display=='none')continue;\n")
-         .append("  var e=ENT[rs[i].getAttribute('data-seq')];if(e)v.push(e)}\n")
-         .append(" var out=[];\n")
-         .append(" for(var i2=0;i2<v.length;i2++){var e=v[i2];\n")
-         .append("  var line=(e.time||'')+' #'+e.seq+' '+e.port+' '+plainLine(e);\n")
-         .append("  out.push(line);\n")
-         .append("  if((e.kind||'HTTP')=='HTTP'||((e.kind||'')=='WS'&&(e.method||'')!='WS')){\n")
-         .append("   if(e.headers)out.push('    headers: '+e.headers);\n")
-         .append("   if(e.reqPreview)out.push('    request: '+e.reqPreview);\n")
-         .append("   else if((e.reqLen||0)>0)out.push('    request: ('+fmtB(e.reqLen)+' binary)');\n")
-         .append("   if(e.respPreview)out.push('    response: '+e.respPreview);\n")
-         .append("   else if((e.respLen||0)>0)out.push('    response: ('+fmtB(e.respLen)+' binary)')}\n")
-         .append("  if((e.kind||'')=='WS'&&(e.method||'')=='WS'){\n")
-         .append("   if(e.reqPreview)out.push('    recv: ('+fmtB(e.reqLen||0)+') '+e.reqPreview);\n")
-         .append("   if(e.respPreview)out.push('    send: ('+fmtB(e.respLen||0)+') '+e.respPreview)}\n")
-         .append("  if(e.extra)out.push('    data: '+e.extra);\n")
-         .append("  if(e.error)out.push('    error: '+e.error)}\n")
-         .append(" copyText(out.join('\\n'))}\n")
-         .append("function copyText(t){\n")
-         .append(" if(navigator.clipboard&&navigator.clipboard.writeText){\n")
-         .append("  navigator.clipboard.writeText(t).then(function(){toast('tersalin '+t.length+' karakter')},function(){legacyCopy(t)});\n")
-         .append(" }else legacyCopy(t)}\n")
-         .append("function legacyCopy(t){\n")
-         .append(" var ta=document.createElement('textarea');ta.value=t;\n")
-         .append(" ta.style.position='fixed';ta.style.left='-9999px';ta.style.top='0';\n")
-         .append(" document.body.appendChild(ta);ta.focus();ta.select();\n")
-         .append(" var ok=false;try{ok=document.execCommand('copy')}catch(x){}\n")
-         .append(" document.body.removeChild(ta);\n")
-         .append(" if(ok)toast('tersalin '+t.length+' karakter');\n")
-         .append(" else toast('salin gagal — izin clipboard ditolak',true)}\n")
-         .append("var tt=null;\n")
-         .append("function toast(m,err){var el=$('toast');el.textContent=m;el.className=err?'err':'';el.style.display='block';clearTimeout(tt);tt=setTimeout(function(){el.style.display='none'},2600)}\n")
-         .append("function reset(){$('tb').innerHTML='';ENT={};S.since=0;LASTSUM='';refreshStatus()}\n")
+         .append("/* ---- v15: kontrol tinggal CARI + JEDA — dua-duanya berfungsi ---- */\n")
          .append("$('q').oninput=function(){S.q=$('q').value.toLowerCase();applyFilter()};\n")
-         .append("$('lv').onchange=function(){S.lv=$('lv').value;applyFilter()};\n")
-         .append("$('port').onchange=function(){S.port=parseInt($('port').value);applyFilter()};\n")
          .append("$('pause').onclick=function(){S.auto=!S.auto;\n")
          .append(" $('pause').innerHTML=ic(S.auto?'pause':'play');\n")
          .append(" $('cursor').style.display=S.auto?'inline-block':'none';\n")
          .append(" $('pausemark').textContent=S.auto?'':'jeda — pembaruan otomatis berhenti'};\n")
-         .append("$('reset').onclick=reset;\n")
-         .append("$('cpt').onclick=copyTable;\n")
-         .append("$('dl').onclick=function(){var a=document.createElement('a');a.href='/download?latest=1';a.download='';document.body.appendChild(a);a.click();document.body.removeChild(a)};\n")
-         .append("/* ---- v14: klik header detail = buka/tutup isi penuh ---- */\n")
-         .append("$('tb').addEventListener('click',function(ev){\n")
-         .append(" var el=ev.target;\n")
-         .append(" while(el&&el!==this){\n")
-         .append("  if(el.className&&(' '+el.className+' ').indexOf(' sh ')>=0){\n")
-         .append("   var p=el.parentNode;p.setAttribute('data-o',p.getAttribute('data-o')=='1'?'0':'1');return}\n")
-         .append("  el=el.parentNode}});\n")
          .append("function note(c2,icon,txt){var d=document.createElement('div');d.className='nt '+c2;d.innerHTML=ic(icon)+'<span>'+txt+'</span>';$('notices').appendChild(d)}\n")
          .append("function url(){return '/logs?mode=all&limit=1000&since='+S.since}\n")
-         .append("function uptimeStr(ms){var s2=Math.floor(ms/1000);return Math.floor(s2/3600)+'h'+Math.floor(s2%3600/60)+'m'+(s2%60)+'s'}\n")
-         .append("function refreshStats(){fetch('/stats').then(function(r){return r.json()}).then(function(j){\n")
-         .append(" var ids=[['9527','settings','KONFIG'],['9528','globe','CDN'],['5050','shield','LOGIN'],['5051','gamepad','GAME'],['9530','card','SDK'],['4000','radio','LOG']];\n")
-         .append(" var h='<span class=\"schip up\">'+ic('server')+'LISTEN</span>';\n")
-         .append(" for(var i=0;i<ids.length;i++){var cc=j.ports[ids[i][0]];\n")
-         .append("  h+='<span class=\"schip '+(cc&&cc.requests>0?'up':'dw')+'\">'+ic(ids[i][1])+ids[i][2]+' <b>'+ids[i][0]+'</b></span>'}\n")
-         .append(" h+='<span class=schip>'+ic('clock')+'UPTIME <b>'+uptimeStr(j.uptimeMs)+'</b></span>';\n")
-         .append(" h+='<span class=schip>'+ic('hash')+'SEQ <b>'+j.seq+'</b></span>';\n")
-         .append(" if(j.disk&&j.disk.enabled)h+='<span class=schip>'+ic('archive')+'ARSIP <b>'+j.disk.file+'</b> · '+(j.disk.bytes>=1048576?(j.disk.bytes/1048576).toFixed(1)+'MB':Math.round(j.disk.bytes/1024)+'KB')+'</span>';\n")
-         .append(" if(j.overlay&&j.overlay.checked)h+=j.overlay.granted?'<span class=schip>'+ic('layers')+'OVERLAY <b>ON</b></span>':'<span class=schip>'+ic('layers')+'OVERLAY <b>OFF</b></span>';\n")
-         .append(" h+='<span class=schip>'+ic('activity')+'STATUS <b id=stbadge class=ok>…</b></span>';\n")
-         .append(" $('stchips').innerHTML=h;refreshStatus();renderCrash()}).catch(function(){})}\n")
          .append("function poll(){\n")
          .append(" if(!S.auto){setTimeout(poll,500);return}\n")
          .append(" fetch(url()).then(function(r){return r.json()}).then(function(j){\n")
@@ -722,12 +622,11 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  if(j.entries.length){append(j.entries);S.since=j.seqNewest}\n")
          .append("  var tot=(j.droppedGlobal||0)+(j.droppedPort||0);\n")
          .append("  if(tot>0&&tot!==lastDrop){lastDrop=tot;note('nt-e','x','buffer penuh: '+tot+' entri terbuang — arsip disk tetap utuh')}\n")
-         .append("  pollN++;if(pollN%3==0)refreshStats();\n")
+         .append("  pollN++;if(pollN%3==0)renderCrash();\n")
          .append("  setTimeout(poll,1200);\n")
          .append(" }).catch(function(){setTimeout(poll,3000)})}\n")
          .append("document.title='DB LOCAL SERVER :'+location.port;\n")
-         .append("paintIcons();refreshStats();poll();\n")
-         .append("setTimeout(refreshStats,800);\n");
+         .append("paintIcons();renderCrash();poll();\n");
         return s.toString();
     }
 }

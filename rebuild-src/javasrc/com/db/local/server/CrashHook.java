@@ -178,7 +178,7 @@ public final class CrashHook {
             name = "crash-" + ts + ".txt";
             File f = new File(dir, name);
             StringBuilder b = new StringBuilder(8192);
-            b.append("MOD-LOCALSERVER v14 — CRASH REPORT\n")
+            b.append("MOD-LOCALSERVER v15 — CRASH REPORT\n")
              .append("time  : ").append(LoggerCore.Entry.fmtTime(System.currentTimeMillis())).append('\n')
              .append("thread: ").append(t == null ? "?" : t.getName()).append('\n')
              .append("root  : ").append(LoggerCore.serverRootPath).append('\n')
