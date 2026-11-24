@@ -11,35 +11,51 @@ import java.util.Map;
 /**
  * Listener 4000 (fallback 4001 bila bind gagal) — logger/monitoring port 4000.
  *
- * Bagian 44 — KOREKSI OWNER (kata-kata persis):
- *   "hadeeeh malah makin cacat. ini maunya saya di percantik bukan di
- *    pangkas.. teks yg muncul itu seperti teks layaknya server original..
- *    bukan teks yg output nya minimalis"
- * CONSOLE v8 — SERVER CONSOLE PREMIUM (Bagian 44; kini DISUPERSEDUI oleh
- *   CONSOLE v9 di bawah — Bagian 47 FULL DISCLOSURE):
- *   - teks log kini VERBOSE seperti console server asli: TIAP PERISTIWA
- *     dijabarkan penuh — kalimat deskripsi lengkap + baris detail ↳ berisi
- *     METHOD PATH · STATUS · req/resp · durasi (contoh:
- *     "Registrasi akun tamu berhasil — uid … diterbitkan, token tersimpan
- *     permanen di database lokal" + "↳ POST /sdk/v1/user/registerVisitor ·
- *     status 200 · req 118 B · resp 342 B · 12 ms");
- *   - format baris ala server asli: WAKTU(ms) LEVEL [KOMPONEN] pesan —
- *     LEVEL = INFO / DEBUG / WARN / ERROR (warna seperti log server asli:
- *     hijau/cyan/amber/merah); KOMPONEN = [CORE][CONFIG][CDN][SDK][LOGIN]
- *     [GAME][MONITOR] (warna khas per layanan, seperti tag komponen server);
- *   - UI DIPERCANTIK (bukan dipangkas): header premium (titik status
- *     bercahaya + judul + badge versi), banner boot ala server saat stream
- *     dibuka, kursor blok berkedip, tombol ikon rapi, warna level jelas,
- *     baris detail terpisah, baris masalah berlatar merah gelap;
- *   - SALIN LOG = teks PERSIS format server (WAKTU LEVEL [KOMPONEN] pesan +
- *     baris ↳) — saat ditempel ke mana pun terlihat seperti log server
- *     sungguhan, bukan output minimalis;
- *   - yang TIDAK berubah (semua arahan lama tetap): overlay = INFO bukan
+ * Bagian 49 — KOREKSI OWNER (kata-kata persis):
+ *   "itu yg annda pakai untuk website Masuh emoji bukan icon !! dari tatat
+ *    letak warna dan tampilan ataupun isi teks log ya bagi saya masih cacat !!
+ *    rombak lahh !! jangan gitu-gitu muluuu!!"
+ *   "di bagian log teks itu gak jelas teksnya !! bahasa manusia rinci jelas !!!
+ *    emoji jelas !! pemisah jelas !!"
+ * CONSOLE v12 — ICON PREMIUM (ROMBAK TOTAL atas v10; supersede Bagian 48):
+ *  1. ICON SUNGGUHAN (SVG VECTOR), BUKAN EMOJI — kecantikan UI datang dari
+ *     ikon: registry 30+ ikon SVG inline (gaya feather/lucide, stroke 2,
+ *     viewBox 24) dijinkan lewat fungsi svg() + elemen [data-ic] + tombol
+ *     .ib yang digambar lewat paintIcons(): logo API (flame), tombol view
+ *     (star / alert / list), filter (sliders), pause/play, bersihkan (trash),
+ *     panduan (help), salin (copy), JSON (braces), unduh (download), chip
+ *     status (server + settings/globe/shield/gamepad/card/radio + clock/hash/
+ *     archive/layers/activity), chip level (check/search/warn/x), chip
+ *     komponen (cpu/settings/globe/card/shield/gamepad/radio), ikon sub-baris
+ *     (corner-down-right / arrow-up / arrow-down / tag), banner (flame/
+ *     terminal/check), crash (alert-octagon). NOL emoji di chrome UI (header,
+ *     tombol, chip, footer, banner) — emoji HANYA di TEKS LOG.
+ *  2. TATA LETAK + WARNA BARU (dipercantik total, bukan ditambal):
+ *     header kaca blur + garis glow; kartu log (card) bersudut bulat dengan
+ *     SPINE warna level di tepi kiri; header baris = chip level berikon +
+ *     chip komponen berikon + meta kanan (#seq · jam); blok detail berhierarki
+ *     dengan garis kiri; palet diperhalang (emerald/cyan/amber/red di atas
+ *     slate pekat); scrollbar bulat; fade-in; toast naik; crash banner kaca
+ *     merah.
+ *  3. TEKS LOG JELAS (bahasa manusia rinci + emoji jelas + pemisah jelas):
+ *     baris utama = emoji pemandu + JUDUL tebal + " — " + kalimat SIAPA-APA-
+ *     HASIL; blok detail berLABEL manusia dengan pemisah " · " dan " : ":
+ *       Endpoint : POST /sdk/v1/system/init · Status : 200 OK · Kirim :
+ *       118 B · Terima : 342 B · Durasi : 12 ms
+ *     lalu "Kirim (request) : {…}", "Jawaban (response) : {…}", "Frame
+ *     socket : …", "Data protokol : …" — SEMUA tampil INLINE (warisan v9:
+ *     modal klik-detail tetap dihapus). Status diberi kata manusia (OK /
+ *     ALIH / GAGAL / RUSAK) lewat stLbl().
+ *  4. Salin log = teks server PENUH EMOJI (✅INFO [⚙️CORE] … + ↳ detail +
+ *     → Kirim + ← Jawaban + · Data protokol) — ditempel di mana pun tetap
+ *     seperti log server sungguhan.
+ *  5. yang TIDAK berubah (semua arahan lama tetap): overlay = INFO bukan
  *     error (Bagian 39); tombol IKON saja (Bagian 41); port 4000 murni log
  *     monitoring — rute /sdkconfig* + /fix/overlay tetap 404 (Bagian 41/43);
- *     tanpa popup "tips" (Bagian 42); poll incremental ?since= 1.2 dtk,
- *     MAXC 3000, filter tahap/port/status/cari/limit, Salin JSON, unduh
- *     arsip NDJSON, banner CRASH + salin trace (Bagian 32).
+ *     tanpa popup "tips" (Bagian 42); tanpa modal klik (Bagian 47); poll
+ *     incremental ?since= 1.2 dtk, MAXC 3000, filter tahap/port/status/
+ *     cari/limit, Salin JSON, unduh arsip NDJSON, banner CRASH + salin trace
+ *     (Bagian 32).
  * Routing:
  *   GET /                    → console HTML live (poll incremental)
  *   GET /stats               → JSON counter per port + dropped + status disk NDJSON
@@ -274,166 +290,202 @@ public final class LoggerHandler implements HttpWorker.Handler {
         }
     }
 
-    /* ================= console EMOJI PREMIUM (Bagian 48, v10) =================
+    /* ================= console ICON PREMIUM (Bagian 49, v12) =================
      * Arahan owner 24 Nov 2026 (kata-kata persis):
-     *   "website elegan cantik !!"
-     *   "teks log itu full log emojis style !!"
-     *   "kalau website itu cantik karena icon !! bisa gak sih"
-     * Jawaban v10 — console EMOJI PREMIUM (cantik karena icon):
-     *  1. FULL EMOJI di SEMUA teks log — tiap peristiwa diawali emoji yang
-     *     bercerita: 🚀 boot, ✅ sukses, ❌ gagal, 🙋 tamu, 📝 daftar,
-     *     🔐 login, 🔑 autologin, 🧬 init, 🎫 tiket/migrasi, 🤝 handshake,
-     *     🎮 masuk game, ⚡ pesan socket, 💓 heartbeat, 🔌 koneksi,
-     *     🧩 konfigurasi, 🧾/🗂️ config dibaca, 🌐 CDN/versi, 🗃️ resource,
-     *     🔖 clientversion, 📑 upgrade, 📏 size, 📥 paket, 🧭 serversetting,
-     *     🖼️ UI/aset, 📜 skrip, 📋 manifest, 📢 notice, 🕹️ role, 🪟 overlay,
-     *     📦 ekstraksi, 🩺 logcat, 💥 crash. LEVEL beremoji: ✅ INFO /
-     *     🔍 DEBUG / ⚠️ WARN / ❌ ERROR. KOMPONEN beremoji: ⚙️CORE 🧩CONFIG
-     *     🌐CDN 💳SDK 🔐LOGIN 🎮GAME 📡MONITOR. Sub-baris beremoji:
-     *     ↳ detail · 📤 req · 📥 resp · 🏷️ extra. Salin log = teks server
-     *     PENUH EMOJI — persis tampilan console.
-     *  2. UI CANTIK & ELEGAN KARENA ICON/GLOW (dipercantik, bukan dipangkas):
-     *     logo 🐉 bercahaya + titik live berdenyut, judul gradasi, badge v10
-     *     menyala, CHIP STATUS berikon (📡 LISTEN + tiap port 🧩🌐🔐🎮💳📡 +
-     *     ⏱️ uptime + 🔢 seq + 💾 arsip + 🪟 overlay + 🛡️ status), tombol
-     *     ikon dengan hover mengangkat + glow, badge level & komponen
-     *     berlatar tint berwarna, baris baru fade-in, scrollbar bulat,
-     *     banner boot bercahaya, toast meluncur, latar glow halus, crash
-     *     banner merah menyala — SEMUA keterangan tetap INLINE tanpa klik
-     *     (warisan v9: modal klik-detail tetap dihapus).
-     *  3. LOG JELAS: kalimat peristiwa SIAPA-APA-HASIL lengkap (warisan
-     *     v8/v9) + emoji pemandu di tiap baris; endpoint tak-dikenal pun
-     *     dijabarkan utuh.
-     *  4. yang TIDAK berubah: overlay=INFO (39), tombol ikon (41), port 4000
-     *     murni monitoring + rute sdkconfig/fix 404 (41/43), tanpa "tips" (42),
-     *     poll incremental ?since= 1.2 dtk + filter lengkap + Salin JSON +
-     *     unduh arsip + banner CRASH (32), tanpa modal klik (47).
+     *   "itu yg annda pakai untuk website Masuh emoji bukan icon !!"
+     *   "dari tatat letak warna dan tampilan ataupun isi teks log ya bagi
+     *    saya masih cacat !! rombak lahh !!"
+     *   "di bagian log teks itu gak jelas teksnya !! bahasa manusia rinci
+     *    jelas !!! emoji jelas !! pemisah jelas !!"
+     * Jawaban v12:
+     *  1. ICON = SVG VECTOR sungguhan di SELURUH chrome UI (registry IC +
+     *     fungsi svg() + slot [data-ic] + paintIcons()); NOL emoji di header/
+     *     tombol/chip/footer/banner — emoji HANYA di teks log (pemandu
+     *     peristiwa) sesuai arahan Bagian 48.
+     *  2. TATA LETAK BARU: kartu log + spine level, chip level/komponen
+     *     berikon, meta kanan, blok detail berhierarki, palet baru.
+     *  3. LOG JELAS: label manusia (Endpoint/Status/Kirim/Terima/Durasi) +
+     *     pemisah " · " + " : " + status berkata (OK/ALIH/GAGAL/RUSAK).
+     *  4. Warisan tetap: inline tanpa klik (47), overlay=INFO (39), port 4000
+     *     murni monitoring (41/43), tanpa tips (42), poll 1.2 dtk (32).
      */
 
     private String dashboardHtml() {
-        StringBuilder b = new StringBuilder(32768);
+        StringBuilder b = new StringBuilder(40000);
         b.append("<!DOCTYPE html><html><head><meta charset='utf-8'>\n")
          .append("<meta name='viewport' content='width=device-width,initial-scale=1'>\n")
          .append("<title>DB LOCAL SERVER — live console</title>\n")
          .append("<style>\n")
          .append("*{box-sizing:border-box}\n")
          .append("html,body{height:100%}\n")
-         .append("body{font-family:'Roboto Mono',Menlo,Consolas,'Droid Sans Mono',monospace;background:#070b11;color:#c6d2de;margin:0;font-size:12.5px;line-height:1.55;display:flex;flex-direction:column;user-select:text;-webkit-user-select:text}\n")
-         .append("body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(620px 300px at 12% -6%,rgba(67,209,124,.08),transparent 62%),radial-gradient(700px 320px at 94% -8%,rgba(184,153,232,.07),transparent 62%)}\n")
-         .append("#hdr{position:relative;z-index:1;padding:12px 16px 11px;border-bottom:1px solid #16232f;background:linear-gradient(180deg,#0d1520,#0a1018);box-shadow:0 4px 18px rgba(0,0,0,.35)}\n")
+         .append("body{font-family:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;background:#04070c;color:#dce6f1;margin:0;font-size:13px;line-height:1.6;display:flex;flex-direction:column;user-select:text;-webkit-user-select:text}\n")
+         .append("body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(640px 320px at 10% -8%,rgba(61,220,132,.07),transparent 60%),radial-gradient(700px 340px at 96% -10%,rgba(79,195,221,.05),transparent 60%)}\n")
+         .append("/* ---- ikon SVG (ICONS v12) ---- */\n")
+         .append(".ic{width:14px;height:14px;flex:none;display:inline-block;vertical-align:-2.5px}\n")
+         .append("/* ---- header kaca + garis glow ---- */\n")
+         .append("#hdr{position:relative;z-index:2;padding:10px 18px;background:rgba(8,14,22,.92);border-bottom:1px solid #16222f;box-shadow:0 6px 24px rgba(0,0,0,.4)}\n")
+         .append("#hdr::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(61,220,132,.5),transparent)}\n")
          .append("#l1{display:flex;align-items:center;gap:10px;flex-wrap:wrap}\n")
-         .append("#logo{width:34px;height:34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:19px;background:linear-gradient(145deg,#0f2b1c,#0a1a12);border:1px solid #2f6e44;box-shadow:0 0 14px rgba(67,209,124,.35),inset 0 0 8px rgba(67,209,124,.15);flex:none}\n")
-         .append("#dot{width:9px;height:9px;border-radius:50%;background:#43d17c;box-shadow:0 0 10px rgba(67,209,124,.85);animation:pl 2.4s ease-in-out infinite;flex:none}\n")
+         .append("#logo{width:40px;height:40px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;color:#3ddc84;background:linear-gradient(145deg,#0b2416,#071409);border:1px solid #1f5c37;box-shadow:0 0 16px rgba(61,220,132,.35),inset 0 0 10px rgba(61,220,132,.12);flex:none}\n")
+         .append("#logo .ic{width:22px;height:22px;vertical-align:0}\n")
+         .append("#dot{width:9px;height:9px;border-radius:50%;background:#3ddc84;box-shadow:0 0 10px rgba(61,220,132,.9);animation:pl 2.4s ease-in-out infinite;flex:none}\n")
          .append("@keyframes pl{50%{opacity:.55}}\n")
-         .append("#title{color:#e8f0f8;font-weight:700;font-size:15px;letter-spacing:.7px;background:linear-gradient(90deg,#eef6fd,#9fe8bd);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}\n")
-         .append("#ver{background:linear-gradient(180deg,#0f2b1c,#0a1a12);border:1px solid #2f6e44;color:#7ee2a8;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:700;letter-spacing:.6px;box-shadow:0 0 10px rgba(67,209,124,.3)}\n")
-         .append("#versub{color:#5f7183;font-size:11px}\n")
+         .append("#title{font-weight:800;font-size:15.5px;letter-spacing:.8px;background:linear-gradient(90deg,#f2f8fd,#8fe6b0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}\n")
+         .append("#ver{background:linear-gradient(180deg,#0b2416,#071409);border:1px solid #1f5c37;color:#7ee2a8;border-radius:7px;padding:2px 10px;font-size:11px;font-weight:800;letter-spacing:.6px;box-shadow:0 0 10px rgba(61,220,132,.3)}\n")
+         .append("#versub{color:#5d7183;font-size:11.5px}\n")
          .append("#sp{flex:1}\n")
-         .append(".lbtn{background:#0e1620;border:1px solid #243447;color:#9fb2c4;border-radius:7px;padding:4px 9px;min-height:32px;min-width:32px;font-size:14px;cursor:pointer;font-family:inherit;transition:border-color .16s,background .16s,transform .16s,box-shadow .16s}\n")
-         .append(".lbtn:hover{border-color:#3d5268;background:#13202c;transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.35)}\n")
-         .append(".lbtn.on{border-color:#2f6e44;color:#7ee2a8;background:#0a170f;box-shadow:0 0 10px rgba(67,209,124,.28)}\n")
-         .append("#stchips{margin-top:9px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}\n")
-         .append(".chip{display:inline-flex;align-items:center;gap:5px;background:#0d151d;border:1px solid #1e2c3a;border-radius:20px;padding:3px 10px;font-size:11px;color:#8fa0b0;transition:border-color .15s,color .15s}\n")
-         .append(".chip.up{border-color:#2f6e44;color:#7ee2a8;box-shadow:0 0 8px rgba(67,209,124,.14)}\n")
-         .append(".chip.dw{color:#3d4a56}\n")
-         .append(".chip b{color:#c9d6e2;font-weight:600}\n")
-         .append(".chip.up b{color:#a9eec6}\n")
-         .append("#stbadge{color:#7ee2a8;font-weight:700}\n")
-         .append("#stbadge.bad{color:#e05d5d}\n")
-         .append("#ctl{position:relative;z-index:1;display:none;padding:9px 16px;border-bottom:1px solid #16232f;background:#0a1018;flex-wrap:wrap;gap:6px 16px;align-items:center}\n")
-         .append("#ctl label{color:#64778a;font-size:11.5px;display:inline-flex;align-items:center;gap:6px}\n")
-         .append("select,input{background:#0d151d;color:#c6d2de;border:1px solid #243447;border-radius:6px;padding:4px 9px;font-family:inherit;font-size:12px}\n")
-         .append("input{min-width:150px}\n")
-         .append("input:focus,select:focus{outline:none;border-color:#2f6e44}\n")
-         .append("#crashbn{position:relative;z-index:1;display:none;padding:10px 16px;border-bottom:1px solid #4a262c;background:#130a0c;box-shadow:inset 0 0 24px rgba(224,93,93,.07)}\n")
-         .append("#crashbn .ch{color:#e05d5d;font-weight:700;font-size:12px}\n")
-         .append("#crashbn .cd{color:#9fb2c4;font-size:11.5px;margin-top:2px}\n")
-         .append("#crashbn pre{margin:6px 0 4px;padding:9px;background:#070b11;border:1px solid #2a1a1e;border-radius:6px;max-height:180px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:11px;color:#d8c2bf}\n")
-         .append("#notices{position:relative;z-index:1;padding:0 16px}\n")
-         .append(".nt{font-size:11.5px;padding:2px 0}\n")
-         .append(".nt-w{color:#e0a93e}.nt-e{color:#e05d5d}\n")
-         .append("#stream{position:relative;z-index:1;flex:1;overflow-y:auto;padding:12px 16px}\n")
+         .append(".ib{width:34px;height:34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;background:#0b1420;border:1px solid #1c2a3a;color:#93a5b8;cursor:pointer;transition:border-color .18s,background .18s,color .18s,transform .18s,box-shadow .18s;padding:0;font-family:inherit}\n")
+         .append(".ib .ic{width:16px;height:16px;vertical-align:0}\n")
+         .append(".ib:hover{border-color:#2e4358;color:#dce6f1;background:#101c2a;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.4)}\n")
+         .append(".ib.on{border-color:#1f5c37;color:#3ddc84;background:#08150d;box-shadow:0 0 12px rgba(61,220,132,.25)}\n")
+         .append(".ibsep{width:1px;height:20px;background:#1c2a3a;margin:0 3px;flex:none}\n")
+         .append("/* ---- chip status berikon ---- */\n")
+         .append("#stchips{margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}\n")
+         .append(".schip{display:inline-flex;align-items:center;gap:6px;background:rgba(13,21,31,.8);border:1px solid #1a2836;border-radius:9px;padding:5px 11px;font-size:11.5px;color:#93a5b8;font-weight:600;letter-spacing:.3px;transition:border-color .18s,color .18s,box-shadow .18s}\n")
+         .append(".schip .ic{width:13px;height:13px}\n")
+         .append(".schip b{color:#cfe0ef;font-weight:700}\n")
+         .append(".schip.up{border-color:rgba(61,220,132,.45);color:#63d990;box-shadow:0 0 10px rgba(61,220,132,.12)}\n")
+         .append(".schip.up b{color:#a9efc6}\n")
+         .append(".schip.dw{color:#44586a}\n")
+         .append("#stbadge.ok{color:#3ddc84}\n")
+         .append("#stbadge.bad{color:#ff5d5d}\n")
+         .append("/* ---- panel filter berikon ---- */\n")
+         .append("#ctl{position:relative;z-index:1;display:none;padding:10px 18px;border-bottom:1px solid #16222f;background:#070d15;flex-wrap:wrap;gap:8px 18px;align-items:center}\n")
+         .append("#ctl label{color:#7e919f;font-size:11.5px;font-weight:600;letter-spacing:.3px;display:inline-flex;align-items:center;gap:7px}\n")
+         .append("#ctl label .ic{color:#4fc3dd}\n")
+         .append("select,input{background:#0b1420;color:#dce6f1;border:1px solid #1c2a3a;border-radius:7px;padding:5px 10px;font-family:inherit;font-size:12px}\n")
+         .append("input{min-width:170px}\n")
+         .append("input:focus,select:focus{outline:none;border-color:#1f5c37}\n")
+         .append("/* ---- crash banner ---- */\n")
+         .append("#crashbn{position:relative;z-index:1;display:none;padding:11px 18px;border-bottom:1px solid #4a262c;background:#130a0c;box-shadow:inset 0 0 24px rgba(255,93,93,.07)}\n")
+         .append("#crashbn .ch{color:#ff5d5d;font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:7px}\n")
+         .append("#crashbn .cd{color:#9fb2c4;font-size:11.5px;margin-top:3px}\n")
+         .append("#crashbn pre{margin:7px 0 4px;padding:10px;background:#070b11;border:1px solid #2a1a1e;border-radius:8px;max-height:180px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:11px;color:#d8c2bf}\n")
+         .append("#notices{position:relative;z-index:1;padding:0 18px}\n")
+         .append(".nt{font-size:11.5px;padding:3px 0;display:flex;align-items:baseline;gap:7px}\n")
+         .append(".nt .ic{width:13px;height:13px;position:relative;top:1.5px}\n")
+         .append(".nt-w{color:#ffb454}.nt-e{color:#ff5d5d}\n")
+         .append("/* ---- stream kartu log ---- */\n")
+         .append("#stream{position:relative;z-index:1;flex:1;overflow-y:auto;padding:14px 18px 18px}\n")
          .append("#stream::-webkit-scrollbar{width:10px;height:10px}\n")
          .append("#stream::-webkit-scrollbar-track{background:transparent}\n")
-         .append("#stream::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#243447,#1a2836);border-radius:6px;border:2px solid #070b11}\n")
-         .append("#banner{display:inline-block;border:1px solid #245c3c;border-radius:9px;background:linear-gradient(180deg,#0a1410,#081008);box-shadow:0 0 22px rgba(63,143,92,.22),inset 0 0 14px rgba(63,143,92,.08);padding:9px 16px;margin:0 0 10px;color:#4fce7f;font-size:11.5px;line-height:1.7}\n")
-         .append("#banner .b1{font-weight:700;letter-spacing:.4px}\n")
-         .append("#banner .dim{color:#3d5547}\n")
-         .append(".ln{white-space:pre-wrap;word-break:break-word;padding:6px 8px;border-radius:6px;border-bottom:1px solid rgba(27,40,54,.42);animation:fadein .18s ease-out}\n")
-         .append("@keyframes fadein{from{opacity:0;transform:translateY(2px)}}\n")
-         .append(".ln:hover{background:#0e1722}\n")
-         .append(".ln.bad{background:#160a0e;border-bottom-color:rgba(74,38,44,.5)}\n")
-         .append(".sq{display:inline-block;width:5.5ch;color:#39434d}\n")
-         .append(".tm{display:inline-block;width:13.5ch;color:#5b6c7d}\n")
-         .append(".lv{display:inline-block;width:10.5ch;font-weight:700;letter-spacing:.4px;border-radius:5px;padding:0 4px;margin-right:2px;text-align:center}\n")
-         .append(".l-g{color:#43d17c;background:rgba(67,209,124,.09)}\n")
-         .append(".l-d{color:#54c6d8;background:rgba(84,198,216,.09)}\n")
-         .append(".l-w{color:#e0a93e;background:rgba(224,169,62,.1)}\n")
-         .append(".l-r{color:#e05d5d;background:rgba(224,93,93,.11)}\n")
-         .append(".l-i{color:#64778a;font-weight:400}\n")
-         .append(".cp{display:inline-block;font-weight:700;margin-right:4px}\n")
-         .append(".c-CORE{color:#8fa0b0}.c-CONFIG{color:#d9c377}.c-CDN{color:#52d0b0}.c-SDK{color:#b899e8}.c-LOGIN{color:#f0a35e}.c-GAME{color:#37c9a6}.c-MONITOR{color:#8a97a5}\n")
-         .append(".ev{color:#c6d2de}\n")
-         .append(".ev.w{color:#e0a93e}.ev.r{color:#e05d5d}.ev.d{color:#7f919e}\n")
-         .append(".ev .f{color:#e05d5d;font-weight:700}\n")
-         .append(".sub{display:block;margin-left:32ch;white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.55;border-left:2px solid #1e2c3a;padding-left:9px}\n")
-         .append(".dt{color:#51626f}\n")
-         .append(".rq{color:#6d7f8d}.rq b{color:#9db2c2;font-weight:600}\n")
-         .append(".rs{color:#5f8a74}.rs b{color:#8fcead;font-weight:600}\n")
-         .append(".ex{color:#586b7c}\n")
-         .append(".ln.bad .sub{border-left-color:#3a2026}\n")
-         .append(".ln:hover .sub{border-left-color:#2e4256}\n")
-         .append("#cursor{display:inline-block;width:8px;height:14px;background:#43d17c;vertical-align:-2px;animation:bl 1.1s step-end infinite;box-shadow:0 0 8px rgba(67,209,124,.6)}\n")
+         .append("#stream::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#223143,#16212e);border-radius:6px;border:2px solid #04070c}\n")
+         .append("#banner{display:flex;gap:13px;align-items:flex-start;border:1px solid #1f5c37;border-radius:12px;background:linear-gradient(180deg,#0a1410,#081009);box-shadow:0 0 26px rgba(61,220,132,.14),inset 0 0 18px rgba(61,220,132,.05);padding:14px 18px;margin:0 0 12px}\n")
+         .append("#blogo{width:42px;height:42px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;color:#3ddc84;background:linear-gradient(145deg,#0b2416,#071409);border:1px solid #1f5c37;flex:none}\n")
+         .append("#blogo .ic{width:23px;height:23px;vertical-align:0;filter:drop-shadow(0 0 8px rgba(61,220,132,.5))}\n")
+         .append("#banner .b1{font-weight:800;font-size:13.5px;color:#a9efc6;letter-spacing:.4px}\n")
+         .append("#banner .bl{color:#63a97f;font-size:11.5px;line-height:1.75;margin-top:3px}\n")
+         .append("#banner .bl .ic{width:13px;height:13px;color:#3ddc84}\n")
+         .append(".ln{position:relative;background:linear-gradient(180deg,#0a121b,#091017);border:1px solid #131f2b;border-left:3px solid #2a3a4c;border-radius:9px;padding:9px 12px 9px 14px;margin-bottom:8px;animation:fadein .2s ease-out;transition:border-color .15s,box-shadow .15s}\n")
+         .append("@keyframes fadein{from{opacity:0;transform:translateY(3px)}}\n")
+         .append(".ln:hover{border-color:#223142;box-shadow:0 3px 14px rgba(0,0,0,.35)}\n")
+         .append(".ln.g{border-left-color:#3ddc84}\n")
+         .append(".ln.d{border-left-color:#4fc3dd}\n")
+         .append(".ln.w{border-left-color:#ffb454}\n")
+         .append(".ln.r{border-left-color:#ff5d5d;background:linear-gradient(180deg,#150b0e,#100a0c);border-color:#3a2026}\n")
+         .append(".rh{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}\n")
+         .append(".lv{display:inline-flex;align-items:center;gap:5px;font-weight:800;font-size:10.5px;letter-spacing:.8px;border-radius:6px;padding:2.5px 8px}\n")
+         .append(".lv .ic{width:12px;height:12px}\n")
+         .append(".l-g{color:#3ddc84;background:rgba(61,220,132,.1);border:1px solid rgba(61,220,132,.25)}\n")
+         .append(".l-d{color:#4fc3dd;background:rgba(79,195,221,.1);border:1px solid rgba(79,195,221,.25)}\n")
+         .append(".l-w{color:#ffb454;background:rgba(255,180,84,.1);border:1px solid rgba(255,180,84,.25)}\n")
+         .append(".l-r{color:#ff5d5d;background:rgba(255,93,93,.12);border:1px solid rgba(255,93,93,.3)}\n")
+         .append(".cp{display:inline-flex;align-items:center;gap:5px;font-weight:800;font-size:10.5px;letter-spacing:.6px;border-radius:6px;padding:2.5px 8px;border:1px solid transparent}\n")
+         .append(".cp .ic{width:12px;height:12px}\n")
+         .append(".c-CORE{color:#8fa0b0;background:rgba(143,160,176,.09);border-color:rgba(143,160,176,.22)}\n")
+         .append(".c-CONFIG{color:#d9c377;background:rgba(217,195,119,.09);border-color:rgba(217,195,119,.22)}\n")
+         .append(".c-CDN{color:#3fd6b4;background:rgba(63,214,180,.09);border-color:rgba(63,214,180,.22)}\n")
+         .append(".c-SDK{color:#b899e8;background:rgba(184,153,232,.09);border-color:rgba(184,153,232,.22)}\n")
+         .append(".c-LOGIN{color:#f0a35e;background:rgba(240,163,94,.09);border-color:rgba(240,163,94,.22)}\n")
+         .append(".c-GAME{color:#37c9a6;background:rgba(55,201,166,.09);border-color:rgba(55,201,166,.22)}\n")
+         .append(".c-MONITOR{color:#8a97a5;background:rgba(138,151,165,.09);border-color:rgba(138,151,165,.22)}\n")
+         .append(".rmeta{margin-left:auto;display:inline-flex;gap:8px;color:#55677a;font-size:10.5px;font-weight:600;font-variant-numeric:tabular-nums}\n")
+         .append(".rmeta .sq{color:#3d4e60}\n")
+         .append(".ev{color:#dce6f1;font-family:'JetBrains Mono','Roboto Mono',Menlo,Consolas,'Droid Sans Mono',monospace;font-size:12.5px;white-space:pre-wrap;word-break:break-word}\n")
+         .append(".ev b{color:#f2f8fd}\n")
+         .append(".ev.w{color:#ffd9a0}.ev.r{color:#ffb3b3}.ev.d{color:#8fa3b5}\n")
+         .append(".ev .f{color:#ff8484;font-weight:700}\n")
+         .append(".dtl{margin-top:7px;border-left:2px solid #1b2836;padding-left:10px;display:flex;flex-direction:column;gap:4px}\n")
+         .append(".ln.r .dtl{border-left-color:#3a2026}\n")
+         .append(".sub{display:flex;gap:7px;align-items:baseline;font-family:'JetBrains Mono','Roboto Mono',Menlo,Consolas,'Droid Sans Mono',monospace;font-size:11.5px;line-height:1.6;color:#7e919f}\n")
+         .append(".sub .ic{width:12px;height:12px;position:relative;top:2px;color:#4c5f70}\n")
+         .append(".sub>span{white-space:pre-wrap;word-break:break-word;flex:1;min-width:0}\n")
+         .append(".sub b{color:#b9cbd9;font-weight:700}\n")
+         .append(".lbl{color:#647a8d;font-weight:800}\n")
+         .append(".s-det{color:#8298ab}\n")
+         .append(".s-det b{color:#a9efc6}\n")
+         .append(".s-req{color:#7d93a6}\n")
+         .append(".s-req .ic{color:#4fc3dd}\n")
+         .append(".s-req b{color:#a8cfdd}\n")
+         .append(".s-res{color:#7fa98f}\n")
+         .append(".s-res .ic{color:#3ddc84}\n")
+         .append(".s-res b{color:#a9d8bb}\n")
+         .append(".s-ext{color:#5d7183}\n")
+         .append(".s-ext .ic{color:#d9c377}\n")
+         .append("#cursor{display:inline-block;width:8px;height:14px;background:#3ddc84;vertical-align:-2px;animation:bl 1.1s step-end infinite;box-shadow:0 0 8px rgba(61,220,132,.6)}\n")
          .append("@keyframes bl{50%{opacity:0}}\n")
          .append("#pausemark{color:#64778a;font-style:italic}\n")
-         .append("#ftr{position:relative;z-index:1;padding:9px 16px;border-top:1px solid #16232f;background:linear-gradient(0deg,#0d1520,#0a1018);display:flex;gap:8px;align-items:center;flex-wrap:wrap;box-shadow:0 -4px 18px rgba(0,0,0,.3)}\n")
-         .append("#sum{color:#64778a;font-size:11.5px;flex:1;min-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n")
-         .append("#sum b{color:#c6d2de;font-weight:600}\n")
-         .append("#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#0a170f;color:#7ee2a8;border:1px solid #2f6e44;padding:8px 18px;border-radius:8px;display:none;z-index:50;font-size:12px;box-shadow:0 6px 24px rgba(0,0,0,.5),0 0 14px rgba(67,209,124,.2);animation:rise .2s ease-out}\n")
-         .append("#toast.err{background:#130a0c;color:#e05d5d;border-color:#4a262c;box-shadow:0 6px 24px rgba(0,0,0,.5),0 0 14px rgba(224,93,93,.2)}\n")
+         .append("/* ---- footer sticky ---- */\n")
+         .append("#ftr{position:relative;z-index:2;padding:9px 18px;border-top:1px solid #16222f;background:rgba(8,14,22,.94);display:flex;gap:8px;align-items:center;flex-wrap:wrap;box-shadow:0 -6px 24px rgba(0,0,0,.4)}\n")
+         .append("#sum{color:#64778a;font-size:11.5px;flex:1;min-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n")
+         .append("#sum b{color:#cfe0ef;font-weight:700}\n")
+         .append("#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#08150d;color:#7ee2a8;border:1px solid #1f5c37;padding:9px 18px;border-radius:9px;display:none;z-index:50;font-size:12px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.5),0 0 14px rgba(61,220,132,.2);animation:rise .2s ease-out}\n")
+         .append("#toast.err{background:#130a0c;color:#ff5d5d;border-color:#4a262c;box-shadow:0 6px 24px rgba(0,0,0,.5),0 0 14px rgba(255,93,93,.2)}\n")
          .append("@keyframes rise{from{opacity:0;transform:translate(-50%,6px)}}\n")
-         .append("#guide{position:relative;z-index:1;display:none;padding:11px 16px;border-bottom:1px solid #16232f;background:#0a1018;color:#8fa0b0;font-size:11.5px;line-height:1.8;white-space:pre-wrap}\n")
-         .append("#guide b{color:#43d17c}\n")
-         .append("#guide .gd{color:#5b6c7d}\n")
-         .append("@media(max-width:640px){.sq{display:none}.sub{margin-left:2px}body{font-size:12px}#banner{font-size:10.5px;padding:7px 11px}.lv{width:auto}}\n")
+         .append("#guide{position:relative;z-index:1;display:none;padding:13px 18px;border-bottom:1px solid #16222f;background:#070d15;color:#93a5b8;font-size:11.5px;line-height:1.8}\n")
+         .append(".gsec{margin:7px 0}\n")
+         .append(".gsec .gh{display:inline-flex;align-items:center;gap:7px;color:#3ddc84;font-weight:800;font-size:12px;letter-spacing:.5px}\n")
+         .append(".gsec .gh .ic{width:14px;height:14px}\n")
+         .append(".gsec .gt{color:#8fa0b0;margin-top:2px}\n")
+         .append(".gsec .gt b{color:#cfe0ef}\n")
+         .append("@media(max-width:680px){#stream{padding:10px 10px 14px}#hdr{padding:9px 12px}#ctl{padding:10px 12px}#ftr{padding:8px 12px}#notices{padding:0 12px}#versub{display:none}.sq{display:none}.ln{padding:8px 9px 8px 11px;border-radius:8px}.dtl{padding-left:8px}.sub{font-size:11px}.rmeta{font-size:10px}#banner{padding:11px 13px}}\n")
          .append("</style></head><body>\n")
 
          .append("<div id=hdr><div id=l1>")
-         .append("<span id=logo>🐉</span><span id=dot></span><span id=title>DB LOCAL SERVER</span><span id=ver>v10</span><span id=versub>· live console · com.db.local</span>")
+         .append("<span id=logo><span data-ic=flame></span></span><span id=dot></span>")
+         .append("<span id=title>DB LOCAL SERVER</span><span id=ver>v12</span><span id=versub>· live console · com.db.local</span>")
          .append("<span id=sp></span>")
-         .append("<button id=vimp class=lbtn title='Tampilkan penting saja'>⭐</button>")
-         .append("<button id=vmal class=lbtn title='Tampilkan masalah saja'>❌</button>")
-         .append("<button id=vall class=\"lbtn on\" title='Tampilkan semua log'>📜</button>")
-         .append("<button id=pf class=lbtn title='Filter log'>⚙️</button>")
-         .append("<button id=pause class=lbtn title='Jeda / lanjut pembaruan otomatis'>⏸️</button>")
-         .append("<button id=reset class=lbtn title='Bersihkan tampilan'>🧹</button>")
-         .append("<button id=guidebtn class=lbtn title='Panduan singkat'>❓</button>")
+         .append("<button id=vimp class=ib title='Penting saja — boot, konfigurasi, SDK, login, game, crash'></button>")
+         .append("<button id=vmal class=ib title='Masalah saja — WARN / ERROR'></button>")
+         .append("<button id=vall class=\"ib on\" title='Semua log'></button>")
+         .append("<span class=ibsep></span>")
+         .append("<button id=pf class=ib title='Panel filter lanjutan'></button>")
+         .append("<button id=pause class=ib title='Jeda / lanjut pembaruan otomatis'></button>")
+         .append("<button id=reset class=ib title='Bersihkan tampilan log'></button>")
+         .append("<button id=guidebtn class=ib title='Panduan membaca log'></button>")
          .append("</div>\n")
-         .append("<div id=stchips><span class=chip>⏳ menghubungkan …</span></div></div>\n")
+         .append("<div id=stchips><span class=schip><span data-ic=clock></span>menghubungkan …</span></div></div>\n")
 
          .append("<div id=ctl>\n")
-         .append("<label>🔎 cari <input id=q placeholder='kata kunci …'></label>\n")
-         .append("<label>🏷️ tahap <select id=stage><option value=''>semua</option><option>KONFIG</option><option>CDN</option><option>SDK</option><option>LOGIN</option><option>GAME</option><option>SISTEM</option><option>LOGGER</option></select></label>\n")
-         .append("<label>🔌 port <select id=port><option value=0>semua</option><option value=9527>9527 konfig</option><option value=9528>9528 CDN</option>")
+         .append("<label><span data-ic=search></span>Cari kata kunci <input id=q placeholder='mis. login, crash, all.zip …'></label>\n")
+         .append("<label><span data-ic=tag></span>Tahap <select id=stage><option value=''>semua</option><option>KONFIG</option><option>CDN</option><option>SDK</option><option>LOGIN</option><option>GAME</option><option>SISTEM</option><option>LOGGER</option></select></label>\n")
+         .append("<label><span data-ic=server></span>Port <select id=port><option value=0>semua</option><option value=9527>9527 konfig</option><option value=9528>9528 CDN</option>")
          .append("<option value=5050>5050 login</option><option value=5051>5051 game</option><option value=9530>9530 SDK</option><option value=4000>4000 logger</option></select></label>\n")
-         .append("<label>📊 status <select id=st><option value=''>semua</option><option value=2>sukses (2xx)</option><option value=4>gagal (4xx)</option><option value=5>rusak (5xx)</option><option value=e>bermasalah</option></select></label>\n")
-         .append("<label>🔢 jumlah <select id=limit><option>100</option><option selected>500</option><option>2000</option><option value=0>semua buffer</option></select></label>\n")
+         .append("<label><span data-ic=activity></span>Status <select id=st><option value=''>semua</option><option value=2>sukses (2xx)</option><option value=4>gagal (4xx)</option><option value=5>rusak (5xx)</option><option value=e>bermasalah</option></select></label>\n")
+         .append("<label><span data-ic=hash></span>Jumlah <select id=limit><option>100</option><option selected>500</option><option>2000</option><option value=0>semua buffer</option></select></label>\n")
          .append("</div>\n")
 
          .append("<div id=crashbn></div>\n")
          .append("<div id=notices></div>\n")
          .append("<div id=stream>")
-         .append("<div id=banner><span class=b1>🐉 DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v10</span><br>📡 console log real-time · http://127.0.0.1:4000<br><span class=dim>✅ server berjalan — log semua layanan mengalir otomatis (pembaruan tiap 1,2 dtk) · semua keterangan tampil penuh tanpa klik</span></div>\n")
+         .append("<div id=banner><span id=blogo><span data-ic=flame></span></span><div><div class=b1>DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v12</div><div class=bl><span data-ic=terminal></span> console log real-time · http://127.0.0.1:4000 — seluruh layanan server lokal mengalir ke sini<br><span data-ic=check></span> server berjalan — log diperbarui otomatis tiap 1,2 dtk · keterangan tiap peristiwa tampil LENGKAP tanpa klik: kalimat peristiwa + Endpoint / Status / Kirim / Terima / Durasi + isi request &amp; response</div></div></div>\n")
          .append("<div id=tb></div><div id=tail><span id=pausemark></span><span id=cursor> </span></div></div>\n")
 
          .append("<div id=ftr>")
-         .append("<button id=cpt class=lbtn title='Salin log (teks server penuh emoji)'>📋</button>")
-         .append("<button id=cpjs class=lbtn title='Salin JSON log'>📄</button>")
-         .append("<button id=dl class=lbtn title='Unduh arsip NDJSON'>💾</button>")
+         .append("<button id=cpt class=ib title='Salin log — teks server penuh emoji'></button>")
+         .append("<button id=cpjs class=ib title='Salin JSON log'></button>")
+         .append("<button id=dl class=ib title='Unduh arsip NDJSON — log lengkap tersimpan di disk'></button>")
          .append("<span id=sum>…</span></div>\n")
 
          .append("<div id=toast></div>\n")
-         .append("<div id=guide><b>🐉 PANDUAN SINGKAT</b>\n\nAlur normal boot:\n  🧩 konfigurasi 9527 → 🌐 CDN 9528 → 💳 SDK 9530 → layar login → 🙋 TAMU / 📝 DAFTAR / 🔐 LOGIN → 🎫 verifikasi 5050 → 🎮 game 5051\n\nLevel log beremoji:\n  <b>✅ INFO</b> hijau = alur normal · <b>🔍 DEBUG</b> cyan = traffic halus (aset game, heartbeat, konfigurasi kosong)\n  <b>⚠️ WARN</b> kuning = perlu perhatian (4xx/redirect/product) · <b>❌ ERROR</b> merah = gagal / crash\n\nTiap entri log lengkap tanpa klik (definisi server log):\n  baris utama = peristiwa beremoji · ↳ endpoint+status+durasi · 📤 req body terkirim · 📥 resp jawaban server · 🏷️ extra data protokol\n\nIzin overlay OFF = NORMAL (🪟 game asli tidak memerlukan overlay; SDK tetap berjalan normal).\nLayar login SDK: 🙋 TAMU = langsung main; 📝 DAFTAR = akun baru; 🔐 LOGIN = akun terdaftar.\n💥 CRASH: banner merah di atas console menampilkan trace lengkap — salin dan kirim untuk analisis akar.\nTombol kiri bawah: 📋 salin log / 📄 salin JSON / 💾 unduh arsip. Filter lanjutan: tombol ⚙️ kanan atas.</div>\n")
+         .append("<div id=guide>")
+         .append("<div class=gsec><span class=gh><span data-ic=terminal></span>ALUR NORMAL BOOT</span><div class=gt>🧩 9527 konfigurasi → 🌐 9528 CDN → 💳 9530 SDK → layar login → 🙋 TAMU / 📝 DAFTAR / 🔐 LOGIN → 🎫 verifikasi 5050 → 🎮 masuk game 5051</div></div>\n")
+         .append("<div class=gsec><span class=gh><span data-ic=check></span>LEVEL LOG</span><div class=gt><b>✅ INFO</b> alur normal · <b>🔍 DEBUG</b> traffic halus (aset game, heartbeat, config kosong) · <b>⚠️ WARN</b> perlu perhatian (4xx / redirect / product ditolak) · <b>❌ ERROR</b> gagal / crash</div></div>\n")
+         .append("<div class=gsec><span class=gh><span data-ic=list></span>FORMAT TIAP ENTRI — definisi server log yang benar</span><div class=gt>baris utama = 📌 emoji peristiwa + judul tebal + kalimat penjelasan manusia; blok detail = <b>Endpoint</b> · <b>Status</b> · <b>Kirim</b> · <b>Terima</b> · <b>Durasi</b> (pemisah \" · \"); lalu <b>Kirim (request)</b>, <b>Jawaban (response)</b>, <b>Data protokol</b> bila ada — SEMUA tampil penuh inline, bukan disembunyikan di balik klik.</div></div>\n")
+         .append("<div class=gsec><span class=gh><span data-ic=shield></span>LAYAR LOGIN SDK</span><div class=gt>🙋 TAMU = langsung main · 📝 DAFTAR = buat akun baru · 🔐 LOGIN = akun terdaftar. Izin overlay OFF itu NORMAL (🪟 game asli tidak memerlukan overlay; SDK tetap berjalan).</div></div>\n")
+         .append("<div class=gsec><span class=gh><span data-ic=octagon></span>CRASH</span><div class=gt>💥 banner merah di atas console menampilkan trace lengkap — tombol salin untuk dikirim ke analisis akar.</div></div>\n")
+         .append("<div class=gsec><span class=gh><span data-ic=copy></span>TOMBOL BAWAH</span><div class=gt>salin log (teks server penuh emoji) · salin JSON · unduh arsip NDJSON. Filter lanjutan: tombol ikon sliders di kanan atas.</div></div>\n")
+         .append("</div>\n")
 
          .append("<script>\n")
          .append(Js())
@@ -443,13 +495,57 @@ public final class LoggerHandler implements HttpWorker.Handler {
     }
 
     private static String Js() {
-        StringBuilder s = new StringBuilder(24576);
+        StringBuilder s = new StringBuilder(26000);
         s.append("var S={since:0,view:'all',stage:'',st:'',q:'',limit:500,auto:true,port:0};\n")
          .append("var ENT={},MAXC=3000,pollN=0,LASTSUM='',CRASHLATEST='',lastDrop=-1;\n")
          .append("function $(id){return document.getElementById(id)}\n")
          .append("function esc(x){return (x==null?'':''+x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}\n")
-         .append("function trunc(s,n){s=''+s;return s.length>n?s.substring(0,n)+'\u2026':s}\n")
-         .append("/* ---- tahap, komponen, level, detail (EMOJI PREMIUM v10) ---- */\n")
+         .append("function trunc(s,n){s=''+s;return s.length>n?s.substring(0,n)+'\\u2026':s}\n")
+         .append("/* ---- REGISTRY ICON SVG (v12 — icon sungguhan, bukan emoji) ---- */\n")
+         .append("function svg(p){return '<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">'+p+'</svg>'}\n")
+         .append("var IC={};\n")
+         .append("IC.flame=svg(\"<path d='M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z'/>\");\n")
+         .append("IC.server=svg(\"<rect x='2' y='2' width='20' height='8' rx='2' ry='2'/><rect x='2' y='14' width='20' height='8' rx='2' ry='2'/><line x1='6' y1='6' x2='6.01' y2='6'/><line x1='6' y1='18' x2='6.01' y2='18'/>\");\n")
+         .append("IC.settings=svg(\"<circle cx='12' cy='12' r='3'/><path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'/>\");\n")
+         .append("IC.globe=svg(\"<circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/>\");\n")
+         .append("IC.shield=svg(\"<path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/>\");\n")
+         .append("IC.gamepad=svg(\"<line x1='6' y1='11' x2='10' y2='11'/><line x1='8' y1='9' x2='8' y2='13'/><line x1='15' y1='12' x2='15.01' y2='12'/><line x1='18' y1='10' x2='18.01' y2='10'/><path d='M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z'/>\");\n")
+         .append("IC.card=svg(\"<rect x='1' y='4' width='22' height='16' rx='2' ry='2'/><line x1='1' y1='10' x2='23' y2='10'/>\");\n")
+         .append("IC.radio=svg(\"<circle cx='12' cy='12' r='2'/><path d='M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14'/>\");\n")
+         .append("IC.clock=svg(\"<circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>\");\n")
+         .append("IC.hash=svg(\"<line x1='4' y1='9' x2='20' y2='9'/><line x1='4' y1='15' x2='20' y2='15'/><line x1='10' y1='3' x2='8' y2='21'/><line x1='16' y1='3' x2='14' y2='21'/>\");\n")
+         .append("IC.archive=svg(\"<polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/>\");\n")
+         .append("IC.layers=svg(\"<polygon points='12 2 2 7 12 12 22 7 12 2'/><polyline points='2 17 12 22 22 17'/><polyline points='2 12 12 17 22 12'/>\");\n")
+         .append("IC.activity=svg(\"<polyline points='22 12 18 12 15 21 9 3 6 12 2 12'/>\");\n")
+         .append("IC.star=svg(\"<polygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/>\");\n")
+         .append("IC.warn=svg(\"<path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>\");\n")
+         .append("IC.x=svg(\"<circle cx='12' cy='12' r='10'/><line x1='15' y1='9' x2='9' y2='15'/><line x1='9' y1='9' x2='15' y2='15'/>\");\n")
+         .append("IC.check=svg(\"<path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/><polyline points='22 4 12 14.01 9 11.01'/>\");\n")
+         .append("IC.search=svg(\"<circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>\");\n")
+         .append("IC.list=svg(\"<line x1='8' y1='6' x2='21' y2='6'/><line x1='8' y1='12' x2='21' y2='12'/><line x1='8' y1='18' x2='21' y2='18'/><line x1='3' y1='6' x2='3.01' y2='6'/><line x1='3' y1='12' x2='3.01' y2='12'/><line x1='3' y1='18' x2='3.01' y2='18'/>\");\n")
+         .append("IC.sliders=svg(\"<line x1='4' y1='21' x2='4' y2='14'/><line x1='4' y1='10' x2='4' y2='3'/><line x1='12' y1='21' x2='12' y2='12'/><line x1='12' y1='8' x2='12' y2='3'/><line x1='20' y1='21' x2='20' y2='16'/><line x1='20' y1='12' x2='20' y2='3'/><line x1='1' y1='14' x2='7' y2='14'/><line x1='9' y1='8' x2='15' y2='8'/><line x1='17' y1='16' x2='23' y2='16'/>\");\n")
+         .append("IC.pause=svg(\"<rect x='6' y='4' width='4' height='16' rx='1'/><rect x='14' y='4' width='4' height='16' rx='1'/>\");\n")
+         .append("IC.play=svg(\"<polygon points='5 3 19 12 5 21 5 3'/>\");\n")
+         .append("IC.trash=svg(\"<polyline points='3 6 5 6 21 6'/><path d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'/><line x1='10' y1='11' x2='10' y2='17'/><line x1='14' y1='11' x2='14' y2='17'/>\");\n")
+         .append("IC.help=svg(\"<circle cx='12' cy='12' r='10'/><path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12.01' y2='17'/>\");\n")
+         .append("IC.copy=svg(\"<rect x='9' y='9' width='13' height='13' rx='2' ry='2'/><path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/>\");\n")
+         .append("IC.braces=svg(\"<path d='M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1'/><path d='M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1'/>\");\n")
+         .append("IC.download=svg(\"<path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/>\");\n")
+         .append("IC.terminal=svg(\"<polyline points='4 17 10 11 4 5'/><line x1='12' y1='19' x2='20' y2='19'/>\");\n")
+         .append("IC.tag=svg(\"<path d='M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z'/><line x1='7' y1='7' x2='7.01' y2='7'/>\");\n")
+         .append("IC.corner=svg(\"<polyline points='15 10 20 15 15 20'/><path d='M4 4v7a4 4 0 0 0 4 4h12'/>\");\n")
+         .append("IC.up=svg(\"<circle cx='12' cy='12' r='10'/><polyline points='16 12 12 8 8 12'/><line x1='12' y1='16' x2='12' y2='8'/>\");\n")
+         .append("IC.down=svg(\"<circle cx='12' cy='12' r='10'/><polyline points='8 12 12 16 16 12'/><line x1='12' y1='8' x2='12' y2='16'/>\");\n")
+         .append("IC.cpu=svg(\"<rect x='4' y='4' width='16' height='16' rx='2' ry='2'/><rect x='9' y='9' width='6' height='6'/><line x1='9' y1='1' x2='9' y2='4'/><line x1='15' y1='1' x2='15' y2='4'/><line x1='9' y1='20' x2='9' y2='23'/><line x1='15' y1='20' x2='15' y2='23'/><line x1='20' y1='9' x2='23' y2='9'/><line x1='20' y1='14' x2='23' y2='14'/><line x1='1' y1='9' x2='4' y2='9'/><line x1='1' y1='14' x2='4' y2='14'/>\");\n")
+         .append("IC.octagon=svg(\"<polygon points='7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>\");\n")
+         .append("IC.info=svg(\"<circle cx='12' cy='12' r='10'/><line x1='12' y1='16' x2='12' y2='12'/><line x1='12' y1='8' x2='12.01' y2='8'/>\");\n")
+         .append("function ic(n){return IC[n]||IC.info}\n")
+         .append("function paintIcons(){var all=document.querySelectorAll('[data-ic]');\n")
+         .append(" for(var i=0;i<all.length;i++)all[i].innerHTML=ic(all[i].getAttribute('data-ic'));\n")
+         .append(" $('vimp').innerHTML=ic('star');$('vmal').innerHTML=ic('warn');$('vall').innerHTML=ic('list');\n")
+         .append(" $('pf').innerHTML=ic('sliders');$('pause').innerHTML=ic(S.auto?'pause':'play');$('reset').innerHTML=ic('trash');$('guidebtn').innerHTML=ic('help');\n")
+         .append(" $('cpt').innerHTML=ic('copy');$('cpjs').innerHTML=ic('braces');$('dl').innerHTML=ic('download')}\n")
+         .append("/* ---- tahap, komponen, level (ICON v12) ---- */\n")
          .append("function stageOf(e){\n")
          .append(" if(e.kind=='BOOT'||e.kind=='SYS'||e.kind=='EXTRACT')return 'SISTEM';\n")
          .append(" if(e.kind=='CRASH')return 'SISTEM';\n")
@@ -458,10 +554,13 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" if(e.port==5051)return 'GAME'; return 'LOGGER'}\n")
          .append("function compOf(e){\n")
          .append(" var k=e.kind||'';\n")
-         .append(" if(k=='BOOT'||k=='SYS'||k=='EXTRACT'||k=='CRASH'||k=='LOGCAT')return '⚙️CORE';\n")
-         .append(" if(e.port==9527)return '🧩CONFIG'; if(e.port==9528)return '🌐CDN';\n")
-         .append(" if(e.port==9530)return '💳SDK'; if(e.port==5050)return '🔐LOGIN';\n")
-         .append(" if(e.port==5051)return '🎮GAME'; return '📡MONITOR'}\n")
+         .append(" if(k=='BOOT'||k=='SYS'||k=='EXTRACT'||k=='CRASH'||k=='LOGCAT')return {name:'CORE',icon:'cpu'};\n")
+         .append(" if(e.port==9527)return {name:'CONFIG',icon:'settings'};\n")
+         .append(" if(e.port==9528)return {name:'CDN',icon:'globe'};\n")
+         .append(" if(e.port==9530)return {name:'SDK',icon:'card'};\n")
+         .append(" if(e.port==5050)return {name:'LOGIN',icon:'shield'};\n")
+         .append(" if(e.port==5051)return {name:'GAME',icon:'gamepad'};\n")
+         .append(" return {name:'MONITOR',icon:'radio'}}\n")
          .append("function pathOf(e){var p=(''+(e.path||''));var i=p.indexOf('?');return i>=0?p.substring(0,i):p}\n")
          .append("function ms2(n){var mb=n/1048576;return mb>=1?mb.toFixed(1)+'MB':Math.round(n/1024)+'KB'}\n")
          .append("function fmtB(n){n=n||0;return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B'}\n")
@@ -488,7 +587,9 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" if(p.indexOf('sendCodeByEmail')>=0)return 'Kirim kode email';\n")
          .append(" if(p.indexOf('findPassByEmail')>=0)return 'Lupa sandi';\n")
          .append(" return 'SDK '+p.substring(0,40)}\n")
-         .append("/* ---- deskripsi VERBOSE ala server asli + FULL EMOJI (v10) ---- */\n")
+         .append("/* ---- status berkata manusia: OK / ALIH / GAGAL / RUSAK (v12) ---- */\n")
+         .append("function stLbl(n){n=n||0;if(n>=500)return n+' RUSAK';if(n>=400)return n+' GAGAL';if(n>=300&&n<400)return n+' ALIH';if(n>=200&&n<300)return n+' OK';return ''+n}\n")
+         .append("/* ---- deskripsi VERBOSE ala server asli + EMOJI JELAS (v12) ---- */\n")
          .append("function describe(e){\n")
          .append(" var p=pathOf(e),k=e.kind||'HTTP',m=e.method||'',st=e.status||0,extra=e.extra||'';\n")
          .append(" if(k=='CRASH')return '💥 <b>CRASH terdeteksi</b> — proses game berhenti mendadak, trace lengkap tersimpan di logs/'+esc(p)+(e.error?'<br><span class=f>'+esc(e.error)+'</span>':'');\n")
@@ -520,7 +621,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  if(p.indexOf('manifest.json')>=0)return '📋 Manifest game dibaca — daftar modul game dimuat';\n")
          .append("  if(/\\.js($|\\?)/.test(p))return '📜 Skrip game dikirim — '+esc(p.split('/').pop().substring(0,44))+' ('+ms2(e.respLen||0)+' dalam '+e.durMs+' ms)';\n")
          .append("  if(p.indexOf('/resource/')>=0)return '🖼️ Aset game dikirim — '+esc(p.split('/').pop().substring(0,44))+' ('+ms2(e.respLen||0)+' dalam '+e.durMs+' ms)';\n")
-         .append("  return '🌐 CDN lokal: '+esc(p)}\n")
+         .append("  return '🌐 CDN lokal melayani — '+esc(p)}\n")
          .append(" if(e.port==9530){\n")
          .append("  var er=sdkErr(e),bad=(e.respPreview||'').indexOf('\\\"result\\\":false')>=0;\n")
          .append("  if(st>=400||bad){var nm=epName(p);return '❌ <span class=f><b>'+nm+' GAGAL</b></span> — '+errWhy(er.id,er.msg)+(er.id?' (error id '+er.id+')':'')}\n")
@@ -538,19 +639,19 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  if((e.path||'').indexOf('transport=polling')>=0&&e.respPreview&&e.respPreview.indexOf(':0{')>=0)return '🤝 <b>Handshake server login diterima</b> — sesi socket dibuat (EIO=3, pingInterval 25 dtk)';\n")
          .append("  var ev=evName(e.extra);if(ev)return '⚡ Pesan login diteruskan — event <b>'+esc(ev.a)+'</b>'+(ev.ack?' — dijawab server (ACK 43)':' — dikirim client (EVENT 42)');\n")
          .append("  if(extra.indexOf('ping→pong')>=0)return '💓 Heartbeat server login — ping→pong normal';\n")
-         .append("  return '🔌 Server login: '+esc(p.substring(0,60))}\n")
+         .append("  return '🔌 Server login melayani — '+esc(p.substring(0,60))}\n")
          .append(" if(e.port==5051){\n")
          .append("  var ev=evName(e.extra);\n")
          .append("  if(ev&&ev.a=='enterGame')return (e.respPreview&&e.respPreview.indexOf('ret\\\":0')>=0)?'🎮 <b>Pemain masuk server game</b> — data karakter lengkap diterima ('+ms2(e.respLen||0)+', ret=0)':'🎮 Pemain masuk server — data '+ms2(e.respLen||0)+' diterima';\n")
          .append("  if(ev)return '⚡ Pesan game diteruskan — event <b>'+esc(ev.a)+'</b>'+(ev.ack?' — dijawab server (ACK 43)':' — dikirim client (EVENT 42)');\n")
-         .append("  return '🔌 Server game: '+esc(p.substring(0,60))}\n")
-         .append(" return '🌐 '+esc(p)}\n")
+         .append("  return '🔌 Server game melayani — '+esc(p.substring(0,60))}\n")
+         .append(" return '🌐 Permintaan dilayani oleh server lokal — '+esc(p)}\n")
          .append("function uin(x){var m=/uid[=\\\":]+([0-9]+)/.exec(''+x);return m?m[1]:'?'}\n")
          .append("function una(x){var m=/username[=\\\":\\s]+([A-Za-z0-9_]+)/.exec(''+x);return m?m[1]:'tamu'}\n")
          .append("function evName(extra){var s=''+(extra||'');var i=s.indexOf('EVENT: 42');if(i<0)return null;\n")
          .append(" var m=/action\":\"([A-Za-z]+)/.exec(s.substring(i));var ack=s.indexOf('ACK: 43',i)>=0;\n")
          .append(" return m?{a:m[1],ack:ack}:{a:'?',ack:ack}}\n")
-         .append("/* ---- level ala log server asli + emoji: ✅INFO 🔍DEBUG ⚠️WARN ❌ERROR ---- */\n")
+         .append("/* ---- level + chip berikon: check INFO / search DEBUG / warn WARN / x ERROR ---- */\n")
          .append("function isProblem(e){\n")
          .append(" if((e.kind||'')=='SYS'&&(e.method||'')=='OVERLAY')return false;\n")
          .append(" if((e.kind||'')=='CRASH')return true;\n")
@@ -563,17 +664,17 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" return false}\n")
          .append("function levelOf(e){\n")
          .append(" var k=e.kind||'',m=e.method||'',p=pathOf(e);\n")
-         .append(" if(k=='CRASH')return ['❌ ERROR','r'];\n")
-         .append(" if(k=='LOGCAT')return ['🔍 DEBUG','d'];\n")
-         .append(" if(k=='SYS'&&m=='OVERLAY')return ['✅ INFO','i'];\n")
-         .append(" if(isProblem(e))return (e.status||0)>=500?['❌ ERROR','r']:['⚠️ WARN','w'];\n")
-         .append(" if((e.status||0)>=300)return ['⚠️ WARN','w'];\n")
-         .append(" if((e.extra||'').indexOf('ping→pong')>=0||e.respPreview=='pong')return ['🔍 DEBUG','d'];\n")
+         .append(" if(k=='CRASH')return {word:'ERROR',cls:'r',icon:'x'};\n")
+         .append(" if(k=='LOGCAT')return {word:'DEBUG',cls:'d',icon:'search'};\n")
+         .append(" if(k=='SYS'&&m=='OVERLAY')return {word:'INFO',cls:'g',icon:'check'};\n")
+         .append(" if(isProblem(e))return (e.status||0)>=500?{word:'ERROR',cls:'r',icon:'x'}:{word:'WARN',cls:'w',icon:'warn'};\n")
+         .append(" if((e.status||0)>=300)return {word:'WARN',cls:'w',icon:'warn'};\n")
+         .append(" if((e.extra||'').indexOf('ping→pong')>=0||e.respPreview=='pong')return {word:'DEBUG',cls:'d',icon:'search'};\n")
          .append(" if(k=='HTTP'||k=='WS'){\n")
-         .append("  if(e.port==9527&&p.indexOf('com_db_local')>=0)return ['🔍 DEBUG','d'];\n")
-         .append("  if(e.port==9528&&(p.indexOf('/resource/')>=0||/\\.js($|\\?)/.test(p)||p.indexOf('manifest.json')>=0))return ['🔍 DEBUG','d'];\n")
-         .append("  return ['✅ INFO','g']}\n")
-         .append(" return ['✅ INFO','g']}\n")
+         .append("  if(e.port==9527&&p.indexOf('com_db_local')>=0)return {word:'DEBUG',cls:'d',icon:'search'};\n")
+         .append("  if(e.port==9528&&(p.indexOf('/resource/')>=0||/\\.js($|\\?)/.test(p)||p.indexOf('manifest.json')>=0))return {word:'DEBUG',cls:'d',icon:'search'};\n")
+         .append("  return {word:'INFO',cls:'g',icon:'check'}}\n")
+         .append(" return {word:'INFO',cls:'g',icon:'check'}}\n")
          .append("function isImportant(e){\n")
          .append(" var k=e.kind||'';\n")
          .append(" if(k=='CRASH')return true;\n")
@@ -586,32 +687,41 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" return false}\n")
          .append("function plain(h){return (''+h).replace(/<[^>]*>/g,'')}\n")
          .append("function durStr(e){if(!e.durMs)return '';return e.durMs>=1000?(e.durMs/1000).toFixed(1)+'s':e.durMs+'ms'}\n")
+         .append("/* ---- detail berLABEL manusia + pemisah jelas (v12) ---- */\n")
          .append("function detailOf(e){\n")
          .append(" var k=e.kind||'';\n")
-         .append(" if(k=='HTTP'){return (e.method||'GET')+' '+pathOf(e)+' \u00b7 status '+(e.status||0)+' \u00b7 req '+fmtB(e.reqLen||0)+' \u00b7 resp '+fmtB(e.respLen||0)+(e.durMs?' \u00b7 '+durStr(e):'')}\n")
-         .append(" if(k=='WS'){return 'socket.io port '+e.port+' \u00b7 resp '+fmtB(e.respLen||0)+(e.durMs?' \u00b7 '+durStr(e):'')}\n")
-         .append(" return 'port '+e.port}\n")
-         .append("/* ---- SEMUA sub-baris tampil INLINE + beremoji (tanpa klik) ---- */\n")
-         .append("function lnHtml(e){\n")
-         .append(" var lv=levelOf(e),comp=compOf(e),d=describe(e),er=e.error||'';\n")
-         .append(" var ec=lv[1]=='r'?'r':lv[1]=='w'?'w':lv[1]=='d'?'d':'';\n")
-         .append(" var sub='<div class=\"sub dt\">↳ '+esc(detailOf(e))+'</div>';\n")
+         .append(" if(k=='HTTP'){return 'Endpoint : '+(e.method||'GET')+' '+esc(pathOf(e))+' · Status : <b>'+stLbl(e.status||0)+'</b> · Kirim : '+fmtB(e.reqLen||0)+' · Terima : '+fmtB(e.respLen||0)+(e.durMs?' · Durasi : '+durStr(e):'')}\n")
+         .append(" if(k=='WS'){return 'Endpoint : socket.io port '+e.port+' · Terima : '+fmtB(e.respLen||0)+(e.durMs?' · Durasi : '+durStr(e):'')}\n")
+         .append(" if(k=='BOOT')return 'Komponen : LocalServerStarter · Mode : server lokal 127.0.0.1';\n")
+         .append(" if(k=='CRASH')return 'Komponen : CrashHook · Tersimpan : folder logs/';\n")
+         .append(" return 'Komponen : port '+e.port+' · Jenis : '+k}\n")
+         .append("/* ---- SEMUA sub-baris tampil INLINE + berikon + berlabel (tanpa klik) ---- */\n")
+         .append("function detailHtml(e){\n")
+         .append(" var parts=[];\n")
+         .append(" parts.push('<div class=\"sub s-det\">'+ic('corner')+'<span>'+detailOf(e)+'</span></div>');\n")
          .append(" if(e.kind=='HTTP'){\n")
-         .append("  if(e.reqPreview)sub+='<div class=\"sub rq\"><b>📤 req</b> '+esc(trunc(e.reqPreview,180))+'</div>';\n")
-         .append("  else if((e.reqLen||0)>0)sub+='<div class=\"sub rq\"><b>📤 req</b> ('+fmtB(e.reqLen)+' biner)</div>';\n")
-         .append("  if(e.respPreview)sub+='<div class=\"sub rs\"><b>📥 resp</b> '+esc(trunc(e.respPreview,180))+'</div>';\n")
-         .append("  else if((e.respLen||0)>0)sub+='<div class=\"sub rs\"><b>📥 resp</b> ('+fmtB(e.respLen)+' biner)</div>';}\n")
+         .append("  if(e.reqPreview)parts.push('<div class=\"sub s-req\">'+ic('up')+'<span><span class=lbl>Kirim (request)</span> <b>·</b> '+esc(trunc(e.reqPreview,200))+'</span></div>');\n")
+         .append("  else if((e.reqLen||0)>0)parts.push('<div class=\"sub s-req\">'+ic('up')+'<span><span class=lbl>Kirim (request)</span> <b>·</b> ('+fmtB(e.reqLen)+' biner)</span></div>');\n")
+         .append("  if(e.respPreview)parts.push('<div class=\"sub s-res\">'+ic('down')+'<span><span class=lbl>Jawaban (response)</span> <b>·</b> '+esc(trunc(e.respPreview,200))+'</span></div>');\n")
+         .append("  else if((e.respLen||0)>0)parts.push('<div class=\"sub s-res\">'+ic('down')+'<span><span class=lbl>Jawaban (response)</span> <b>·</b> ('+fmtB(e.respLen)+' biner)</span></div>')}\n")
          .append(" if(e.kind=='WS'){\n")
-         .append("  if(e.respPreview)sub+='<div class=\"sub rs\"><b>📥 frame</b> '+esc(trunc(e.respPreview,180))+'</div>';\n")
-         .append("  else if((e.respLen||0)>0)sub+='<div class=\"sub rs\"><b>📥 frame</b> ('+fmtB(e.respLen)+' biner)</div>';}\n")
-         .append(" if(e.extra)sub+='<div class=\"sub ex\">🏷️ extra '+esc(trunc(''+e.extra,140))+'</div>';\n")
-         .append(" return '<div class=\"ln'+(lv[1]=='r'?' bad':'')+'\" data-seq=\"'+e.seq+'\">'\n")
-         .append("  +'<span class=sq>#'+e.seq+'</span>'\n")
-         .append("  +'<span class=tm>'+esc((e.time||'').substring(11))+'</span>'\n")
-         .append("  +'<span class=\"lv l-'+lv[1]+'\">'+lv[0]+'</span>'\n")
-         .append("  +'<span class=\"cp c-'+compOf(e).substring(2)+'\">'+comp+'</span>'\n")
-         .append("  +'<span class=\"ev'+(ec?' '+ec:'')+'\">'+d+(er?'<br><span class=f>❌ '+esc(er.length>110?er.substring(0,110)+'…':er)+'</span>':'')+'</span>'\n")
-         .append("  +sub+'</div>'}\n")
+         .append("  if(e.respPreview)parts.push('<div class=\"sub s-res\">'+ic('down')+'<span><span class=lbl>Frame socket</span> <b>·</b> '+esc(trunc(e.respPreview,200))+'</span></div>');\n")
+         .append("  else if((e.respLen||0)>0)parts.push('<div class=\"sub s-res\">'+ic('down')+'<span><span class=lbl>Frame socket</span> <b>·</b> ('+fmtB(e.respLen)+' biner)</span></div>')}\n")
+         .append(" if(e.extra)parts.push('<div class=\"sub s-ext\">'+ic('tag')+'<span><span class=lbl>Data protokol</span> <b>·</b> '+esc(trunc(''+e.extra,160))+'</span></div>');\n")
+         .append(" if(parts.length==0)return '';\n")
+         .append(" return '<div class=dtl>'+parts.join('')+'</div>'}\n")
+         .append("function lnHtml(e){\n")
+         .append(" var lv=levelOf(e),cp=compOf(e),d=describe(e),er=e.error||'';\n")
+         .append(" var evc=lv.cls=='r'?' r':lv.cls=='w'?' w':lv.cls=='d'?' d':'';\n")
+         .append(" return '<div class=\"ln '+lv.cls+'\" data-seq=\"'+e.seq+'\">'\n")
+         .append("  +'<div class=rh>'\n")
+         .append("  +'<span class=\"lv l-'+lv.cls+'\">'+ic(lv.icon)+lv.word+'</span>'\n")
+         .append("  +'<span class=\"cp c-'+cp.name+'\">'+ic(cp.icon)+cp.name+'</span>'\n")
+         .append("  +'<span class=rmeta><span class=sq>#'+e.seq+'</span><span>'+esc((e.time||'').substring(11))+'</span></span>'\n")
+         .append("  +'</div>'\n")
+         .append("  +'<div class=\"ev'+evc+'\">'+d+(er?'<br><span class=f>'+ic('x')+' '+esc(er.length>110?er.substring(0,110)+'\\u2026':er)+'</span>':'')+'</div>'\n")
+         .append("  +detailHtml(e)\n")
+         .append("  +'</div>'}\n")
          .append("function important(e){var p=pathOf(e);\n")
          .append(" if((e.kind||'')=='CRASH')return '💥 CRASH — '+plain(describe(e));\n")
          .append(" if(e.status>=400)return '❌ GAGAL — '+plain(describe(e));\n")
@@ -635,13 +745,13 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  rs[i].style.display=(e&&!pass(e))?'none':''}}\n")
          .append("function refreshStatus(){var n=0;for(var k in ENT)if(isProblem(ENT[k]))n++;\n")
          .append(" var b=$('stbadge');if(!b)return;\n")
-         .append(" if(n==0){b.textContent='✅ NORMAL';b.className=''}\n")
-         .append(" else{b.textContent='❌ '+n+' MASALAH';b.className='bad'}}\n")
+         .append(" if(n==0){b.innerHTML=ic('check')+' NORMAL';b.className='ok'}\n")
+         .append(" else{b.innerHTML=ic('x')+' '+n+' MASALAH';b.className='bad'}}\n")
          .append("function renderCrash(){fetch('/crash').then(function(r){return r.json()}).then(function(j){\n")
          .append(" var w=$('crashbn');if(!j||!j.latest){w.style.display='none';w.innerHTML='';return}\n")
          .append(" if(j.latest.name==CRASHLATEST&&w.style.display=='block')return;\n")
          .append(" CRASHLATEST=j.latest.name;var t=j.latest.text||'';\n")
-         .append(" w.innerHTML='<div class=ch>💥 CRASH TERTANGKAP — '+esc(j.latest.name)+' ('+Math.round(j.latest.bytes/1024)+' KB)</div><div class=cd>💥 crash Java di dalam proses game (termasuk kode SDK/game asli) — terekam CrashHook. 📋 Salin trace untuk analisis akar.</div><pre>'+esc(t)+'</pre><button id=cpcrash class=lbtn title=\"Salin trace crash\">📋</button>';\n")
+         .append(" w.innerHTML='<div class=ch>'+ic('octagon')+' CRASH TERTANGKAP — '+esc(j.latest.name)+' ('+Math.round(j.latest.bytes/1024)+' KB)</div><div class=cd>💥 crash Java di dalam proses game (termasuk kode SDK/game asli) — terekam CrashHook · tombol kanan = salin trace untuk analisis akar.</div><pre>'+esc(t)+'</pre><button id=cpcrash class=ib title=\"Salin trace crash\">'+ic('copy')+'</button>';\n")
          .append(" w.style.display='block';\n")
          .append(" $('cpcrash').onclick=function(){copyText(t)}}).catch(function(){})}\n")
          .append("function append(list){var tb=$('tb'),sc=$('stream');\n")
@@ -660,20 +770,23 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" for(var i=0;i<rs.length;i++){if(rs[i].style.display=='none')continue;\n")
          .append("  var e=ENT[rs[i].getAttribute('data-seq')];if(e)out.push(e)}\n")
          .append(" return out}\n")
-         .append("/* ---- salin log = TEKS SERVER PENUH EMOJI, PERSIS TAMPILAN (v10) ---- */\n")
+         .append("/* ---- salin log = TEKS SERVER PENUH EMOJI (LVE/CPE), PERSIS ALUR LOG ---- */\n")
+         .append("var LVE={INFO:'✅',DEBUG:'🔍',WARN:'⚠️',ERROR:'❌'};\n")
+         .append("var CPE={CORE:'⚙️',CONFIG:'🧩',CDN:'🌐',SDK:'💳',LOGIN:'🔐',GAME:'🎮',MONITOR:'📡'};\n")
          .append("function copyTable(){var v=visible();var out=[];\n")
-         .append(" for(var i=0;i<v.length;i++){var e=v[i],lv=levelOf(e);\n")
-         .append("  out.push((e.time||'')+'  '+lv[0]+'  ['+compOf(e)+']  '+plain(describe(e)));\n")
-         .append("  out.push('        ↳ '+plain(detailOf(e)));\n")
-         .append("  if(e.reqPreview)out.push('        📤 req '+trunc(e.reqPreview,180));\n")
-         .append("  if(e.respPreview)out.push('        📥 resp '+trunc(e.respPreview,180));\n")
-         .append("  if(e.extra)out.push('        🏷️ extra '+trunc(''+e.extra,140));\n")
-         .append("  if(e.error)out.push('        ❌ ERROR: '+(''+e.error).substring(0,120))}\n")
+         .append(" for(var i=0;i<v.length;i++){var e=v[i],lv=levelOf(e),cp=compOf(e);\n")
+         .append("  out.push((e.time||'')+'  '+LVE[lv.word]+lv.word+'  ['+CPE[cp.name]+cp.name+']  '+plain(describe(e)));\n")
+         .append("  out.push('    ↳ '+plain(detailOf(e)));\n")
+         .append("  if(e.kind=='HTTP'&&e.reqPreview)out.push('    → Kirim (request) : '+trunc(e.reqPreview,200));\n")
+         .append("  if(e.kind=='HTTP'&&e.respPreview)out.push('    ← Jawaban (response) : '+trunc(e.respPreview,200));\n")
+         .append("  if(e.kind=='WS'&&e.respPreview)out.push('    ← Frame socket : '+trunc(e.respPreview,200));\n")
+         .append("  if(e.extra)out.push('    · Data protokol : '+trunc(''+e.extra,160));\n")
+         .append("  if(e.error)out.push('    ❌ ERROR: '+(''+e.error).substring(0,120))}\n")
          .append(" copyText(out.join('\\n'))}\n")
          .append("function copyJSON(){copyText(JSON.stringify(visible(),null,1))}\n")
          .append("function copyText(t){\n")
          .append(" if(navigator.clipboard&&navigator.clipboard.writeText){\n")
-         .append("  navigator.clipboard.writeText(t).then(function(){toast('📋 tersalin '+t.length+' karakter')},function(){legacyCopy(t)});\n")
+         .append("  navigator.clipboard.writeText(t).then(function(){toast('tersalin '+t.length+' karakter')},function(){legacyCopy(t)});\n")
          .append(" }else legacyCopy(t)}\n")
          .append("function legacyCopy(t){\n")
          .append(" var ta=document.createElement('textarea');ta.value=t;\n")
@@ -681,16 +794,16 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" document.body.appendChild(ta);ta.focus();ta.select();\n")
          .append(" var ok=false;try{ok=document.execCommand('copy')}catch(x){}\n")
          .append(" document.body.removeChild(ta);\n")
-         .append(" if(ok)toast('📋 tersalin '+t.length+' karakter');\n")
-         .append(" else toast('❌ salin gagal — izin clipboard ditolak, coba tombol 📄 Salin JSON',true)}\n")
+         .append(" if(ok)toast('tersalin '+t.length+' karakter');\n")
+         .append(" else toast('salin gagal — izin clipboard ditolak, coba tombol Salin JSON',true)}\n")
          .append("var tt=null;\n")
          .append("function toast(m,err){var el=$('toast');el.textContent=m;el.className=err?'err':'';el.style.display='block';clearTimeout(tt);tt=setTimeout(function(){el.style.display='none'},2600)}\n")
          .append("function sync(){S.st=$('st').value;S.q=$('q').value.toLowerCase();S.limit=parseInt($('limit').value);S.port=parseInt($('port').value)}\n")
          .append("function reset(){$('tb').innerHTML='';ENT={};S.since=0;LASTSUM='';$('notices').innerHTML='';refreshStatus()}\n")
          .append("function setView(v){S.view=v;\n")
-         .append(" $('vimp').className='lbtn'+(v=='penting'?' on':'');\n")
-         .append(" $('vmal').className='lbtn'+(v=='masalah'?' on':'');\n")
-         .append(" $('vall').className='lbtn'+(v=='all'?' on':'');\n")
+         .append(" $('vimp').className='ib'+(v=='penting'?' on':'');\n")
+         .append(" $('vmal').className='ib'+(v=='masalah'?' on':'');\n")
+         .append(" $('vall').className='ib'+(v=='all'?' on':'');\n")
          .append(" applyFilter();if(v=='masalah')$('stream').scrollTop=0}\n")
          .append("$('vimp').onclick=function(){setView('penting')};\n")
          .append("$('vmal').onclick=function(){setView('masalah')};\n")
@@ -701,40 +814,40 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("$('stage').onchange=function(){S.stage=$('stage').value;applyFilter()};\n")
          .append("$('q').oninput=function(){S.q=$('q').value.toLowerCase();applyFilter()};\n")
          .append("$('pause').onclick=function(){S.auto=!S.auto;\n")
-         .append(" $('pause').textContent=S.auto?'⏸️':'▶️';\n")
+         .append(" $('pause').innerHTML=ic(S.auto?'pause':'play');\n")
          .append(" $('cursor').style.display=S.auto?'inline-block':'none';\n")
-         .append(" $('pausemark').textContent=S.auto?'':'‖ jeda — pembaruan otomatis berhenti'};\n")
+         .append(" $('pausemark').textContent=S.auto?'':'jeda — pembaruan otomatis berhenti'};\n")
          .append("$('guidebtn').onclick=function(){var g=$('guide');g.style.display=(g.style.display=='block'?'none':'block')};\n")
          .append("$('reset').onclick=reset;\n")
          .append("$('cpt').onclick=copyTable;\n")
          .append("$('cpjs').onclick=copyJSON;\n")
          .append("$('dl').onclick=function(){var a=document.createElement('a');a.href='/download?latest=1';a.download='';document.body.appendChild(a);a.click();document.body.removeChild(a)};\n")
-         .append("function note(c2,txt){var d=document.createElement('div');d.className='nt '+c2;d.textContent=txt;$('notices').appendChild(d)}\n")
+         .append("function note(c2,icon,txt){var d=document.createElement('div');d.className='nt '+c2;d.innerHTML=ic(icon)+'<span>'+txt+'</span>';$('notices').appendChild(d)}\n")
          .append("function url(){return '/logs?mode=all&limit='+S.limit+'&since='+S.since}\n")
          .append("function uptimeStr(ms){var s2=Math.floor(ms/1000);return Math.floor(s2/3600)+'h'+Math.floor(s2%3600/60)+'m'+(s2%60)+'s'}\n")
          .append("function refreshStats(){fetch('/stats').then(function(r){return r.json()}).then(function(j){\n")
-         .append(" var ids=[['9527','🧩','konfig bin'],['9528','🌐','CDN game + login'],['5050','🔐','login socket.io'],['5051','🎮','server game'],['9530','💳','API SDK'],['4000','📡','logger']];\n")
-         .append(" var h='<span class=\"chip\">📡 LISTEN </span>';\n")
+         .append(" var ids=[['9527','settings','KONFIG','konfigurasi bin (setting_BS)'],['9528','globe','CDN','CDN game + login'],['5050','shield','LOGIN','socket.io login'],['5051','gamepad','GAME','server game'],['9530','card','SDK','API SDK'],['4000','radio','LOG','logger']];\n")
+         .append(" var h='<span class=\"schip up\">'+ic('server')+'LISTEN</span>';\n")
          .append(" for(var i=0;i<ids.length;i++){var cc=j.ports[ids[i][0]];\n")
-         .append("  h+='<span class=\"chip '+(cc&&cc.requests>0?'up':'dw')+'\" title=\"'+ids[i][2]+'\">'+ids[i][1]+' '+ids[i][0]+'</span>'}\n")
-         .append(" h+='<span class=chip>⏱️ uptime <b>'+uptimeStr(j.uptimeMs)+'</b></span>';\n")
-         .append(" h+='<span class=chip>🔢 seq <b>'+j.seq+'</b></span>';\n")
-         .append(" if(j.disk&&j.disk.enabled)h+='<span class=chip>💾 arsip <b>'+j.disk.file+'</b> '+(j.disk.bytes>=1048576?(j.disk.bytes/1048576).toFixed(1)+'MB':Math.round(j.disk.bytes/1024)+'KB')+' · '+j.disk.lines+' baris</span>';\n")
-         .append(" if(j.overlay&&j.overlay.checked)h+=j.overlay.granted?'<span class=chip>🪟 overlay ON</span>':'<span class=chip>🪟 overlay OFF (normal)</span>';\n")
-         .append(" h+='<span class=chip>🛡️ status: <b id=stbadge>…</b></span>';\n")
+         .append("  h+='<span class=\"schip '+(cc&&cc.requests>0?'up':'dw')+'\" title=\"'+ids[i][3]+'\">'+ic(ids[i][1])+ids[i][2]+' <b>'+ids[i][0]+'</b></span>'}\n")
+         .append(" h+='<span class=schip>'+ic('clock')+'UPTIME <b>'+uptimeStr(j.uptimeMs)+'</b></span>';\n")
+         .append(" h+='<span class=schip>'+ic('hash')+'SEQ <b>'+j.seq+'</b></span>';\n")
+         .append(" if(j.disk&&j.disk.enabled)h+='<span class=schip>'+ic('archive')+'ARSIP <b>'+j.disk.file+'</b> · '+(j.disk.bytes>=1048576?(j.disk.bytes/1048576).toFixed(1)+'MB':Math.round(j.disk.bytes/1024)+'KB')+' · '+j.disk.lines+' baris</span>';\n")
+         .append(" if(j.overlay&&j.overlay.checked)h+=j.overlay.granted?'<span class=schip>'+ic('layers')+'OVERLAY <b>ON</b></span>':'<span class=schip>'+ic('layers')+'OVERLAY <b>OFF (normal)</b></span>';\n")
+         .append(" h+='<span class=schip>'+ic('activity')+'STATUS <b id=stbadge class=ok>…</b></span>';\n")
          .append(" $('stchips').innerHTML=h;refreshStatus();renderCrash()}).catch(function(){})}\n")
          .append("function poll(){\n")
          .append(" if(!S.auto){setTimeout(poll,500);return}\n")
          .append(" fetch(url()).then(function(r){return r.json()}).then(function(j){\n")
-         .append("  if(j.gap&&j.entries.length)note('nt-w','⚠️ GAP: sebagian entri buffer terbuang — 💾 arsip disk tetap utuh (unduh arsip di kiri bawah)');\n")
+         .append("  if(j.gap&&j.entries.length)note('nt-w','warn','GAP: sebagian entri buffer terbuang — arsip disk tetap utuh (unduh di kiri bawah)');\n")
          .append("  if(j.entries.length){append(j.entries);S.since=j.seqNewest}\n")
          .append("  var tot=(j.droppedGlobal||0)+(j.droppedPort||0);\n")
-         .append("  if(tot>0&&tot!==lastDrop){lastDrop=tot;note('nt-e','❌ buffer dropped '+tot+' — 💾 arsip disk tetap utuh')}\n")
+         .append("  if(tot>0&&tot!==lastDrop){lastDrop=tot;note('nt-e','x','buffer dropped '+tot+' — arsip disk tetap utuh')}\n")
          .append("  pollN++;if(pollN%3==0)refreshStats();\n")
          .append("  setTimeout(poll,1200);\n")
          .append(" }).catch(function(){setTimeout(poll,3000)})}\n")
          .append("document.title='DB LOCAL SERVER :'+location.port;\n")
-         .append("sync();setView('all');refreshStats();poll();\n")
+         .append("sync();setView('all');paintIcons();refreshStats();poll();\n")
          .append("setTimeout(refreshStats,800);\n");
         return s.toString();
     }

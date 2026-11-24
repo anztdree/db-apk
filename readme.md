@@ -3828,3 +3828,133 @@ EMOJI style**, (3) kecantikan datang dari **ICON**.
    entri tetap lengkap inline (↳ + 📤 req + 📥 resp + 🏷️ extra) tanpa
    klik sedikit pun.
 4. Tombol ❓ = panduan beremoji; 📋 salin = teks server penuh emoji.
+
+---
+
+## Bagian 49 — CONSOLE v12 ICON PREMIUM: UI berikon SVG sungguhan + log berlabel manusia (2026-11-24)
+
+### 49.1 Arahan owner (kata-kata persis)
+
+> "itu yg annda pakai untuk website Masuh emoji bukan icon !! dari tatat
+> letak warna dan tampilan ataupun isi teks log ya bagi saya masih cacat !!
+> rombak lahh !! jangan gitu-gitu muluuu!!"
+>
+> "di bagian log teks itu gak jelas teksnya !! bahasa manusia rinci jelas !!!
+> emoji jelas !! pemisah jelas !!"
+
+Tiga tuntutan: (1) UI website memakai **ICON sungguhan** — bukan emoji;
+(2) **tata letak / warna / tampilan / isi teks log dirombak TOTAL** (bukan
+ditambal); (3) teks log **bahasa manusia rinci + emoji jelas + pemisah jelas**.
+
+### 49.2 Jawaban v12 — console ICON PREMIUM
+
+1. **ICON = SVG VECTOR SUNGGUHAN di SELURUH chrome UI** (rombak total —
+   bukan emoji):
+   - registry `IC` (30+ ikon inline, gaya feather/lucide, `viewBox 24`,
+     stroke 2) dibangun lewat fungsi `svg()`; slot `[data-ic]` di HTML +
+     `paintIcons()` menggambar logo API (flame), tombol view (star/warn/
+     list), filter (sliders), jeda (pause/play), bersihkan (trash),
+     panduan (help), salin (copy), JSON (braces), unduh (download);
+   - **chip status berikon**: LISTEN + per port (settings 9527 · globe 9528
+     · shield 5050 · gamepad 5051 · card 9530 · radio 4000) + clock UPTIME +
+     hash SEQ + archive ARSIP + layers OVERLAY + activity STATUS;
+   - **chip LEVEL berikon per kartu log**: check-circle INFO / search DEBUG
+     / alert-triangle WARN / x-circle ERROR — berlatar tint + SPINE warna
+     di tepi kiri kartu;
+   - **chip KOMPONEN berikon**: cpu CORE / settings CONFIG / globe CDN /
+     card SDK / shield LOGIN / gamepad GAME / radio MONITOR;
+   - **ikon sub-baris detail**: corner-down-right (detail), arrow-up-circle
+     (Kirim), arrow-down-circle (Jawaban), tag (Data protokol);
+   - banner boot: flame + terminal + check; crash banner: alert-octagon;
+   - **GUARD v60-no-emoji-chrome**: NOL emoji di header/tombol/chip/filter/
+     footer/banner — emoji HANYA ada di TEKS LOG (pemandu peristiwa, sesuai
+     arahan Bagian 48).
+2. **TATA LETAK + WARNA BARU**: header kaca blur + garis glow; kartu log
+   bersudut bulat + spine warna level; header baris = chip level + chip
+   komponen + meta kanan (`#seq · HH:MM:SS.mmm`); blok detail berhierarki
+   dengan garis kiri; palet diperhalis (emerald `#3ddc84` / cyan `#4fc3dd`
+   / amber `#ffb454` / red `#ff5d5d` di atas slate pekat); scrollbar bulat;
+   fade-in baris baru; toast naik; crash banner kaca merah; font UI sans +
+   font log monospace.
+3. **TEKS LOG JELAS** (bahasa manusia rinci + emoji jelas + pemisah jelas):
+   - baris utama = emoji pemandu + **judul tebal** + " — " + kalimat
+     SIAPA-APA-HASIL (warisan v8/v10 tetap);
+   - blok detail berLABEL manusia + pemisah " · " dan " : ":
+     `Endpoint : POST /sdk/v1/system/init · Status : 200 OK · Kirim : 118 B
+     · Terima : 342 B · Durasi : 12 ms`;
+   - `stLbl()`: status berkata manusia — **200 OK / 302 ALIH / 404 GAGAL /
+     500 RUSAK** (dihijaukan `<b>` di baris detail);
+   - baris lanjutan berlabel: `Kirim (request) : {…}` · `Jawaban (response)
+     : {…}` · `Frame socket : {…}` · `Data protokol : …` (preview 200/160
+     karakter, biner diberi tanda);
+   - SEMUA tetap tampil **INLINE tanpa klik** (warisan v9 — modal tetap
+     dihapus).
+4. **Salin log** = teks server PENUH EMOJI (peta `LVE` level ✅INFO/🔍DEBUG/
+   ⚠️WARN/❌ERROR + `CPE` komponen ⚙️CORE/🧩CONFIG/🌐CDN/💳SDK/🔐LOGIN/🎮GAME/
+   📡MONITOR) + ↳ detail berlabel + → Kirim + ← Jawaban + · Data protokol.
+5. TIDAK BERUBAH: overlay=INFO (39), tombol ikon (41), port 4000 murni
+   monitoring + rute sdkconfig/fix 404 (41/43), tanpa "tips" (42), poll
+   incremental ?since= 1,2 dtk + filter lengkap + Salin JSON + unduh arsip +
+   banner CRASH (32), tanpa modal klik (47).
+
+### 49.3 Proses + verifikasi
+
+- Toolchain pasca-reset: git-lfs 3.5.1 (binary + filter config global),
+  javac **21.0.13** (deb jdk/jre-headless 21.0.13+9-1~deb13u2 diekstrak
+  `dpkg -x`, tanpa root), **D8/r8 8.3.37** (`dl.google.com/android/maven2/
+  com/android/tools/r8/8.3.37/r8-8.3.37.jar`, `--lib` JRE agar desugaring
+  presisi), uber-apk-signer 1.3.0.
+- Penanda v10 di `LocalServerStarter` (BOOT) + `CrashHook` (laporan crash)
+  diangkat ke **v12** — dex bersih jejak lama (string "v10" = NOL).
+- **Smoke desktop: 142/142 PASS** — semua guard lama + 21 guard baru
+  `v60-*`: icon-registry, icon-shape (`=svg("`) ≥ 30, **no-emoji-chrome**
+  (segmen hdr/ctl/ftr/banner bebas emoji), btn-paint, chips, chip-ports,
+  row-card (spine), meta-right, sub-labels (Endpoint/Status/Kirim/Terima/
+  Durasi + stLbl OK/ALIH/GAGAL/RUSAK), comp-icon, lv-tint, describe-emoji,
+  fade, toast-rise, title-grad, salin-emoji (LVE/CPE), stbadge, guide,
+  inline-req/resp/extra (label baru), bin-hint, salin-lengkap.
+- **Verifikasi browser headless** (desktop 1366×900 + mobile iPhone 14):
+  render OK, **errors NOL**, ikon SVG tampil di semua elemen, kartu log +
+  detail berlabel inline, filter Masalah/Penting/cari/reset berfungsi,
+  panel panduan + filter terbuka, tombol jeda toggle pause↔play, JS
+  divalidasi Node (`new Function`) — **SYNTAX OK**.
+- **Repack RAW-COPY** (`rebuild-src/scripts/rebuild_v12_raw.py`, metode
+  Bagian 46): base **v10** `2233023d…` (struktur identik v7), SEMUA 6.428
+  entri disalin byte-per-byte, hanya `classes2.dex` diganti (D8,
+  **161.356 B**, sha `d0db66348483325905de777feee6939e35d2a2590b816550eeb
+  1b753418beaad`); verifikasi pasca-build: beda HANYA classes2.dex,
+  `resources.arsc` tetap STORED aligned-4 di data_off 15923800, metode
+  **3471 deflate + 2957 stored** IDENTIK; zipalign + sign `dblocalmod` →
+  **zipalign verified + signature verified [v1, v2, v3]**, sertifikat
+  `CN=DB Local Mod, O=Owner, C=ID` exp 2056.
+- **Struktur v10 vs v12 TER-SIGN dibedah ulang**: 6.428 entri (0 hilang, 0
+  tambah); beda hanya `classes2.dex` + `META-INF/MANIFEST.MF/.SF/.RSA`
+  (re-sign). Parse error mustahil terulang.
+
+### 49.4 APK v12
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v12).apk` (pola lama, LFS di repo; pointer v10 dihapus — pola v1→…→v10→v12) |
+| Ukuran | **202.691.550 B** |
+| sha256 | `1c1083692e496cb209d9c84fc5042b092ecef7878e97fc295057661ab42885ee` |
+| classes2.dex | 161.356 B sha `d0db66348483325905de777feee6939e35d2a2590b816550eeb1b753418beaad` (console ICON PREMIUM v12) |
+| Penanda | BOOT/crash/dashboard/banner = **v12** |
+| Sign | v1+v2+v3, keystore `dblocalmod`, exp 2056 — install-over OK |
+
+### 49.5 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v12).apk` langsung di atas v10/v9/v8/
+   v7 (keystore sama — tanpa uninstall).
+2. Boot game → buka `127.0.0.1:4000` → badge **v12** + logo API berikon +
+   chip status berikon (LISTEN, KONFIG/CDN/LOGIN/GAME/SDK/LOG, UPTIME, SEQ,
+   ARSIP, OVERLAY, STATUS).
+3. UI kini CANTIK KARENA ICON: semua tombol/chip/badge memakai ikon SVG —
+   NOL emoji di chrome. Tiap kartu log: chip level berikon + chip komponen
+   berikon + spine warna + meta kanan.
+4. Tiap entri log JELAS: emoji pemandu + judul tebal + kalimat manusia +
+   blok detail berlabel `Endpoint · Status · Kirim · Terima · Durasi` +
+   `Kirim (request)` / `Jawaban (response)` / `Data protokol` — SEMUA
+   inline tanpa klik.
+5. Tombol bawah: salin log (teks server penuh emoji) · salin JSON · unduh
+   arsip. Filter lanjutan: tombol ikon sliders kanan atas.
