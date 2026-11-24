@@ -9,3 +9,19 @@ work/
 *.log
 *.idsig
 tools/*.jar
+
+# --- sandbox / lokal saja (Bagian 45) ---
+.github-credentials.txt
+node_modules/
+.next/
+next-env.d.ts
+package-lock.json
+bun.lock*
+skills/
+tool-results/
+db-apk-backup/
+release-mod/final/
+public/
+000*.patch
+*.deb
+dev.log

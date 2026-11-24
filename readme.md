@@ -3504,3 +3504,73 @@ dengan konsol yang tepat di tengahnya:
 - Runtime JS node FINAL: `node --check` PASS + uji level/comp/describe/
   detail/lnHtml dengan entri nyata PASS (registerVisitor INFO, 30001 WARN,
   500 ERROR, aset DEBUG, ping→pong DEBUG, overlay INFO, CRASH ERROR).
+
+## Bagian 45 — Insiden "APK korup" + pemulihan APK v8 final + distribusi via GitHub Release (2026-11-24)
+
+### 45.1 Laporan owner & akar masalah
+
+- Laporan owner: **"yg anda upload apknnya korup"** — APK yang didapat dari GitHub
+  gagal di-install.
+- Akar masalah (dibuktikan via inspeksi):
+  1. Sandbox di-reset → `git-lfs` hilang dari PATH dan `.git/lfs/objects` kosong,
+     sedangkan `.gitattributes` tetap menandai `*.apk` sebagai LFS.
+  2. APK v8 final hanya ada di repo sebagai **pointer LFS** (commit `c4fa56c`,
+     oid `9a636275…`, 200.463.326 B). Jalur `raw.githubusercontent` untuk file
+     LFS mengirim **isi pointer (±134 byte teks)** — itulah file "korup" yang
+     di-download owner. Jalur `media.githubusercontent` benar, tetapi bergantung
+     kuota bandwidth LFS dan tidak pernah dijadikan jalur distribusi utama.
+  3. Tidak ada GitHub Release sama sekali (`/releases` kosong) — tidak ada
+     jalur download yang kokoh untuk file 200 MB.
+  4. Working tree lokal pasca-reset berisi build v8 LAMA (203.019.124 B,
+     classes2.dex 81.276 B = kode era v6) yang **bukan** build final — berisiko
+     tertukar bila dipakai sebagai acuan.
+
+### 45.2 Pemulihan (semua nilai terverifikasi kriptografis)
+
+- Instal ulang `git-lfs` **3.5.1** (binary → `/home/z/.local/bin/git-lfs`,
+  filter `filter.lfs.*` di-set dengan **path absolut** supaya tidak mati lagi
+  saat PATH sandbox berubah).
+- Objek LFS di server GitHub terbukti **utuh**: `git lfs fetch origin
+  refs/remotes/origin/main` → 292 MB masuk kembali (v8 + Original).
+  Catatan penting: `git lfs fetch origin main` TIDAK mendownload apa pun karena
+  ref `main` lokal (history UUID pasca-reset) tidak memuat pointer — harus pakai
+  `refs/remotes/origin/main`.
+- `git reset --hard origin/main` → working tree kembali ke history asli
+  (Bagian 1–44.1). File material di worktree diverifikasi ulang:
+
+| File | Ukuran | sha256 | Status |
+|---|---|---|---|
+| `release-mod/db-local(MOD-LOCALSERVER-v8).apk` | 200.463.326 B | `9a6362758dcac9f188a0e08ff2cf2ec7a3079835189907b1e138a33e06962348` | **PERSIS nilai final Bagian 44.7** |
+| `classes2.dex` (dari v8) | 148.644 B | `567609b65e206fceb6cb66503397a18d593fa606b38c9dc30e67d1fbc521e783` | **PERSIS** (console premium v8) |
+| `db-local(Original-DO NOT DELETE!).apk` | 104.945.181 B | `b308c44de6ec082a70c39e388a2cef4e9cdc1cee30b38c14a30bef86a7bc2218` | **PULIH** (sebelumnya hanya pointer 134 B) |
+
+- `unzip -t` APK v8: *No errors detected*; `keytool -printcert -jarfile`:
+  `CN=DB Local Mod, O=Owner, C=ID`, exp **14 Nov 2056** (sesuai dokumentasi).
+- `uber-apk-signer 1.3.0 -y --verifySha256 F58A5B9A…1170`:
+  **zipalign verified + signature verified [v1, v2, v3]** — APK final
+  terbukti utuh dan sah.
+
+### 45.3 Distribusi baru: GitHub Release (jalur anti-korup)
+
+- Release dibuat: tag **`v8-mod-localserver`** →
+  `https://github.com/anztdree/db-apk/releases/tag/v8-mod-localserver`.
+- Asset: `db-local.MOD-LOCALSERVER-v8.apk` — 200.463.326 B, di-upload ke
+  release asset (bukan LFS; limit asset 2 GB, tanpa kuota pointer/bandwidth LFS).
+- Verifikasi ujung-ke-ujung: asset **di-download balik** dari GitHub →
+  sha256 `9a6362758dcac9f188a0e08ff2cf2ec7a3079835189907b1e138a33e06962348`
+  = identik dengan file lokal & dokumentasi. **Download terbukti utuh.**
+- Aturan baru: **APK versi final SELALU juga di-upload sebagai release asset**
+  (LFS tetap dipakai untuk backup repo, tapi distribusi ke device lewat Release).
+
+### 45.4 Kondisi akhir
+
+- `main` = `origin/main` (`c4fa56c`) + commit Bagian 45 ini; branch
+  `backup-local-main` menyimpan snapshot history UUID lokal pasca-reset
+  (di-push juga sebagai cadangan).
+- Build v8 lama yang usang disimpan sebagai
+  `release-mod/final/stale-v8-OLD-build-dex81KB-DO-NOT-USE.apk` (untracked,
+  penanda DO-NOT-USE supaya tidak tertukar).
+- Script tambahan yang ikut di-commit: `rebuild-src/scripts/capture_login.py`,
+  `capture_login2.py`, `repack.py`, `verify-artifacts/verify_final.txt`.
+- `.gitignore` ditambah blok "sandbox / lokal saja" (credentials, node_modules,
+  patch lama, dsb.) agar artefak sandbox tidak pernah ter-commit.
