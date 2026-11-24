@@ -25,3 +25,4 @@ public/
 000*.patch
 *.deb
 dev.log
+dex-tmp/

@@ -375,7 +375,7 @@ try:
     st, hd, bd = get400("/")
     # Bagian 44 — console SERVER PREMIUM (dipercantik, teks verbose ala server asli)
     check("v43-console-200", st == 200 and "DB LOCAL SERVER" in bd
-          and "MOD-LOCALSERVER v9" in bd, bd[:120])
+          and "MOD-LOCALSERVER v10" in bd, bd[:120])
     check("v43-stream-markup", "id=stream" in bd and "id=tb" in bd
           and "id=tail" in bd, bd[:80])
     check("v17-salin-tabel", "copyTable" in bd and "plain(describe(e))" in bd)
@@ -385,7 +385,7 @@ try:
     check("v17-banner-overlay-js", "renderOverlay" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd
           and "overlay OFF (normal)" in bd)
-    check("v17-ver-dashboard", ">v9</span>" in bd and "/v1/system/init" in bd)  # v9 (Bagian 47)
+    check("v17-ver-dashboard", ">v10</span>" in bd and "/v1/system/init" in bd)  # v10 (Bagian 48)
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
@@ -422,7 +422,7 @@ try:
     # Bagian 43: rute sdkconfig sudah dihapus — sesi reset kini HANYA terlihat
     # sebagai entri log SYS (SESI-RESET). Panel web di port 4000 tidak ada.
     st, hd, bd = get400("/")
-    check("v1-ver-dashboard", "v9" in bd, bd[:80])
+    check("v1-ver-dashboard", "v10" in bd, bd[:80])
     check("v41-banner-sesi-dihapus", "renderSession" not in bd and "sesbn" not in bd
           and "SESI SDK DIRESET OTOMATIS" not in bd)  # sesi reset kini hanya entri log SYS (SESI-RESET)
     check("v41-sysline-dihapus", "sysline" not in bd
@@ -520,22 +520,23 @@ try:
     # 1. identitas console premium + judul lama hilang (v3 & v7)
     check("v44-console-title", "DB LOCAL SERVER" in bd and "DB MONITOR" not in bd
           and "com.db.local — server console" not in bd, bd[:80])
-    # 2. entri log TANPA emoji — pesan log tetap teks server asli (chrome
-    #    ikon tombol diperbolehkan — arahan Bagian 41)
-    check("v43-tanpa-emoji-log", "\U0001f409" not in bd and "\U0001f680" not in bd
-          and "\U0001f50c" not in bd and "\U0001f4e5" not in bd
-          and "\U0001f522" not in bd and "\U0001f9fe" not in bd, "")
-    check("v43-tanpa-emoji-verdict", "\u2705" not in bd and "\u26a0\ufe0f" not in bd
-          and "\u2139\ufe0f" not in bd, "")
+    # 2. FULL EMOJI (Bagian 48 — arahan owner 24 Nov: "teks log itu full log
+    #    emojis style !!", "kalau website itu cantik karena icon !!") — guard
+    #    lama v43 "tanpa emoji" DISUPERSEDUI: kini emoji WAJIB ada di log
+    check("v50-emoji-log", "\U0001f409" in bd and "\U0001f680" in bd
+          and "\U0001f50c" in bd and "\U0001f4e5" in bd
+          and "\U0001f522" in bd and "\U0001f9fe" in bd, "")
+    check("v50-emoji-verdict", "\u2705" in bd and "\u26a0\ufe0f" in bd
+          and "\U0001f4a5" in bd, "")
     # 3. deskripsi VERBOSE ala server asli (bukan output minimalis)
-    check("v44-describe-verbose", "'<b>Server engine berjalan</b> — '" in bd
-          and "'<b>Konfigurasi game dimuat</b>" in bd
-          and "'<b>Tiket login terverifikasi</b>" in bd
-          and "'<b>Registrasi akun tamu berhasil</b>" in bd
-          and "'<b>Pemain masuk server game</b>" in bd, "")
+    check("v44-describe-verbose", "'🚀 <b>Server engine berjalan</b> — '" in bd
+          and "'🧩 <b>Konfigurasi game dimuat</b>" in bd
+          and "'🎫 <b>Tiket login terverifikasi</b>" in bd
+          and "'🙋 <b>Registrasi akun tamu berhasil</b>" in bd
+          and "'🎮 <b>Pemain masuk server game</b>" in bd, "")
     # 4. level ala log server: INFO/DEBUG/WARN/ERROR + overlay = INFO
-    check("v44-level-of", "['INFO','g']" in bd and "['DEBUG','d']" in bd
-          and "['WARN','w']" in bd and "['ERROR','r']" in bd, "")
+    check("v44-level-of", "['✅ INFO','g']" in bd and "['🔍 DEBUG','d']" in bd
+          and "['⚠️ WARN','w']" in bd and "['❌ ERROR','r']" in bd, "")
     check("v44-fmtB-detail", "function fmtB(n)" in bd and "function detailOf(e)" in bd, "")
     # 5. komponen server berwarna: [CORE][CONFIG][CDN][SDK][LOGIN][GAME][MONITOR]
     check("v44-comp-of", "function compOf(e)" in bd, "")
@@ -549,14 +550,14 @@ try:
     # 7. banner boot server ala console asli (dipercantik — bukan dipangkas;
     #    border CSS agar presisi di SEMUA font device)
     check("v44-banner-boot", "id=banner" in bd and "class=b1" in bd
-          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v9" in bd
+          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v10" in bd
           and "console log real-time" in bd, "")
     # 8. header premium: titik status bercahaya + badge versi
     check("v44-hdr-premium", "id=dot" in bd and "id=ver" in bd
           and "@keyframes pl" in bd, "")
     # 9. overlay tetap INFO (Bagian 39 — tidak berubah)
     check("v39-overlay-info-verdict",
-          "m=='OVERLAY'" in bd and "['INFO','i']" in bd, "")
+          "m=='OVERLAY'" in bd and "['✅ INFO','i']" in bd, "")
     check("v39-overlay-not-problem", "=='OVERLAY')return false" in bd, "")
 
     # ================= Bagian 47 — v9 FULL DISCLOSURE (tanpa klik) ==========
@@ -571,12 +572,12 @@ try:
           and "detOf" not in bd and "allText" not in bd, "")
     check("v49-stream-no-click", "stream').addEventListener" not in bd, "")
     # 2. SEMUA keterangan tampil INLINE di tiap entri
-    check("v49-inline-req", "→ req</b>" in bd and "sub rq" in bd
+    check("v49-inline-req", "📤 req</b>" in bd and "sub rq" in bd
           and "trunc(e.reqPreview,180)" in bd, "")
-    check("v49-inline-resp", "← resp</b>" in bd and "sub rs" in bd
+    check("v49-inline-resp", "📥 resp</b>" in bd and "sub rs" in bd
           and "trunc(e.respPreview,180)" in bd, "")
-    check("v49-inline-frame-ws", "← frame</b>" in bd, "")
-    check("v49-inline-extra", "· extra" in bd and "sub ex" in bd
+    check("v49-inline-frame-ws", "📥 frame</b>" in bd, "")
+    check("v49-inline-extra", "🏷️ extra" in bd and "sub ex" in bd
           and "trunc(''+e.extra,140)" in bd, "")
     check("v49-bin-hint", "' biner)</div>'" in bd, "")
     # 3. helper trunc + sub-baris bergaya aksen tipis (elegan)
@@ -585,13 +586,51 @@ try:
           and "border-left:2px solid #1e2c3a" in bd
           and ".ln.bad .sub{border-left-color:#3a2026}" in bd, "")
     # 4. salin log = format server PENUH (main + ↳ + req + resp + extra)
-    check("v49-salin-lengkap", "→ req '+trunc(e.reqPreview,180)" in bd
-          and "← resp '+trunc(e.respPreview,180)" in bd, "")
+    check("v49-salin-lengkap", "📤 req '+trunc(e.reqPreview,180)" in bd
+          and "📥 resp '+trunc(e.respPreview,180)" in bd, "")
     # 5. panduan inline (bukan modal) + menyebut definisi server log
     check("v49-guide-panel", "id=guide" in bd and "definisi server log" in bd
           and "guidebtn" in bd, "")
-    # 6. versi v9 di badge + banner
-    check("v49-ver", ">v9</span>" in bd and "MOD-LOCALSERVER v9" in bd, "")
+    # 6. versi v10 di badge + banner
+    check("v49-ver", ">v10</span>" in bd and "MOD-LOCALSERVER v10" in bd, "")
+
+    # ================= Bagian 48 — v10 EMOJI PREMIUM =========================
+    # Arahan owner (kata-kata persis):
+    #  "website elegan cantik !!"
+    #  "teks log itu full log emojis style !!"
+    #  "kalau website itu cantik karena icon !! bisa gak sih"
+    st, hd, bd = get400("/")
+    # 1. cantik karena icon: logo bercahaya + chip status berikon
+    check("v50-logo", "id=logo" in bd and "🐉" in bd, "")
+    check("v50-chips", "id=stchips" in bd and "class=chip" in bd
+          and "📡 LISTEN " in bd and "⏱️ uptime" in bd and "🔢 seq" in bd
+          and "💾 arsip" in bd and "🛡️ status: " in bd
+          and "🪟 overlay OFF (normal)" in bd, "")
+    check("v50-chip-ports", "'🧩','konfig bin'" in bd and "'🌐','CDN game + login'" in bd
+          and "'🔐','login socket.io'" in bd and "'🎮','server game'" in bd
+          and "'💳','API SDK'" in bd and "'📡','logger'" in bd, "")
+    # 2. komponen beremoji (badge + salin sama-sama emoji)
+    check("v50-comp-emoji", "'⚙️CORE'" in bd and "'🧩CONFIG'" in bd and "'🌐CDN'" in bd
+          and "'💳SDK'" in bd and "'🔐LOGIN'" in bd and "'🎮GAME'" in bd
+          and "'📡MONITOR'" in bd, "")
+    # 3. level beremoji + badge berlatar tint
+    check("v50-lv-tint", ".l-g{color:#43d17c;background:rgba(67,209,124,.09)}" in bd
+          and ".l-r{color:#e05d5d;background:rgba(224,93,93,.11)}" in bd, "")
+    # 4. emoji pemandu per peristiwa (sampel lintas layanan)
+    check("v50-describe-emoji", "'🚀 <b>Server engine" in bd and "'💥 <b>CRASH terdeteksi" in bd
+          and "'🧬 <b>SDK inisialisasi selesai" in bd and "'🤝 <b>Handshake server login diterima" in bd
+          and "'💓 Heartbeat koneksi" in bd and "'📦 <b>Ekstraksi aset game" in bd
+          and "'🖼️ <b>UI game dimuat" in bd and "'🪟 <b>Izin overlay</b>" in bd, "")
+    # 5. animasi cantik: fade-in baris baru + toast meluncur + judul gradasi
+    check("v50-fade", "@keyframes fadein" in bd and "animation:fadein .18s" in bd, "")
+    check("v50-toast-rise", "@keyframes rise" in bd, "")
+    check("v50-title-grad", "background:linear-gradient(90deg,#eef6fd,#9fe8bd)" in bd, "")
+    # 6. salin log ikut full emoji + status ringkas beremoji
+    check("v50-salin-emoji", "'        📤 req '+trunc(e.reqPreview,180)" in bd
+          and "'        🏷️ extra '+trunc" in bd and "'❌ '+n+' MASALAH'" in bd
+          and "'✅ NORMAL'" in bd, "")
+    # 7. panduan beremoji tetap menyebut definisi server log
+    check("v50-guide-emoji", "🐉 PANDUAN SINGKAT" in bd and "definisi server log" in bd, "")
     check("v39-overlay-banner-dihapus",
           "IZIN Display over other apps OFF" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd, "")
