@@ -122,7 +122,7 @@ public final class StaticHandler implements HttpWorker.Handler {
             HttpWorker.writeResponse(out, 404, "Not Found", h, b);
             e.status = 404;
             e.respLen = b.length;
-            e.error = "file tidak ada di server/";
+            e.error = "file not found under server/";
             e.respPreview = "404 not found: " + req.path;
             e.durMs = System.currentTimeMillis() - t0;
             LoggerCore.log(e);
@@ -139,11 +139,11 @@ public final class StaticHandler implements HttpWorker.Handler {
         e.respLen = data.length;
         e.durMs = System.currentTimeMillis() - t0;
         StringBuilder extra = new StringBuilder(64);
-        if (fromAssets != null) extra.append("sumber=ASSETS (")
-                .append(fromAssets.equals("fast") ? "fast-path 9527" : "file belum terekstrak — anti-race 19.1")
+        if (fromAssets != null) extra.append("src=assets (")
+                .append(fromAssets.equals("fast") ? "fast-path 9527" : "not extracted yet — anti-race")
                 .append(") | ");
         extra.append("respCT=").append(ct);
-        if (head) extra.append(" (HEAD, tanpa body)");
+        if (head) extra.append(" (HEAD, no body)");
 
         if (e.port == LoggerCore.PORT_CONFIG && req.path.endsWith(".bin")) {
             // khusus 9527 (16.6): log menyertakan JSON config TER-DECODE pasca-XOR DragonBall
@@ -152,7 +152,7 @@ public final class StaticHandler implements HttpWorker.Handler {
                     ? decodedJson.substring(0, LoggerCore.BODY_PREVIEW_MAX) + "…[+"
                       + (decodedJson.length() - LoggerCore.BODY_PREVIEW_MAX) + "B]" : decodedJson;
             e.extra = extra.append(" | DECODED-XOR: ").append(cut).toString();
-            e.respPreview = "[xor " + data.length + " B — decode di extra]";
+            e.respPreview = "[xor " + data.length + " B — decoded in data]";
         } else if (isTextType(ct)) {
             e.extra = extra.toString();
             int n = Math.min(data.length, LoggerCore.STATIC_TEXT_PREVIEW);

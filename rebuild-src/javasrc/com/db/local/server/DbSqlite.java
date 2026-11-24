@@ -84,7 +84,7 @@ public final class DbSqlite extends Db {
                         }
                     }
                 } catch (Throwable t) {
-                    Db.log("MIGRASI account.json gagal: " + t);
+                    Db.log("MIGRATION account.json failed: " + t);
                 }
                 try {
                     File accs = new File(dataDir, "accounts.json");
@@ -135,11 +135,11 @@ public final class DbSqlite extends Db {
                         }
                     }
                 } catch (Throwable t) {
-                    Db.log("MIGRASI accounts.json gagal: " + t);
+                    Db.log("MIGRATION accounts.json failed: " + t);
                 }
-                if (any[0]) Db.log("MIGRASI legacy JSON -> SQLite SELESAI (uid/token asli dipertahankan)");
+                if (any[0]) Db.log("MIGRATION legacy JSON -> SQLite DONE (original uid/token kept)");
             } catch (Throwable t) {
-                Db.log("MIGRASI gagal: " + t);
+                Db.log("MIGRATION failed: " + t);
             }
         }
     }
@@ -281,7 +281,7 @@ public final class DbSqlite extends Db {
                                 0L, r.createTime, r.lastLogin});
                 return true;
             } catch (Throwable t) {
-                Db.log("DB-INSERT gagal: " + t);
+                Db.log("DB-INSERT failed: " + t);
                 return false;
             }
         }

@@ -22,18 +22,18 @@ public final class ExitInfo {
     public static void logPrevious(android.content.Context ctx) {
         try {
             if (ctx == null) {
-                entry("desktop — dilewati (fitur Android 11+)");
+                entry("desktop — skipped (Android 11+ feature)");
                 return;
             }
             Object am = ctx.getSystemService("activity");
-            if (am == null) { entry("ActivityManager tidak tersedia"); return; }
+            if (am == null) { entry("ActivityManager unavailable"); return; }
             java.lang.reflect.Method m = am.getClass().getMethod(
                     "getHistoricalProcessExitReasons", String.class, int.class, int.class);
             Object raw = m.invoke(am, ctx.getPackageName(), 0, 5);
-            if (!(raw instanceof java.util.List)) { entry("format tidak dikenal"); return; }
+            if (!(raw instanceof java.util.List)) { entry("unknown format"); return; }
             java.util.List<?> list = (java.util.List<?>) raw;
             if (list.isEmpty()) {
-                entry("tidak ada riwayat exit (normal utk install baru)");
+                entry("no exit history (normal for a fresh install)");
                 return;
             }
             Class<?> clsExit = Class.forName("android.app.ApplicationExitInfo");
@@ -56,7 +56,7 @@ public final class ExitInfo {
                         Object st = mTrace.invoke(info);
                         if (st instanceof InputStream) trace = readCap((InputStream) st, 16384);
                     } catch (Throwable t) {
-                        trace = "(trace tidak tersedia: " + t.getClass().getSimpleName() + ")";
+                        trace = "(trace unavailable: " + t.getClass().getSimpleName() + ")";
                     }
                 }
                 boolean bad = rn.indexOf("CRASH") >= 0 || "ANR".equals(rn)
@@ -65,16 +65,16 @@ public final class ExitInfo {
                 e.port = LoggerCore.PORT_LOGGER;
                 e.kind = "SYS";
                 e.method = "EXITINFO";
-                e.path = "exit lalu[" + (n - 1 - i) + "/" + n + "] reason=" + rn
+                e.path = "last exit[" + (n - 1 - i) + "/" + n + "] reason=" + rn
                         + (desc == null || desc.length() == 0 ? "" : " desc=" + desc)
-                        + " waktu=" + (ts > 0 ? LoggerCore.Entry.fmtTime(ts) : "?")
-                        + (bad ? "  <-- SESI SEBELUMNYA MATI ABNORMAL" : "");
+                        + " time=" + (ts > 0 ? LoggerCore.Entry.fmtTime(ts) : "?")
+                        + (bad ? "  <-- previous session died abnormally" : "");
                 e.status = bad ? 500 : 0;
                 if (trace.length() > 0) e.respPreview = trace;
                 LoggerCore.log(e);
             }
         } catch (Throwable t) {
-            entry("tidak tersedia di device ini: " + t);
+            entry("unavailable on this device: " + t);
         }
     }
 

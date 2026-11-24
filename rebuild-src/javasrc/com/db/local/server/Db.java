@@ -109,13 +109,13 @@ public abstract class Db {
             try {
                 copyFile(src, dst);
                 any = true;
-                log("MIGRASI-LOKASI " + files[i] + " : server/data/ -> sdk/data/ ("
+                log("LOCATION-MIGRATION " + files[i] + " : server/data/ -> sdk/data/ ("
                         + dst.length() + " B)");
             } catch (Throwable t) {
-                log("MIGRASI-LOKASI GAGAL " + files[i] + " : " + t);
+                log("LOCATION-MIGRATION FAILED " + files[i] + " : " + t);
             }
         }
-        if (any) log("MIGRASI-LOKASI selesai — uid/token pemain tetap");
+        if (any) log("LOCATION-MIGRATION done — player uid/token kept");
     }
 
     private static void copyFile(File src, File dst) throws Exception {

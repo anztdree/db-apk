@@ -146,7 +146,7 @@ public final class HttpWorker implements Runnable {
             e.method = "BAD";
             e.path = lines[0].length() > 200 ? lines[0].substring(0, 200) : lines[0];
             e.status = 400;
-            e.error = "request line tidak valid";
+            e.error = "invalid request line";
             LoggerCore.log(e);
             try {
                 HttpWorker.writeResponse(out(), 400, "Bad Request",

@@ -64,8 +64,8 @@ public final class OverlayFixer {
                 // asli tidak pernah meminta overlay dan SDK tetap berjalan
                 // normal — entri ini info netral; dashboard menampilkannya
                 // sebagai "ℹ️ INFO" (eksklusi eksplisit di isProblem).
-                e.path = "Izin overlay OFF — NORMAL. Game asli tidak memerlukan "
-                        + "izin overlay; SDK tetap berjalan normal.";
+                e.path = "overlay permission OFF — normal: original game does not "
+                        + "use overlay; SDK keeps running.";
                 e.status = 0;
                 LoggerCore.log(e);
             }

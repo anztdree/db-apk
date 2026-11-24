@@ -196,11 +196,9 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             e.status = 200;
             e.respLen = bb.length;
             e.respPreview = new String(bb, StandardCharsets.UTF_8);
-            e.extra = "LOGINCHECK-NATIVE 28 | uid=" + uid + " username=" + uname
-                    + " usermode=" + umode + " (dari query params SDK = akun yang login"
-                    + ("0".equals(umode) ? ": EMAIL" : ": tamu") + ") | body RAW = thirdParams JS "
-                    + "(getSdkLoginInfo pakai securityCode); getInt(code)==0 -> "
-                    + "MainActivity.customreading() -> WebView lanjut | respCT=application/json";
+            e.extra = "loginchecknative uid=" + uid + " username=" + uname
+                    + " usermode=" + umode + ("0".equals(umode) ? " (email)" : " (guest)")
+                    + " respCT=application/json";
             e.durMs = System.currentTimeMillis() - t0;
             LoggerCore.log(e);
             return true;
@@ -249,7 +247,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 HttpWorker.writeResponse(out, 200, "OK", h, bb);
                 e.status = 200; e.respLen = bb.length;
                 e.respPreview = body;
-                e.extra = "OPEN sid=" + s.sid + " (open+40, 1:1 capture live)";
+                e.extra = "open sid=" + s.sid;
                 e.durMs = System.currentTimeMillis() - t0;
                 LoggerCore.log(e);
                 return true;
@@ -275,7 +273,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 Map<String, String> h = HttpWorker.baseHeaders("application/json");
                 h.put("Access-Control-Allow-Origin", "*");
                 HttpWorker.writeResponse(out, 400, "Bad Request", h, b);
-                e.status = 400; e.respLen = b.length; e.extra = "sesi sudah ditutup → dihapus";
+                e.status = 400; e.respLen = b.length; e.extra = "session already closed, removed";
                 e.durMs = System.currentTimeMillis() - t0;
                 LoggerCore.log(e);
                 return true;
@@ -288,7 +286,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             byte[] bb = payload.getBytes(StandardCharsets.UTF_8);
             HttpWorker.writeResponse(out, 200, "OK", h, bb);
             e.status = 200; e.respLen = bb.length;
-            if (payload.isEmpty()) e.extra = "poll kosong (long-poll hold)";
+            if (payload.isEmpty()) e.extra = "long-poll timeout, no data";
             else e.respPreview = payload;
             e.durMs = System.currentTimeMillis() - t0;
             LoggerCore.log(e);
@@ -336,7 +334,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             e.status = 200; e.respLen = 2;
             e.respPreview = "ok";
             if (e.extra == null && seen.length() > 0) e.extra = "PACKET: " + seen;
-            if (dead) e.extra = (e.extra == null ? "" : e.extra + " ") + "[sesi ditutup oleh client 41]";
+            if (dead) e.extra = (e.extra == null ? "" : e.extra + " ") + "[client disconnect 41]";
             e.durMs = System.currentTimeMillis() - t0;
             LoggerCore.log(e);
             return true;
@@ -637,7 +635,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         s.wsOut = out;   // v6: ACK event bisa dikirim langsung lewat WS
 
         e.status = 101;
-        e.extra = "WS upgrade sid=" + s.sid;
+        e.extra = "ws upgrade sid=" + s.sid;
         e.durMs = System.currentTimeMillis() - t0;
         LoggerCore.log(e);
 
@@ -680,22 +678,21 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     ce.port = e.port;
                     ce.kind = "WS";
                     ce.method = "WS";
-                    ce.path = "/socket.io ws close sid=" + s.sid;
+                    ce.path = "sid=" + s.sid + " close";
                     ce.status = 1000; ce.reqLen = payload.length;
                     LoggerCore.log(ce);
                     try { sock.close(); } catch (IOException ignored) {}
                     s.closed = true;
                     SESSIONS.remove(s.sid);
                     return false;
-                } else if (opcode == 0x9) { // ping → pong (terlog — v3 kelengkapan)
+                } else if (opcode == 0x9) { // ping control frame -> pong control frame
                     wsSendControl(out, 0xA, payload);
                     LoggerCore.Entry pe = new LoggerCore.Entry();
                     pe.port = e.port;
                     pe.kind = "WS";
                     pe.method = "WS";
-                    pe.path = "/socket.io ws sid=" + s.sid + " ping→pong";
+                    pe.path = "sid=" + s.sid + " ping->pong";
                     pe.status = 200; pe.reqLen = payload.length;
-                    pe.respPreview = "pong";
                     pe.durMs = 0;
                     LoggerCore.log(pe);
                 } else if (opcode == 0xA) { // pong — abaikan
@@ -704,17 +701,20 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     le.port = e.port;
                     le.kind = "WS";
                     le.method = "WS";
-                    le.path = "/socket.io ws sid=" + s.sid;
+                    le.path = "sid=" + s.sid;
                     le.reqLen = payload.length;
                     le.reqPreview = text;
-                    if ("2probe".equals(text)) { wsSendText(out, "3probe"); le.respPreview = "3probe"; le.status = 200; }
-                    else if ("2".equals(text)) { wsSendText(out, "3"); le.respPreview = "3"; le.status = 200; }
+                    if ("2probe".equals(text)) { wsSendText(out, "3probe"); le.respPreview = "3probe"; le.respLen = 6; le.status = 200; }
+                    else if ("2".equals(text)) { wsSendText(out, "3"); le.respPreview = "3"; le.respLen = 1; le.status = 200; }
                     else if (text.startsWith("42")) {
-                        // v6: event handler.process → ACK langsung via frame WS
+                        // event handler.process -> ACK langsung via frame WS
+                        // (packet verbatim di reqPreview, ACK verbatim di respPreview)
                         String ack = handleEventPacket(text, s);
                         le.status = 200;
-                        le.extra = "EVENT: " + (text.length() > 300 ? text.substring(0, 300) + "…" : text);
-                        if (ack != null) le.respPreview = ack;
+                        if (ack != null) {
+                            le.respPreview = ack;
+                            le.respLen = ack.getBytes(StandardCharsets.UTF_8).length;
+                        }
                     }
                     else if ("41".equals(text)) {
                         le.status = 200; le.extra = "client disconnect (41)";
@@ -723,7 +723,8 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                         try { sock.close(); } catch (IOException ignored) {}
                         LoggerCore.log(le);
                         return false;
-                    } else { le.status = 200; le.extra = "PACKET: " + text; }
+                    }
+                    else { le.status = 200; }
                     le.durMs = 0;
                     LoggerCore.log(le);
                 }

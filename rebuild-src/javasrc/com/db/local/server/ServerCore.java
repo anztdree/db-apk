@@ -94,9 +94,9 @@ public final class ServerCore {
             t.setDaemon(true);
             t.start();
             LoggerCore.BINDS.put(String.valueOf(fLoggerPort),
-                    "logger 2 mode" + (fallback ? " (fallback)" : "") + " — AKTIF");
+                    "logger 2-mode" + (fallback ? " (fallback)" : "") + " — OK");
         } else {
-            LoggerCore.BINDS.put("4000", "GAGAL bind (4000 dan 4001)");
+            LoggerCore.BINDS.put("4000", "bind FAILED (4000 and 4001 both busy)");
         }
         logBinds();
         return new StartResult(loggerPort, fallback);
@@ -111,7 +111,7 @@ public final class ServerCore {
                 e.kind = "SYS";
                 e.method = "BIND";
                 e.path = "port " + en.getKey() + " — " + en.getValue();
-                e.status = en.getValue().contains("AKTIF") ? 0 : 500;
+                e.status = en.getValue().contains("OK") ? 0 : 500;
                 LoggerCore.log(e);
             }
         }
@@ -120,13 +120,13 @@ public final class ServerCore {
     private static void bindAndServe(int port, HttpWorker.Handler handler, String label) {
         ServerSocket ss = tryBind(port);
         if (ss == null) {
-            LoggerCore.BINDS.put(String.valueOf(port), label + " — GAGAL bind (port dipakai?)");
+            LoggerCore.BINDS.put(String.valueOf(port), label + " — bind FAILED (port in use?)");
             return;
         }
         Thread t = new Thread(() -> serveLoop(ss, handler, port), "listener-" + port);
         t.setDaemon(true);
         t.start();
-        LoggerCore.BINDS.put(String.valueOf(port), label + " — AKTIF");
+        LoggerCore.BINDS.put(String.valueOf(port), label + " — OK");
     }
 
     private static ServerSocket tryBind(int port) {
@@ -150,7 +150,7 @@ public final class ServerCore {
                 w.start();
             } catch (IOException ioe) {
                 LoggerCore.BINDS.put(String.valueOf(port),
-                        "serveLoop berhenti: " + ioe.getMessage());
+                        "serveLoop stopped: " + ioe.getMessage());
                 break;
             } catch (Throwable t) {
                 // jangan pernah matikan listener karena 1 koneksi error

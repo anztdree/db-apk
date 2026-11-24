@@ -51,7 +51,7 @@ public final class LocalServerStarter {
 
             // v3: arsip NDJSON siap SEBELUM apapun jalan
             DiskWriter.init(new File(serverRoot, "logs"));
-            logBoot("BOOT", "LocalServerStarter.start dipanggil (Application.onCreate) — MOD-LOCALSERVER v12 — serverRoot=" + serverRoot);
+            logBoot("BOOT", "LocalServerStarter.start (Application.onCreate) — MOD-LOCALSERVER v13 — serverRoot=" + serverRoot);
 
             // v18: cara sesi SEBELUMNYA mati (CRASH/ANR/native — ApplicationExitInfo)
             ExitInfo.logPrevious(ctx);
@@ -77,9 +77,9 @@ public final class LocalServerStarter {
             // mana pun melayani request.
             try {
                 Db d0 = Db.open(serverRoot.getAbsolutePath());
-                logBoot("BOOT", "DB siap di boot: backend=" + d0.backend() + " dir=sdk/data");
+                logBoot("BOOT", "DB ready: backend=" + d0.backend() + " dir=sdk/data");
             } catch (Throwable t) {
-                logBoot("BOOT", "DB gagal dibuka di boot: " + t);
+                logBoot("BOOT", "DB open failed: " + t);
             }
 
             final CountDownLatch readyEarly = new CountDownLatch(1);
@@ -88,10 +88,10 @@ public final class LocalServerStarter {
                     long n = extractRec(ctx.getAssets(), "server_root", serverRoot, readyEarly, 0, 0);
                     LoggerCore.extracted = true;
                     LoggerCore.extractedFiles = n;
-                    logBoot("EXTRACT", "ekstraksi selesai total " + n + " file ke " + serverRoot);
+                    logBoot("EXTRACT", "extract done: " + n + " files -> " + serverRoot);
                     readyEarly.countDown(); // jaga-jaga bila folder js/ tidak ditemukan
                 } catch (Throwable t) {
-                    logBoot("EXTRACT", "ekstraksi gagal: " + t);
+                    logBoot("EXTRACT", "extract failed: " + t);
                     readyEarly.countDown();
                 }
             }, "server-extract");
@@ -116,11 +116,11 @@ public final class LocalServerStarter {
             };
 
             ServerCore.StartResult res = ServerCore.start(serverRoot, assets, readyEarly);
-            logBoot("BOOT", "mini-server aktif; logger di port " + res.loggerPort
-                    + (res.loggerFallback ? " (fallback)" : "") + "; arsip NDJSON: "
+            logBoot("BOOT", "mini-server up; logger port " + res.loggerPort
+                    + (res.loggerFallback ? " (fallback)" : "") + "; NDJSON archive: "
                     + new File(serverRoot, "logs"));
         } catch (Throwable t) {
-            logBoot("BOOT", "start gagal: " + t);
+            logBoot("BOOT", "start failed: " + t);
         }
     }
 
@@ -170,7 +170,7 @@ public final class LocalServerStarter {
             }
         }
         if (depth == 1) {
-            logBoot("EXTRACT", "ekstraksi " + assetPath + " selesai (" + (count - before) + " file)");
+            logBoot("EXTRACT", "extract " + assetPath + " done (" + (count - before) + " files)");
         }
         if ("js".equals(targetDir.getName()) && "bs".equals(targetDir.getParentFile().getName())) {
             early.countDown();

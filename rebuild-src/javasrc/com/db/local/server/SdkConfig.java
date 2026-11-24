@@ -187,7 +187,7 @@ public final class SdkConfig {
             if (f.exists()) {
                 String s = readFile(f).trim();
                 if (s.startsWith("{") && s.endsWith("}")) return s;
-                Db.log("SDK-CONFIG rusak: " + relPath + " -> seed ulang");
+                Db.log("SDK-CONFIG corrupted: " + relPath + " -> reseeded");
             }
             writeFile(f, defaultJson);
             Db.log("SDK-CONFIG seed: " + relPath + " (" + defaultJson.length() + " B)");
@@ -262,10 +262,10 @@ public final class SdkConfig {
                     writeFile(f, content);
                     tmp.delete();
                 }
-                Db.log("SDK-CONFIG-EDIT " + rel + " (" + content.length() + " B, via panel dashboard)");
+                Db.log("SDK-CONFIG-EDIT " + rel + " (" + content.length() + " B, via dashboard panel)");
                 return null;
             } catch (Throwable t) {
-                return "gagal menulis: " + t;
+                return "write failed: " + t;
             }
         }
     }
@@ -307,7 +307,7 @@ public final class SdkConfig {
             File f = new File(dir(), "index.txt");
             if (f.exists()) {
                 if (f.delete())
-                    Db.log("SDK-CONFIG bersih: index.txt dihapus (tidak dipakai lagi)");
+                    Db.log("SDK-CONFIG cleaned: index.txt removed (no longer used)");
             }
             File e = new File(dir(), "errors.json");
             if (!e.exists()) {
@@ -342,7 +342,7 @@ public final class SdkConfig {
         if (!cur.trim().equals(V15_PROFILE.trim())) return false;
         writeFile(f, DEFAULT_PROFILE);
         Db.log("SDK-CONFIG-UPGRADE profile.json: products += " + PRODUCT_CLIENT_ASLI
-                + " (productCode ASLI client — FIX silent error 30001)");
+                + " (original client productCode — fixes silent error 30001)");
         return true;
     }
 
@@ -393,7 +393,7 @@ public final class SdkConfig {
             String ns = s.substring(0, a + 1) + ins + s.substring(b);
             writeFile(new File(dir(), "profile.json"), ns);
             Db.log("SDK-CONFIG-EDIT profile.json: products += " + code
-                    + " (via panel dashboard — productCode kini DITERIMA)");
+                    + " (via dashboard panel — productCode now ACCEPTED)");
             return null;
         }
     }
@@ -472,7 +472,7 @@ public final class SdkConfig {
             if (f.exists()) f.delete();
             tmp.renameTo(f);
         } catch (Throwable t) {
-            Db.log("SDK-CONFIG write gagal: " + rel(f) + " -> " + t);
+            Db.log("SDK-CONFIG write failed: " + rel(f) + " -> " + t);
         } finally {
             if (out != null) try { out.close(); } catch (Exception ignored) {}
         }

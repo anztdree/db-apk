@@ -111,7 +111,7 @@ public final class AccountStore {
             r.createTime = a.createTime;
             r.lastLogin = a.createTime;
             db.putGuest(r);
-            log("AKUN-BARU uid=" + a.uid + " username=" + a.username);
+            log("new account uid=" + a.uid + " username=" + a.username);
             return a;
         }
     }

@@ -67,7 +67,7 @@ public final class SessionReset {
     public static String reset(android.content.Context ctx, boolean auto) {
         try {
             if (ctx == null)
-                return "server desktop — tidak ada Context (fitur device Android)";
+                return "server desktop — no Context (Android device feature)";
             StringBuilder d = new StringBuilder(256);
             boolean removed = false;
 
@@ -80,11 +80,11 @@ public final class SessionReset {
                 ed.remove(KEY_USERS);
                 ed.remove(KEY_UPDATE_TIME);
                 boolean ok = ed.commit();
-                d.append("prefs qg_Users.xml: ").append(had ? "sesi DIHAPUS" : "tidak ada sesi");
-                if (!ok) d.append(" (commit=false — cek logcat)");
+                d.append("prefs qg_Users.xml: ").append(had ? "session REMOVED" : "no session");
+                if (!ok) d.append(" (commit=false — check logcat)");
                 if (had) removed = true;
             } catch (Throwable t) {
-                d.append("prefs: GAGAL ").append(t);
+                d.append("prefs: FAILED ").append(t);
             }
 
             // 2) info.qg di Documents (jalur aktif Android Q+ = device kita)
@@ -92,35 +92,35 @@ public final class SessionReset {
                 File docs = ctx.getExternalFilesDir("Documents");
                 File f = docs == null ? null : new File(docs, "info.qg");
                 String r = f == null ? null : scrubInfoQg(f);
-                if (r == null) d.append("; info.qg/Documents: tidak ada");
+                if (r == null) d.append("; info.qg/Documents: absent");
                 else {
                     d.append("; info.qg/Documents: ").append(r);
-                    if (r.startsWith("DIHAPUS")) removed = true;
+                    if (r.startsWith("REMOVED")) removed = true;
                 }
             } catch (Throwable t) {
-                d.append("; info.qg/Documents: GAGAL ").append(t);
+                d.append("; info.qg/Documents: FAILED ").append(t);
             }
 
             // 3) legacy path — best effort (scoped storage biasanya menolak: wajar)
             try {
                 File legacy = new File(LEGACY_BASE + ctx.getPackageName(), "info.qg");
                 String r = scrubInfoQg(legacy);
-                if (r == null) d.append("; info.qg/legacy: tidak ada");
+                if (r == null) d.append("; info.qg/legacy: absent");
                 else {
                     d.append("; info.qg/legacy: ").append(r);
-                    if (r.startsWith("DIHAPUS")) removed = true;
+                    if (r.startsWith("REMOVED")) removed = true;
                 }
             } catch (Throwable t) {
-                d.append("; info.qg/legacy: tidak bisa (wajar Android 11+): ")
+                d.append("; info.qg/legacy: cannot (expected on Android 11+): ")
                  .append(t.getClass().getSimpleName());
             }
 
             // Bagian 39 — teks dinetralkan (arahan owner): fokus ke RESET SESI
             // + LOGIN MANUAL, tanpa menyalahkan izin overlay (game asli tidak
             // memerlukannya — SDK tetap berjalan normal).
-            String info = (auto ? "OTOMATIS" : "MANUAL via panel") + " — " + d
-                    + " — game berikutnya membuka UI LOGIN MANUAL (jalur aman). "
-                    + "Akun di sdk/data TIDAK dihapus.";
+            String info = (auto ? "AUTO" : "MANUAL via panel") + " — " + d
+                    + " — next game launch opens the MANUAL LOGIN UI (safe path). "
+                    + "Accounts in sdk/data are kept.";
             lastResetInfo = info;
             if (auto) autoResetDone = true;
 
@@ -133,7 +133,7 @@ public final class SessionReset {
             LoggerCore.log(e);
             return null;
         } catch (Throwable t) {
-            return "gagal: " + t;
+            return "failed: " + t;
         }
     }
 
@@ -174,22 +174,22 @@ public final class SessionReset {
                 String err = reset(ctx, true);
                 if (err == null) {
                     CrashHook.markCrashHandled(unhandled);
-                    guardLog("SESI SDK DIRESET OTOMATIS — crash terekam sebelumnya "
-                            + "+ sesi tersimpan. Buka game: LOGIN MANUAL (jalur aman). "
-                            + "Akun tetap ada. Trace crash: banner CRASH dashboard.");
+                    guardLog("SDK session auto-reset — previous crash captured "
+                            + "+ stored session. Next launch: MANUAL LOGIN (safe path). "
+                            + "Accounts kept. Crash trace: dashboard CRASH banner.");
                 } else {
-                    guardLog("SESI-GUARD gagal reset: " + err);
+                    guardLog("SESI-GUARD reset failed: " + err);
                 }
             } else if (hasSession) {
-                guardLog("Izin overlay OFF (normal — info, bukan error) + sesi SDK "
-                        + "tersimpan — game memakai sesi tersimpan. Bila crash setelah "
-                        + "loading: buka game lagi — sesi direset otomatis lalu LOGIN MANUAL.");
+                guardLog("Overlay permission OFF (normal — info, not an error) + SDK "
+                        + "session stored — game uses the stored session. If it crashes "
+                        + "after loading: open the game again — session auto-resets, then MANUAL LOGIN.");
             } else if (!unhandled.isEmpty()) {
-                guardLog("Crash terekam sebelumnya (tanpa sesi tersimpan) — buka dashboard 4000: "
-                        + "banner CRASH berisi trace penyebab persisnya.");
+                guardLog("Previous crash captured (no stored session) — open dashboard 4000: "
+                        + "CRASH banner holds the exact trace.");
             }
         } catch (Throwable t) {
-            try { guardLog("SESI-GUARD error (ditelan): " + t); } catch (Throwable ignored) {}
+            try { guardLog("SESI-GUARD error (swallowed): " + t); } catch (Throwable ignored) {}
         }
     }
 
@@ -313,15 +313,15 @@ public final class SessionReset {
     static String scrubInfoQg(File f) {
         if (f == null || !f.exists()) return null;
         String s = readFile(f);
-        if (s == null || s.trim().isEmpty()) return "kosong — dibiarkan";
-        if (findRootKey(s, KEY_USERS) < 0) return "tidak ada sesi";
+        if (s == null || s.trim().isEmpty()) return "empty — left as is";
+        if (findRootKey(s, KEY_USERS) < 0) return "no session";
         String ns = removeRootKey(s, KEY_USERS);
-        if (ns == null) return "gagal parse — dibiarkan (aman)";
+        if (ns == null) return "parse failed — left as is (safe)";
         // sanity: hasil tetap diawali { dan diakhiri }
         String t = ns.trim();
-        if (!t.startsWith("{") || !t.endsWith("}")) return "gagal parse — dibiarkan (aman)";
-        if (!writeFile(f, t)) return "gagal tulis";
-        return "DIHAPUS (namespace qg_Users; file tetap JSON valid)";
+        if (!t.startsWith("{") || !t.endsWith("}")) return "parse failed — left as is (safe)";
+        if (!writeFile(f, t)) return "write failed";
+        return "REMOVED (qg_Users namespace; file still valid JSON)";
     }
 
     /* ==================== SELF TEST (smoke desktop) ==================== */
@@ -354,10 +354,10 @@ public final class SessionReset {
                     + "\"Lainnya\":{\"n\":5}}");
             String r = scrubInfoQg(f);
             String back = readFile(f);
-            check(r != null && r.startsWith("DIHAPUS") && back.contains("\"Lainnya\"")
+            check(r != null && r.startsWith("REMOVED") && back.contains("\"Lainnya\"")
                     && back.contains("\"n\":5") && !back.contains("tes@mail.com"),
                     "scrubInfoQg file nyata (key lain selamat)");
-            check("tidak ada sesi".equals(scrubInfoQg(f)), "scrub ulang -> tidak ada sesi");
+            check("no session".equals(scrubInfoQg(f)), "scrub ulang -> tidak ada sesi");
             f.delete();
         } catch (Throwable t) {
             throw new RuntimeException("SELFTEST GAGAL (file): " + t);

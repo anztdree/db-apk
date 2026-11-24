@@ -3958,3 +3958,133 @@ ditambal); (3) teks log **bahasa manusia rinci + emoji jelas + pemisah jelas**.
    inline tanpa klik.
 5. Tombol bawah: salin log (teks server penuh emoji) · salin JSON · unduh
    arsip. Filter lanjutan: tombol ikon sliders kanan atas.
+
+---
+
+## 50. Bagian 50 — CONSOLE v13: RAW SERVER LOG (NOL KARANGAN)
+
+### 50.1 Arahan owner (kata-kata persis, 24 Nov 2026)
+
+> "ansa ini sukaaa banget ngeyel .. 🔌 Koneksi WebSocket login — Endpoint :
+> socket.io port 5050 · Terima : 0 B — Frame socket · 3probe — itu log apa
+> bisa di baca!!!! natural.. kalau log Inggris ya inggirs . log jangan anda
+> karang lah !!! gmana mau tau apa yg server ini butuhkan kalau semuanya
+> karangan gak jelas dari anda !!!"
+
+Diagnosis akar: data yang DITANGKAP logger selalu nyata (sid, 2probe/3probe,
+packet 42[..], header Dalvik, byte counts) — tapi lapisan RENDERING dashboard
+(v12 `describe()`) melingkupi tiap entri dengan KALIMAT NARATIF buatan
+("Koneksi WebSocket login — ..."), label Indonesia ("Kirim/Terima"), status
+diberi kata buatan ("OK/ALIH/GAGAL/RUSAK"), path+query DIPANGKAS
+(`pathOf()` membuang `?EIO=3&transport=...`), dan preview dipotong 200/160
+karakter — sehingga data asli tak terbaca dan pemilik tak bisa menilai apa
+yang server/game butuhkan.
+
+### 50.2 Console v13 — RAW SERVER LOG (rombak total rendering)
+
+1. **LOG = DATA MENTAH, NOL KARANGAN** — `describe()`, `stLbl()`, `epName()`,
+   `sdkErr()`, `evName()`, `plain()`, `ms2()` DIHAPUS dari dashboard. Baris
+   utama kini PERSIS protokol gaya access log:
+   `GET /socket.io/?EIO=3&transport=polling&t=.. 200 · 103 B · 1ms` — path +
+   **QUERY STRING PENUH** (tidak dipangkas), status angka polos (berwarna
+   s2 hijau / s3 amber / s4-s5 merah), ukuran, durasi. BOOT/SYS/EXTRACT =
+   pesan server apa adanya (`BIND port 4000 — logger 2-mode — OK`); CRASH =
+   nama file laporan.
+2. **WEBSOCKET MENTAH**: upgrade = `GET /socket.io/?…transport=websocket… 101`
+   (+ headers request nyata); frame = `WS sid=<20char> 200` + sub-baris
+   `recv: (6 B) 2probe` / `send: (6 B) 3probe`, `recv: (122 B) 42[1["handler.process",…]]`
+   / `send: (326 B) 43[…ACK…]` — frame VERBATIM; `WS sid=.. ping->pong` =
+   heartbeat (control frame, tanpa payload — bukan lagi "Terima: 0 B");
+   `WS sid=.. close 1000`. respLen frame kini DISET JUJUR di Java (6 B/1 B/
+   panjang ACK) — bukan 0 B karangan.
+3. **FULL DISCLOSURE**: sub-baris `headers:` / `request:` / `response:` /
+   `recv:` / `send:` / `data:` / `error:` menampilkan isi capture VERBATIM —
+   PEMOTONGAN 200/160 karakter DIHAPUS dari rendering; satu-satunya batas =
+   batas tangkap server (preview 4 KB teks / 2 KB file statis). Body panjang
+   menggulir dalam kartu (max-height 260px + scrollbar).
+4. **NOL EMOJI DI MANA PUN** — termasuk teks log (menyupersei Bagian 48:
+   log server asli tidak pakai emoji). Kecantikan tetap dari IKON SVG
+   (registry 30+ ikon feather/lucide di chrome UI — tombol/chip/banner,
+   arahan Bagian 49 tetap).
+5. **BAHASA LOG**: protokol English dibiarkan English persis aslinya
+   ("kalau log Inggris ya inggirs"). Pesan server internal seluruhnya
+   ditulis ulang raw-English ringkas: `open sid=..`, `ws upgrade sid=..`,
+   `long-poll timeout, no data`, `session already closed, removed`,
+   `client disconnect (41)`, `loginchecknative uid=.. usermode=.. (guest)`,
+   `extract done: N files`, `bind 9527 … — OK`, `GATE-20002(sign)`,
+   `PRODUCT REJECTED 30001 …`, `LOCATION-MIGRATION …`, `desktop — skipped`,
+   `no exit history (normal for a fresh install)`, `CrashHook installed …`,
+   `SDK session auto-reset …` — dst. (20 pesan SdkHandler + 30 pesan lain
+   ikonversi; NOL narasi Indonesia tersisa di entri log).
+6. **Salin log = TEKS MENTAH PERSIS PROTOKOL**:
+   `2026-11-23 23:50:14.123 #12 9527 GET /bs/... 200 687 B 4ms` + baris
+   `    headers: …` / `    request: …` / `    response: …` / `    recv: (…) …` /
+   `    send: (…) …` / `    data: …` / `    error: …` — verbatim, tanpa
+   emoji/LVE/CPE. Salin JSON + unduh NDJSON tetap.
+7. **Panduan** ditulis ulang: format RAW + contoh monospace + penjelasan
+   recv/send/ping->pong + batas tangkap 4 KB. Banner: "PERSIS PROTOKOLNYA".
+8. **TIDAK BERUBAH**: overlay=INFO (39), tombol ikon (41), port 4000 murni
+   monitoring + sdkconfig 404 (41/43), tanpa tips (42), tanpa modal (47),
+   poll incremental 1,2 dtk + filter lengkap + banner CRASH (32), chrome
+   berikon premium v12 (49).
+
+### 50.3 Proses + verifikasi
+
+- javac **21.0.13** (tanpa root) → build-smoke + build-dex; D8/r8 **8.3.37**
+  (`--release --min-api 21 --lib JRE`) → `classes2.dex` **156.600 B**
+  (lebih ramping 4.756 B dari v12 — fungsi naratif dihapus).
+- **Smoke desktop: 136 PASS, 0 FAIL** — seluruh guard lama yang relevan
+  tetap + guard baru `v63-*`: `no-emoji-all` (NOL emoji di SELURUH HTML —
+  menyupersei emoji-log v60), `raw-mainline` (method + full path + stHtml),
+  `raw-ws` (WS + ping->pong), `inline-raw` (labels headers/request/response/
+  recv/send/data/error), `full-disclosure` (trunc 200/160 HILANG), `salin-raw`,
+  `no-describe` (describe/stLbl/epName/sdkErr/evName/ms2/plain HILANG),
+  `no-synthetic` ("Koneksi WebSocket"/"Frame socket"/"Endpoint : "/"Kirim : "/
+  "Terima : "/OK-ALIH-GAGAL-RUSAK HILANG), `no-emoji-copy` (LVE/CPE hilang),
+  `guide` (RAW SERVER LOG + query string penuh), `overlay-from-data`.
+- **Verifikasi browser headless** (Chrome 158): render desktop 1366×900 +
+  mobile iPhone 14, **errors NOL**, JS divalidasi Node (`new Function`) —
+  **SYNTAX OK**; interaksi: filter "Masalah saja" (tombol amber menyala,
+  kartu tersembunyi), panel panduan buka/tutup, chips status hidup
+  (LISTEN/KONFIG/CDN/LOGIN/GAME/SDK/LOG/UPTIME/SEQ/STATUS), footer sticky.
+  Live WS test: upgrade 101 + `recv: (6 B) 2probe` / `send: (6 B) 3probe` +
+  `recv: (122 B) 421[...]` / `send: (326 B) 431[{...serverList...}]` — semua
+  VERBATIM di kartu, persis yang dikeluhkan owner kini terbaca penuh.
+- **Repack RAW-COPY** (`rebuild-src/scripts/rebuild_v13_raw.py`, metode
+  Bagian 46/49): base **v12** `1c108369…` (struktur identik v7/v10/v12),
+  SEMUA 6.428 entri disalin byte-per-byte, hanya `classes2.dex` diganti
+  (D8, **156.600 B**, sha `323641505e9ea9a605b18ff92e78d183b25a75c1aff75d8bb52a395e20541a42`);
+  verifikasi pasca-build: beda HANYA classes2.dex + META-INF (re-sign),
+  `resources.arsc` tetap STORED aligned-4 di data_off 15923800, metode
+  **3471 deflate + 2957 stored** IDENTIK; zipalign + sign `dblocalmod`
+  (uber-apk-signer 1.3.0, flag benar `--ksPass/--ksKeyPass`) → **zipalign
+  verified + signature verified [v1, v2, v3]**, sertifikat `CN=DB Local Mod,
+  O=Owner, C=ID` exp 2056.
+
+### 50.4 APK v13
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v13).apk` (LFS di repo; pola v1→…→v10→v12→v13) |
+| Ukuran | **202.691.550 B** |
+| sha256 | `533aedeee8b8dca957efb825a8c0f3606be84339d81d7dcdf6888daf330ec0f7` |
+| classes2.dex | 156.600 B sha `323641505e9ea9a605b18ff92e78d183b25a75c1aff75d8bb52a395e20541a42` (console RAW SERVER LOG v13) |
+| Penanda | BOOT/crash/dashboard/banner = **v13** |
+| Sign | v1+v2+v3, keystore `dblocalmod`, exp 2056 — install-over OK |
+
+### 50.5 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v13).apk` langsung di atas v12/v10/v9/
+   v8/v7 (keystore sama — tanpa uninstall).
+2. Boot game → buka `127.0.0.1:4000` → badge **v13** + banner "raw console …
+   PERSIS PROTOKOLNYA".
+3. Log kini MENTAH: baris utama `METHOD /path?query status · ukuran · durasi`
+   — query string penuh (EIO=3&transport=…&sid=… terbaca), sub-baris
+   headers/request/response/recv/send/data/error apa adanya. Yang Inggris
+   tetap English; NOL emoji; NOL kalimat karangan.
+4. Contoh yang dikeluhkan owner — kini tampil:
+   `GET /socket.io/?EIO=3&transport=websocket&sid=… 101` lalu
+   `WS sid=…` + `recv: (6 B) 2probe` + `send: (6 B) 3probe` — frame asli
+   terbaca, ukuran jujur.
+5. Tombol bawah: salin log (teks mentah persis protokol) · salin JSON ·
+   unduh arsip NDJSON. Panduan: tombol tanda tanya kanan atas.

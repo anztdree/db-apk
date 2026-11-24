@@ -67,7 +67,7 @@ public final class CrashHook {
             final Thread.UncaughtExceptionHandler prev =
                     Thread.getDefaultUncaughtExceptionHandler();
             Thread.setDefaultUncaughtExceptionHandler(new Wrapper(prev));
-            boot("CrashHook terpasang — crash Java seluruh proses terekam ke logs/crash-*.txt + banner dashboard");
+            boot("CrashHook installed — Java crashes of the whole process captured to logs/crash-*.txt + dashboard banner");
             // v18: watchdog — bila SDK memasang handler sendiri nanti, bungkus ulang
             Thread wd = new Thread(new Runnable() {
                 public void run() {
@@ -88,7 +88,7 @@ public final class CrashHook {
             wd.setDaemon(true);
             wd.start();
         } catch (Throwable t) {
-            boot("CrashHook gagal dipasang: " + t);
+            boot("CrashHook install failed: " + t);
         }
     }
 
@@ -178,15 +178,15 @@ public final class CrashHook {
             name = "crash-" + ts + ".txt";
             File f = new File(dir, name);
             StringBuilder b = new StringBuilder(8192);
-            b.append("MOD-LOCALSERVER v12 — LAPORAN CRASH\n")
-             .append("waktu : ").append(LoggerCore.Entry.fmtTime(System.currentTimeMillis())).append('\n')
+            b.append("MOD-LOCALSERVER v13 — CRASH REPORT\n")
+             .append("time  : ").append(LoggerCore.Entry.fmtTime(System.currentTimeMillis())).append('\n')
              .append("thread: ").append(t == null ? "?" : t.getName()).append('\n')
              .append("root  : ").append(LoggerCore.serverRootPath).append('\n')
              .append('\n');
             if (e != null) {
                 b.append("exception: ").append(e.getClass().getName()).append('\n');
                 String msg = e.getMessage();
-                b.append("message  : ").append(msg == null ? "(kosong)" : msg).append('\n');
+                b.append("message  : ").append(msg == null ? "(none)" : msg).append('\n');
                 StringWriter sw = new StringWriter();
                 PrintWriter pw = new PrintWriter(sw);
                 e.printStackTrace(pw);
@@ -196,7 +196,7 @@ public final class CrashHook {
                 b.append("exception: (null)\n");
             }
             // konteks: 50 entri log terakhir (alur apa yang berjalan sebelum crash)
-            b.append('\n').append("===== 50 LOG TERAKHIR (seq waktu kind port status path) =====\n");
+            b.append('\n').append("===== LAST 50 LOG ENTRIES (seq time kind port status path) =====\n");
             try {
                 ArrayList<LoggerCore.Entry> tail = LoggerCore.latestGlobal(50, 0);
                 for (int i = 0; i < tail.size(); i++) {
@@ -209,7 +209,7 @@ public final class CrashHook {
                      .append('\n');
                 }
             } catch (Throwable ignored) {}
-            b.append('\n').append("AKHIR LAPORAN — kirim/unduh dari dashboard 4000 (banner merah CRASH)\n");
+            b.append('\n').append("END OF REPORT — copy/download from dashboard 4000 (red CRASH banner)\n");
 
             byte[] data = b.toString().getBytes(StandardCharsets.UTF_8);
             FileOutputStream out = new FileOutputStream(f);
@@ -231,8 +231,7 @@ public final class CrashHook {
             e2.error = e == null ? "(null)" : e.getClass().getName() + ": " + e.getMessage();
             String trace = b.toString();
             e2.respPreview = trace.length() > 4000 ? trace.substring(0, 4000) : trace;
-            e2.extra = "CRASH TERTANGKAP — file logs/" + name
-                    + " (banner merah di dashboard berisi trace + tombol salin/unduh)";
+            e2.extra = "crash captured — logs/" + name + " (red dashboard banner holds trace + copy/download)";
             LoggerCore.log(e2);
             return name;
         } catch (Throwable tt) {
@@ -241,7 +240,7 @@ public final class CrashHook {
                 e3.port = LoggerCore.PORT_LOGGER;
                 e3.kind = "CRASH";
                 e3.method = "CRASH";
-                e3.path = "(laporan gagal)";
+                e3.path = "(report failed)";
                 e3.error = String.valueOf(tt);
                 LoggerCore.log(e3);
             } catch (Throwable ignored) {}

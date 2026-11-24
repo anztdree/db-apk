@@ -246,7 +246,7 @@ public final class DbJson extends Db {
             if (f.exists()) f.delete();
             tmp.renameTo(f);
         } catch (Throwable t) {
-            Db.log("DB-WRITE gagal: " + t);
+            Db.log("DB-WRITE failed: " + t);
         } finally {
             if (out != null) try { out.close(); } catch (Exception ignored) {}
         }
