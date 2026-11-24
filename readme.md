@@ -3574,3 +3574,77 @@ dengan konsol yang tepat di tengahnya:
   `capture_login2.py`, `repack.py`, `verify-artifacts/verify_final.txt`.
 - `.gitignore` ditambah blok "sandbox / lokal saja" (credentials, node_modules,
   patch lama, dsb.) agar artefak sandbox tidak pernah ter-commit.
+
+## Bagian 46 — Insiden "mengurai paket" (parse error) + rebuild v8 RAW-COPY + APK kembali di repo (2026-11-24)
+
+### 46.1 Laporan owner
+
+- Owner: **"size 191mb tapi saat install masalah saat mengurai paket"** — file yang
+  ter-download utuh (200.463.326 B, sha cocok dengan dokumentasi Bagian 44.7), tetapi
+  installer Android menolak: *Ada masalah saat mengurai paket*.
+- Owner juga menegaskan: **APK ditaruh di repo seperti pola lama** (LFS `release-mod/`),
+  BUKAN dipindah ke halaman Release.
+
+### 46.2 Akar masalah — TERBUKTI via bedah struktur zip
+
+Bedah header zip (local header + central directory) APK v8 lama vs base v7
+(`594caec9…`, sha cocok):
+
+| Temuan | v7 (ter-install OK) | v8 lama (parse error) |
+|---|---|---|
+| `resources.arsc` | **STORED** (method 0), aligned-4 | **DEFLATED** (method 8) — FATAL |
+| Entri STORED | 2.957 | **0** — semua 2.957 asset (png/jpg) terkompres ulang |
+| Distribusi metode | 3471 deflate + 2957 stored | 6428 deflate |
+| Ukuran total | 202.687.454 B | 200.463.326 B (menyusut 2.2 MB — bukan "efisiensi") |
+
+- `resources.arsc` **wajib uncompressed (STORED)** untuk APK dengan targetSdk 30+
+  (Android 11+); parser Android menolak APK dengan arsc terkompresi →
+  **"Ada masalah saat mengurai paket"** — persis gejala yang dilaporkan owner.
+- Penyebab: skrip repack v8 lama membangun ulang zip dengan library yang
+  mengompres SEMUA entri ulang, merusak status STORED yang dibawa dari APK asli.
+- Verifikasi PC-side sebelumnya (unzip -t, apksigner, uber-apk-signer) TIDAK
+  menangkap ini karena semua tool itu menerima arsc terkompresi — hanya
+  PackageParser Android yang menolak. Pelajaran: verifikasi struktur zip
+  (metode kompresi per entri) WAJIB masuk smoke check.
+
+### 46.3 Rebuild RAW-COPY (v8 lama dibuang)
+
+Skrip `rebuild_v8_raw.py` (metode baru, dipakai untuk build ini):
+
+1. Base = APK v7 asli dari Git LFS history (`594caec9…`, 202.687.454 B).
+2. **Semua entri disalin byte-per-byte** — metode kompresi, flags, offset,
+   alignment, extra field: SEMUA dipertahankan persis.
+3. Hanya `classes2.dex` yang diganti (console premium v8, 148.644 B, sha
+   `567609b6…`) — CRC32 + ukuran di LFH & central directory dikoreksi,
+   offset entri setelahnya digeser +1666 B.
+4. APK Signing Block lama (jika ada) dilepas sebelum CD; `uber-apk-signer 1.3.0`
+   zipalign + sign ulang — keystore `dblocal-mod.keystore` (alias `dblocalmod`,
+   pass `dblocalmod123`), sertifikat `CN=DB Local Mod, O=Owner, C=ID` exp 2056 —
+   **install-over dari v7 aman**.
+   (Koreksi dokumentasi: Bagian 16–19 menyebut alias `nmod`/pass `nmod123` era
+   keystore lama; keystore berlaku kini `dblocalmod`/`dblocalmod123`.)
+
+### 46.4 Verifikasi rebuild
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `resources.arsc` | **STORED (method 0), aligned-4, data_off 15923800** — persis v7 |
+| Distribusi metode | **3471 deflate + 2957 stored — persis v7** |
+| Entri yang beda | hanya `classes2.dex` (dex baru) + `META-INF/DBLOCALM.SF` (re-sign) |
+| classes2.dex | 148.644 B, sha `567609b65e206fceb6cb66503397a18d593fa606b38c9dc30e67d1fbc521e783` — console premium |
+| `unzip -t` | No errors detected |
+| Signature | **zipalign verified + signature verified [v1, v2, v3]** |
+
+### 46.5 APK v8 (RAW-COPY rebuild) — nilai final
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v8).apk` (pola lama, LFS di repo) |
+| Ukuran | **202.687.454 B** |
+| sha256 | `234c78577687d6c7004067d91480d5b915b1d2c0035d220dcde7fde6958c5ca6` |
+| classes2.dex | 148.644 B sha `567609b6…1e783` (console premium v8) |
+| Sign | v1+v2+v3, keystore `dblocalmod`, exp 2056 — install-over OK |
+
+- Commit ini MENGGANTI pointer LFS v8 lama di repo — owner download langsung
+  dari repo seperti biasa. Asset pada tag `v8-mod-localserver` juga disinkronkan
+  dengan build ini supaya tidak ada file rusak yang menggantung.
