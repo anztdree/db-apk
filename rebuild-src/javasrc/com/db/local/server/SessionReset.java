@@ -118,16 +118,15 @@ public final class SessionReset {
             // Bagian 39 — teks dinetralkan (arahan owner): fokus ke RESET SESI
             // + LOGIN MANUAL, tanpa menyalahkan izin overlay (game asli tidak
             // memerlukannya — SDK tetap berjalan normal).
-            String info = (auto ? "AUTO" : "MANUAL via panel") + " — " + d
-                    + " — next game launch opens the MANUAL LOGIN UI (safe path). "
-                    + "Accounts in sdk/data are kept.";
+            String info = (auto ? "AUTO" : "MANUAL") + " — " + d
+                    + " — next launch opens manual login UI";
             lastResetInfo = info;
             if (auto) autoResetDone = true;
 
             LoggerCore.Entry e = new LoggerCore.Entry();
             e.port = LoggerCore.PORT_LOGGER;
             e.kind = "SYS";
-            e.method = "SESI-RESET";
+            e.method = "SESSION-RESET";
             e.path = info;
             e.status = 0;
             LoggerCore.log(e);
@@ -178,7 +177,7 @@ public final class SessionReset {
                             + "+ stored session. Next launch: MANUAL LOGIN (safe path). "
                             + "Accounts kept. Crash trace: dashboard CRASH banner.");
                 } else {
-                    guardLog("SESI-GUARD reset failed: " + err);
+                    guardLog("session guard reset failed: " + err);
                 }
             } else if (hasSession) {
                 guardLog("Overlay permission OFF (normal — info, not an error) + SDK "
@@ -189,7 +188,7 @@ public final class SessionReset {
                         + "CRASH banner holds the exact trace.");
             }
         } catch (Throwable t) {
-            try { guardLog("SESI-GUARD error (swallowed): " + t); } catch (Throwable ignored) {}
+            try { guardLog("session guard error (swallowed): " + t); } catch (Throwable ignored) {}
         }
     }
 
@@ -415,7 +414,7 @@ public final class SessionReset {
         LoggerCore.Entry e = new LoggerCore.Entry();
         e.port = LoggerCore.PORT_LOGGER;
         e.kind = "SYS";
-        e.method = "SESI-GUARD";
+        e.method = "SESSION-GUARD";
         e.path = msg;
         e.status = 0;
         LoggerCore.log(e);

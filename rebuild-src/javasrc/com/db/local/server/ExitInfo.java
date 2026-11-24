@@ -68,7 +68,7 @@ public final class ExitInfo {
                 e.path = "last exit[" + (n - 1 - i) + "/" + n + "] reason=" + rn
                         + (desc == null || desc.length() == 0 ? "" : " desc=" + desc)
                         + " time=" + (ts > 0 ? LoggerCore.Entry.fmtTime(ts) : "?")
-                        + (bad ? "  <-- previous session died abnormally" : "");
+                        + (bad ? " (abnormal exit)" : "");
                 e.status = bad ? 500 : 0;
                 if (trace.length() > 0) e.respPreview = trace;
                 LoggerCore.log(e);
@@ -105,7 +105,7 @@ public final class ExitInfo {
             while ((r = in.read(buf)) > 0) {
                 b.write(buf, 0, r);
                 tot += r;
-                if (tot >= cap) { b.write("\n…[trace dipotong 16KB]".getBytes("UTF-8")); break; }
+                if (tot >= cap) { b.write("\n…[trace cut at 16KB]".getBytes("UTF-8")); break; }
             }
             in.close();
             return b.toString("UTF-8");

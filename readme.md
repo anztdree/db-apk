@@ -4088,3 +4088,108 @@ yang server/game butuhkan.
    terbaca, ukuran jujur.
 5. Tombol bawah: salin log (teks mentah persis protokol) · salin JSON ·
    unduh arsip NDJSON. Panduan: tombol tanda tanya kanan atas.
+
+---
+
+## 51. Bagian 51 — CONSOLE v14: SERVER LOG RAPI (NOL TEKS SAMPAH, NOL TOMBOL SAMPAH)
+
+### 51.1 Arahan owner (kata-kata persis, 25 Nov 2026)
+
+> "entah mengapa masih banyak teks sampah, dan gak rapi .
+> banyak tombol juga tapi tombol sampah"
+
+Diagnosis akar (log device 00:18, data tangkapan sudah NYATA sejak v13):
+
+1. Field `extra` MASIH diisi KOMENTAR server: `GATE-PASS`, "owner editable",
+   "loginTypes drives the login screen", kontrak parser internal
+   (psalmicvolleyball/cointhreat), "GUEST button", "GET-TEST=false",
+   "try/catch safe" — teks penjelasan buatan dicampur di data protokol =
+   TEKS SAMPAH di log.
+2. Body panjang (request urlencoded-base64 1.2 KB, HTML 11 KB, JSON config)
+   di-render INLINE tanpa kolaps = dinding teks tidak rapi.
+3. 10 tombol di console (trio Penting/Masalah/Semua, panel filter 4 select,
+   panel Panduan, Salin JSON) = mayoritas tidak dipakai = TOMBOL SAMPAH.
+
+### 51.2 Server — extra DIBERSIHKAN ke fakta protokol saja
+
+| Sebelum (karangan) | Sesudah (v14) |
+|---|---|
+| `GATE-PASS \| respCT=text/json` | `respCT=text/json` (sukses = tanpa komentar) |
+| `init.json (…— owner editable) \| loginTypes drives… \| payTypes… \| GET-TEST=false` | `src=sdk/v1/system/init.json \| respCT=text/json` |
+| `registerVisitor (GUEST button) \| …contract psalmicvolleyball/cointhreat…` | `respCT=text/json` |
+| `src=assets (fast-path 9527)` / `(not extracted yet — anti-race)` | `src=assets` |
+| `loginchecknative uid=… (guest)` | `loginchecknative uid=… usermode=…` |
+| DECODED-XOR JSON mentah tab 687 B inline | pretty-print 2 spasi, cap 1200 char + `…(+N B)` |
+| `CrashHook re-wrap: handler default diganti pihak lain…` (Indonesia) | `default uncaught handler replaced by third party (crash reporter) — re-wrapped, crashes still captured` |
+| `SESI-RESET` / `SESI-GUARD` / `MIGRASI tamu` | `SESSION-RESET` / `SESSION-GUARD` / `MIGRATION guest account.json` |
+| gate ditolak: `GATE-20002(sign) \| contract mirror live 23 Nov…` | `GATE-20002(sign) \| respCT=text/json` (trace gate nyata, tanpa komentar) |
+
+Juga: `PRODUCT REJECTED 30001` tanpa instruksi panjang; CrashHook extra =
+`crash captured — logs/<nama>`; ExitInfo `(abnormal exit)` +
+`trace cut at 16KB`; Overlay `overlay permission OFF — game does not use
+overlay`. Log English tetap English; NOL narasi Indonesia tersisa.
+
+### 51.3 Console v14 — tombol hanya yang berfungsi + detail kolaps
+
+1. **DETAIL KOLAPS**: sub-baris `headers/request/response/recv/send/data/error`
+   tampil RINGKAS 1 baris (ellipsis + ukuran byte utk yang panjang) — klik =
+   isi PENUH verbatim (scroll, max-height 280px). Detail pendek (<=140 char)
+   langsung terbuka. NOL data disembunyikan permanen — Salin log tetap
+   VERBATIM penuh.
+2. **TOMBOL 4 SAJA** (semua berfungsi): jeda/play · bersihkan tampilan ·
+   unduh arsip NDJSON · salin log. DIHAPUS: trio Penting/Masalah/Semua,
+   panel filter tahap/status/jumlah, Salin JSON, panel "Panduan" (narasi).
+3. **FILTER RINGKAS SELALU TAMPIL**: cari + level (INFO/WARN/ERROR) + port.
+4. **BANNER SATU BARIS**: `raw server log — http://127.0.0.1:4000 · detail
+   panjang: klik untuk buka` — tanpa narasi. Chips status tetap (data nyata:
+   LISTEN, 6 port, UPTIME, SEQ, ARSIP, OVERLAY, STATUS).
+5. NOL emoji di mana pun; ikon SVG feather/lucide tetap (31 ikon; baru:
+   chevron untuk kolaps/expand). Banner CRASH tetap (laporan mentah + salin).
+6. Baris utama tetap PERSIS protokol: `GET /socket.io/?EIO=3&… 200 · 103 B ·
+   4ms` — query string penuh; durasi kini SELALU tampil.
+
+### 51.4 Proses + verifikasi
+
+- Toolchain pasca-reset: javac **21.0.13** (deb `openjdk-21-jdk-headless`
+  diekstraksi `dpkg -x`, libjli di-symlink dari JRE sistem), **D8/r8 8.3.37**
+  (`dl.google.com`), android.jar **API 21** (Sable), uber-apk-signer 1.3.0.
+- **Smoke desktop: 165 PASS, 0 FAIL** — guard lama tetap + 40+ guard baru
+  `v14-*`/`v51-*`: extra-fakta (init/registerVisitor/bin), no-comment
+  (16 kata karangan dilarang), no-indo-server (8 pesan Indonesia dilarang),
+  sub-collapse (`.sh` klik + `.sc` kolaps + `IC.chev`), banner-slim (tanpa
+  "PERSIS PROTOKOLNYA"), guide-dihapus, filter-ringkas (stage/limit hilang),
+  tombol-minimal (vimp/vmal/vall/pf/cpjs hilang).
+- **Dex v14**: `classes2.dex` **145.256 B** sha
+  `75193236174548267f7fe9e5a59efce8dbbfc0a6d90af434acfefe0ce8b160a5`
+  (−11.344 B dari v13 — komentar & tombol mati dibuang). String karangan
+  diverifikasi NOL di dex (16 needle).
+- **Repack RAW-COPY** (`rebuild-src/scripts/rebuild_v14_raw.py`): base
+  **v13** `533aeded…`, SEMUA 6.428 entri disalin byte-per-byte, hanya
+  `classes2.dex` diganti; verifikasi pasca-build: beda HANYA classes2.dex,
+  `resources.arsc` tetap STORED aligned-4 di data_off 15923800, metode
+  **3471 deflate + 2957 stored** IDENTIK; zipalign + sign `dblocalmod`
+  (uber-apk-signer 1.3.0) → **zipalign verified + signature verified
+  [v1, v2, v3]**, sertifikat `CN=DB Local Mod, O=Owner, C=ID` exp 2056.
+
+### 51.5 APK v14
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v14).apk` (LFS di repo; pola v1→…→v10→v12→v13→v14) |
+| Ukuran | **202.687.454 B** |
+| sha256 | `30cfe4ed7d048069b0dcddeefb01494b12fb7d8395212ccd4ee6da9d996a1294` |
+| classes2.dex | 145.256 B sha `75193236174548267f7fe9e5a59efce8dbbfc0a6d90af434acfefe0ce8b160a5` (console SERVER LOG RAPI v14) |
+| Penanda | BOOT/crash/dashboard/banner = **v14** |
+| Sign | v1+v2+v3, keystore `dblocalmod`, exp 2056 — install-over OK |
+
+### 51.6 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v14).apk` langsung di atas v13/v12/v10/
+   v9/v8/v7 (keystore sama — tanpa uninstall).
+2. Boot game → buka `127.0.0.1:4000` → badge **v14** + banner satu baris.
+3. Log RAPI: baris utama = access log `METHOD /path?query status · size ·
+   dur`; sub-baris detail RINGKAS — `data:` hanya fakta protokol
+   (`respCT=` / `src=` / gate saat ditolak). JSON config tampil pretty-print.
+4. Tombol 4 saja: jeda · bersihkan · unduh arsip · salin log. Filter: cari +
+   level + port. Detail panjang (base64/HTML/JSON): klik sub-baris = isi
+   penuh verbatim.

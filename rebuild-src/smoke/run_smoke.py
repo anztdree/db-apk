@@ -375,7 +375,7 @@ try:
     st, hd, bd = get400("/")
     # Bagian 44 — console SERVER PREMIUM (dipercantik, teks verbose ala server asli)
     check("v43-console-200", st == 200 and "DB LOCAL SERVER" in bd
-          and "MOD-LOCALSERVER v13" in bd, bd[:120])
+          and "MOD-LOCALSERVER v14" in bd, bd[:120])
     check("v43-stream-markup", "id=stream" in bd and "id=tb" in bd
           and "id=tail" in bd, bd[:80])
     check("v17-salin-tabel", "copyTable" in bd and "plainLine(e)" in bd)
@@ -385,8 +385,8 @@ try:
     check("v17-banner-overlay-js", "renderOverlay" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd
           and "overlay OFF (normal)" not in bd
-          and "OVERLAY <b>OFF (normal)</b>" in bd)
-    check("v17-ver-dashboard", ">v13</span>" in bd and "raw console" in bd)  # v13 (Bagian 50)
+          and "OVERLAY <b>OFF</b>" in bd)
+    check("v17-ver-dashboard", ">v14</span>" in bd and "raw server log" in bd)  # v14 (Bagian 51)
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
@@ -423,7 +423,7 @@ try:
     # Bagian 43: rute sdkconfig sudah dihapus — sesi reset kini HANYA terlihat
     # sebagai entri log SYS (SESI-RESET). Panel web di port 4000 tidak ada.
     st, hd, bd = get400("/")
-    check("v1-ver-dashboard", "v13" in bd, bd[:80])
+    check("v1-ver-dashboard", "v14" in bd, bd[:80])
     check("v41-banner-sesi-dihapus", "renderSession" not in bd and "sesbn" not in bd
           and "SESI SDK DIRESET OTOMATIS" not in bd)  # sesi reset kini hanya entri log SYS (SESI-RESET)
     check("v41-sysline-dihapus", "sysline" not in bd
@@ -439,7 +439,7 @@ try:
 
     # entri SESI-GUARD tidak boleh muncul di desktop (ctx null)
     check("v18-autoguard-desktop-skip", not any(
-        e.get("method") == "SESI-GUARD" for e in lg["entries"]))
+        e.get("method") in ("SESI-GUARD", "SESSION-GUARD") for e in lg["entries"]))
 
     # bootstrap: crash-handled.list boleh tidak ada, tapi unhandledCrashFiles
     # harus tidak menganggap handled file (uji tak langsung: /crash tetap
@@ -534,8 +534,10 @@ try:
           and "c-MONITOR" in bd, "")
     # 4. banner boot = teks RAW persis protokol
     check("v44-banner-boot", "id=banner" in bd and "class=b1" in bd
-          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v13" in bd
-          and "PERSIS PROTOKOLNYA" in bd, "")
+          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v14" in bd, "")
+    # v14 — banner SATU BARIS, tanpa narasi karangan
+    check("v14-banner-slim", "raw server log — http://127.0.0.1:4000" in bd
+          and "PERSIS PROTOKOLNYA" not in bd, "")
     # 5. header premium: titik status bercahaya + badge versi
     check("v44-hdr-premium", "id=dot" in bd and "id=ver" in bd
           and "@keyframes pl" in bd, "")
@@ -558,23 +560,29 @@ try:
           and "detOf" not in bd and "allText" not in bd, "")
     check("v49-stream-no-click", "stream').addEventListener" not in bd, "")
     # 2. SEMUA keterangan tampil INLINE di tiap entri — label RAW lowercase
-    check("v63-inline-raw", "'headers:',esc(e.headers)" in bd
-          and "'request:',esc(e.reqPreview)" in bd
-          and "'response:',esc(e.respPreview)" in bd
-          and "'recv:','('+fmtB(e.reqLen||0)+') '+esc(e.reqPreview)" in bd
-          and "'send:','('+fmtB(e.respLen||0)+') '+esc(e.respPreview)" in bd
-          and "'data:',esc(e.extra)" in bd
-          and "'error:',esc(''+e.error)" in bd, "")
+    check("v63-inline-raw", "'s-det','corner','headers:'" in bd
+          and "'s-req','up','request:'" in bd
+          and "'s-res','down','response:'" in bd
+          and "'s-req','up','recv:'" in bd
+          and "'s-res','down','send:'" in bd
+          and "'s-ext','tag','data:'" in bd
+          and "'s-err','x','error:'" in bd, "")
     # 3. FULL DISCLOSURE: NOL pemotongan preview 200/160 (dulu data disembunyikan)
     check("v63-full-disclosure", "trunc(e.reqPreview,200)" not in bd
           and "trunc(e.respPreview,200)" not in bd
           and "trunc(''+e.extra,160)" not in bd, "")
     # 4. helper trunc + sub-baris bergaya aksen tipis + body panjang menggulir
     check("v49-trunc", "function trunc(s,n)" in bd, "")
-    check("v60-sub-style", ".sub{display:flex" in bd
-          and ".dtl{margin-top:7px" in bd
+    check("v60-sub-style", ".dtl{margin-top:7px" in bd
           and ".ln.r .dtl{border-left-color:#3a2026}" in bd
-          and "max-height:260px" in bd, "")
+          and "max-height:280px" in bd, "")
+    # v14 — detail kolaps: header .sh klik + isi .sc tersembunyi default
+    check("v14-sub-collapse", ".sh{display:flex" in bd
+          and ".sc{display:none" in bd
+          and ".sub[data-o='1']>.sc{display:block}" in bd
+          and "data-o=" in bd and "IC.chev" in bd, "")
+    check("v14-sub-sum", ".sum{flex:1" in bd and "class=sum>" in bd
+          and ".sz{color:" in bd, "")
     # 5. salin log = teks mentah persis protokol (time #seq port METHOD path status)
     check("v63-salin-raw", "'    headers: '+e.headers" in bd
           and "'    request: '+e.reqPreview" in bd
@@ -582,11 +590,11 @@ try:
           and "'    recv: ('+fmtB(e.reqLen||0)+') " in bd
           and "'    send: ('+fmtB(e.respLen||0)+') " in bd
           and "plainLine(e)" in bd, "")
-    # 6. panduan inline (bukan modal) + menyebut format RAW SERVER LOG
-    check("v49-guide-panel", "id=guide" in bd and "RAW SERVER LOG" in bd
-          and "guidebtn" in bd, "")
+    # 6. v14 — panel "Panduan" DIHAPUS (narasi karangan, arahan owner)
+    check("v49-guide-panel", "id=guide" not in bd and "guidebtn" not in bd
+          and "ALUR NORMAL BOOT" not in bd, "")
     # 7. versi v13 di badge + banner
-    check("v49-ver", ">v13</span>" in bd and "MOD-LOCALSERVER v13" in bd, "")
+    check("v49-ver", ">v14</span>" in bd and "MOD-LOCALSERVER v14" in bd, "")
 
     # ================= Bagian 50 — v13 RAW SERVER LOG ========================
     # Arahan owner (kata-kata persis):
@@ -610,9 +618,9 @@ try:
         return False
     check("v63-no-emoji-all", not _emoji(bd), "emoji ditemukan di console!")
     # 3. tombol ikon digambar via paintIcons (bukan karakter emoji)
-    check("v60-btn-paint", "$('vimp').innerHTML=ic('star')" in bd
-          and "$('vmal').innerHTML=ic('warn')" in bd
-          and "$('vall').innerHTML=ic('list')" in bd
+    check("v60-btn-paint", "$('pause').innerHTML=ic(S.auto?'pause':'play')" in bd
+          and "$('reset').innerHTML=ic('trash')" in bd
+          and "$('dl').innerHTML=ic('download')" in bd
           and "$('cpt').innerHTML=ic('copy')" in bd, "")
     # 4. chip status berikon + label manusia
     check("v60-chips", "class=schip" in bd and "id=stchips" in bd
@@ -664,11 +672,9 @@ try:
     check("v63-no-emoji-copy", "LVE={" not in bd and "CPE={" not in bd, "")
     check("v60-stbadge", "ic('check')+' NORMAL'" in bd
           and "ic('x')+' '+n+' MASALAH'" in bd, "")
-    # 11. panduan berikon + format RAW (query string penuh + batas tangkap)
-    check("v63-guide", "ALUR NORMAL BOOT" in bd
-          and "FORMAT TIAP ENTRI — RAW SERVER LOG" in bd
-          and "query string penuh" in bd
-          and "data-ic=list" in bd, "")
+    # 11. v14 — panduan DIHAPUS; petunjuk singkat berpindah ke banner
+    check("v63-guide", "ALUR NORMAL BOOT" not in bd
+          and "detail panjang: klik untuk buka" in bd, "")
     check("v39-overlay-banner-dihapus",
           "IZIN Display over other apps OFF" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd, "")
@@ -678,9 +684,11 @@ try:
     # 13. live feel: kursor blok berkedip + penanda jeda
     check("v43-live-cursor", "id=cursor" in bd and "@keyframes bl" in bd
           and "id=pausemark" in bd, "")
-    # 14. filter tetap lengkap: tahap/port/status/jumlah + cari
-    check("v43-filter-lengkap", "id=stage" in bd and "id=port" in bd
-          and "id=st" in bd and "id=limit" in bd and "id=q" in bd, "")
+    # 14. v14 — filter ringkas SELALU TAMPIL: cari + level + port
+    #     (tahap/status/jumlah DIHAPUS — tombol sampah, arahan owner)
+    check("v43-filter-lengkap", "id=q" in bd and "id=lv" in bd
+          and "id=port" in bd and "id=stage" not in bd
+          and "id=limit" not in bd, "")
 
 
     # ================= Bagian 41 — port 4000 MURNI log monitoring ==========
@@ -696,9 +704,11 @@ try:
           and "renderSession" not in bd and "fixCode" not in bd, bd[:100])
     # 2. tombol toolbar icon-only: ikon SVG digambar via paintIcons —
     #    NOL karakter emoji/teks di dalam <button>
-    check("v41-icon-buttons", "id=vimp class=ib" in bd
-          and "id=vall class=\"ib on\"" in bd
-          and ">\u2b50</button>" not in bd and ">\u274c</button>" not in bd
+    check("v41-icon-buttons", "id=pause class=ib" in bd
+          and "id=reset class=ib" in bd and "id=dl class=ib" in bd
+          and "id=cpt class=ib" in bd
+          and "id=vimp" not in bd and "id=vmal" not in bd and "id=vall" not in bd
+          and "id=pf" not in bd and "id=guidebtn" not in bd
           and "PENTING</button>" not in bd
           and "MASALAH</button>" not in bd and "Salin tabel</button>" not in bd, "")
     # 3. GUARD REGRESI — akar bug "log gak muncul": $('id') tanpa elemen HTML
@@ -713,8 +723,51 @@ try:
     check("v41-js-id-semua-ada", not missing, "hilang: %s" % missing)
     # 4. crashbn + notices ada (banner crash + catatan gap/dropped)
     check("v41-crashbn-ada", "id=crashbn" in html and "id=notices" in html, "")
-    check("v41-salin-icon", "id=cpt class=ib" in bd and "id=cpjs class=ib" in bd
-          and "id=dl class=ib" in bd, "")
+    check("v41-salin-icon", "id=cpt class=ib" in bd and "id=dl class=ib" in bd
+          and "id=cpjs" not in bd, "")
+
+
+    # ================= Bagian 51 — v14: extra server = FAKTA SAJA ==========
+    # Arahan owner (25 Nov 2026): "entah mengapa masih banyak teks sampah,
+    # dan gak rapi . banyak tombol juga tapi tombol sampah".
+    # Semua komentar server ("GATE-PASS", "owner editable", nama kode internal,
+    # penjelasan endpoint) DIHAPUS dari field extra — sisa: respCT / src= /
+    # gate saat ditolak. JSON di log pretty-print.
+    st, hd, bd = get400("/logs?limit=1000")
+    lg = json.loads(bd)
+    BANNED = ("GATE-PASS", "cointhreat", "psalmicvolleyball", "owner editable",
+              "GUEST button", "REGISTER button", "LOGIN button", "dishbesideshockey",
+              "loginTypes drives", "payTypes required", "GET-TEST", "try/catch safe",
+              "fast-path", "anti-race", "Account Center", "honest answer",
+              "uid stable across restarts")
+    def _extra_of(pred):
+        for e2 in lg["entries"]:
+            if pred(e2):
+                return e2
+        return None
+    e_init = _extra_of(lambda e2: e2.get("port") == 9530 and e2.get("kind") == "HTTP" and "init" in (e2.get("path") or ""))
+    if e_init is not None:
+        x = e_init.get("extra") or ""
+        check("v51-init-extra-fakta", "src=sdk/v1/system/init.json" in x
+              and "respCT=text/json" in x, x[:160])
+        for w in BANNED:
+            check("v51-init-no-comment " + w, w not in x, x[:160])
+    e_reg = _extra_of(lambda e2: e2.get("port") == 9530 and e2.get("kind") == "HTTP" and "registerVisitor" in (e2.get("path") or ""))
+    if e_reg is not None:
+        x = e_reg.get("extra") or ""
+        check("v51-register-extra-fakta", x.strip() == "respCT=text/json", x[:160])
+    e_bin = _extra_of(lambda e2: e2.get("port") == 9527 and e2.get("kind") == "HTTP" and ".bin" in (e2.get("path") or ""))
+    if e_bin is not None:
+        x = e_bin.get("extra") or ""
+        check("v51-bin-extra-fakta", x.startswith("src=assets | respCT=")
+              or x.startswith("respCT="), x[:160])
+        check("v51-bin-no-fastpath", "fast-path" not in x, x[:160])
+    # tidak ada lagi teks Indonesia di pesan server (CrashHook/Overlay/Migration)
+    for w in ("diganti pihak lain", "ditekan", "MIGRASI tamu", "MIGRASI akun",
+              "SESI-GUARD", "tombol dashboard", "dipotong 16KB"):
+        check("v51-no-indo-server " + w, not any(
+            w in ((e2.get("path") or "") + (e2.get("extra") or "") + (e2.get("error") or ""))
+            for e2 in lg["entries"]), "")
 
     # ================= Bagian 42 — popup "pengingat" DIHAPUS TOTAL ==========
     # Laporan owner (kata-kata persis):

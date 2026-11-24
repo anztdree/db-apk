@@ -134,6 +134,61 @@ public final class JsonUtil {
         return -1;
     }
 
+    /**
+     * v14 — pretty-print JSON (2 spasi) untuk tampilan log; string di dalam
+     * JSON dihormati (tidak dipecah). Cap max: dipotong bersih + "…(+N B)".
+     * Bukan parser lengkap — cukup untuk output server sendiri.
+     */
+    public static String pretty(String json, int max) {
+        if (json == null) return "";
+        String s = json.trim();
+        StringBuilder b = new StringBuilder(s.length() + 64);
+        int ind = 0;
+        boolean inStr = false, esc = false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (inStr) {
+                b.append(c);
+                if (esc) esc = false;
+                else if (c == '\\') esc = true;
+                else if (c == '"') inStr = false;
+                continue;
+            }
+            if (c == '"') { inStr = true; b.append(c); continue; }
+            if (c == '{' || c == '[') {
+                // {} / [] kosong tetap satu baris
+                char close = c == '{' ? '}' : ']';
+                int j = i + 1;
+                while (j < s.length() && Character.isWhitespace(s.charAt(j))) j++;
+                if (j < s.length() && s.charAt(j) == close) { b.append(c).append(close); i = j; continue; }
+                ind++;
+                b.append(c).append('\n');
+                for (int k = 0; k < ind; k++) b.append("  ");
+                continue;
+            }
+            if (c == '}' || c == ']') {
+                ind--;
+                b.append('\n');
+                for (int k = 0; k < Math.max(0, ind); k++) b.append("  ");
+                b.append(c);
+                continue;
+            }
+            if (c == ',') {
+                b.append(c).append('\n');
+                for (int k = 0; k < ind; k++) b.append("  ");
+                continue;
+            }
+            if (c == ':') { b.append(": "); continue; }
+            if (c == '\n' || c == '\r' || c == '\t') continue;
+            b.append(c);
+            if (max > 0 && b.length() > max) {
+                b.append("…(+" + (s.length() - i - 1) + " B)");
+                return b.toString();
+            }
+        }
+        return b.toString();
+    }
+
     /** nama file → Content-Type HTTP (peta minimum untuk isi game egret) */
     public static String contentType(String path) {
         String p = path.toLowerCase();

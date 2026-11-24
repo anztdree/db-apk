@@ -197,8 +197,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             e.respLen = bb.length;
             e.respPreview = new String(bb, StandardCharsets.UTF_8);
             e.extra = "loginchecknative uid=" + uid + " username=" + uname
-                    + " usermode=" + umode + ("0".equals(umode) ? " (email)" : " (guest)")
-                    + " respCT=application/json";
+                    + " usermode=" + umode + " respCT=application/json";
             e.durMs = System.currentTimeMillis() - t0;
             LoggerCore.log(e);
             return true;

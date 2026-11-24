@@ -80,7 +80,7 @@ public final class DbSqlite extends Db {
                             r.lastLogin = r.createTime;
                             putGuest(r);
                             any[0] = true;
-                            Db.log("MIGRASI tamu account.json uid=" + uid + " username=" + r.username);
+                            Db.log("MIGRATION guest account.json uid=" + uid + " username=" + r.username);
                         }
                     }
                 } catch (Throwable t) {
@@ -128,7 +128,7 @@ public final class DbSqlite extends Db {
                                         insertAccount(r);
                                     }
                                     any[0] = true;
-                                    Db.log("MIGRASI akun email uid=" + uid + " email=" + email);
+                                    Db.log("MIGRATION email account uid=" + uid + " email=" + email);
                                 }
                                 i = close + 1;
                             }

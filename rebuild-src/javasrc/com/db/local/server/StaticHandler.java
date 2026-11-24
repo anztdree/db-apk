@@ -139,19 +139,15 @@ public final class StaticHandler implements HttpWorker.Handler {
         e.respLen = data.length;
         e.durMs = System.currentTimeMillis() - t0;
         StringBuilder extra = new StringBuilder(64);
-        if (fromAssets != null) extra.append("src=assets (")
-                .append(fromAssets.equals("fast") ? "fast-path 9527" : "not extracted yet — anti-race")
-                .append(") | ");
+        if (fromAssets != null) extra.append("src=assets | ");   // v14 — tanpa label karangan
         extra.append("respCT=").append(ct);
         if (head) extra.append(" (HEAD, no body)");
 
         if (e.port == LoggerCore.PORT_CONFIG && req.path.endsWith(".bin")) {
-            // khusus 9527 (16.6): log menyertakan JSON config TER-DECODE pasca-XOR DragonBall
-            String decodedJson = decodeXor(data);
-            String cut = decodedJson.length() > LoggerCore.BODY_PREVIEW_MAX
-                    ? decodedJson.substring(0, LoggerCore.BODY_PREVIEW_MAX) + "…[+"
-                      + (decodedJson.length() - LoggerCore.BODY_PREVIEW_MAX) + "B]" : decodedJson;
-            e.extra = extra.append(" | DECODED-XOR: ").append(cut).toString();
+            // khusus 9527 (16.6): log menyertakan JSON config TER-DECODE pasca-XOR DragonBall —
+            // v14: pretty-print 2 spasi (rapi), cap 1200 char dengan penanda byte sisa
+            String decodedJson = JsonUtil.pretty(decodeXor(data), 1200);
+            e.extra = extra.append(" | DECODED-XOR: ").append(decodedJson).toString();
             e.respPreview = "[xor " + data.length + " B — decoded in data]";
         } else if (isTextType(ct)) {
             e.extra = extra.toString();

@@ -202,15 +202,11 @@ public final class SdkHandler implements HttpWorker.Handler {
             if (!pl.equals(SdkConfig.lastRejectLogged)) {
                 SdkConfig.lastRejectLogged = pl;
                 Db.log("PRODUCT REJECTED 30001: productCode=" + pl
-                        + " not in sdk/profile.json (products="
-                        + SdkConfig.productsList().toString()
-                        + ") — add the productCode to products in sdk/profile.json"
-                        + " then force-stop & reopen the game");
+                        + " products=" + SdkConfig.productsList().toString());
             }
             return errLive(30001, "Product doesn't exist");
         }
-        trace.append("GATE-PASS");
-        return null;
+        return null;   // v14: gate sukses tidak perlu ditulis di log (bukan data)
     }
 
     /** nama param wajib pertama yang kosong, atau null bila lengkap. */
@@ -254,23 +250,18 @@ public final class SdkHandler implements HttpWorker.Handler {
                 && (signV == null || signV.trim().isEmpty());
         String gate = getTest ? null : contractGate(m, trace);
 
+        // v14 — extra = FAKTA PROTOKOL SAJA (respCT / sumber body / gate saat
+        // ditolak). NOL komentar, NOL penjelasan, NOL nama kode internal.
         if (gate != null) {
             body = gate;
-            extra = trace + " | contract mirror live 23 Nov | respCT=text/json";
+            extra = trace + " | respCT=text/json";
         } else if (p.equals("/v1/system/init")) {
             body = SdkConfig.initJson();
-            extra = "init.json (sdk/v1/system/init.json — owner editable) "
-                    + "| loginTypes drives the login screen: [\"1\"]=email form+GUEST, "
-                    + "[\"12\"]=guest-only, [\"1\",\"13\"]=live replay mirror "
-                    + "| payTypes required by parser model/e | GET-TEST=" + getTest
-                    + " | respCT=text/json";
+            extra = "src=sdk/v1/system/init.json | respCT=text/json";
         } else if (p.equals("/v1/user/registerVisitor")) {
             AccountStore a = AccountStore.loadOrCreate();
             body = a.sdkDataResponse(a.isNewUser);
-            extra = "registerVisitor (GUEST button) | guest account persistent "
-                    + "SQLite (" + Db.open(LoggerCore.serverRootPath).backend() + ") "
-                    + "(uid stable across restarts) | session: authToken+userData "
-                    + "contract psalmicvolleyball/cointhreat | " + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else if (p.equals("/v1/user/registerUser")) {
             // navyshop -> dishbesideshockey$ironoriginhoblike: vcode?, username(email), password(MD5)
             String email = field(m, "username").trim();
@@ -292,11 +283,7 @@ public final class SdkHandler implements HttpWorker.Handler {
                     UserAccounts.sysLog("new email account uid=" + r.uid + " email=" + r.email);
                 }
             }
-            extra = "registerUser (REGISTER button, email form) | no email verification "
-                    + "(isNeedVerify meta-data absent — vcode optional"
-                    + (vcode.isEmpty() ? ", not sent" : ", ignored by server") + ") "
-                    + "| success = session isGuest:0 openType:1 | account stored in SQLite "
-                    + "| " + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else if (p.equals("/v1/user/loginByName")) {
             // timidcompletely -> dishbesideshockey$gangclothing: username, password(MD5)
             String email = field(m, "username").trim();
@@ -316,37 +303,29 @@ public final class SdkHandler implements HttpWorker.Handler {
                     UserAccounts.sysLog("email login uid=" + r.uid + " email=" + r.email);
                 }
             }
-            extra = "loginByName (LOGIN button, email form) | email+password verified "
-                    + "against SQLite | 20004 = wrong password (20002 LIVE = sign, kept distinct) "
-                    + "| success = session isGuest:0 openType:1 | " + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else if (p.equals("/v1/user/autoLogin")) {
             // QuickGameSdkService: params authToken (token tersimpan klien)
             String authTok = field(m, "authToken").trim();
             AccountStore g = AccountStore.loadOrCreate();
             if (authTok.length() > 0 && authTok.equals(g.token)) {
                 body = g.sdkDataResponse(false);
-                extra = "autoLogin (guest) | authToken matches stored guest account "
-                        + "(hardlinerspare -> service.cointruth) | " + trace + " | respCT=text/json";
+                extra = "respCT=text/json";
             } else {
                 UserAccounts.Rec r = authTok.length() > 0 ? UserAccounts.findByToken(authTok) : null;
                 if (r != null) {
                     AccountStore.setCurrent(r.uid, r.email, r.token, "0");
                     body = AccountStore.sessionResponse(r.uid, r.email, r.token, "1", "0");
-                    extra = "autoLogin (email) | authToken matches registered account " + r.email
-                            + " | session isGuest:0 openType:1 | " + trace + " | respCT=text/json";
+                    extra = "respCT=text/json";
                 } else {
                     body = g.sdkDataResponse(false);
-                    extra = "autoLogin fallback to guest account (authToken "
-                            + (authTok.isEmpty() ? "empty" : "unknown")
-                            + "; first launch / cleared data path) | " + trace + " | respCT=text/json";
+                    extra = "respCT=text/json";
                 }
             }
         } else if (p.equals("/v1/user/sendCodeByEmail")) {
             // alur vcode tidak wajib (isNeedVerify false) — balas sukses agar UI tidak macet
             body = OK_EMPTY;
-            extra = "sendCodeByEmail | local server sends no email; vcode NOT "
-                    + "required (meta-data isNeedVerify absent) — any code accepted "
-                    + "| " + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else if (p.equals("/v1/user/findPassByEmail")) {
             String email = field(m, "username").trim();
             if (email.isEmpty()) email = field(m, "email").trim();
@@ -358,8 +337,7 @@ public final class SdkHandler implements HttpWorker.Handler {
                         + "(tidak ada email keluar). Gunakan Ganti Kata Sandi di Pusat Akun, "
                         + "atau daftar dengan email lain.");
             }
-            extra = "findPassByEmail | local server has no outgoing email — honest "
-                    + "answer so the UI does not hang | " + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else if (p.equals("/v1/auth/getUserInfo")) {
             String uid = field(m, "uid").trim();
             AccountStore g = AccountStore.loadOrCreate();
@@ -381,8 +359,7 @@ public final class SdkHandler implements HttpWorker.Handler {
                     body = errLive(20001, "Akun tidak ditemukan di server lokal.");
                 }
             }
-            extra = "getUserInfo (Account Center) | account info by uid (guest/email) "
-                    + "| " + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else if (p.equals("/v1/auth/changePassword")) {
             // dishbesideshockey$famediscussionsmall: uid, oldPassword(MD5), newPassword(MD5)
             String uid = field(m, "uid").trim();
@@ -399,8 +376,7 @@ public final class SdkHandler implements HttpWorker.Handler {
                 body = OK_EMPTY;
                 UserAccounts.sysLog("password changed uid=" + uid);
             }
-            extra = "changePassword (Account Center) | verify oldPassword -> set newPassword "
-                    + "in SQLite | " + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else if (p.equals("/v1/auth/bindMail")) {
             // dishbesideshockey$reweavingsiamesedpropertylessnesses: uid, email, code, password(MD5)
             String uid = field(m, "uid").trim();
@@ -419,37 +395,29 @@ public final class SdkHandler implements HttpWorker.Handler {
                         + " (uid/token unchanged — game progress safe; code "
                         + (code.isEmpty() ? "empty" : "sent but ignored") + ")");
             }
-            extra = "bindMail (Account Center — add email+password to ACTIVE account) | "
-                    + "in-place UPDATE in SQLite, uid/token unchanged | verification code "
-                    + "ignored (no outgoing email) | " + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else if (p.equals("/v1/system/getNotice")) {
             body = OK_EMPTY;
-            extra = "getNotice empty: result=true data=\"\" (len 0 <=2 -> callback skips notice, "
-                    + "try/catch safe) | " + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else if (p.equals("/v1/system/dmsg") || p.equals("/v1/system/onNewToken")
                 || p.equals("/v1/system/getAgreement")) {
             body = OK_EMPTY;
-            extra = "other system path -> empty success | " + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else if (p.equals("/v1/auth/setGameRoleInfo")) {
             body = OK_EMPTY;
-            extra = "setGameRoleInfo | game role report (cointhreat.smali setGameRoleInfo) "
-                    + "-> result:true empty | " + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else if (p.equals("/v1/user/ckRegVistor")) {
             // Bagian 27 — tombol Kode Migrasi (onCDKeyClicked -> MSG_CHECK_REG_VISITOR).
             // Kontrak dari file sdk/v1/user/ckRegVistor.json (mirror PERSIS replay
             // live server asli 23 Nov: result:true, data:{isReged:0}).
             body = SdkConfig.ckRegJson();
-            extra = "ckRegVistor (migration code) | exact mirror of the live server "
-                    + "(file sdk/v1/user/ckRegVistor.json) | button hidden since "
-                    + "loginTypes [\"1\"] | " + trace + " | respCT=text/json";
+            extra = "src=sdk/v1/user/ckRegVistor.json | respCT=text/json";
         } else if (p.equals("/v1/user/getServerAgreement")) {
             body = OK_EMPTY;
-            extra = "agreement empty (dishbesideshockey/dishbesideshockey) | "
-                    + trace + " | respCT=text/json";
+            extra = "respCT=text/json";
         } else {
             body = SdkConfig.fallbackJson();
-            extra = "endpoint NOT mapped (file sdk/fallback.json) | SDK called "
-                    + "a feature not yet mapped | " + trace + " | respCT=text/json";
+            extra = "src=sdk/fallback.json | respCT=text/json";
         }
 
         // Header mirror live server asli (profile.json — bisa diedit owner)

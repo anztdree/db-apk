@@ -67,7 +67,7 @@ public final class CrashHook {
             final Thread.UncaughtExceptionHandler prev =
                     Thread.getDefaultUncaughtExceptionHandler();
             Thread.setDefaultUncaughtExceptionHandler(new Wrapper(prev));
-            boot("CrashHook installed — Java crashes of the whole process captured to logs/crash-*.txt + dashboard banner");
+            boot("CrashHook installed — java crashes captured to logs/crash-*.txt");
             // v18: watchdog — bila SDK memasang handler sendiri nanti, bungkus ulang
             Thread wd = new Thread(new Runnable() {
                 public void run() {
@@ -78,8 +78,8 @@ public final class CrashHook {
                                     Thread.getDefaultUncaughtExceptionHandler();
                             if (!(cur instanceof Wrapper)) {
                                 Thread.setDefaultUncaughtExceptionHandler(new Wrapper(cur));
-                                sys("CrashHook re-wrap: handler default diganti pihak lain "
-                                        + "(crash-reporter SDK?) — dibungkus ulang, crash tetap terekam");
+                                sys("default uncaught handler replaced by third party "
+                                        + "(crash reporter) — re-wrapped, crashes still captured");
                             }
                         } catch (Throwable ignored) {}
                     }
@@ -178,7 +178,7 @@ public final class CrashHook {
             name = "crash-" + ts + ".txt";
             File f = new File(dir, name);
             StringBuilder b = new StringBuilder(8192);
-            b.append("MOD-LOCALSERVER v13 — CRASH REPORT\n")
+            b.append("MOD-LOCALSERVER v14 — CRASH REPORT\n")
              .append("time  : ").append(LoggerCore.Entry.fmtTime(System.currentTimeMillis())).append('\n')
              .append("thread: ").append(t == null ? "?" : t.getName()).append('\n')
              .append("root  : ").append(LoggerCore.serverRootPath).append('\n')
@@ -231,7 +231,7 @@ public final class CrashHook {
             e2.error = e == null ? "(null)" : e.getClass().getName() + ": " + e.getMessage();
             String trace = b.toString();
             e2.respPreview = trace.length() > 4000 ? trace.substring(0, 4000) : trace;
-            e2.extra = "crash captured — logs/" + name + " (red dashboard banner holds trace + copy/download)";
+            e2.extra = "crash captured — logs/" + name;
             LoggerCore.log(e2);
             return name;
         } catch (Throwable tt) {
