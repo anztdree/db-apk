@@ -52,8 +52,10 @@ public final class ServerCore {
         final StaticHandler cdnHandler = new StaticHandler(docroot, assets, readyEarly, LoggerCore.PORT_CDN);
         final SdkHandler sdk = new SdkHandler();
         final SocketIoHandler login = new SocketIoHandler(false);
-        // Bagian 21: server game = socket.io `handler.process` enterGame dkk.
-        // (url dari item GetServerList → http://127.0.0.1:5051)
+        // v18: 5050/9528 socket.io = TRANSPORT ONLY (engine.io handshake/probe/
+        // poll/WS) — NOL ACK event bisnis. GetServerList dll = loginServer scope,
+        // belum dikerjakan (owner: "login server belum boleh di kerjakan!!").
+        // 5051 tetap hidup sebagai transport fallback; event terekam verbatim.
         final SocketIoHandler game = new SocketIoHandler(true);
 
         int loggerPort = LoggerCore.PORT_LOGGER;

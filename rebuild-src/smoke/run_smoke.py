@@ -388,7 +388,7 @@ try:
     st, hd, bd = get400("/")
     # Bagian 44 — console SERVER PREMIUM (dipercantik, teks verbose ala server asli)
     check("v43-console-200", st == 200 and "DB LOCAL SERVER" in bd
-          and "MOD-LOCALSERVER v16" in bd, bd[:120])  # console v16
+          and "MOD-LOCALSERVER v18" in bd, bd[:120])  # console v18
     check("v43-stream-markup", "id=stream" in bd and "id=tb" in bd
           and "id=tail" in bd, bd[:80])
     check("v17-salin-tabel", "function doCopy" in bd and "plainLine(e)" in bd)  # v16: salin teks mentah
@@ -398,7 +398,7 @@ try:
     check("v17-banner-overlay-js", "renderOverlay" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd
           and "overlay OFF (normal)" not in bd)  # v16: baris status stbadge dihapus
-    check("v17-ver-dashboard", ">v16</span>" in bd and "raw server log" in bd)  # v16 (Bagian 53)
+    check("v18-ver-dashboard", ">v18</span>" in bd and "raw server log" in bd)  # v18
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
@@ -435,7 +435,7 @@ try:
     # Bagian 43: rute sdkconfig sudah dihapus — sesi reset kini HANYA terlihat
     # sebagai entri log SYS (SESI-RESET). Panel web di port 4000 tidak ada.
     st, hd, bd = get400("/")
-    check("v1-ver-dashboard", "v14" in bd, bd[:80])
+    check("v1-ver-dashboard", "v18" in bd and ">v18</span>" in bd, bd[:80])
     check("v41-banner-sesi-dihapus", "renderSession" not in bd and "sesbn" not in bd
           and "SESI SDK DIRESET OTOMATIS" not in bd)  # sesi reset kini hanya entri log SYS (SESI-RESET)
     check("v41-sysline-dihapus", "sysline" not in bd
@@ -497,7 +497,9 @@ try:
         sid = ""
     check("v3-sockio-sid-9528", len(sid) == 20, opbd[:120])
 
-    # 4. GetServerList via 9528 → ACK serverItem.url = http://127.0.0.1:9528
+    # 4. GetServerList via 9528 → v18: TRANSPORT ONLY — POST "ok", NOL ACK
+    #    (loginServer scope — plan only; arahan owner: "SDK ya fokus di SDK
+    #    bukan mlah ngurusin loginserver"). Poll panjang habis 10 s tanpa data.
     msg = json.dumps({"type": "User", "action": "GetServerList",
                       "userId": "1700000000001", "subChannel": "",
                       "channel": "quick"}, separators=(",", ":"))
@@ -512,10 +514,10 @@ try:
     check("v3-sockio-post-ok", postst == 200 and postbd == "ok", postbd[:40])
     with urllib.request.urlopen(
             sock_base + "/socket.io/?EIO=3&transport=polling&sid=" + sid,
-            timeout=10) as r:
+            timeout=15) as r:
         plst, plbd = r.status, r.read().decode()
-    check("v3-sockio-ack-serverlist", plst == 200 and "serverList" in plbd
-          and "127.0.0.1:9528" in plbd, plbd[:200])
+    check("v18-sockio-noack-serverlist", plst == 200 and plbd == ""
+          and "serverList" not in plbd, repr(plbd[:80]))
 
     # 5. bind label 9528 baru (BIND tercatat di BOOT — ambil arsip awal)
     st, hd, bd = get400("/logs?limit=2000")
@@ -523,6 +525,96 @@ try:
     check("v3-bind-label-cdn-chain", any(
         "CDN game + socket.io login" in (e.get("path") or "")
         for e in lg["entries"]), "")
+
+    # ============ v17 — URL PENUH di log, NOL pangkas ============
+    # Arahan owner (kata-kata persis):
+    #  "ini log apa gk jelas , masih ada yg di sembunyikan"
+    #  "kalau log nampilin url socket misal http://127.0.01:<port>/socket.io/
+    #   ?EIO=3&transport=polling&t=Q8Fuv yaaa jangan anda pangkas"
+    # 1. OPEN handshake 9528 di-log DENGAN URL PENUH (bukan "/socket.io/?.." telanjang)
+    check("v17-url-penuh-open9528", any(
+        e.get("kind") == "HTTP" and e.get("method") == "GET"
+        and (e.get("path") or "").startswith(
+            "http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&t=")
+        for e in lg["entries"]),
+        next((e.get("path") for e in lg["entries"]
+              if "socket.io" in (e.get("path") or "")) or "tidak ada", ""))
+    # 2. POST GetServerList juga URL PENUH dgn sid (host:port + query utuh)
+    check("v17-url-penuh-post9528", any(
+        e.get("method") == "POST"
+        and (e.get("path") or "").startswith(
+            "http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&sid=")
+        for e in lg["entries"]), "")
+    # 3. v18: event GetServerList dicatat VERBATIM dgn penanda no-ack —
+    #    NOL ACK, NOL "DragonBall Local", NOL pangkas (nol "…")
+    ack_ent = [e for e in lg["entries"]
+               if "GetServerList" in (e.get("extra") or "")]
+    check("v18-noack-getserverlist", bool(ack_ent)
+          and all("ACK: " not in e["extra"] and "…" not in e["extra"] for e in ack_ent)
+          and all("EVENT (no ack)" in e["extra"] and "loginServer scope" in e["extra"]
+                  for e in ack_ent)
+          and all("DragonBall Local" not in e["extra"] for e in ack_ent),
+          (ack_ent[0].get("extra") or "")[:160] if ack_ent else "tidak ada")
+    # 4. WS upgrade → frame WS membawa URL PENUH koneksi (bukan "sid=.." telanjang)
+    import socket as _sock, base64 as _b64
+    ws = _sock.create_connection(("127.0.0.1", 5050), timeout=10)
+    wskey = _b64.b64encode(os.urandom(16)).decode()
+    ws.sendall(("GET /socket.io/?EIO=3&transport=websocket&t=v17ws%d HTTP/1.1\r\n"
+                "Host: 127.0.0.1:5050\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                "Sec-WebSocket-Key: %s\r\nSec-WebSocket-Version: 13\r\n\r\n"
+                % (int(time.time() * 1000) % 100000, wskey)).encode())
+    wshdr = b""
+    while b"\r\n\r\n" not in wshdr:
+        wshdr += ws.recv(4096)
+    check("v17-ws-101", b"101 Switching Protocols" in wshdr,
+          wshdr[:60].decode("utf-8", "replace"))
+    def _wsframe(payload):
+        b = bytearray([0x81, 0x80 | len(payload)])
+        mk = os.urandom(4)
+        b += mk
+        for i, ch in enumerate(payload):
+            b.append(ch ^ mk[i & 3])
+        return bytes(b)
+    ws.sendall(_wsframe(b"2probe"))
+    wsresp = b""
+    ws.settimeout(3)
+    try:
+        while b"3probe" not in wsresp:
+            chunk = ws.recv(4096)
+            if not chunk:
+                break
+            wsresp += chunk
+    except Exception:
+        pass
+    ws.close()
+    check("v17-ws-3probe", b"3probe" in wsresp, repr(wsresp[:24]))
+    time.sleep(0.8)
+    st, hd, bd = get400("/logs?limit=600")
+    lg = json.loads(bd)
+    wsent = [e for e in lg["entries"] if e.get("kind") == "WS"
+             and "transport=websocket" in (e.get("path") or "")]
+    # upgrade + open ws-first + 2probe = minimal 3 entri WS dgn URL penuh
+    check("v17-ws-url-penuh", len(wsent) >= 3, "WS entri=%d" % len(wsent))
+    check("v17-ws-open-frame-dilog", any(
+        (e.get("respPreview") or "").startswith("0{")
+        and "pingInterval" in (e.get("respPreview") or "")
+        and "sid" in (e.get("respPreview") or "") for e in wsent),
+        "open ws-first harus dilog (dulu tersembunyi)")
+    check("v17-ws-probe-penuh", any(
+        (e.get("reqPreview") or "") == "2probe"
+        and (e.get("respPreview") or "") == "3probe" for e in wsent), "")
+    check("v17-ws-semua-url-penuh", all(
+        (e.get("path") or "").startswith(
+            "http://127.0.0.1:5050/socket.io/?EIO=3&transport=websocket")
+        for e in wsent),
+        next((e.get("path") for e in wsent) or "kosong", ""))
+    # 5. tidak ada lagi path telanjang "/socket.io/.." di entri HTTP 5050/9528
+    #    (semua wajib berawalan scheme://host:port)
+    naked = [e for e in lg["entries"]
+             if e.get("kind") == "HTTP" and "socket.io" in (e.get("path") or "")
+             and not (e.get("path") or "").startswith("http://")]
+    check("v17-nol-path-telanjang", len(naked) == 0,
+          str(naked[0].get("path")[:80]) if naked else "semua URL penuh")
 
     # ============ Bagian 50 — console RAW SERVER LOG (guard RAW) ==========
     # Arahan owner (kata-kata persis):
@@ -546,7 +638,7 @@ try:
           and "c-MONITOR" in bd, "")
     # 4. banner boot = teks RAW persis protokol
     check("v44-banner-boot", "id=banner" in bd and "class=b1" in bd
-          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v16" in bd, "")
+          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v18" in bd, "")
     # v14 — banner SATU BARIS, tanpa narasi karangan
     check("v14-banner-slim", "raw server log — http://127.0.0.1:4000" in bd
           and "PERSIS PROTOKOLNYA" not in bd, "")
@@ -605,7 +697,7 @@ try:
     check("v49-guide-panel", "id=guide" not in bd and "guidebtn" not in bd
           and "ALUR NORMAL BOOT" not in bd, "")
     # 7. versi v13 di badge + banner
-    check("v49-ver", ">v16</span>" in bd and "MOD-LOCALSERVER v16" in bd, "")  # v16
+    check("v49-ver", ">v18</span>" in bd and "MOD-LOCALSERVER v18" in bd, "")  # v18
 
     # ================= Bagian 50 — v13 RAW SERVER LOG ========================
     # Arahan owner (kata-kata persis):

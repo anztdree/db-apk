@@ -50,7 +50,7 @@ public final class StaticHandler implements HttpWorker.Handler {
         e.port = req.header("__listenerport") != null
                 ? Integer.parseInt(req.header("__listenerport")) : LoggerCore.PORT_CDN;
         e.method = req.method;
-        e.path = req.rawPath;
+        e.path = SocketIoHandler.fullUrl(req, e.port);   // v17: URL PENUH — tanpa pangkas
         e.reqLen = req.body.length;
         e.headers = req.headersStr;
         if (req.body.length > 0) e.reqPreview = preview(req.body);

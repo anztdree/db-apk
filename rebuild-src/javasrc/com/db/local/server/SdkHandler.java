@@ -226,7 +226,7 @@ public final class SdkHandler implements HttpWorker.Handler {
         LoggerCore.Entry e = new LoggerCore.Entry();
         e.port = LoggerCore.PORT_SDK;
         e.method = req.method;
-        e.path = req.rawPath;
+        e.path = SocketIoHandler.fullUrl(req, e.port);   // v17: URL PENUH — tanpa pangkas
         e.reqLen = req.body.length;
         e.headers = req.headersStr;
         if (req.body.length > 0) e.reqPreview = StaticHandler.preview(req.body);

@@ -4364,3 +4364,174 @@ Verifikasi:
 Toolchain dibangun ulang pasca-reset: ECJ 3.33.0 (mirror Aliyun, jar TIDAK
 di-commit) + D8/r8 8.3.37 (sha `59753e70…439` sesuai dokumentasi) di
 `tools/`; git-lfs dibutuhkan lagi untuk push APK.
+
+### 54. BAGIAN 54 — v17: LOG URL PENUH, NOL PANGKAS + LOGIN SERVER = PLAN SAJA
+
+Arahan owner (kata-kata persis):
+
+- "ini log apa gk jelas , masih ada yg di sembunyikan"
+- "kalau log nampilin url socket misal : http://127.0.01:<port>/socket.io/?
+  EIO=3&transport=polling&t=Q8Fuv yaaa jangan anda pangkas"
+- "login server belum boleh di kerjakan!! hanya menentukan endpoint dan
+  merencanakan strategi struktur foldernya duluu !!"
+
+Jawaban v17:
+
+1. **URL PENUH di SEMUA entri log** (SocketIoHandler/StaticHandler/SdkHandler —
+   `fullUrl()`): scheme `http://` + Host header client + path + query apa
+   adanya. `WS sid=…` telanjang dan `GET /socket.io/?…` TANPA host DIHAPUS.
+   Contoh baris kini:
+   `WS http://127.0.0.1:5050/socket.io/?EIO=3&transport=websocket&sid=7fKrqxrieUn5FLqhUnyA 200`
+2. **NOL pangkasan payload**: cap packet POST (1800 char) dan cut ACK event
+   (400 char) DIHAPUS — `42[…]` dan ACK `43[…]` tampil PENUH verbatim di
+   sub-baris data:.
+3. **Frame open ws-first dilog** (dulu tersembunyi): open `0{"sid":…}` yang
+   dikirim server sebagai frame pertama kini entri WS sendiri.
+4. **LOGIN SERVER NOL KERJA di v17** — hanya DOKUMEN RENCANA
+   `docs/LOGIN-SERVER-PLAN.md`: peta endpoint (100% dari config .bin
+   ter-decode + log device + capture live) + proposal struktur folder
+   `server/login/` (captures/payloads/notes — dibuat HANYA setelah owner oke)
+   + urutan kerja ketika disetujui. NOL perubahan logika login di APK.
+5. Console layout TIDAK berubah (4 kontrol fungsional v16 tetap: cari ·
+   filter error · salin · jeda) — hanya badge/banner **v17**.
+
+Verifikasi:
+
+- **Smoke desktop: 178 PASS, 0 FAIL** — 9 cek baru v17: URL penuh OPEN
+  9528, URL penuh POST GetServerList, ACK GetServerList tanpa elipsis,
+  WS handshake 101 + 3probe, ≥3 entri WS dgn URL penuh, open ws-first
+  dilog, 2probe/3probe penuh, semua WS `http://127.0.0.1:5050/socket.io/?EIO=3&transport=websocket…`,
+  NOL path telanjang.
+- **Browser verify (Playwright/Chromium headless): 28 PASS, 0 FAIL** —
+  badge/banner v17, baris URL PENUH polling+websocket, query `t=`/`sid=`
+  ikut utuh, nol path telanjang, nol elipsis di URL, salin → clipboard
+  memuat URL penuh, filter error hanya WARN/ERROR, NOL error console,
+  mobile 375 px OK.
+
+#### 54.4 APK v17
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v17).apk` (LFS di repo; rotasi: pointer v16 dihapus) |
+| Ukuran | **202.679.262 B** |
+| sha256 | `8604f0635b3e3ed540e08a6f972a98e32c1ecb7e777d004154b56887e40bc814` |
+| classes.dex | 6.697.176 B sha `9db1bba3…533d642658` (patch airplane 4 unit — byte-identik v15/v16) |
+| classes2.dex | 139.168 B sha `d930d88d…b72451c63` (console URL PENUH v17) |
+| Penanda | BOOT/crash/dashboard/banner = **v17** |
+| Sign | v1+v2+v3, keystore `dblocalmod`, exp 2056 — install-over OK |
+
+#### 54.5 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v17).apk` langsung di atas v16/v15/v14
+   (keystore sama — tanpa uninstall).
+2. Boot game → buka `127.0.0.1:4000` → badge **v17**.
+3. Baris socket.io kini berbentuk URL PENUH — polling dan websocket sama:
+   `GET http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&t=… 200`
+   `WS http://127.0.0.1:5050/socket.io/?EIO=3&transport=websocket&sid=… 200`
+   — NOL yang disembunyikan: sub-baris data: memuat packet `42[…]` dan ACK
+   `43[…]` PENUH (tanpa cut 400 char).
+4. Tombol SALIN mengikutkan URL penuh — tempel ke chat dev.
+5. Login server: TIDAK ada pekerjaan baru — hanya rencana di
+   `docs/LOGIN-SERVER-PLAN.md` (menunggu keputusan owner).
+
+---
+
+## 55. BAGIAN 55 — v18: POPUP NETWORK MODE PESAWAT MATI DI AKAR + PEMISAHAN TUGAS SDK vs LOGIN SERVER
+
+Arahan owner (kata-kata persis):
+
+- "log github saya update..."
+- "kesalahan 1 : masih ada popup notifikasi error network saat mode pesawat..
+  gambar terlampir dan itu jelas sangat salah ."
+- "kealahan 2 : muncul serverlist harusnya itu sudah bagian dari loginserver yg
+  belum kita buat , artinya anda tidak memisahkan tugas sebagai mana mestinya..
+  SDK ya fokus di SDK bukan mlah ngurusin loginserver walaupun itu emang
+  terkait . dan loginserver pun belum kita rencanakan lebih lanjut ."
+
+### 55.1 Kesalahan 1 — AKAR POPUP MODE PESAWAT (bedah bytecode classes.dex, bukan karangan)
+
+Pemindai dex penuh (decode instruksi, bukan grep raw) menemukan jalurnya:
+
+1. `com.zhuhuan.game.LaunchActivity.dishbesideshockey` (mesin state update boot,
+   code_off 5fcbbc) memanggil `LaunchActivity.feedtonight()` — label log game
+   "IsFilterIP" — yang melakukan **PEMANGGILAN HTTP KE HOST ASLI**:
+   `new URL(ironoriginhoblike.representativehodmandodliving).openConnection()` →
+   `getResponseCode()` → parse retJSON. (dex dump: code_off 5fd6fc, insns 288 unit)
+2. Mode pesawat: DNS/koneksi mati → exception → **catch block dishbesideshockey
+   (pc=4ef)**: `runOnUiThread("Read Upgrade Config File Fail,Please Check
+   NetWork！" + mActivity.getString(R.string.check_network))` → POPUP.
+3. Call site `feedtonight()` terverifikasi (scan payload-aware, seluruh dex):
+   HANYA 2 — dishbesideshockey pc=2b (log saja) dan pc=51 (if-eqz → jalur FALSE
+   = jalur download upgrade 127.0.0.1:9528 yang terbukti di log device seq 18-22).
+4. **PATCH v18 (2 unit, ukuran dex IDENTIK 6.697.176 B)**:
+   `LaunchActivity.feedtonight` code_off 5fd6fc → insns io 5fd70c:
+   `54 80 c6 a8` (iget-object v0,field@a8c6) → `12 00 0f 00`
+   = `const/4 v0,0 ; return v0` — return-false segera, NOL HTTP.
+   Perilaku mode normal TIDAK BERUBAH (jalur FALSE = jalur yang selama ini
+   dijalankan); exception palsu mode pesawat hilang → popup hilang di akarnya.
+   Warisan v15 tetap: 4 unit SDK init + HWLoginActivity.
+5. Cek sisa yang dipertahankan (bukan popup, tidak dipatch): accessor
+   `unnecessarysperrylites/seventygenom.influencecomparisonrestore` = detektor
+   tipe operator (getSubtype/getSimOperator "46002" dkk.) untuk reporting;
+   dialog TIPS `feedtonight.worktopichardtails` (field tips null di jalur normal).
+
+### 55.2 Kesalahan 2 — PEMISAHAN TUGAS: SOCKET.IO TRANSPORT ONLY, NOL ACK EVENT
+
+- `SocketIoHandler.routeEvent` + `GameData` (serverList "DragonBall Local",
+  enterGame) + `ack()` + EventMsg/parseEvent **DIHAPUS SELURUHNYA** dari
+  javasrc — pekerjaan loginServer, belum diberi rencana.
+- Listener 5050/9528/5051 kini **TRANSPORT ONLY**: open `0{sid,…}`, `40`,
+  `2probe`→`3probe`, `2`→`3`, `41` close, WS upgrade 101 — 1:1 capture live.
+- `/loginchecknative` TETAP — itu glue SDK native (scope SDK, bukan loginServer).
+- Setiap frame event `42…` dicatat verbatim (nol pangkas) dgn penanda
+  `EVENT (no ack) … loginServer scope — not implemented (plan only,
+  docs/LOGIN-SERVER-PLAN.md)` — bahan perencanaan login server, NOL balasan.
+- `docs/LOGIN-SERVER-PLAN.md` diperbarui (§2.2 status v18: SEMUA ACK DIHAPUS).
+
+### 55.3 Proses + verifikasi
+
+- Toolchain dibangun ulang pasca-reset: ECJ 3.33.0 (mirror Aliyun), D8/r8
+  8.3.37 (dl.google.com), android.jar API 26 (Sable — kanDrawOverlays/MethodHandles
+  utk ECJ; OverlayFixer tetap try/catch-guard), javac 21.0.13 (deb diekstraksi).
+- **Dex console v18**: `classes2.dex` **133.924 B** sha
+  `48ef8ad11a5169cdff921b4cb278e8b2afcdd5b08cc71ab08c4d9e7eaac7d90b`.
+  Needle ADA: `MOD-LOCALSERVER v18`, `>v18<`, `id=errf`, `doCopy`,
+  `fallbackCopy`, `URL penuh`, `nol disembunyikan`, `loginServer scope`,
+  `EVENT (no ack)`. Needle NOL: `MOD-LOCALSERVER v17`, `>v17<`,
+  `DragonBall Local`, `serverListJson`, `enterGameResponse`, `routeEvent`,
+  `seen.length() < 1800`, `ack.substring(0, 400)`.
+- **classes.dex v18**: 6.697.176 B (ukuran IDENTIK) sha
+  `73c19d5e1c6745122050cfbed7a0473262c97735fd22c9fcf7818581990b588b` —
+  patch 6 unit (4 warisan v15 + 2 baru feedtonight return-false).
+- **Repack RAW-COPY** (`rebuild-src/scripts/rebuild_v18_raw.py`): base v13,
+  SEMUA 6.428 entri byte-per-byte, beda HANYA classes.dex + classes2.dex;
+  metode **3471 deflate + 2957 stored** IDENTIK; zipalign + sign `dblocalmod`
+  → **zipalign verified + signature verified [v1, v2, v3]**, cert
+  `CN=DB Local Mod, O=Owner, C=ID` exp 2056.
+- **Smoke desktop: 178 PASS, 0 FAIL** — guard v18 baru:
+  `v18-sockio-noack-serverlist` (POST "ok" + poll KOSONG — nol serverList),
+  `v18-noack-getserverlist` (verbatim + penanda no-ack + nol "DragonBall Local").
+
+### 55.4 APK v18
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v18).apk` (LFS di repo; rotasi: pointer v17 dihapus) |
+| Ukuran | **202.672.895 B** (unsigned) / 202.679.940-an (aligned-signed) |
+| sha256 signed | `88b8940dd7204e49f6a61d56a085ac86cfeaa118c5fb4b21d77269b419f79152` |
+| classes.dex | 6.697.176 B sha `73c19d5e…` (original + injeksi + patch airplane v18 6 unit) |
+| classes2.dex | 133.924 B sha `48ef8ad1…` (console v18 + socket.io TRANSPORT ONLY) |
+| Penanda | BOOT/crash/dashboard/banner = **v18** |
+| Sign | v1+v2+v3, keystore `dblocalmod`, exp 2056 — install-over OK |
+
+### 55.5 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v18).apk` langsung di atas v17
+   (keystore sama — tanpa uninstall).
+2. **Mode pesawat dari awal** → boot game → NOL popup "network error"
+   (jalur feedtonight() tak pernah menyentuh jaringan lagi).
+3. Boot normal → game berhenti SEBELUM layar server list (memang disengaja —
+   loginServer belum dibuat; `EVENT (no ack)` terlihat di dashboard 4000).
+4. Dashboard `127.0.0.1:4000` → badge **v18**; filter error + salin log tetap.
+5. Login server: TIDAK ada pekerjaan — hanya rencana
+   `docs/LOGIN-SERVER-PLAN.md` (menunggu keputusan owner).

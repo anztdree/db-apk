@@ -24,29 +24,40 @@ import java.util.concurrent.locks.ReentrantLock;
  *   - POST → "ok" text/html; GET long-poll hold; sid unknown → 400 code:1; close → 1
  *   - WS upgrade 101, ping 0x9 → pong 0xA
  *
- * Bagian 21 — LAPISAN EVENT socket.io `handler.process` (bukti JS game):
- *   - client: socket.emit("handler.process", msg, ack) (TSLoginClient.sendToServer)
- *     → wire: 42<ackId>["handler.process",{type,action,...}]
- *   - server: socket.io v2 ACK → 43<ackId>[{ret,data,compress}]
- *   - callback JS: {ret:0, data:<STRING JSON (LZString bila compress)>, compress:false}
- *     (processHandlerWithLogin: ret!==0 → "登录出错"; JSON.parse(data); compress →
- *      LZString.decompressFromUTF16)
+ * v18 — TRANSPORT ONLY, NOL ACK EVENT (arahan owner, kata-kata persis):
+ *   "muncul serverlist harusnya itu sudah bagian dari loginserver yg belum
+ *    kita buat , artinya anda tidak memisahkan tugas sebagai mana mestinya..
+ *    SDK ya fokus di SDK bukan mlah ngurusin loginserver walaupun itu emang
+ *    terkait . dan loginserver pun belum kita rencanakan lebih lanjut ."
+ *   Kesalahan 2 v17: listener ini menjawab ACK `User/GetServerList` dengan
+ *   serverList fabrikasi ("DragonBall Local") — ITU PEKERJAAN LOGIN SERVER
+ *   yang belum diberi rencana. v18: SEMUA ACK event bisnis DIHAPUS
+ *   (routeEvent/GameData/ack dihapus). Listener kini murni TRANSPORT:
+ *   - engine.io handshake/open/poll/WS upgrade/probe/ping-pong/close —
+ *     1:1 capture live server asli (Bagian 17) — transport, bukan loginServer.
+ *   - /loginchecknative tetap (glue SDK native: pursetruechild/feedtonight/
+ *     singersmooth.onLoginFinished — getInt("code")==0 → WebView lanjut) —
+ *     SCOPE SDK, bukan loginServer.
+ *   - Setiap frame event `42…` handler.process dicatat VERBATIM PENUH (nol
+ *     pangkas) di logger dengan penanda "EVENT (no ack) ... loginServer scope
+ *     — not implemented (plan only)" — NOL balasan. Callback JS tidak pernah
+ *     dipanggil; game berhenti sebelum layar server list — batas wajar
+ *     selama loginServer belum dibangun. Data verbatim ini = bahan perencanaan
+ *     login server (docs/LOGIN-SERVER-PLAN.md).
  *
- * LOGIN (5050):
- *   - /loginchecknative (GET — pursetruechild/feedtonight/singersmooth.onLoginFinished,
- *     HttpURLConnection GET; URL loginServer:loginWebPort = 5050): body raw =
- *     thirdParams JS; divalidasi getInt("code")==0 → WebView lanjut.
- *   - User/GetServerList → selectServer/selectNewServer (serverData.serverList[],
- *     item: serverId/name/online/hot/new/url; history[]).
- *   - User/loginGame → {userId, channelCode} (jalur origin).
- *   - User/LoginAnnounce → {} (getNotice JS: for-in data).
- *   - User/SaveUserEnterInfo, User/SaveLanguage → {} (laporan, abaikan).
- * GAME (5051):
- *   - user/enterGame → payload user baru (UserDataParser.saveUserData):
- *     user/hangup/summon/totalProps/imprint/superSkill(ARRAY)/heros/curMainTask({})/
- *     scheduleInfo/dragonEquiped({})/currency(string kode)/backpackLevel/newUser.
- *   - user/getBulletinBrief → {_brief:{}}.
- *   - lainnya → data {} + terekam di logger untuk iterasi.
+ * LOGIN (5050) — sisa scope SDK:
+ *   - /loginchecknative (GET): body raw = thirdParams JS;
+ *     divalidasi getInt("code")==0 → WebView lanjut.
+ *
+ * v17 — LOG URL PENUH, NOL PANGKAS (arahan owner: "kalau log nampilin url
+ *   socket misal http://127.0.0.1:<port>/socket.io/?EIO=3&transport=polling&t=…
+ *   yaaa jangan anda pangkas" + "masih ada yg di sembunyikan"):
+ *   - SEMUA entri kini membawa URL LENGKAP scheme://host:port + path + query
+ *     (fullUrl() — Host header client; fallback 127.0.0.1:<listener>), bukan
+ *     lagi path telanjang "/socket.io/?..." ataupun "sid=..." telanjang.
+ *   - Frame WS (open/probe/ping/event/close) memakai URL koneksi WS-nya
+ *     sendiri; frame open ws-first yang dikirim server kini DILOG juga.
+ *   - Pangkalan data packet dihapus: POST packet tampil PENUH verbatim.
  */
 public final class SocketIoHandler implements HttpWorker.Handler {
     public static final int PING_INTERVAL = 25000;
@@ -156,13 +167,28 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 + PING_INTERVAL + ",\"pingTimeout\":" + PING_TIMEOUT + "}";
     }
 
+    /**
+     * v17 — URL PENUH di log, NOL pangkas (arahan owner: "kalau log nampilin
+     * url socket misal http://127.0.0.1:<port>/socket.io/?EIO=3&transport=polling&t=…
+     * yaaa jangan anda pangkas"). path log = scheme://host:port + path + query
+     * apa adanya — host diambil dari header Host client (127.0.0.1:<listener>),
+     * bila tidak ada fallback ke 127.0.0.1:<port listener>.
+     */
+    static String fullUrl(HttpWorker.Request req, int port) {
+        String host = req.header("host");
+        if (host == null || host.isEmpty()) host = "127.0.0.1:" + port;
+        String rp = req.rawPath == null ? "" : req.rawPath;
+        if (!rp.startsWith("/")) rp = "/" + rp;
+        return "http://" + host + rp;
+    }
+
     @Override
     public boolean handle(HttpWorker.Request req, OutputStream out, Socket sock) throws IOException {
         long t0 = System.currentTimeMillis();
         LoggerCore.Entry e = new LoggerCore.Entry();
         e.port = gameMode ? LoggerCore.PORT_GAME : LoggerCore.PORT_LOGIN;
         e.method = req.method;
-        e.path = req.rawPath;
+        e.path = fullUrl(req, e.port);   // v17: URL PENUH — tanpa pangkas
         e.reqLen = req.body.length;
         e.headers = req.headersStr;
         if (req.body.length > 0) e.reqPreview = StaticHandler.preview(req.body);
@@ -308,19 +334,20 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             StringBuilder seen = new StringBuilder();
             for (String pkt : parseFramed(new String(req.body, StandardCharsets.UTF_8))) {
                 if (seen.length() > 0) seen.append(" | ");
-                if (seen.length() < 1800) seen.append(pkt);
+                seen.append(pkt);   // v17: PAKET PENUH — nol pangkas (1800 dihapus)
                 if ("41".equals(pkt)) { s.closed = true; dead = true; }
                 else if ("2probe".equals(pkt)) s.offer("3probe");
                 else if ("2".equals(pkt)) s.offer("3");
                 else if ("5".equals(pkt)) { /* upgrade ack — tidak perlu balasan */ }
                 else if ("40".equals(pkt)) { /* connect namespace — open sudah mengirim 40 */ }
                 else if (pkt.startsWith("42")) {
-                    // v6: event handler.process → routing + ACK
-                    String ack = handleEventPacket(pkt, s);
-                    if (e.extra == null) e.extra = "EVENT: " + pkt;
-                    if (ack != null && e.extra.length() < 1800) {
-                        e.extra += " | ACK: " + (ack.length() > 400 ? ack.substring(0, 400) + "…" : ack);
-                    }
+                    // v18: TRANSPORT ONLY — event handler.process TIDAK dijawab.
+                    // loginServer = scope terpisah, belum dikerjakan (owner:
+                    // "login server belum boleh di kerjakan!!"). Packet dicatat
+                    // VERBATIM PENUH — nol ACK, nol pangkas, nol disembunyikan.
+                    if (e.extra == null) e.extra = "EVENT (no ack): " + pkt
+                            + " | loginServer scope — not implemented (plan only,"
+                            + " docs/LOGIN-SERVER-PLAN.md)";
                 } else if (pkt.startsWith("2")) {
                     s.offer("3");
                 }
@@ -370,90 +397,12 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         return out;
     }
 
-    /* ==================== v6: LAPISAN EVENT handler.process ==================== */
-
-    /** hasil ekstraksi pesan event */
-    static final class EventMsg {
-        String ackId = "";   // "" bila tanpa ack
-        String type = "";
-        String action = "";
-        String raw = "";
-    }
-
-    /**
-     * "42<ackId>["handler.process",{...}]" → ACK "43<ackId>[{ret,data,compress}]"
-     * (socket.io v2: event+ack = 42+id, ACK server = 43+id+args array).
-     */
-    static String handleEventPacket(String pkt, Session s) {
-        EventMsg m = parseEvent(pkt);
-        if (m == null) return null;
-        String resp = routeEvent(m);
-        if (m.ackId.isEmpty()) return null;
-        String ack = "43" + m.ackId + "[" + resp + "]";
-        s.deliver(ack);
-        return ack;
-    }
-
-    static EventMsg parseEvent(String pkt) {
-        // "42" lalu digit ackId (opsional) lalu payload '[' ...
-        if (!pkt.startsWith("42")) return null;
-        int i = 2;
-        StringBuilder id = new StringBuilder();
-        while (i < pkt.length() && pkt.charAt(i) >= '0' && pkt.charAt(i) <= '9') {
-            id.append(pkt.charAt(i)); i++;
-        }
-        int br = pkt.indexOf('[', i);
-        if (br < 0) return null;
-        // cari objek JSON pertama dalam array
-        int ob = pkt.indexOf('{', br);
-        if (ob < 0) return null;
-        int end = matchBrace(pkt, ob);
-        if (end < 0) return null;
-        String obj = pkt.substring(ob, end + 1);
-        EventMsg m = new EventMsg();
-        m.ackId = id.toString();
-        m.raw = obj;
-        m.type = extractStr(obj, "type");
-        m.action = extractStr(obj, "action");
-        return m;
-    }
-
-    static int matchBrace(String s, int open) {
-        int depth = 0;
-        boolean inStr = false;
-        for (int i = open; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (inStr) {
-                if (c == '\\') i++;
-                else if (c == '"') inStr = false;
-            } else if (c == '"') inStr = true;
-            else if (c == '{') depth++;
-            else if (c == '}') {
-                depth--;
-                if (depth == 0) return i;
-            }
-        }
-        return -1;
-    }
-
-    /** ambil nilai string key dari objek JSON kecil tanpa parser penuh */
-    static String extractStr(String obj, String key) {
-        String pat = "\"" + key + "\"";
-        int i = obj.indexOf(pat);
-        if (i < 0) return "";
-        int colon = obj.indexOf(':', i + pat.length());
-        if (colon < 0) return "";
-        int q1 = obj.indexOf('"', colon + 1);
-        if (q1 < 0) return "";
-        StringBuilder b = new StringBuilder();
-        for (int k = q1 + 1; k < obj.length(); k++) {
-            char c = obj.charAt(k);
-            if (c == '\\') { k++; if (k < obj.length()) b.append(obj.charAt(k)); continue; }
-            if (c == '"') break;
-            b.append(c);
-        }
-        return b.toString();
-    }
+    /* ==================== v18: LAPISAN EVENT handler.process DIHAPUS ====================
+     * routeEvent / GameData (serverListJson "DragonBall Local", enterGameResponse) /
+     * ack / EventMsg / parseEvent DIHAPUS SELURUHNYA — pekerjaan loginServer,
+     * belum diberi rencana (owner: "login server belum boleh di kerjakan!! hanya
+     * menentukan endpoint dan merencanakan strategi struktur foldernya dulu !!").
+     * Frame event `42…` kini hanya dicatat verbatim (nol ACK). ================= */
 
     /** Bagian 28 — parse query string ?a=1&b=2 (URLDecoder utf-8). */
     static Map<String, String> parseQuery(String raw) {
@@ -474,127 +423,6 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         return out;
     }
 
-    /** routing event → isi respons {ret,data,compress} */
-    static String routeEvent(EventMsg m) {
-        String type = m.type == null ? "" : m.type;
-        String action = m.action == null ? "" : m.action;
-        String low = type.toLowerCase();
-        String act = action.toLowerCase();   // v6-fix: case-insensitive
-                                             // (JS kirim "GetServerList"/"enterGame"/...)
-
-        // ===== GAME (5051) =====
-        if (low.equals("user") && act.equals("entergame")) {
-            return GameData.enterGameResponse();
-        }
-        if (low.equals("user") && act.equals("getbulletinbrief")) {
-            return ack("{\"_brief\":{}}");
-        }
-
-        // ===== LOGIN (5050) =====
-        if (low.equals("user") && act.equals("getserverlist")) {
-            return ack(GameData.serverListJson());
-        }
-        if (low.equals("user") && act.equals("logingame")) {
-            AccountStore a = AccountStore.currentOrDefault();   // Bagian 28: akun aktif
-            String uid = extractStr(m.raw, "userId");
-            if (uid == null || uid.isEmpty()) uid = a.uid;
-            String ch = extractStr(m.raw, "fromChannel");
-            if (ch == null || ch.isEmpty()) ch = "quick";
-            return ack("{\"userId\":\"" + JsonUtil.esc(uid) + "\",\"channelCode\":\""
-                    + JsonUtil.esc(ch) + "\",\"sign\":\"local\"}");
-        }
-        if (low.equals("user") && act.equals("loginannounce")) {
-            return ack("{}");
-        }
-        if (low.equals("user") && (act.equals("saveuserenterinfo")
-                || act.equals("savelanguage") || act.equals("savehistory"))) {
-            return ack("{}");
-        }
-        if (act.equals("getnotice") || act.equals("getbulletin")) {
-            return ack("{}");
-        }
-
-        // ===== fallback: balas kosong & terekam (belajar dari log) =====
-        return ack("{}");
-    }
-
-    /** bungkus payload data menjadi {ret:0,data:"<string>",compress:false} */
-    static String ack(String dataJson) {
-        return "{\"ret\":0,\"data\":\"" + JsonUtil.esc(dataJson) + "\",\"compress\":false}";
-    }
-
-    /* ==================== v6: payload data game (Bagian 21) ==================== */
-
-    /** Penyusun payload data game — kontrak dari UserDataParser.saveUserData (JS). */
-    static final class GameData {
-
-        /** daftar server — item persis dipakai ServerListNode/selectServer/onLoginSuccess.
-         *  v3 FIX STUCK: url game socket → http://127.0.0.1:9528 (origin halaman,
-         *  port yang terbukti dicapai runtime XHR Egret di log device; 5051 tidak
-         *  pernah sekali pun dicapai JS — listener tetap hidup sebagai fallback). */
-        static String serverListJson() {
-            long now = System.currentTimeMillis() / 1000L;
-            return "{\"serverList\":[{"
-                    + "\"serverId\":1,\"name\":\"DragonBall Local\","
-                    + "\"online\":true,\"hot\":true,\"new\":false,"
-                    + "\"url\":\"http://127.0.0.1:9528\","
-                    + "\"state\":1,\"recommend\":true,\"offlineReason\":\"\","
-                    + "\"registerTime\":" + now + ",\"worldRoomId\":\"w1\",\"guildRoomId\":\"g1\""
-                    + "}],\"history\":[]}";
-        }
-
-        /** enterGame — objek user baru; kunci yang dibaca UserDataParser.saveUserData:
-         *  currency, user._*, hangup._*, globalWar*, summon._*, totalProps._items,
-         *  imprint._items (opsional-guarded), superSkill (ARRAY wajib), heros,
-         *  curMainTask ({} wajib — Object.keys), scheduleInfo (_* dibaca initData),
-         *  dragonEquiped ({} wajib — for-in), backpackLevel, newUser, language. */
-        static String enterGameResponse() {
-            AccountStore a = AccountStore.currentOrDefault();   // Bagian 28: akun aktif
-            long now = System.currentTimeMillis() / 1000L;
-            StringBuilder b = new StringBuilder(2048);
-            b.append("{");
-            b.append("\"newUser\":true,");
-            b.append("\"language\":\"en\",");
-            b.append("\"currency\":\"USD\",");
-            b.append("\"user\":{\"_id\":\"").append(JsonUtil.esc(a.uid)).append("\",")
-             .append("\"_pwd\":\"\",\"_nickName\":\"").append(JsonUtil.esc(a.username)).append("\",")
-             .append("\"_headImage\":\"\",\"_lastLoginTime\":").append(now).append(",")
-             .append("\"_createTime\":").append(now).append(",")
-             .append("\"_bulletinVersions\":{},\"_oriServerId\":1},");
-            b.append("\"hangup\":{\"_curLess\":0,\"_maxPassLesson\":0,")
-             .append("\"_haveGotChapterReward\":{},\"_maxPassChapter\":0,")
-             .append("\"_clickGlobalWarBuffTag\":false,\"_buyFund\":0,")
-             .append("\"_haveGotFundReward\":{}},");
-            b.append("\"globalWarBuffTag\":{},\"globalWarLastRank\":{},")
-             .append("\"globalWarBuff\":0,\"globalWarBuffEndTime\":0,");
-            b.append("\"summon\":{\"_energy\":0,\"_wishList\":[],\"_wishVersion\":0,")
-             .append("\"_canCommonFreeTime\":0,\"_canSuperFreeTime\":0,\"_summonTimes\":{}},");
-            b.append("\"totalProps\":{\"_items\":{}},");
-            b.append("\"backpackLevel\":1,");
-            b.append("\"imprint\":{\"_items\":{}},");
-            b.append("\"superSkill\":[],");
-            b.append("\"heros\":{},");
-            b.append("\"curMainTask\":{},");
-            b.append("\"scheduleInfo\":{\"_marketDiamondRefreshCount\":0,")
-             .append("\"_vipMarketDiamondRefreshCount\":0,\"_arenaAttackTimes\":0,")
-             .append("\"_arenaBuyTimesCount\":0,\"_snakeResetTimes\":0,")
-             .append("\"_snakeSweepCount\":0,\"_cellGameHaveGotReward\":0,")
-             .append("\"_cellGameHaveTimes\":0,\"_cellgameHaveSetHero\":0,")
-             .append("\"_strongEnemyTimes\":0,\"_strongEnemyBuyCount\":0,")
-             .append("\"_mergeBossBuyCount\":0,\"_dungeonTimes\":{},\"_dungeonBuyTimes\":{},")
-             .append("\"_hangupTimes\":0},");
-            b.append("\"dragonEquiped\":{},");
-            b.append("\"checkin\":{},");
-            b.append("\"channelSpecial\":{},");
-            b.append("\"userGuild\":{},\"userGuildPub\":{},");
-            b.append("\"guide\":{},");
-            b.append("\"vipLog\":[],\"cardLog\":[],");
-            b.append("\"bulletinVersions\":{}");
-            b.append("}");
-            return ack(b.toString());
-        }
-    }
-
     /* ---------- WebSocket (upgrade EIO=3) ---------- */
 
     private boolean handleWebSocket(HttpWorker.Request req, OutputStream out, Socket sock,
@@ -607,6 +435,9 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             LoggerCore.log(e);
             return false;
         }
+        // v17: URL PENUH koneksi WS — dipakai SEMUA entri frame di koneksi ini
+        // (bukan lagi "sid=.." telanjang — owner: jangan dipangkas)
+        final String wsUrl = e.path;
         Session s = null;
         String qs = req.q("sid");
         if (qs != null) s = SESSIONS.get(qs);
@@ -629,7 +460,18 @@ public final class SocketIoHandler implements HttpWorker.Handler {
 
         // bila sesi baru (tanpa polling sebelumnya) → kirim open packet sebagai frame pertama
         if (qs == null) {
-            wsSendText(out, "0" + openJson(s.sid));
+            String openPkt = "0" + openJson(s.sid);
+            wsSendText(out, openPkt);
+            // v17: frame open yang BENAR-BENAR dikirim juga dilog (nol disembunyikan)
+            LoggerCore.Entry oe = new LoggerCore.Entry();
+            oe.port = e.port; oe.kind = "WS"; oe.method = "WS";
+            oe.path = wsUrl;
+            oe.status = 200;
+            oe.respPreview = openPkt;
+            oe.respLen = openPkt.getBytes(StandardCharsets.UTF_8).length;
+            oe.extra = "open (ws-first) sid=" + s.sid;
+            oe.durMs = 0;
+            LoggerCore.log(oe);
         }
         s.wsOut = out;   // v6: ACK event bisa dikirim langsung lewat WS
 
@@ -677,7 +519,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     ce.port = e.port;
                     ce.kind = "WS";
                     ce.method = "WS";
-                    ce.path = "sid=" + s.sid + " close";
+                    ce.path = wsUrl + " close";
                     ce.status = 1000; ce.reqLen = payload.length;
                     LoggerCore.log(ce);
                     try { sock.close(); } catch (IOException ignored) {}
@@ -690,7 +532,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     pe.port = e.port;
                     pe.kind = "WS";
                     pe.method = "WS";
-                    pe.path = "sid=" + s.sid + " ping->pong";
+                    pe.path = wsUrl + " ping->pong";
                     pe.status = 200; pe.reqLen = payload.length;
                     pe.durMs = 0;
                     LoggerCore.log(pe);
@@ -700,20 +542,18 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     le.port = e.port;
                     le.kind = "WS";
                     le.method = "WS";
-                    le.path = "sid=" + s.sid;
+                    le.path = wsUrl;
                     le.reqLen = payload.length;
                     le.reqPreview = text;
                     if ("2probe".equals(text)) { wsSendText(out, "3probe"); le.respPreview = "3probe"; le.respLen = 6; le.status = 200; }
                     else if ("2".equals(text)) { wsSendText(out, "3"); le.respPreview = "3"; le.respLen = 1; le.status = 200; }
                     else if (text.startsWith("42")) {
-                        // event handler.process -> ACK langsung via frame WS
-                        // (packet verbatim di reqPreview, ACK verbatim di respPreview)
-                        String ack = handleEventPacket(text, s);
+                        // v18: TRANSPORT ONLY — event handler.process TIDAK dijawab
+                        // (loginServer scope — plan only). Packet verbatim di
+                        // reqPreview; penanda no-ack di extra; NOL balasan WS.
                         le.status = 200;
-                        if (ack != null) {
-                            le.respPreview = ack;
-                            le.respLen = ack.getBytes(StandardCharsets.UTF_8).length;
-                        }
+                        le.extra = "EVENT (no ack) — loginServer scope — not"
+                                + " implemented (plan only, docs/LOGIN-SERVER-PLAN.md)";
                     }
                     else if ("41".equals(text)) {
                         le.status = 200; le.extra = "client disconnect (41)";

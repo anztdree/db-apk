@@ -5,9 +5,25 @@
 > "login server belum boleh di kerjakan!! hanya menentukan endpoint dan
 >  merencanakan strategi struktur foldernya dulu !!"
 >
+> **PEMBARUAN v18 (25 Nov 2026)** — arahan owner:
+> "muncul serverlist harusnya itu sudah bagian dari loginserver yg belum kita
+>  buat , artinya anda tidak memisahkan tugas sebagai mana mestinya.. SDK ya
+>  fokus di SDK bukan mlah ngurusin loginserver walaupun itu emang terkait .
+>  dan loginserver pun belum kita rencanakan lebih lanjut ."
+>
+> **Tindak lanjut v18 di APK**: SEMUA ACK event bisnis socket.io DIHAPUS dari
+> listener (routeEvent/GameData — termasuk ACK `GetServerList` serverList
+> "DragonBall Local" — dihapus seluruhnya). Listener 5050/9528/5051 kini
+> **TRANSPORT ONLY**: engine.io handshake/poll/WS/probe/ping-pong 1:1 capture
+> live + `/loginchecknative` (scope SDK). Setiap frame event `42…` dicatat
+> VERBATIM di logger dengan penanda `EVENT (no ack) … loginServer scope —
+> not implemented (plan only)`. NOL balasan — callback JS tidak pernah
+> dipanggil; game berhenti sebelum layar server list. Pemisahan tugas kini
+> tegas: **SDK (9530) = SDK saja; loginServer = 0 kerja, hanya rencana.**
+>
 > Isi di bawah 100% dari data nyata: config .bin ter-decode (XOR `DragonBall`,
 > uji ulang live 21 Nov 2026), smali APK, capture live server asli
-> (`rebuild-src/scripts/capture_login*.py`), dan log device MOD v13–v16.
+> (`rebuild-src/scripts/capture_login*.py`), dan log device MOD v13–v18.
 > NOL karangan — yang belum terbukti ditandai `OPEN`.
 
 ---
@@ -27,10 +43,12 @@ Client membaca DUA file dari pohon `bs/` yang kita kontrol di
 
 Jawaban atas "kenapa loginserver sudah jalan padahal belum diberi rencana":
 **client yang menelepon sendiri** sejak boot karena config di atas sudah
-menunjuk `127.0.0.1` sejak v13. Server lokal yang sekarang hidup HANYA
-menjawab minimal supaya boot tidak macet (handshake + ACK `GetServerList` +
-`loginchecknative`). Bukan pekerjaan login server baru — hanya jawaban
-pertahanan boot. Implementasi lengkap = dokumen ini, menunggu keputusan owner.
+menunjuk `127.0.0.1` sejak v13. **v13–v17** server lokal menjawab minimal
+(handshake + ACK `GetServerList` + `loginchecknative`) — owner menilai ini
+melanggar batas tugas. **v18 memperbaikinya**: ACK `GetServerList` DIHAPUS —
+listener kini transport saja + pencatatan verbatim. `loginchecknative` tetap
+karena itu glue SDK native (bukan loginServer). Implementasi lengkap = dokumen
+ini, menunggu keputusan owner.
 
 ---
 
@@ -52,16 +70,23 @@ Wire: client `42<ackId>["handler.process",{type,action,…}]` → server ACK
 `43<ackId>[{ret,data,compress}]` (socket.io v2, bukti JS `TSLoginClient.sendToServer`
 + `processHandlerWithLogin`).
 
-| Action | type | Permintaan (field nyata) | ACK sekarang | Status isi |
+**Status v18: SEMUA ACK DIHAPUS.** Kolom "ACK sekarang" = apa yang dulu
+dijawab v13–v17 (sekarang menjadi bahan perencanaan, BUKAN yang dilayani).
+
+| Action | type | Permintaan (field nyata) | ACK v13–v17 (DIHAPUS di v18) | Status v18 |
 |---|---|---|---|---|
-| `GetServerList` | `User` | `{userId, subChannel, channel}` | `{ret:0,data:"{\"serverList\":[{serverId:1,name:\"DragonBall Local\",url:\"http://127.0.0.1:9528\",…}],\"history\":[]}"}` | ISI AKTIF (menunjuk game socket) |
-| `loginGame` | `User` | `{userId, fromChannel,…}` | `{userId,channelCode,sign:"local"}` | minimal |
-| `LoginAnnounce` | `User` | — | `{}` | kosong (JS for-in aman) |
-| `SaveUserEnterInfo` / `SaveLanguage` / `saveHistory` | `User` | — | `{}` | kosong |
-| `GetNotice` / `getBulletin` | — | — | `{}` | kosong |
-| (5051) `enterGame` | `user` | — | payload user penuh (UserDataParser kontrak) | ISI AKTIF |
-| (5051) `getBulletinBrief` | `user` | — | `{_brief:{}}` | minimal |
-| **action tak dikenal** | — | — | `{ret:0,data:"{}"}` + ENTUH verbatim di logger | fallback — sumber belajar |
+| `GetServerList` | `User` | `{userId, subChannel, channel}` | serverList "DragonBall Local" | **NO ACK** — dicatat verbatim `EVENT (no ack)…loginServer scope — not implemented (plan only)` |
+| `loginGame` | `User` | `{userId, fromChannel,…}` | `{userId,channelCode,sign:"local"}` | **NO ACK** — verbatim di log |
+| `LoginAnnounce` | `User` | — | `{}` | **NO ACK** — verbatim di log |
+| `SaveUserEnterInfo` / `SaveLanguage` / `saveHistory` | `User` | — | `{}` | **NO ACK** — verbatim di log |
+| `GetNotice` / `getBulletin` | — | — | `{}` | **NO ACK** — verbatim di log |
+| (5051) `enterGame` | `user` | — | payload user penuh (UserDataParser kontrak) | **NO ACK** — verbatim di log |
+| (5051) `getBulletinBrief` | `user` | — | `{_brief:{}}` | **NO ACK** — verbatim di log |
+| **action tak dikenal** | — | — | `{ret:0,data:"{}"}` | **NO ACK** — verbatim di log (bahan belajar) |
+
+Yang masih DIJAWAB di v18 (transport + scope SDK, bukan loginServer):
+`0{sid,…}` open, `40` connect, `2probe`→`3probe`, `2`→`3` ping-pong, `41` close,
+WS upgrade 101, dan `/loginchecknative` (glue SDK native).
 
 ### 2.3 Yang dipakai server ASLI tapi BELUM kita buktikan butuh (OPEN — jangan dikarang)
 

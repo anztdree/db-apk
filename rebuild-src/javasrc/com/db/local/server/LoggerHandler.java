@@ -340,6 +340,30 @@ public final class LoggerHandler implements HttpWorker.Handler {
      *     login GUEST. Bukan pekerjaan baru — menunggu rencana owner.
      */
 
+    /* ================= console v17 — URL PENUH, NOL PANGKAS ================
+     * Arahan owner (kata-kata persis):
+     *   "ini log apa gk jelas , masih ada yg di sembunyikan"
+     *   "kalau log nampilin url socket misal http://127.0.01:<port>/socket.io/
+     *    ?EIO=3&transport=polling&t=Q8Fuv yaaa jangan anda pangkas"
+     *   "login server belum boleh di kerjakan!! hanya menentukan endpoint dan
+     *    merencanakan strategi struktur foldernya dulu !!"
+     * PERUBAHAN v17:
+     *  1. URL PENUH di SETIAP baris log (server side, SocketIoHandler/
+     *     StaticHandler/SdkHandler): scheme://host:port + path + query apa
+     *     adanya — "WS sid=.." dan "GET /socket.io/?.." TELANJANG DIHAPUS.
+     *     Contoh baris kini: WS http://127.0.0.1:5050/socket.io/?EIO=3&
+     *     transport=websocket&sid=7fKrqxrieUn5FLqhUnyA 200.
+     *  2. NOL pangkalan payload: POST packet (cap 1800) + ACK event (cut
+     *     400 char) dihapus — packet & ACK tampil PENUH verbatim.
+     *  3. Frame open ws-first yang dikirim server kini juga dilog (dulu
+     *     tersembunyi).
+     *  4. LOGIN SERVER NOL KERJA di v17 — hanya DOKUMEN RENCANA:
+     *     endpoint + strategi struktur folder di docs/LOGIN-SERVER-PLAN.md
+     *     (repo, bukan di APK). Menunggu keputusan owner sebelum eksekusi.
+     *  5. Layout/ikon/tombol console TIDAK berubah (4 kontrol fungsional
+     *     v16 tetap: cari · filter error · salin · jeda).
+     */
+
     private String dashboardHtml() {
         StringBuilder b = new StringBuilder(36000);
         b.append("<!DOCTYPE html><html><head><meta charset='utf-8'>\n")
@@ -443,7 +467,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
 
          .append("<div id=hdr><div id=l1>")
          .append("<span id=logo><span data-ic=flame></span></span><span id=dot></span>")
-         .append("<span id=title>DB LOCAL SERVER</span><span id=ver>v16</span><span id=versub>· raw server log · com.db.local</span>")
+         .append("<span id=title>DB LOCAL SERVER</span><span id=ver>v18</span><span id=versub>· raw server log · com.db.local</span>")
          .append("<span id=sp></span>")
          .append("<label id=qwrap><span data-ic=search></span><input id=q placeholder='cari…'></label>")
          .append("<button id=errf class=ib title='Filter: tampil warn/error saja'></button>")
@@ -454,7 +478,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("<div id=crashbn></div>\n")
          .append("<div id=notices></div>\n")
          .append("<div id=stream>")
-         .append("<div id=banner><span id=blogo><span data-ic=flame></span></span><div><div class=b1>DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v16</div><div class=bl><span data-ic=terminal></span>raw server log — http://127.0.0.1:4000 — semua rincian tampil langsung</div></div></div>\n")
+         .append("<div id=banner><span id=blogo><span data-ic=flame></span></span><div><div class=b1>DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v18</div><div class=bl><span data-ic=terminal></span>raw server log — http://127.0.0.1:4000 — URL penuh · nol disembunyikan · semua rincian tampil langsung</div></div></div>\n")
          .append("<div id=tb></div><div id=tail><span id=pausemark></span><span id=cursor> </span></div></div>\n")
 
          .append("<div id=ftr><span id=sum>…</span></div>\n")
