@@ -4778,3 +4778,149 @@ BEDA: {ret:"SUCCESS",data,compress} + aksi Kickout.
 - NOL baris kode ACK ditulis di APK — dokumen tetap PLAN ONLY (arahan owner berlaku).
 
 ### 58.8 STATUS: MENUNGGU KEPUTUSAN OWNER (K1–K5 di docs/LOGIN-SERVER-PLAN.md §5)
+
+---
+
+## Bagian 59 — RENCANA FINAL STRUKTUR FOLDER + CARA KERJA LOGIN-SERVER DI ANDROID/DATA, BERSELEBAHAN DENGAN SDK (plan only, nol kode)
+
+> Jawaban owner: ("setelah ini rencanakan yg bener untuk struktur folder dan cara
+> kerja login-server kita di android/data berselebahan dengan SDK")
+>
+> Ini pelaksanaan arahan owner yang TERCATAT di kode v18 (komentar
+> SocketIoHandler): "hanya menentukan endpoint dan merencanakan strategi struktur
+> foldernya dulu!!". Bagian 58 mengunci KONTRAK WIRE (live-verified ke server asli);
+> Bagian 59 mengunci STRUKTUR FOLDER + CARA KERJA. Semua berpijak pada kode yang
+> berjalan di v13–v19 (LocalServerStarter / ServerCore / SdkConfig / Db /
+> SocketIoHandler / AccountStore) — bukan karangan.
+
+### 59.1 PEMETAAN DEVICE SAAT INI (bukti kode — dasar semua keputusan folder)
+
+```
+/storage/emulated/0/Android/data/com.db.local/
+├── files/            ← milik client/SDK — TIDAK disentuh server (kecuali
+│   └── Documents/       SessionReset v18: hapus sesi SDK saat crash-loop)
+└── server/           ← serverRoot = getExternalFilesDir(null).getParentFile()
+    │                   + "/server"  (LocalServerStarter:47-50)
+    ├── bs/           ← ekstraksi assets/server_root TIAP BOOT (rename atomik
+    │   │                .extracting.tmp) — JANGAN EDIT: editan HILANG saat reboot
+    │   ├── db/       ← setting_BS_Android.bin (XOR "DragonBall")
+    │   ├── js/ resource/ upgrade/ + index-native.html manifest.json
+    │   │                serversetting.json clientversion.json
+    ├── sdk/          ← kontrak SDK SELF-SEEDING (TIDAK pernah via assets)
+    │   ├── profile.json / init.json / ckRegVistor.json / fallback.json /
+    │   │   errors.json / QHinfo
+    │   └── data/db.sqlite ← tabel accounts (akun tamu/email) — MILIK SDK
+    │                          (pindah dari server/data di Bagian 30)
+    └── logs/         ← NDJSON DiskWriter + crash-*.txt sejak detik pertama
+```
+
+FAKTA PENENTU (dari kode, v13–v19 teruji): ekstraksi assets jalan TIAP boot dan
+MENIMPA file — itulah kenapa `sdk/` TIDAK dikirim via assets melainkan
+self-seeding (komentar SdkConfig baris 13-16, tertulis sejak Bagian 29). Aturan
+yang sama WAJIB dipakai `login/` — kalau login/config.json ditaruh di assets,
+editan owner pasti hilang tiap reboot (kesalahan klasik yang harus dicegah
+sejak rencana).
+
+### 59.2 STRUKTUR FINAL `login/` — proposal lama notes.md + captures/ DIBATALKAN
+
+```
+server/login/
+├── config.json     ← SATU-satunya sumber kebenaran (skema docs v3 §4.2;
+│                     seed default "enabled": false = wire v19 persis)
+└── data/           ← dibuat HANYA bila "historyMode":"persist"
+    └── history.sqlite ← tabel history(accountToken PK, serverId, updatedAt)
+                          — file TERPISAH dari sdk/data/db.sqlite (keputusan L1)
+```
+
+Yang SENGAJA TIDAK ada di device: `notes.md` (log keputusan tetap di repo),
+`captures/` (bukti 618 KB tetap di repo verify-artifacts — duplikat di device =
+sampah), file index/manifest apa pun (pelajaran v16: kata owner "berasa jadi
+sampah"). Folder = MINIMAL.
+
+### 59.3 LIMA ATURAN FOLDER (pola SdkConfig yang sudah teruji)
+
+1. TIDAK PERNAH masuk assets/server_root → tidak akan pernah ditimpa ekstraksi.
+2. Self-seed saat BOOT: satu panggilan `LoginConfig.ensure()` di
+   LocalServerStarter tepat setelah `Db.open` → folder terlihat di file manager
+   sejak detik pertama; event pertama dijamin punya config.
+3. Dibaca ULANG tiap event (pola `SdkConfig.contract`) → edit owner berlaku
+   TANPA restart app.
+4. JSON rusak → reseed default enabled:false + WARN log → config rusak hanya
+   MEMATIKAN loginServer, tidak pernah merusak SDK (arah rusak satu arah).
+5. Tulis atomik `.tmp` + fsync + rename (pola `SdkConfig.writeFile`).
+
+### 59.4 CARA KERJA RUNTIME (enabled:false = v19 persis; enabled:true = ACK real)
+
+Boot:  Application.onCreate → LocalServerStarter.start → logs/ siap →
+       ExitInfo/CrashHook/OverlayFixer/SessionReset (scope SDK) →
+       Db.open (sdk/data) → [BARU] LoginConfig.ensure() (login/) →
+       ekstraksi bs/ (thread, latch js/) → ServerCore.start (5 listener)
+
+Peta port & scope — TIDAK ADA port baru (ServerCore):
+
+| Port | Handler | Scope |
+|---|---|---|
+| 9527 | StaticHandler (bin; XOR decode di log) | boot config |
+| 9528 | chain `/socket.io/` → SocketIoHandler(login); sisanya StaticHandler | CDN engine + GERBANG ACK loginServer |
+| 5050 | SocketIoHandler(login): `/socket.io/` + `/loginchecknative` | socket login + GLUE SDK (scope SDK) |
+| 5051 | SocketIoHandler(game) | gameServer transport — fase berikutnya |
+| 9530 | SdkHandler (33 path) | SDK |
+| 4000/4001 | LoggerHandler (fallback) | dashboard |
+
+Titik ACK gate = SATU titik logika, dua pintu masuk yang sama:
+- POST polling: cabang `pkt.startsWith("42")` (v18: hanya log verbatim) →
+  enabled:true: parse {type,action} → LoginAck.answer → `session.deliver
+  ("43<ackId>[{…}]")`. Infra `Session.deliver` (WS langsung / antre polling)
+  SUDAH ADA sejak v6 — tinggal dipakai, bukan dibangun baru.
+- WS frame: titik yang sama di loop frame WS.
+- enabled:false → kode persis v19 ("EVENT (no ack)" verbatim).
+
+Envelope = mirror asli `43<ackId>[{"ret":0,"data":"<JSON string>"}]` TANPA field
+compress (Bagian 58). Daftar ACK per event = docs §4.3 (semua LIVE-verified).
+9528 tetap satu-satunya origin runtime XHR (fakta routing v3) — url serverList
+JANGAN diganti.
+
+### 59.5 TITIK "BERSELEBAHAN" SDK ↔ LOGIN SERVER (dipetakan eksplisit — rawan salah)
+
+1. IDENTITAS: `/loginchecknative` (5050, scope SDK) → `AccountStore.setCurrent
+   (uid, username, token, usermode)` → loginServer MEMBACA statik itu read-only
+   untuk konsistensi ACK loginGame (K2). NOL perubahan kode SDK.
+2. SALURAN: GetServerList dari JS membawa userId hasil thirdParams SDK; server
+   asli TIDAK memvalidasi userId (live-proven §2.2) → loginServer mirror: tidak
+   memvalidasi juga.
+3. FILE: `sdk/` dan `login/` bersebelahan dengan aturan SAMA (self-seed,
+   edit-live, atomic) tapi scope TERPISAH — login/ TIDAK BOLEH membuka
+   sdk/data/db.sqlite (accounts milik SDK); history pakai file sendiri (L1).
+4. BUKAN seleban: gameServer (5051) tetap transport-only fase ini; enterGame tak
+   dijawab → batas normal "berhenti di loading" (§4.7). Kontrak verify XXTEA
+   (Bagian 58 §2.5) = bahan fase gameServer, bukan fase login.
+
+### 59.6 KRITERIA TERIMA FOLDER (smoke kelak, saat implementasi)
+
+1. Fresh install → login/config.json ADA sejak boot (enabled:false); wire v19
+   byte-identik.
+2. Edit owner (enabled:true + serverList) → berlaku tanpa restart.
+3. Reboot → editan BERTAHAN (bs/ ditimpa ekstraksi; login/ TIDAK).
+4. config.json diubah jadi teks sampah → boot berikut reseed + WARN; SDK aman.
+5. historyMode persist → login/data/history.sqlite dibuat; mode auto → folder
+   data/ tidak ada (nol sampah).
+
+### 59.7 KEPUTUSAN BARU L1–L3 (folder) — K1–K5 TETAP MENUNGGU
+
+| # | Keputusan | Rekomendasi (basis bukti) |
+|---|---|---|
+| L1 | DB history: terpisah `login/data/history.sqlite` atau gabung `sdk/data/db.sqlite`? | Terpisah — accounts SDK tak tersentuh eksperimen; Db.open hardcoded sdk/data (Bagian 30) → memisah = nol risiko migrasi; DbSqlite dipakai ulang dgn dataDir beda |
+| L2 | Seed `login/` saat BOOT atau lazy (event pertama)? | Boot — LoginConfig.ensure() setelah Db.open; terlihat sejak detik pertama |
+| L3 | Isi folder minimal atau ikut proposal lama (notes.md + captures/)? | Minimal — anti-sampah v16; bukti tetap di repo |
+
+### 59.8 PRODUK + STATUS
+
+- docs/LOGIN-SERVER-PLAN.md: §3 DIGANTI TOTAL (peta device 3.1, struktur final
+  3.2, 5 aturan 3.3, cara kerja 3.4, titik seleban 3.5, kriteria folder 3.6) +
+  §5.1 keputusan L1–L3 + catatan header Bagian 59.
+- NOL baris kode ACK/folder ditulis di APK — PLAN ONLY.
+- Urutan implementasi SAAT owner oke (K1–K5 + L1–L3): (1) LoginConfig.java pola
+  SdkConfig + panggilan ensure() — nol efek wire; (2) ack-gate SocketIoHandler
+  per docs §4.3; (3) history persist bila K3=persist; (4) smoke folder 59.6 +
+  smoke ACK; (5) dashboard TIDAK berubah (disiplin v17).
+- STATUS: MENUNGGU KEPUTUSAN OWNER (K1–K5 §5 + L1–L3 §5.1).
