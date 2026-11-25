@@ -1,0 +1,55 @@
+# CAPTURE LIVE SERVER ASLI — 26 Nov 2026 (login.popoh5.com:610 + s2112-bs.popoh5.com:8041)
+# Metode: socket.io v2 (EIO=3) polling-open -> WS upgrade -> 2probe/3probe -> packet "5" -> event.
+# Tanpa packet "5": server menutup koneksi saat event pertama (terbukti).
+# Envelope ACK: {"ret":0,"data":"<JSON string>"} — field "compress" TIDAK ADA (absen, bukan false).
+
+## [1] loginGame (fromChannel game_origin & quick sama-sama ditolak)
+C-> 420["handler.process",{"type":"User","action":"loginGame","userId":"tester01","password":"game_origin","fromChannel":"game_origin","channelName":"","headImageUrl":"","nickName":"","subChannel":"","version":"1.0"}]
+S<- 430[{"ret":0,"data":"{\"loginToken\":\"\",\"userId\":\"\",\"nickName\":\"\",\"headerImage\":\"\",\"isCreated\":false,\"errorCode\":103,\"errorMessage\":\"本服务器只允许特定的渠道来源\",\"channelCode\":\"\"}"}]
+# envelope ret=0 meski errorCode 103 — JS TIDAK mengecek data.errorCode utk loginGame (lanjut dgn identitas kosong)
+# dariChannel "quick" -> respons identik (103)
+
+## [2] GetServerList (userId segar acak)
+C-> 420["handler.process",{"type":"User","action":"GetServerList","userId":"8969722632097","subChannel":"","channel":"quick"}]
+S<- 430[{"ret":0,"data":"{\"errorCode\":0,\"serverList\":[...2112 entri...],\"history\":[]}"}]
+# FULL 618.309 B tersimpan: getserverlist-ack-LIVE-20261126.txt (userId 1795567351139, history:["2112"])
+# struktur entry (12 field SEMUA entri): serverId(STRING) url new hot name online openDate offlineReason merge mergeTo urlInner chatInner
+# openDate mingguan Jumat 07:00 UTC (2026-11-20, -13, -06, ...); 2073/2112 merge=true
+# history:["2112"] = hasil SaveHistory kita sebelumnya -> PERSIST PER-AKUN (userId segar = [])
+
+## [3] SaveHistory
+C-> 420["handler.process",{"type":"User","action":"SaveHistory","accountToken":"1795567351139","channelCode":"quick","serverId":"2112","securityCode":"","subChannel":"","version":"1.0"}]
+S<- 431[{"ret":0,"data":"{\"errorCode\":0,\"todayLoginCount\":2}"}]
+# BUKAN {} — data membawa todayLoginCount (konsumen JS: report analytics) & TIDAK membawa loginToken
+
+## [4] LoginAnnounce
+C-> 420["handler.process",{"type":"User","action":"LoginAnnounce"}]
+S<- (TIDAK ADA JAWABAN — server asli DIAM bila tidak ada pengumuman; 6 dtk observasi)
+
+## [5] SaveLanguage (bahasa "in" tidak didukung)
+C-> 420["handler.process",{"type":"User","action":"SaveLanguage","userid":"1795567351139","sdk":"quick","appid":"","language":"in"}]
+S<- 430[{"ret":0,"data":"{\"errorCode\":111,\"errorMessage\":\"不支持选择的语言in\"}"}]
+# supportLang config .bin asli: en/fr/kr
+
+## [6] SaveUserEnterInfo
+C-> 420["handler.process",{"type":"User","action":"SaveUserEnterInfo","accountToken":"1795567351139","channelCode":"quick","subChannel":"","createTime":1795625000,"userLevel":1,"version":"1.0"}]
+S<- 431[{"ret":0,"data":"{\"errorCode\":0}"}]
+
+## [7] GAME SERVER s2112-bs.popoh5.com:8041 (main-server) — open: pingTimeout 60000 (beda dari login 5000)
+C-> 2probe        S<- 3probe
+C-> 5
+S<- 42["verify","c8a6ac96-a4e7-4ba6-947e-a6c7bd5c6505"]   # challenge UUID, ~0.2s setelah "5", TEPAT 1x
+C-> 420["verify","<base64(XXTEA(uuid, key="verification"))>"]
+S<- 430[{"ret":0}]                                        # VERIFY DITERIMA (direproduksi 2x sesi berbeda)
+
+## [8] enterGame TANPA loginToken sah (setelah verify sukses)
+C-> 420["handler.process",{"type":"user","action":"enterGame","loginToken":"","userId":"1795567351139","serverId":2112,"version":"1.0","language":"in","gameVersion":"202109150935"}]
+S<- 431[{"ret":38}]
+# ret 38 TANPA data — JS: "38"==e.ret -> TSBrowser.executeFunction("reload") (halaman di-reload)
+
+## [9] STATUS SERVER ASLI 26 Nov 2026 (probe langsung)
+# login.popoh5.com:610  socket.io open 103 B = HIDUP; POST polling -> 502 nginx/1.16.0 (infra POST mati; WS = jalur hidup)
+# login.popoh5.com:510  {"code":404,"msg":"没有开通"} = HIDUP
+# dragonh5cdn.popoh5.com/bs/upgrade/base.version -> "110" HTTP 200 = HIDUP
+# tsLoginServer 118.24.68.91:7003 -> TIMEOUT = MATI
+# server game s2112-bs.popoh5.com:8041 = HIDUP (verify aktif)

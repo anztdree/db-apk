@@ -4678,3 +4678,103 @@ URL penuh; TRANSPORT ONLY).
 5. Kalau ADA sisa popup lain (mis. dari layar login SDK): kirim screenshot +
    ndjson lagi — popup ber-teks/latar berbeda berarti jalur lain, akan
    dibedah sama persis sampai bytes.
+
+---
+
+## Bagian 58 — AUDIT ULANG RENCANA LOGIN SERVER: SEMUA KONTRAK DIVERIFIKASI LANGSUNG KE SERVER ASLI YANG MASIH HIDUP (26 Nov 2026)
+
+> Jawaban owner: ("sekarang adalah perencanaan untuk login-server. dan doc di Github
+> rencana login-server itu masih ngawur . tujuan saya panggil anda adalah agar
+> perencanaan di matangkan lagi . Karena SERVER asli masih hidup dan juga main min.js
+> ada . mohon analisi ulang lalu kirim laporan ke saya")
+>
+> BENAK owner BENAR: skema ACK v2 dibangun dari ACK SINTETIS v17 (jawaban server
+> LOCAL kita sendiri) — bukan dari server asli. Sesi ini memverifikasi SEMUANYA
+> langsung ke server asli + bedah ulang main.min_777039fc.js (4.914.149 B, diekstrak
+> dari APK v19 via HTTP Range tanpa unduh penuh — tools/zip_partial.py).
+
+### 58.1 SERVER ASLI MASIH HIDUP (probe langsung 26 Nov 2026, bukti verify-artifacts/live-login-contract-20261126.txt)
+
+| Target | Status |
+|---|---|
+| login.popoh5.com:610 GET open | HIDUP — open frame 103 B persis (pingInterval 25000 / pingTimeout 5000) |
+| login.popoh5.com:610 POST polling | 502 nginx/1.16.0 — jalur POST polling MATI di infra asli; WS satu-satunya jalur hidup |
+| login.popoh5.com:510 | HIDUP — {"code":404,"msg":"没有开通"} |
+| dragonh5cdn.popoh5.com/bs/upgrade/base.version | HIDUP — "110" |
+| tsLoginServer 118.24.68.91:7003 | MATI (timeout) |
+| server game s2112-bs.popoh5.com:8041 | HIDUP — engine.io beda (pingTimeout 60000, sid format lain), WAJIB verify |
+
+### 58.2 TEMUAN MONUMENTAL #1 — HANDSHAKE `verify` (tidak pernah ada di rencana mana pun)
+
+TSSocketClient(serverName, verifyEnable): login-server=FALSE; main/chat/dungeon-server=TRUE
+(main.min_777039fc.js pos 762364-762539). Server game mengirim challenge UUID ~0.2s
+setelah packet engine.io "5": `42["verify","c8a6ac96-a4e7-4ba6-947e-a6c7bd5c6505"]`;
+client wajib balas `420["verify", base64(TEA.encrypt(uuid,"verification"))]`;
+jawaban benar → `430[{"ret":0}]`. TEA di JS = XXTEA (DELTA 2654435769, rounds
+floor(6+52/n), key Utf8("verification").slice(0,16) = 3 long + long-4 = 0 — JS k[3]
+undefined → ToInt32 0; detail yang membuat implementasi naif salah). Implementasi
+Python kita DITERIMA server asli 430[{"ret":0}] — direproduksi 2 sesi berbeda
+(verify-artifacts/game-verify-LIVE-20261126.txt, tools/probe_live_game_verify.py).
+
+### 58.3 TEMUAN MONUMENTAL #2 — PACKET ENGINE.IO "5" WAJIB
+
+Tanpa mengirim "5" setelah 3probe, event pertama dibalas frame kosong + CLOSE
+(3 sesi). Dengan "5" → semua event dilayani. Fakta transport yang baru pertama
+kali tercatat di repo.
+
+### 58.4 TEMUAN #3 — ACK GetServerList ASLI 618.309 B: 2112 server, skema BEDA dari rencana v2
+
+File utuh: verify-artifacts/getserverlist-ack-LIVE-20261126.txt. Envelope
+{"ret":0,"data":"<JSON string>"} — field compress TIDAK PERNAH dikirim (absen).
+data = {errorCode:0, serverList:[2112 entri], history:[…]} — 12 field per entri:
+serverId(STRING "2112"!), url, new, hot, name, online, openDate(ISO, server baru tiap
+Jumat 07:00 UTC), offlineReason, merge(2073/2112 true), mergeTo, urlInner, chatInner.
+YANG TIDAK ADA di server asli (rencana v2 ngawur, dibuang): state, recommend,
+registerTime, worldRoomId, guildRoomId — registerTime 0 hit di main.min;
+worldRoomId/guildRoomId nyatanya dikirim ACK registChat server GAME (_worldRoomId
+dst menimpa serverItem saat game jalan). mergeTo/openDate/urlInner/chatInner = 0
+konsumen JS (mirror saja). history PERSIST PER-AKUN di server asli (bukti: SaveHistory
+kita serverId "2112" → GetServerList berikutnya history ["2112"]; userId segar → []).
+
+### 58.5 TEMUAN #4 — ACK event login lain (semua verbatim di live-login-contract-20261126.txt)
+
+- SaveHistory → {"ret":0,"data":"{\"errorCode\":0,\"todayLoginCount\":2}"} — BUKAN {};
+  TIDAK membawa loginToken (v2 salah); todayLoginCount = konsumen JS report.
+- LoginAnnounce → TIDAK DIJAWAB (server asli DIAM bila tak ada pengumuman).
+- SaveLanguage "in" → {"errorCode":111,"errorMessage":"不支持选择的语言in"} — whitelist
+  = supportLang config asli (en/fr/kr).
+- SaveUserEnterInfo → {"errorCode":0}.
+- loginGame (jalur origin): envelope ret:0 meski errorCode 103
+  "本服务器只允许特定的渠道来源" (channel game_origin DAN quick ditolak); JS TIDAK
+  mengecek data.errorCode utk loginGame — alur lanjut identitas kosong (quirk asli).
+- enterGame di server game (post-verify, loginToken kosong) → {"ret":38} TANPA data →
+  JS "38"==e.ret → reload halaman (bukan crash). Batas pintu game terbukti.
+
+### 58.6 KONTRAK JS DIPETAKAN ULANG (dibaca langsung, bukan karangan)
+
+Tiga pintu login scene: (1) SDK path = checkSDK → getSdkLoginInfo
+{loginToken,userId,nickName,channelCode:sdk,securityCode} → GetServerList TANPA
+loginGame → selectNewServer + LoginAnnounce; (2) origin path = checkLastLogin
+(URL param userid / localStorage lastServerID) → loginGame password default
+"game_origin" — ack-flag t=false berarti event hanya terkirim bila socket login
+SUDAH connect (kalau belum: DIBUANG SENYAP); (3) manual loginBtnTap.
+selectNewServer: history[0] else serverList[0].serverId; isNew = history kosong →
+showLoginSuccessStatus → startBtnTap() OTOMATIS (auto-enter hanya bila history kosong).
+processHandler (server game) membaca envelope serverTime + server0Time →
+ServerTime.updateServerTime (kontrak wajib fase gameServer). Notify stream envelope
+BEDA: {ret:"SUCCESS",data,compress} + aksi Kickout.
+
+### 58.7 PRODUK SESI
+
+- docs/LOGIN-SERVER-PLAN.md → v3 TOTAL (skema config 12-field real, 5 keputusan
+  baru K1–K5 menggantikan D1–D5, verify handshake terdokumentasi, OPEN jujur:
+  loginGame sukses asli tak terekam — semua channel ditolak 103; data penuh
+  enterGame butuh loginToken sah — fase gameServer).
+- verify-artifacts/: live-login-contract-20261126.txt (transkrip lengkap),
+  getserverlist-ack-LIVE-20261126.txt (618.309 B utuh), game-verify-LIVE-20261126.txt.
+- tools/: zip_partial.py (ekstrak entri APK via HTTP Range — nol unduh penuh),
+  probe_live_battery.py, capture_live_full.py, probe_live_game_verify.py
+  (XXTEA "verification" diterima server asli).
+- NOL baris kode ACK ditulis di APK — dokumen tetap PLAN ONLY (arahan owner berlaku).
+
+### 58.8 STATUS: MENUNGGU KEPUTUSAN OWNER (K1–K5 di docs/LOGIN-SERVER-PLAN.md §5)

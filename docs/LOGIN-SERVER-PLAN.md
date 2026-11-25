@@ -1,33 +1,32 @@
-# LOGIN SERVER — RENCANA v2: DESAIN CONFIG (PLAN ONLY, BELUM DIKERJAKAN)
+# LOGIN SERVER — RENCANA v3: SEMUA KONTRAK WIRE TERVERIFIKASI LANGSUNG KE SERVER ASLI (PLAN ONLY, BELUM DIKERJAKAN)
 
 > Status: **DOKUMEN RENCANA** — bukan implementasi. Nol baris ACK ditulis di APK.
-> Arahan owner 25 Nov 2026 (kata-kata persis):
-> "sekarang lihat baik-baik tugas SDK dan loginserver di game ini ..
->  lalu rencanakan untuk pembuatan config loginserver dan penyempurnaan sdk
->  jika diperlukan"
+> v3 menggantikan v2 (commit 31d054e). **v2 ternyata masih banyak ngawur** karena
+> skema ACK-nya dibangun dari ACK sintetis v17 (jawaban server LOCAL kita sendiri),
+> bukan dari server asli. v3 dibangun dari **capture langsung ke server asli yang
+> MASIH HIDUP** (26 Nov 2026) + bedah ulang `main.min_777039fc.js` dari APK.
 >
-> Riwayat batasan yang TETAP berlaku:
-> - "login server belum boleh di kerjakan!! hanya menentukan endpoint dan
->    merencanakan strategi struktur foldernya dulu !!" (25 Nov pagi)
-> - kesalahan 2: "SDK ya fokus di SDK bukan mlah ngurusin loginserver" —
->   v19: SDK (9530) = SDK saja; listener socket.io = TRANSPORT ONLY, nol ACK.
+> Bukti fisik (repo, folder `verify-artifacts/`):
+> - `live-login-contract-20261126.txt` — semua transkrip event login + status server
+> - `getserverlist-ack-LIVE-20261126.txt` — ACK GetServerList ASLI utuh (618.309 B, 2112 server)
+> - `game-verify-LIVE-20261126.txt` — transkrip handshake verify server game
+> - `LIVE_CONTRACT_20261123.md` — kontrak SDK qsdk.t4game.com (23 Nov, tetap sahih)
 >
-> Basis bukti 100% nyata: config .bin ter-decode (XOR `DragonBall`), log device
-> MOD NDJSON asli (v17 log-20261125-074226.ndjson — berisi ACK GetServerList
-> terakhir sebelum dihapus; v18/v19 transport only), capture live server asli
-> (`verify-artifacts/`), dan kontrak JS engine yang dibaca LANGSUNG dari
-> `bs/js/main.min_777039fc.js` (kutipan persis di §2.4). NOL karangan —
-> yang belum terbukti ditandai **OPEN**.
+> Alat capture (reproduksi): `tools/probe_live_battery.py`, `tools/probe_live_game_verify.py`,
+> `tools/zip_partial.py` (ekstrak main.min dari APK tanpa unduh penuh).
+>
+> Arahan owner tetap berlaku: "login server belum boleh di kerjakan!!" → dokumen ini
+> RENCANA; nol implementasi sampai owner oke.
 
 ---
 
-## 0. PEMBAGIAN TUGAS — 3 LAPIS (peta berbasis bukti)
+## 0. PEMBAGIAN TUGAS — 3 LAPIS (tetap, kini dengan bukti jalur hidup)
 
-Alur nyata dari log device v17 (urutan persis NDJSON, 25 Nov 07:42):
+Alur nyata log device v17 + konfirmasi kontrak JS:
 
 ```
  1. 9527  GET /bs/db/android/setting_BS_Android.bin        → XOR decode (loginPort 9528, loginWebPort 5050)
- 2. 9528  GET /bs/upgrade/* (base.version, upgrade.json, all.zip 19 MB) → CDN engine
+ 2. 9528  GET /bs/upgrade/* (base.version, upgrade.json, all.zip) → CDN engine
  3. 9530  POST /v1/system/init                             → SDK: loginTypes ["1"] (email + TAMU)
  4. 9530  POST /v1/system/getNotice                        → SDK
  5. 9530  POST /v1/user/registerVisitor                    → SDK: akun TAMU dibuat (uid+token)
@@ -36,296 +35,307 @@ Alur nyata dari log device v17 (urutan persis NDJSON, 25 Nov 07:42):
           serversetting.json, clientversion.json           → engine Egret boot
  8. 9528  GET /socket.io/?EIO=3&transport=polling          → engine.io OPEN+40 (TRANSPORT)
  9. 9528  POST socket.io  420["handler.process",
-          {type:"User",action:"GetServerList",…}]          → (v17: ACK serverList; v18+: NO ACK)
-10. 9528  POST socket.io  421[…"SaveHistory",…]            → (v17: ACK {}; v18+: NO ACK)
+          {type:"User",action:"GetServerList",…}]          → (v17: ACK sintetis; v18+: NO ACK; RENCANA: ACK real)
+10. 9528  POST socket.io  421[…"SaveHistory",…]            → (RENCANA: ACK real, bukan {})
 ```
 
-### 0.1 SDK (port 9530 + glue native 5050 `/loginchecknative`) — SELESAI sejak v13
+### 0.1 SDK (9530 + glue 5050) — SELESAI sejak v13, TIDAK berubah oleh dokumen ini
 
-Tugas SDK = **semua sebelum engine.io menyala**:
-- 33 endpoint `/v1/…` (katalog verify_total.txt §C); 12 diimplement, sisanya
-  `fallback.json` (result:false 20000) — rincian gap di docs/SDK-REFINEMENT-PLAN.md
-- envelope `{"result":…,"data":…,"error":…}` + sign MD5 secret `0b2a18e45d7df321`
-  (LIVE_CONTRACT_20261123.md — terverifikasi live server asli)
-- `init.json` mirror PENUH (loginTypes menentukan UI login; productConfig 10 field)
-- akun TAMU/email (SQLite `sdk/data/db.sqlite`)
-- `/loginchecknative` (5050) = jembatan sesi native → JS (`window.getSdkLoginInfo()`)
+### 0.2 loginServer (socket.io login) — BELUM DIBUAT; kontraknya kini §2 (live-verified)
 
-**SDK TIDAK menyentuh serverlist.** Bukti v19: langkah 9–10 dikirim oleh JS ENGINE
-(`clientRequestServerList` di main.min), bukan oleh SDK. SDK selesai di langkah 6.
-
-### 0.2 loginServer (socket.io login: loginPort 9528 via JS; 5050 fallback native) — BELUM DIBUAT; CONFIG DIRANCANG DI §4
-
-Tugas nyata loginServer (semua dari kontrak JS + log):
-| Tugas | Status sekarang (v19) |
-|---|---|
-| transport engine.io (open/poll/WS/probe/ping-pong 1:1 capture live) | SUDAH — transport only |
-| `GetServerList` → ACK serverList | TIDAK ADA (dihapus v18) — **dirancang jadi isi config** |
-| event fire-and-forget `SaveHistory` `SaveUserEnterInfo` `SaveLanguage` `saveHistory` `LoginAnnounce` `getBulletin` | TIDAK ADA — ACK `{}` cukup (v13–v17 bukti) |
-| `loginGame` | TIDAK ADA — HANYA jalur akun-origin JS (password "game_origin"); jalur SDK TAMU/EMAIL TIDAK PERNAH mengirimnya (bukti log: GetServerList → langsung SaveHistory, nol loginGame) |
-
-### 0.3 gameServer (serverItem.url → socket.io game) — LUAR SCOPE DOKUMEN INI
-
-- `enterGame` → payload user data PENUH (kontrak UserDataParser: currency,
-  userInfo, heros, backpack, equip, superSkill, signIn, team, mainTask, …)
-- `getBulletinBrief` → `{_brief:{}}`
-- notify stream (`startListenNotify`)
-
-Dokumen ini hanya menyiapkan PINTUNYA (`serverList[].url`). Isi enterGame =
-rencana terpisah — disiplin tugas (pelajaran kesalahan 2: jangan campur scope).
+### 0.3 gameServer (serverItem.url) — LUAR SCOPE dokumen ini, TAPI pintunya kini TERBUKTI:
+server game asli `s2112-bs.popoh5.com:8041` HIDUP dan mewajibkan handshake **`verify`**
+(TEA/XXTEA key `"verification"`) sebelum satu pun event game dilayani (§2.5). Tanpa
+loginToken sah → `enterGame` dijawab `{"ret":38}` → JS me-reload halaman (§2.6).
+Ini bahan utama rencana gameServer berikutnya — dicatat supaya desain config login
+(serverList[].url) tidak salah arah.
 
 ---
 
-## 1. SIAPA MENUNJUK ENDPOINT LOGIN (fakta config, bukan asumsi)
+## 1. SIAPA MENUNJUK ENDPOINT LOGIN + STATUS LIVE 26 Nov 2026
 
-| File (pohon `bs/` yang kita kontrol) | Field | ORIGINAL (live 21 Nov) | MOD (v13–v19) | Dipakai siapa |
+| File | Field | ORIGINAL (live) | MOD (v13–v19) | Pemanggil |
 |---|---|---|---|---|
-| `bs/db/android/setting_BS_Android.bin` (XOR `DragonBall`, 711 B live / 687 B mod) | `loginServer` | `https://login.popoh5.com` | `http://127.0.0.1` | smali `LaunchActivity.java` |
-| idem | `loginPort` | `610` | `9528` | **socket.io JS engine** |
-| idem | `loginWebPort` | `510` | `5050` | **native Java SDK** (`/loginchecknative`) |
-| `bs/resource/properties/serversetting.json` | `loginserver` | login.popoh5.com | `http://127.0.0.1:9528` | JS engine |
-| `bs/resource/properties/clientversion.json` | `clientVersion` | — | `202109150935` | cek versi native |
+| `setting_BS_Android.bin` (XOR `DragonBall`) | `loginServer` | `https://login.popoh5.com` | `http://127.0.0.1` | smali LaunchActivity |
+| idem | `loginPort` | `610` | `9528` | socket.io JS engine |
+| idem | `loginWebPort` | `510` | `5050` | native SDK `/loginchecknative` |
+| `serversetting.json` | `loginserver` | login.popoh5.com | `http://127.0.0.1:9528` | JS engine (`connectToLogin`: bridge `getLoginServer` dulu, fallback file ini) |
+| `clientversion.json` | `clientVersion` | `202109150935` | idem | `getClientVer()` → param `gameVersion` enterGame |
 
-Client menelepon sendiri sejak boot karena config di atas menunjuk 127.0.0.1
-sejak v13 — itulah kenapa "loginserver sudah jalan padahal belum diberi rencana".
+Status probe langsung 26 Nov 2026 (semua tercatat di `live-login-contract-20261126.txt`):
+
+| Target | Status |
+|---|---|
+| `login.popoh5.com:610` socket.io GET open | **HIDUP** — open frame 103 B persis (`pingInterval:25000,pingTimeout:5000`), sid suffiks berurut |
+| `login.popoh5.com:610` POST polling | **502 nginx/1.16.0** — jalur POST polling MATI di infra mereka; WS = satu-satunya jalur event hidup |
+| `login.popoh5.com:510` | HIDUP — `{"code":404,"msg":"没有开通"}` |
+| `dragonh5cdn.popoh5.com/bs/upgrade/base.version` | HIDUP — isi `110` |
+| `tsLoginServer` `http://118.24.68.91:7003` | MATI (timeout 12 dtk) |
+| Server game `s2112-bs.popoh5.com:8041` | **HIDUP** — engine.io beda: `pingTimeout:60000`, format sid beda (`…AA8A`), WAJIB verify |
+
+Implikasi desain lokal: server lokal kita melayani polling DAN WS sekaligus (sudah
+seperti itu) — justru lebih lengkap dari aslinya sekarang. Tidak ada perubahan port.
 
 ---
 
-## 2. PETA ENDPOINT LOGIN (semua terbukti dari log device)
+## 2. KONTRAK WIRE — SEMUA TERVERIFIKASI LANGSUNG (inti v3)
 
-### 2.1 Endpoint yang DIPANGGIL client (URL penuh, contoh nyata log v17)
+### 2.1 Transport socket.io v2 (EIO=3) — urutan PERSIS yang dilayani server asli
 
-| # | Endpoint PENUH | Pemanggil | Penjawab v19 |
+```
+GET  /socket.io/?EIO=3&transport=polling&t=<rnd>            → "96:0{sid,upgrades:[websocket],pingInterval:25000,pingTimeout:5000}2:40"  (103 B)
+GET  /socket.io/?EIO=3&transport=websocket&sid=<sid>        → 101 upgrade
+WS   client → "2probe"        server → "3probe"
+WS   client → "5"             (UPGRADE PACKET — TANPA INI SERVER ASLI MEMUTUS KONEKSI SAAT EVENT PERTAMA, terbukti)
+WS   client → '420["handler.process",{…}]'
+WS   server → '43<ackId>[{…}]'
+WS   client → "2" (ping, tiap 25 dtk)   server → "3" (pong)
+```
+
+Fakta baru yang belum pernah tercatat di repo:
+- Packet engine.io `"5"` WAJIB dikirim client setelah 3probe sebelum event; tanpa itu
+  server asli membalas frame kosong + close (terbukti 3 sesi).
+- Server login mengirim `2:40` (socket.io CONNECT) SEKALI di open polling; tidak ada
+  handshake namespace lain untuk login-server (`verifyEnable=false` — §2.5).
+- Envelope ACK server asli: `{"ret":0,"data":"<JSON string>"}` — **field `compress`
+  TIDAK PERNAH dikirim** (absen; JS `e.compress && …` → falsy → tidak dekompresi).
+  v17 kita mengirim `"compress":false` eksplisit — kompatibel tapi bukan mirror.
+
+### 2.2 GetServerList — ACK ASLI (618.309 B, 2112 server)
+
+Request (persis log device v17 + terpakai probe):
+```json
+{"type":"User","action":"GetServerList","userId":"8969722632097","subChannel":"","channel":"quick"}
+```
+Server asli TIDAK memvalidasi userId (userId acak segar tetap dilayani penuh).
+
+ACK ASLI (dipangkas; file utuh 618.309 B = `getserverlist-ack-LIVE-20261126.txt`):
+```
+430[{"ret":0,"data":"{\"errorCode\":0,\"serverList\":[{…}],\"history\":[]}"}]
+```
+Struktur `data` (JSON string, double-encoded):
+- `errorCode`: 0
+- `serverList`: **2112 entri** (serverId "1"…"2112", STRING bukan number!)
+- `history`: array STRING serverId — **persist per-akun di server asli**
+  (bukti: SaveHistory kita dgn serverId "2112" → GetServerList berikutnya history
+  ["2112"]; userId segar acak → history [])
+
+**12 field SETIAP entri** (semua entri konsisten, tanpa kecuali):
+| Field | Tipe & contoh | Konsumen JS |
+|---|---|---|
+| `serverId` | STRING `"2112"` | `selectNewServer` history/first; `clientEnterGame` `parseInt(serverId)` → number utk enterGame |
+| `url` | `"https://s2112-bs.popoh5.com:8041"` | `clientStartGame` → `mainClient.connectToServer(url)` — alamat server GAME |
+| `new` | bool (`true` hanya server termuda) | ikon ServerNewIcon |
+| `hot` | bool | ikon ServerHotIcon |
+| `name` | `"Server 2112"` | label tombol server (`replaceServerName` range bisa menimpa) |
+| `online` | bool (2112/2112 true saat capture) | false → ServerMaintainIcon; `startPlay` blokir + tampil `offlineReason` |
+| `openDate` | ISO `"2026-11-20T07:00:06.858Z"` | **0 konsumen JS** — mirror saja; server baru tiap JUMAT 07:00 UTC |
+| `offlineReason` | `""` | ditimpa top-level `offlineReason` bila ada (changeServerInfo) |
+| `merge` | bool (2073/2112 true) | **0 konsumen JS** — mirror |
+| `mergeTo` | STRING `"2087"` / `""` | **0 konsumen JS** — mirror |
+| `urlInner` | `"http://127.0.0.1:8051"` | **0 konsumen JS** — mirror |
+| `chatInner` | `""` | **0 konsumen JS** — mirror |
+
+**Field rencana v2 yang TERBUKTI TIDAK ADA di server asli (dibuang dari desain):**
+`state`, `recommend`, `registerTime`, `worldRoomId`, `guildRoomId` — nol kemunculan
+di 2112 entri; `registerTime` 0 hit di seluruh main.min; `worldRoomId`/`guildRoomId`
+yang dipakai chat datangnya dari ACK `registChat` server GAME (`_worldRoomId`
+`_guildRoomId` `_chatServerUrl` dst menimpa `serverItem` saat game jalan), bukan dari
+serverList login.
+
+Urutan serverList asli: TERMUDA dulu (2112 → 1). `history` kosong → JS auto-pilih
+`serverList[0]` + AUTO-ENTER (`showLoginSuccessStatus(isNew)` → `startBtnTap()`).
+
+### 2.3 Event login lain — ACK ASLI verbatim
+
+| Event | Request (field persis JS) | ACK ASLI | Catatan |
 |---|---|---|---|
-| 1 | `GET http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&t=Q8G9v7T` → `96:0{"sid":"…","upgrades":["websocket"],"pingInterval":25000,"pingTimeout":5000}2:40` | JS engine | transport (SocketIoHandler) |
-| 2 | `GET http://127.0.0.1:9528/socket.io/?EIO=3&transport=websocket&sid=…` (101) | JS engine | transport |
-| 3 | `POST http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&t=…&sid=…` body `<len>:42<ackId>["handler.process",{…}]` | JS engine | transport — event dicatat VERBATIM, nol ACK |
-| 4 | `GET http://127.0.0.1:5050/loginchecknative?uid=…&usermode=1&username=…&token=…&appVersion=1&osVersion=31&sourceVersion=20200418&model=itel+S665L&packageName=com.db.local&brand=Itel&os=Android&sdk=BS` | native SDK | SDK glue (ACC, scope SDK) |
-| 5 | listener 5050 `/socket.io/…` langsung | fallback native jalur lama | transport |
+| `SaveHistory` | `{type:"User",accountToken,channelCode,serverId,securityCode,subChannel,version:"1.0"}` (serverId STRING) | `43[{"ret":0,"data":"{\"errorCode\":0,\"todayLoginCount\":2}"}]` | **BUKAN `{}`** — `todayLoginCount` dipakai JS utk report; TIDAK ada `loginToken` di ACK ini (v2 salah); server persist history per-akun |
+| `LoginAnnounce` | `{type:"User",action:"LoginAnnounce"}` | **TIDAK DIJAWAB** (6 dtk diam) | v2 menyimpulkan ACK `{}` — server asli malah DIAM; JS: callback tak jalan → tombol notice tersembunyi (hasil UX sama dgn `{}`); mirror-real = diam |
+| `SaveLanguage` | `{type:"User",userid,sdk,appid,language}` (userid huruf kecil semua) | `43[{"ret":0,"data":"{\"errorCode\":111,\"errorMessage\":\"不支持选择的语言in\"}"}]` utk bahasa tak didukung | bahasa sah = `supportLang` config .bin (en/fr/kr); "in" ditolak 111 |
+| `SaveUserEnterInfo` | `{type:"User",accountToken,channelCode,subChannel,createTime,userLevel,version:"1.0"}` | `43[{"ret":0,"data":"{\"errorCode\":0}"}]` | dikirim SETELAH ACK enterGame; setelahnya JS `loginClient.destroy()` |
+| `loginGame` (hanya jalur akun-origin) | `{type:"User",userId,password,fromChannel,channelName:"",headImageUrl:"",nickName:"",subChannel,version:"1.0"}` | `43[{"ret":0,"data":"{\"loginToken\":\"\",\"userId\":\"\",\"nickName\":\"\",\"headerImage\":\"\",\"isCreated\":false,\"errorCode\":103,\"errorMessage\":\"本服务器只允许特定的渠道来源\",\"channelCode\":\"\"}"}]` | server asli menolak channel `game_origin` DAN `quick` (103); **envelope tetap ret:0** dan JS TIDAK mengecek `data.errorCode` — alur lanjut dgn identitas kosong (quirk asli; perilaku ini yang membuat jalur origin asli "masuk" tanpa akun lalu gagal di enterGame) |
+| event tak dikenal | — | (belum diuji di server asli; lokal: tetap NO ACK + log verbatim) | disiplin tetap |
 
-### 2.2 Wire event yang PERNAH MUNCUL di log device (verbatim)
+### 2.4 Alur JS lengkap pasca-ACK (kutipan main.min_777039fc.js, dipetakan ulang)
 
-Wire: client `42<ackId>["handler.process",{type,action,…}]` → ACK server
-`43<ackId>[{ret,data,compress}]` (socket.io v2 — bukti JS `TSLoginClient.sendToServer`).
+Tiga pintu masuk login scene (semua terbaca langsung):
+1. **SDK path** (`window.checkSDK()` true — jalur kita): `getSdkLoginInfo()` →
+   `loginInfo.userInfo = {loginToken, userId, nickName, channelCode:sdk, securityCode}`
+   → `clientRequestServerList(userId, sdk)` (GetServerList) → ACK →
+   `selectNewServer(userInfo, data)` + `getNotice()` (LoginAnnounce) — **TANPA loginGame**.
+2. **Origin path** (`无渠道登录`): `checkLastLogin()` → URL param `userid` atau cache
+   localStorage `lastServerID` → `doOriginLoginRequest` → password default
+   `"game_origin"` → `clientLoginUser` (loginGame, **ack flag `t=false`: event hanya
+   dikirim bila socket login SUDAH terkoneksi — kalau belum, event DIBUANG SENYAP**)
+   → cb: `clientRequestServerList(o.userId, o.channelCode)`.
+3. **Manual**: `loginBtnTap` → `doOriginLoginRequest({username, password, lastServerID:""})`.
 
-ACK real v17 yang TERAKHIR dilayani (log seq 53, PENUH tanpa pangkas):
+`selectNewServer`: whitelist bridge → `changeServerInfo` (top-level `offlineReason`
+menimpa semua entry; entry>0 `new`→`hot`) → `history[0]` else `serverList[0].serverId`
+→ `matchServerUrl` → `onLoginSuccess(userInfo, serverItem, isNew)` →
+`showLoginSuccessStatus(isNew)` → **isNew = history kosong → `startBtnTap()` OTOMATIS**.
+`startBtnTap`: `!serverItem.online` → `ShowNormalErrror(offlineReason)`; selain itu
+kirim SaveHistory → ACK → `e.loginToken && (userInfo.loginToken = e.loginToken)`
+(tak pernah terisi dari server asli — loginToken tetap punya SDK) → `clientStartGame`.
+`clientStartGame`: `mainClient.connectToServer(serverItem.url)` → sukses:
+`startListenNotify()` + `clientEnterGame()`.
+`clientEnterGame`: `{type:"user"(kecil),action:"enterGame",loginToken,userId,
+serverId:parseInt(serverItem.serverId),version:"1.0",language,gameVersion}` via
+`processHandler` (server GAME) → ACK → `loginSuccessCallBack` → `UserDataParser.saveUserData`
+→ `reportToLoginEnterInfo` (SaveUserEnterInfo ke login socket) → socket login ditutup.
+
+`processHandler` (server game) envelope tambahan yang dibaca JS: `serverTime` +
+`server0Time` → `ServerTime.updateServerTime` (sinkronisasi waktu) — kontrak penting
+untuk rencana gameServer, dicatat di sini supaya tidak hilang.
+`startListenNotify`: event `"Notify"` server game, envelope BERBEDA:
+`{ret:"SUCCESS", data:<json string>, compress}` — aksi `"Kickout"` → destroy semua
+socket + kembali ke Login.
+
+### 2.5 HANDSHAKE `verify` — BARU, TIDAK PERNAH ADA DI RENCANA MANA PUN
+
+`TSSocketClient(serverName, verifyEnable)`: `login-server` = **false**; `main-server`,
+`chat-server`, `dungeon-server` = **true**. Jalur verify (JS `socketOnVerify`):
+
 ```
-326:430[{"ret":0,"data":"{\"serverList\":[{\"serverId\":1,\"name\":\"DragonBall Local\",\"online\":true,\"hot\":true,\"new\":false,\"url\":\"http://127.0.0.1:9528\",\"state\":1,\"recommend\":true,\"offlineReason\":\"\",\"registerTime\":1795567358,\"worldRoomId\":\"w1\",\"guildRoomId\":\"g1\"}],\"history\":[]}","compress":false}]
+server → 42["verify","<UUID>"]                      (1x, ~0.2s setelah packet "5")
+client → 420["verify","<base64(TEA.encrypt(uuid, "verification"))>"]
+server → 430[{"ret":0}]                             (diterima; gagal → challenge ulang / destroy)
 ```
-Event real lain (log v17): `421[…"SaveHistory",{accountToken,channelCode,serverId:1,securityCode,subChannel:"",version:"1.0"}]`.
-Event era v13–v16 (rekap docs lama): `loginGame {userId,fromChannel,…}` (jalur
-akun-origin), `LoginAnnounce`, `SaveUserEnterInfo`, `SaveLanguage`, `saveHistory`,
-`GetNotice`/`getBulletin` — semuanya cukup ACK `{}`.
 
-### 2.3 Yang dipakai server ASLI tapi belum terbukti dibutuhkan (OPEN)
+- Algoritma TEA di JS = **XXTEA** (btea): 32-bit, DELTA 2654435769, rounds
+  `floor(6+52/n)`, key `Utf8("verification").slice(0,16)` → **3 long + long ke-4 = 0**
+  (JS membaca `k[3]` = undefined → ToInt32 = 0 — detail yang bikin implementasi naif salah).
+- Implementasi Python kita DITERIMA server asli: `430[{"ret":0}]` — direproduksi
+  2 sesi (`game-verify-LIVE-20261126.txt`). Enkripsi diterapkan pada STRING UUID
+  (36 byte → 9 long), hasil base64 standar.
+- Server login lokal TIDAK butuh verify (`login-server` = false) — konsisten dgn
+  v17 yang langsung GetServerList. Verify = kontrak WAJIB server GAME/chat/dungeon
+  (fase gameServer) dan server lokal kelak harus MENJADI peminta challenge.
 
-| Item | Fakta yang ADA | Yang belum terbukti |
-|---|---|---|
-| `loginKey` + verify TEA | field `loginKey` ADA di JSON config live | belum ada satu pun log device yang memanggilnya |
-| `loginWebPort` original `:510` | live: `{"code":404,"msg":"没有开通"}` | — (native MOD pakai 5050) |
-| `tsLoginServer` `http://118.24.68.91:7003` | MATI live (timeout) | tak pernah dipanggil di log device |
-| battle-log `log.sjflaregame.com:10000` | DIBLOKIR live (302 webblock) | tak pernah muncul di log device MOD |
+### 2.6 Pintu game: `enterGame` tanpa sesi sah → `{"ret":38}` → reload
 
-### 2.4 KONTRAK JS — FIELD SERVERLIST DIBACA OLEH SIAPA (kutipan persis main.min_777039fc.js)
-
-Ini dasar skema config §4 — setiap field config ketahui konsumennya:
-
-| Field | Konsumen JS (kutipan persis) | Efek kalau salah/absen |
-|---|---|---|
-| `serverList[]` | `selectNewServer`: `t.serverList[0].serverId` | array kosong → crash selectServer |
-| `serverList[].serverId` | `clientEnterGame`: `o=parseInt(ts.loginInfo.serverItem.serverId)` → param enterGame | identitas server; masuk event enterGame |
-| `serverList[].name` | `onLoginSuccess`: `i=r(t.serverId)||t.name` → `o.loginUser.text=i` | label tombol server |
-| `serverList[].online` | `onLoginSuccess`: `t.online?t.hot?ServerHotIcon:…`; `startPlay`: `if(!ts.loginInfo.serverItem.online) return ErrorHandler.ShowNormalErrror(offlineReason)` | `false` = TERKUNCI + tampilkan alasan |
-| `serverList[].hot` / `.new` | `onLoginSuccess`: ServerHotIcon / ServerNewIcon | ikon badge (kosmetik) |
-| `serverList[].url` | `clientStartGame`: `a=ts.loginInfo.serverItem.url; this.mainClient.connectToServer(a,…)` | **alamat socket.io GAME** — lihat §4.5 |
-| `serverList[].offlineReason` | `changeServerInfo`: `t[n].offlineReason=e.offlineReason` — field TOP-LEVEL `offlineReason` MENIMPA nilai per-entry | pesan saat server offline |
-| `history[]` | `selectNewServer`: `a=t.history.length>0?t.history[0]:t.serverList[0].serverId`; `onLoginSuccess(e,r,o)` dengan `o=!t.history.length` → `startBtnTap()` OTOMATIS | history kosong = auto-pilih server pertama + AUTO-ENTER |
-| top-level `language` | `processHandlerWithLogin`: `a.language&&(ts.language=a.language)` | opsional — override bahasa game |
-| `compress` (ACK envelope) | `processHandlerWithLogin`: `e.compress&&(t=LZString.decompressFromUTF16(t))` | `false` = data JSON polos (bukti live + v17) |
-| `ret` (ACK envelope) | `processHandlerWithLogin`: `if(0===e.ret){…} else Logger.showInfoLog("登录出错",e.ret)` | `ret≠0` = gagal login, popup error |
-| `registerTime` `.state` `.recommend` | NOL konsumen ditemukan di jalur login (grep) | kosmetik — mirror apa adanya |
-| `worldRoomId` `.guildRoomId` | chat: `ts.loginInfo.serverItem.worldRoomId` / `.guildRoomId` (room chat world/guild) | default room chat; nanti ditimpa data enterGame |
-| `filterByWhiteList` | `window.serverList` (bridge native) — kita TIDAK inject | no-op untuk kita |
-
-Alur JS setelah ACK (semua terbukti): `selectNewServer` → `onLoginSuccess`
-(userInfo + serverItem tersimpan) → `showLoginSuccessStatus(isNew)` →
-`startBtnTap()` (auto bila history kosong) → `SaveHistory` → `clientStartGame`
-→ `mainClient.connectToServer(url)` → `clientEnterGame` (type `user`).
+Probesetelah verify sukses: `enterGame` loginToken kosong → `431[{"ret":38}]` (TANPA
+data). JS: `ret!=0` → error; `"38"==e.ret` → `TSBrowser.executeFunction("reload")`.
+Artinya: batas perilaku "berhenti di pintu" server lokal kelak = ret 38 + reload —
+bukan crash. (v19 saat ini: game berhenti SEBELUM serverlist karena GetServerList
+tak dijawab — batas berbeda, keduanya normal.)
 
 ---
 
-## 3. STRATEGI STRUKTUR FOLDER (refine v2 —Proposal)
+## 3. STRUKTUR FOLDER (tetap dari v2, tidak berubah)
 
-### 3.1 Device (`Android/data/com.db.local/server/`) — kondisi NYATA sekarang
-
-```
-server/
-├── bs/      ← 2759 file engine (ekstraksi assets tiap boot; JANGAN diedit manual)
-│   ├── db/android/setting_BS_Android.bin      ← loginPort 9528 / loginWebPort 5050
-│   ├── resource/properties/serversetting.json ← loginserver http://127.0.0.1:9528
-│   └── resource/properties/clientversion.json
-├── sdk/     ← config SDK (profile.json, v1/system/init.json, …) — pola TERBUKTI
-├── db/      ← SQLite tambahan (AccountStore/UserAccounts)
-└── logs/    ← NDJSON log-*.ndjson + crash-*.txt
-```
-
-### 3.2 Proposal folder login (DIBUAT hanya setelah owner oke)
+Device: `Android/data/com.db.local/server/` — `bs/` (ekstraksi boot, jangan edit),
+`sdk/`, `db/`, `logs/`. Proposal tambahan saat owner oke:
 
 ```
-server/
-└── login/                       ← BARU (seed default enabled:false — nol efek runtime)
-    ├── config.json              ← SATU sumber kebenaran (skema §4.2)
-    ├── notes.md                 ← log keputusan owner (append-only, tanggal)
-    └── captures/                ← capture MENTAH asli (bukti kontrak, tak pernah dikarang)
-        ├── socketio-open-live-610-20261122.txt      (= live_login_handshake_capture)
-        └── getserverlist-ack-v17-20261125.txt       (= ACK 326 byte di §2.2)
+server/login/
+├── config.json      ← satu sumber kebenaran (skema §4)
+├── notes.md         ← log keputusan owner (append-only)
+└── captures/        ← salinan verify-artifacts (bukti kontrak, sudah ada)
 ```
 
-**Perubahan dari proposal v1:** folder `payloads/` DIBUANG. Dulu diusulkan
-`payloads/GetServerList.json` dll — sekarang `config.json` sudah memuat
-serverList/history/announce, jadi payloads/ = sumber kebenaran kedua = sampah
-(pelajaran anti-sampah v16). Satu event yang butuh payload besar KELAK milik
-gameServer (`server/game/`), bukan login.
-
-Aturan folder:
-1. Satu file config, dibaca ulang tiap request (pola SdkConfig terbukti).
-2. `captures/` hanya capture asli + tanggal di nama file.
-3. Yang tidak dipakai dihapus, bukan ditumpuk.
-4. JSON rusak → server seed ulang default (`enabled:false`) + log WARN.
-
-### 3.3 Repo
-
-```
-rebuild-src/javasrc/com/db/local/server/   ← LoginConfig.java KELAK di sini (pola SdkConfig)
-docs/LOGIN-SERVER-PLAN.md                   ← dokumen ini
-docs/SDK-CONFIG.md · SDK-STUDY.md · SDK-REFINEMENT-PLAN.md
-verify-artifacts/                           ← capture live asli
-```
+Aturan tetap: config dibaca ulang tiap event (pola SdkConfig); JSON rusak → seed
+default `enabled:false` + WARN; `captures/` hanya salinan asli bertanggal.
 
 ---
 
-## 4. DESAIN CONFIG LOGIN SERVER (inti v2 — menunggu oke owner)
+## 4. DESAIN CONFIG LOGIN v3 (menggantikan skema v4.2 yang ngawur)
 
-### 4.1 File & lokasi
+### 4.1 File & lokasi — tetap: `server/login/config.json`, dibaca tiap event.
 
-```
-/storage/emulated/0/Android/data/com.db.local/server/login/config.json
-```
-Dibaca ulang server pada TIAP event (bukan di-cache saat boot) → edit = berlaku
-langsung tanpa restart, tanpa rebuild APK — persis pola `sdk/` yang sudah
-terbukti (SdkConfig: baca tiap request, rusak → seed default).
-
-### 4.2 Skema `config.json` (default seed — enabled:false)
+### 4.2 Skema baru (default seed — `enabled:false` = byte-identik v19)
 
 ```json
 {
   "enabled": false,
-  "compress": false,
   "language": "",
-  "offlineReason": "",
+  "offlineReasonTop": "",
   "serverList": [
     {
-      "serverId": 1,
-      "name": "DragonBall Local",
+      "serverId": "1",
       "url": "http://127.0.0.1:9528",
+      "new": true,
+      "hot": false,
+      "name": "DragonBall Local",
       "online": true,
-      "hot": true,
-      "new": false,
-      "recommend": true,
-      "state": 1,
+      "openDate": "2026-11-26T00:00:00.000Z",
       "offlineReason": "",
-      "registerTime": 0,
-      "worldRoomId": "w1",
-      "guildRoomId": "g1"
+      "merge": false,
+      "mergeTo": "",
+      "urlInner": "",
+      "chatInner": ""
     }
   ],
-  "history": [],
+  "historyMode": "auto",
   "announce": {},
-  "fireAndForgetAck": true
+  "saveLanguageWhitelist": ["en", "fr", "kr"],
+  "todayLoginCount": 1
 }
 ```
 
-| Field | Tipe | Default | Alasan (bukti) |
-|---|---|---|---|
-| `enabled` | bool | `false` | saklar utama — `false` = perilaku v19 persis (transport only, nol ACK). Nol risiko saat seed |
-| `compress` | bool | `false` | kontrak `e.compress` §2.4; live+v17 selalu `false` |
-| `language` | string | `""` | kosong = jangan override `ts.language` (field tak dikirim bila kosong) |
-| `offlineReason` | string | `""` | top-level — menimpa offlineReason tiap entry (kontrak changeServerInfo) |
-| `serverList[]` | array | 1 server (nilai = ACK v17 real) | kontrak §2.4 — WAJIB non-kosong |
-| `serverList[].url` | string | `http://127.0.0.1:9528` | lihat §4.5 — JANGAN diganti sembarangan |
-| `serverList[].registerTime` | number | `0` | nol konsumen JS di jalur login (§2.4) — mirror saja |
-| `history` | array of number | `[]` | kosong = auto-pilih server pertama + AUTO-ENTER (kontrak selectNewServer). Isi `[1]` = masuk tanpa auto-tap? — **OPEN**: perlu log device untuk memastikan perilaku `o=false` (startBtn manual) |
-| `announce` | object | `{}` | ACK `LoginAnnounce` (v13–v17: `{}` cukup) |
-| `fireAndForgetAck` | bool | `true` | ACK `{}` untuk SaveHistory/SaveUserEnterInfo/SaveLanguage/saveHistory/getBulletin — `false` = no-ack verbatim saja |
-
-### 4.3 Perilaku kawat saat `enabled:true` (per event)
-
-| Event masuk | Respons | Format persis |
+| Field | Default | Alasan (bukti) |
 |---|---|---|
-| `User/GetServerList` | ACK | `<len>:43<ackId>[{"ret":0,"data":"<JSON string {serverList:[…],history:[…],offlineReason?,language?}>","compress":false}]` — `data` = JSON.stringify isi config (DOUBLE-encoded — bukti §2.2) |
-| `User/SaveHistory`, `SaveUserEnterInfo`, `SaveLanguage`, `saveHistory`, `getBulletin` | ACK kosong | `<len>:43<ackId>[{}]` (bila `fireAndForgetAck:true`) |
-| `User/LoginAnnounce` | ACK | `<len>:43<ackId>[<isi announce — `{}` = tak ada jendela pengumuman>]` |
-| `User/loginGame` | ACK | `<len>:43<ackId>[{"ret":0,"data":"{\"userId\":\"…\",\"channelCode\":\"quick\",\"sign\":\"local\"}","compress":false}]` — kontrak minimal JS: `o.userId`,`o.channelCode` (doOriginLoginRequest); userId diambil dari sesi loginchecknative aktif |
-| event lain APAPUN | **NO ACK** | verbatim di log — batas disiplin tetap (ketahuan bila muncul event baru) |
+| `enabled` | false | saklar utama; false = v19 persis (transport only) |
+| `language` | "" | isi → field top-level `language` di ACK GetServerList (`a.language && ts.language=a.language`); kosong = field tak dikirim |
+| `offlineReasonTop` | "" | top-level `offlineReason` — server asli tak mengirimnya; JS pakai utk menimpa per-entry (changeServerInfo) |
+| `serverList[]` | 1 entri 12 field | skema = PERSIS server asli (§2.2); `serverId` **STRING**; `url` tetap 9528 (fakta routing v3: satu-satunya origin yang dicapai runtime XHR) |
+| `historyMode` | `"auto"` | `auto` = ACK `history:[]` selalu (v17-proven: auto-enter); `persist` = tiru asli: simpan per-accountToken di SQLite (`db/` sudah ada) → history:[serverId terakhir] → tombol start manual; `fixed` = baca array dari config |
+| `announce` | `{}` | `{}` + mode mirror-real: LoginAnnounce TIDAK dijawab (persis asli). Kalau diisi entries `{key:{text:{lang},title:{lang},version,orderNo,alwaysPopup}}` → ACK dgn data itu (kontrak konsumen JS di §2.4) |
+| `saveLanguageWhitelist` | ["en","fr","kr"] | SaveLanguage di luar list → ACK `{"errorCode":111,"errorMessage":"不支持选择的语言<lang>"}` (mirror asli); di dalam list → `{"errorCode":0}` |
+| `todayLoginCount` | 1 | angka yang di-ACK-kan pada SaveHistory (konsumen JS: report analytics); kelak bisa dihitung nyata dari SQLite |
 
-Catatan: `GetServerList.userId` dari event dicek silang dengan akun aktif
-(loginchecknative) — hanya untuk log; nilai ACK murni dari config.
+### 4.3 Perilaku wire saat `enabled:true` (per event — semua bentuk LIVE-verified)
 
-### 4.4 Perilaku saat `enabled:false` (= default seed)
+| Event masuk | Respons lokal |
+|---|---|
+| `User/GetServerList` | ACK `{"ret":0,"data":"<JSON string {errorCode:0,serverList:[…12 field…],history:[…]>,language?}"}` — TANPA field compress (mirror asli) |
+| `User/SaveHistory` | ACK data `{"errorCode":0,"todayLoginCount":<config>}`; kalau `historyMode:"persist"` → simpan (accountToken→serverId) ke SQLite |
+| `User/LoginAnnounce` | DIAM (no ACK) bila `announce` kosong — mirror asli; ACK data announce bila diisi |
+| `User/SaveLanguage` | whitelist → `{"errorCode":0}`; di luar → `{"errorCode":111,"errorMessage":"不支持选择的语言<lang>"}` |
+| `User/SaveUserEnterInfo` | ACK data `{"errorCode":0}` |
+| `User/loginGame` | ACK data `{"loginToken":"<uid>","userId":"<uid>","nickName":"Player","headerImage":"","isCreated":true,"errorCode":0,"errorMessage":"","channelCode":"<channel>"}` — server lokal MEMBIASAKAN sukses utk jalur origin (beda dari asli yang menolak 103; keputusan §5-K2) |
+| event lain | NO ACK + log verbatim (disiplin tetap) |
 
-Byte-identik dengan v19: transport only + `/loginchecknative` + verbatim
-`EVENT (no ack) … loginServer scope — not implemented (plan only)`. Game
-berhenti sebelum layar server list. Ini yang membuat folder seed AMAN dibuat
-tanpa menyentuh perilaku yang sudah di-oke owner.
+### 4.4 `enabled:false` — byte-identik v19 (tetap, tak berubah).
 
-### 4.5 FAKTA ROUTING KRITIS — `serverList[].url` JANGAN SEMBARANGAN
+### 4.5 FAKTA ROUTING (tetap + penguat): `serverList[].url` = `http://127.0.0.1:9528`.
+Server game asli pakai `https://sXXXX-bs.popoh5.com:8041` — pada device asli origin
+halaman adalah HTTPS CDN sehingga bisa; device lokal origin halaman = 127.0.0.1:9528
+(XHR runtime hanya terbukti capai origin — pelajaran v3 stuck). JANGAN diganti.
 
-- `clientStartGame` menyambungkan socket.io GAME ke `serverItem.url` (§2.4).
-- Fact v3 FIX STUCK (ServerCore.java:73-85): runtime XHR Egret TERBUKTI hanya
-  mencapai origin halaman (9528) — `io.connect` ke 127.0.0.1:5050 tidak pernah
-  menghasilkan satu pun request di 6 log device.
-- ServerCore chain: 9528 `/socket.io/` → handler login; 5051 = listener game
-  transport-only (fallback). Artinya kedua socket (login DAN game) mendarat di
-  chain yang sama — discriminasinya NAMA EVENT (GetServerList vs enterGame),
-  bukan port.
-- **Kesimpulan config**: `url` default `http://127.0.0.1:9528` (satu-satunya
-  jalur yang terbukti dicapai runtime). Nilai lain = risiko stuck loading.
+### 4.6 Implementasi kelak (urutan, saat owner oke)
+1. `LoginConfig.java` (pola SdkConfig) + seed folder — nol efek (enabled:false).
+2. Ack-gate `SocketIoHandler` per tabel §4.3 + history persist (SQLite, bila dipilih).
+3. Smoke baru: string ACK persis §4.3 (bukan lagi bentuk v17); enabled:false byte-identik.
+4. Dashboard tak berubah (disiplin v17: URL penuh, nol pangkas).
 
-### 4.6 Konsumsi server (rencana implementasi KELAK — tidak dieksekusi sekarang)
-
-1. `LoginConfig.java` (pola SdkConfig): baca `serverRoot/login/config.json`
-   tiap event; file hilang/rusak → seed default `enabled:false` + log WARN.
-2. `SocketIoHandler`: ack-gate per EVENT sesuai tabel §4.3 — hanya bila
-   `LoginConfig.enabled`. Semua event lain tetap verbatim no-ack.
-3. Seed folder `server/login/` (config.json + notes.md; captures/ diisi dari
-   `verify-artifacts/` yang SUDAH ADA — bukan karangan).
-4. Dashboard TIDAK berubah — tombol tetap hanya filter error + salin; tiap
-   ACK tampil dengan URL penuh (disiplin log v17 berlaku).
-5. Smoke desktop baru: `enabled:false` = byte-identik v19; `enabled:true` =
-   string ACK persis §4.3; JSON rusak → seed ulang; event tak dikenal → no-ack.
-
-### 4.7 Kriteria terima (uji mode pesawat — offline penuh)
-
-1. `enabled:false`: boot pesawat → v19 seperti sekarang — nol dialog network,
-   berhenti sebelum serverlist. (sudah di-oke owner)
-2. `enabled:true`: boot pesawat → TAMU → serverlist tampil sesuai config →
-   auto-enter (history kosong) → socket game tersambung (transport OK) →
-   `enterGame` NO ACK → game berhenti di loading (BATAS — gameServer belum
-   dibuat; ini HARUS dianggap perilaku normal tahap ini).
-3. Nol dialog network di SEMUA tahap (patch v19 tetap).
-4. Log: URL penuh tanpa pangkas, data real saja, gaya Inggris.
+### 4.7 Kriteria terima (pesawat, offline penuh) — diperbarui
+1. `enabled:false` → v19 persis (nol dialog network; berhenti sebelum serverlist).
+2. `enabled:true` → TAMU → serverlist tampil sesuai config → history kosong =
+   auto-enter → `clientStartGame` sambung socket game (transport OK) → verify dari
+   server game lokal kelak (fase gameServer) → enterGame tak terjawab → game
+   berhenti di loading = BATAS NORMAL tahap ini (asli akan ret 38 + reload — beda
+   rasa, keduanya batas; lokal bisa memilih mirror ret 38 saat gameServer dibuat).
+3. Nol dialog network di semua tahap (patch v19 tetap).
+4. Log: URL penuh, tanpa pangkas, gaya Inggris, data real.
 
 ---
 
-## 5. URUTAN KERJA BILA OWNER OKE (TIDAK dieksekusi sekarang)
+## 5. KEPUTUSAN UTK OWNER (menggantikan D1–D5 lama)
 
-1. Tambah `LoginConfig.java` + seed folder (nol efek — enabled:false).
-2. Ack-gate di `SocketIoHandler` (tabel §4.3) + smoke guard.
-3. Uji device: pesawat enabled:false → v19; enabled:true → sampai batas §4.7.2.
-4. Baru setelah itu bicara gameServer (`enterGame` payload) — rencana terpisah.
+| # | Keputusan | Rekomendasi (basis bukti) |
+|---|---|---|
+| K1 | Lanjut implementasi login server sesuai §4? | Ya bila siap — semua kontrak kini live-verified, risiko wire nol |
+| K2 | `loginGame` lokal: sukses disiapkan (isCreated:true) atau mirror asli (tolak 103)? | Sukses — jalur origin jadi bonus tanpa merugikan jalur SDK (yang tak pernah kirim loginGame) |
+| K3 | `historyMode`: `auto` (auto-enter, v17-proven) atau `persist` (mirror asli: tombol start manual) | `auto` utk sekarang; `persist` mudah ditambah kemudian (SQLite sudah ada) |
+| K4 | `LoginAnnounce` lokal: diam (mirror asli) atau ACK `{}` (kompatibel)? | Diam — mirror asli, UX sama |
+| K5 | Bahasa SaveLanguage lokal: whitelist en/fr/kr (mirror asli, "in" → 111) atau terima "in"? | Mirror asli — UI game hanya punya aset en/fr/kr (supportLang config asli); "in" akan membuat teks game campur |
 
-## 6. PENYEMPURNAAN SDK
-
-→ dokumen terpisah **docs/SDK-REFINEMENT-PLAN.md** (gap 20 endpoint fallback,
-paket kosmetik 404 layar login, keputusan loginTypes migrasi) — semuanya
-OPSIONAL dan dijalankan HANYA bila log device memperlihatkan kebutuhan nyata.
+## 6. YANG TETAP OPEN (jujur, tak dikarangan)
+- loginGame SUKSES server asli: tak bisa direkam — semua channel uji ditolak 103
+  ("hanya channel tertentu"); butuh akun SDK asli yang sudah tidak bisa dibuat
+  (product DB qsdk dikosongkan — LIVE_CONTRACT_20261123.md).
+- Data penuh `enterGame` sukses (UserDataParser): butuh loginToken sah — fase gameServer.
+- Isi ACK `registChat` + `_chatServerUrl` dll: kontrak terbaca dari JS, respons asli
+  belum terekam (butuh enterGame sukses dulu).

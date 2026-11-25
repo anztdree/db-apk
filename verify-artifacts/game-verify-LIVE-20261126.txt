@@ -1,0 +1,6 @@
+2probe -> 3probe
+C-> 5
+S<- 42["verify","c6c7e07a-7917-48fb-be6e-24bd34ebd4b7"]
+coba kirim 420: wxDxislz+U/DENKIbwNokJZ0p9ID/rjexuqwN5Wh2eW/6Iwh
+C-> 420["verify",<enc>]
+S<- verify ack: 42["verify","836b1a9b-3024-4c52-9a1b-ed33932831bf"]
