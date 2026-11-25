@@ -51,7 +51,7 @@ public final class LocalServerStarter {
 
             // v3: arsip NDJSON siap SEBELUM apapun jalan
             DiskWriter.init(new File(serverRoot, "logs"));
-            logBoot("BOOT", "LocalServerStarter.start (Application.onCreate) — MOD-LOCALSERVER v18 — serverRoot=" + serverRoot);
+            logBoot("BOOT", "LocalServerStarter.start (Application.onCreate) — MOD-LOCALSERVER v19 — serverRoot=" + serverRoot);
 
             // v18: cara sesi SEBELUMNYA mati (CRASH/ANR/native — ApplicationExitInfo)
             ExitInfo.logPrevious(ctx);

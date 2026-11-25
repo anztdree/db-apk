@@ -467,7 +467,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
 
          .append("<div id=hdr><div id=l1>")
          .append("<span id=logo><span data-ic=flame></span></span><span id=dot></span>")
-         .append("<span id=title>DB LOCAL SERVER</span><span id=ver>v18</span><span id=versub>· raw server log · com.db.local</span>")
+         .append("<span id=title>DB LOCAL SERVER</span><span id=ver>v19</span><span id=versub>· raw server log · com.db.local</span>")
          .append("<span id=sp></span>")
          .append("<label id=qwrap><span data-ic=search></span><input id=q placeholder='cari…'></label>")
          .append("<button id=errf class=ib title='Filter: tampil warn/error saja'></button>")
@@ -478,7 +478,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("<div id=crashbn></div>\n")
          .append("<div id=notices></div>\n")
          .append("<div id=stream>")
-         .append("<div id=banner><span id=blogo><span data-ic=flame></span></span><div><div class=b1>DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v18</div><div class=bl><span data-ic=terminal></span>raw server log — http://127.0.0.1:4000 — URL penuh · nol disembunyikan · semua rincian tampil langsung</div></div></div>\n")
+         .append("<div id=banner><span id=blogo><span data-ic=flame></span></span><div><div class=b1>DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v19</div><div class=bl><span data-ic=terminal></span>raw server log — http://127.0.0.1:4000 — URL penuh · nol disembunyikan · semua rincian tampil langsung</div></div></div>\n")
          .append("<div id=tb></div><div id=tail><span id=pausemark></span><span id=cursor> </span></div></div>\n")
 
          .append("<div id=ftr><span id=sum>…</span></div>\n")

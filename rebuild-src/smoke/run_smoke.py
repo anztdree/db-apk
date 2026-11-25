@@ -388,7 +388,7 @@ try:
     st, hd, bd = get400("/")
     # Bagian 44 — console SERVER PREMIUM (dipercantik, teks verbose ala server asli)
     check("v43-console-200", st == 200 and "DB LOCAL SERVER" in bd
-          and "MOD-LOCALSERVER v18" in bd, bd[:120])  # console v18
+          and "MOD-LOCALSERVER v19" in bd, bd[:120])  # console v19
     check("v43-stream-markup", "id=stream" in bd and "id=tb" in bd
           and "id=tail" in bd, bd[:80])
     check("v17-salin-tabel", "function doCopy" in bd and "plainLine(e)" in bd)  # v16: salin teks mentah
@@ -398,7 +398,7 @@ try:
     check("v17-banner-overlay-js", "renderOverlay" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd
           and "overlay OFF (normal)" not in bd)  # v16: baris status stbadge dihapus
-    check("v18-ver-dashboard", ">v18</span>" in bd and "raw server log" in bd)  # v18
+    check("v19-ver-dashboard", ">v19</span>" in bd and "raw server log" in bd)  # v19
 
     # /crash: awalnya bisa sudah ada (crash sintetis 1,5 dtk setelah start —
     # smoke sudah jalan >2 dtk) -> latest harus ada dan berisi uji
@@ -431,11 +431,11 @@ try:
     stats = json.loads(bd)
     check("v17-stats-overlay", "overlay" in stats, bd[-120:])
 
-    # ============ v18: RESET SESI via log SYS + EXITINFO ===================
+    # ============ v19: RESET SESI via log SYS + EXITINFO ===================
     # Bagian 43: rute sdkconfig sudah dihapus — sesi reset kini HANYA terlihat
     # sebagai entri log SYS (SESI-RESET). Panel web di port 4000 tidak ada.
     st, hd, bd = get400("/")
-    check("v1-ver-dashboard", "v18" in bd and ">v18</span>" in bd, bd[:80])
+    check("v1-ver-dashboard", "v19" in bd and ">v19</span>" in bd, bd[:80])
     check("v41-banner-sesi-dihapus", "renderSession" not in bd and "sesbn" not in bd
           and "SESI SDK DIRESET OTOMATIS" not in bd)  # sesi reset kini hanya entri log SYS (SESI-RESET)
     check("v41-sysline-dihapus", "sysline" not in bd
@@ -445,12 +445,12 @@ try:
     # EXITINFO masuk log SYS di desktop (entri "desktop — dilewati")
     st, hd, bd = get400("/logs?limit=200")
     lg = json.loads(bd)
-    check("v18-exitinfo-desktop", any(
+    check("v19-exitinfo-desktop", any(
         e.get("method") == "EXITINFO" and "desktop" in (e.get("path") or "")
         for e in lg["entries"]), str(lg["entries"][:3]))
 
     # entri SESI-GUARD tidak boleh muncul di desktop (ctx null)
-    check("v18-autoguard-desktop-skip", not any(
+    check("v19-autoguard-desktop-skip", not any(
         e.get("method") in ("SESI-GUARD", "SESSION-GUARD") for e in lg["entries"]))
 
     # bootstrap: crash-handled.list boleh tidak ada, tapi unhandledCrashFiles
@@ -458,7 +458,7 @@ try:
     # menampilkan crash sintetis v17 sebagai latest)
     st, hd, bd = get400("/crash")
     cj = json.loads(bd)
-    check("v18-crash-route-masih", st == 200 and ("files" in cj), bd[:120])
+    check("v19-crash-route-masih", st == 200 and ("files" in cj), bd[:120])
 
     # ================= v3 FIX STUCK + FIX POPUP 404 =================
     # 1. clientversion.json dilayani 9528 — request 404 inilah sumber POPUP
@@ -497,7 +497,7 @@ try:
         sid = ""
     check("v3-sockio-sid-9528", len(sid) == 20, opbd[:120])
 
-    # 4. GetServerList via 9528 → v18: TRANSPORT ONLY — POST "ok", NOL ACK
+    # 4. GetServerList via 9528 → v19: TRANSPORT ONLY — POST "ok", NOL ACK
     #    (loginServer scope — plan only; arahan owner: "SDK ya fokus di SDK
     #    bukan mlah ngurusin loginserver"). Poll panjang habis 10 s tanpa data.
     msg = json.dumps({"type": "User", "action": "GetServerList",
@@ -516,7 +516,7 @@ try:
             sock_base + "/socket.io/?EIO=3&transport=polling&sid=" + sid,
             timeout=15) as r:
         plst, plbd = r.status, r.read().decode()
-    check("v18-sockio-noack-serverlist", plst == 200 and plbd == ""
+    check("v19-sockio-noack-serverlist", plst == 200 and plbd == ""
           and "serverList" not in plbd, repr(plbd[:80]))
 
     # 5. bind label 9528 baru (BIND tercatat di BOOT — ambil arsip awal)
@@ -545,11 +545,11 @@ try:
         and (e.get("path") or "").startswith(
             "http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&sid=")
         for e in lg["entries"]), "")
-    # 3. v18: event GetServerList dicatat VERBATIM dgn penanda no-ack —
+    # 3. v19: event GetServerList dicatat VERBATIM dgn penanda no-ack —
     #    NOL ACK, NOL "DragonBall Local", NOL pangkas (nol "…")
     ack_ent = [e for e in lg["entries"]
                if "GetServerList" in (e.get("extra") or "")]
-    check("v18-noack-getserverlist", bool(ack_ent)
+    check("v19-noack-getserverlist", bool(ack_ent)
           and all("ACK: " not in e["extra"] and "…" not in e["extra"] for e in ack_ent)
           and all("EVENT (no ack)" in e["extra"] and "loginServer scope" in e["extra"]
                   for e in ack_ent)
@@ -638,7 +638,7 @@ try:
           and "c-MONITOR" in bd, "")
     # 4. banner boot = teks RAW persis protokol
     check("v44-banner-boot", "id=banner" in bd and "class=b1" in bd
-          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v18" in bd, "")
+          and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v19" in bd, "")
     # v14 — banner SATU BARIS, tanpa narasi karangan
     check("v14-banner-slim", "raw server log — http://127.0.0.1:4000" in bd
           and "PERSIS PROTOKOLNYA" not in bd, "")
@@ -697,7 +697,7 @@ try:
     check("v49-guide-panel", "id=guide" not in bd and "guidebtn" not in bd
           and "ALUR NORMAL BOOT" not in bd, "")
     # 7. versi v13 di badge + banner
-    check("v49-ver", ">v18</span>" in bd and "MOD-LOCALSERVER v18" in bd, "")  # v18
+    check("v49-ver", ">v19</span>" in bd and "MOD-LOCALSERVER v19" in bd, "")  # v19
 
     # ================= Bagian 50 — v13 RAW SERVER LOG ========================
     # Arahan owner (kata-kata persis):

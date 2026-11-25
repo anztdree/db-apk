@@ -4535,3 +4535,146 @@ Pemindai dex penuh (decode instruksi, bukan grep raw) menemukan jalurnya:
 4. Dashboard `127.0.0.1:4000` → badge **v18**; filter error + salin log tetap.
 5. Login server: TIDAK ada pekerjaan — hanya rencana
    `docs/LOGIN-SERVER-PLAN.md` (menunggu keputusan owner).
+
+---
+
+## 56. BAGIAN 56 — v19: AKAR POPUP PESAWAT DIBEDAH SAMPAI BYTES PATCH v15 YANG SALAH RAKIT
+
+Arahan owner (kata-kata persis):
+
+- "MASIH MUNCUL ERROR NETWORK PADA SAAT MODE PESAWAT. SEPERTI PADA GAMBAR YG
+  TERLAMPIR DI GITHUB. MOHON TELUSURI SAMPAI AKAR !!"
+
+### 56.1 Bukti dari repo (bukan karangan)
+
+Owner push bukti ke `release-mod/log/` (commit da2c850/0d3e3df/1c46478, 07:41–
+07:44 WIB): `Screenshot_20261125-074041.jpg` + `log-20261125-074226.ndjson`.
+Log device itu BOOT line = **"MOD-LOCALSERVER v17"** — uji pesawat itu di
+APK v17. APK v18 selesai 08:25 WIB (commit f60579b 01:25 UTC) — SETELAH bukti
+itu di-push. Tapi bug-nya NYATA di v17 maupun v18 — bedah bytes di bawah
+menunjukkan gerbang popup TIDAK PERNAH ditutup sejak v15; v19 menutupnya.
+
+### 56.2 Identifikasi popup — parse penuh resources.arsc (bukan tebakan)
+
+Parser ResTable penuh (arsc_dump.py/res_names.py) memetakan string popup:
+
+| Resource | ID | values-in | values default |
+|---|---|---|---|
+| `hw_network_dialog_title` | `0x7f0c0111` | **mengingat** | Notification |
+| `hw_network_dialog_message` | `0x7f0c010f` | **Koneksi ke jaringan gagal，Silahkan periksa apakah jaringan sudah terhubung。** | Connection failed. Please check your network. |
+| `qg_err_connect_service` | `0x7f0c0144` | (teks sama) | Connection failed. Please check your network. |
+| `check_network` | `0x7f0c0022` | (TIDAK ada — fallback EN) | Network Error.Please check your Network connectivity. |
+
+Screenshot owner: title **mengingat** + message **Koneksi ke jaringan gagal…**
+= pasangan `hw_network_dialog_title` + `hw_network_dialog_message` (prefix
+`hw_` = quickgame SDK). Popup "check_network" (catch block
+`LaunchActivity.dishbesideshockey`, sudah dimatikan v18) ber-teks INGGRIS —
+BUKAN popup screenshot.
+
+### 56.3 Xref penuh classes.dex — 3 lokasi pembangun dialog itu
+
+| # | Method (code_off) | Gerbang menuju dialog | Kapan jalan |
+|---|---|---|---|
+| 1 | `com.quickgame.android.sdk.feedtonight.hoboismrelationbelow` (5e8138) | pc=001c `if-eqz v0,+55` → 0053 | **SDK INIT — di ATAS BOOT SCREEN LaunchActivity (latar galaksi screenshot)** |
+| 2 | `HWLoginActivity.onCreate` (5d2100) | pc=0194 `if-eqz v12,+20` → 01a8 | hanya kalau UI login SDK terbuka |
+| 3 | `feedtonight.worktopichardtails` (5e8f6c) | tips dari server | isi server, bukan teks network |
+
+Method `cointhreat`/service (qg_err_connect_service) hanya menyisip string ke
+JSON broadcast — bukan dialog. Dialog #1 = popup screenshot owner.
+
+### 56.4 AKAR SEBENARNYA — bytes patch v15 SALAH RAKIT (nibble kebalik)
+
+Decode instruksi patch v15 lama vs maksud komentarnya:
+
+| @file | bytes ditulis | terbaca dalvik | maksud komentar v15 |
+|---|---|---|---|
+| 5e8174 | `12 10` | **const/4 v1, 0** | "const/4 v0,1" ❌ |
+| 5d242c | `12 1c` | **const/4 v1, -4** | "const/4 v12,1" ❌ |
+
+(const/4 format 11n: register = NIBBLE TINGGI, literal = nibble rendah.
+`const/4 v0,1` seharusnya `12 01`; `const/4 v12,1` seharusnya `12 c1`.)
+
+Akibat di `hoboismrelationbelow` (mode pesawat, `getActiveNetworkInfo()`
+mengembalikan **NULL**):
+
+```
+pc=0010 move-result-object v0        ; v0 = info = NULL
+pc=0011 if-eqz v0, +8 -> 0019        ; NULL -> 0019
+pc=0019 const/4 v1, 0                ; v0 TETAP NULL
+pc=001a goto 001c
+pc=001c if-eqz v0, +55 -> 0053       ; v0 NULL -> TERAMBIL -> DIALOG
+```
+
+Mode normal kebetulan selamat karena `move-result v0` dihancurkan patch →
+v0 tetap = objek NetworkInfo (non-null) → gerbang tidak terambil. Itulah
+kenapa login lokal jalan sejak v15 TAPI popup pesawat tetap muncul v15→v18.
+`HWLoginActivity.onCreate` juga kebetulan tidak memunculkan dialog (v12 =
+objek non-null) — tapi gerbangnya tetap ada.
+
+### 56.5 PATCH v19 — gerbang dialog → goto (ukuran IDENTIK, total 8 unit)
+
+`patch_airplane_v19.py` pada base v13 (6 unit warisan v15/v18 dipertahankan +
+2 unit BARU):
+
+| @file | before | after | efek |
+|---|---|---|---|
+| `5e8180` | `38 00 37 00` (if-eqz v0,+55→dialog 0053) | `28 02 00 00` (goto +2 → **001e 'begin init'**; nop) | dialog SDK init MATI; init jalan di SEMUA kondisi (pesawat: POST /v1/system/init → 127.0.0.1:9530 — pola log device seq 32) |
+| `5d2438` | `38 0c 14 00` (if-eqz v12,+20→dialog 01a8) | `28 02 00 00` (goto +2 → **0196 bindService**; nop) | dialog onCreate MATI; path bindService = path asli mode normal & null-path original |
+
+**BUKTI UNREACHABLE** (scan branch penuh 2 method di dex patched): NOL
+instruksi cabang menuju 0053 / 01a8; fall-through juga tertutup
+(pc=0052 `goto 0079`, pc=01a7 `goto 01d0`). Dialog tidak punya jalan masuk
+apa pun — pesawat maupun online.
+
+### 56.6 Console dex v19
+
+`classes2.dex` byte-identik console v18 + 4 penanda v18→v19 (semua
+user-visible, xref byte: `<span id=ver>`, banner dashboard, BOOT line
+LocalServerStarter, header CRASH REPORT) — MUTF-8 panjang sama, offset tak
+berganti; SHA1+adler header dihitung ulang. `patch_console_v19.py`. NOL
+perubahan perilaku console (4 kontrol: cari · filter error · salin · jeda;
+URL penuh; TRANSPORT ONLY).
+
+### 56.7 Rebuild + verifikasi
+
+- **classes.dex v19**: 6.697.176 B (IDENTIK) sha
+  `62803bb1592b378da3ebf2664795f538193b6b84a302b44ee247d7e5c1fcc8b4` — 8 unit.
+- **classes2.dex v19**: 133.924 B sha
+  `55e7ff88aff467350d4c52e558582dfe6b59859c33620427db512fd24b58c67b`.
+- **Rebuild RAW-COPY** (`rebuild_v19_raw.py`): base v13, 6.428 entri
+  byte-per-byte, beda HANYA kedua dex; metode 3471 deflate + 2957 stored
+  IDENTIK; zipalign verified + signature verified [v1, v2, v3], cert
+  `CN=DB Local Mod` exp 2056.
+- **Smoke desktop: 178 PASS, 0 FAIL** (build-smoke dikompil ulang javac 21
+  dari javasrc v19; penanda v19 di seluruh cek).
+- **Browser verify (Playwright headless): 28 PASS, 0 FAIL** — badge/banner
+  v19, URL penuh polling GET/POST + WS upgrade sungguhan (websocket-client
+  EIO=3 `2probe`→`3probe`), query `t=`/`sid=` utuh, rincian inline, salin
+  memuat URL penuh, filter error, nol error console, mobile 375 px.
+
+### 56.8 APK v19
+
+| Item | Nilai |
+|---|---|
+| File | `release-mod/db-local(MOD-LOCALSERVER-v19).apk` (LFS di repo; rotasi: pointer v18 dihapus) |
+| Ukuran | **202.679.262 B** |
+| sha256 signed | `881d60ef3fa29541c772ae17ffec5d2b88e6b12ae4cdbb1b7aa2e74acc43ff15` |
+| classes.dex | 6.697.176 B sha `62803bb1…` (original + injeksi + patch airplane v19 8 unit) |
+| classes2.dex | 133.924 B sha `55e7ff88…` (console v19 = v18 + penanda) |
+| Penanda | BOOT/crash/dashboard/banner = **v19** |
+| Sign | v1+v2+v3, keystore `dblocalmod`, exp 2056 — install-over OK |
+
+### 56.9 Cara uji device
+
+1. Install `db-local(MOD-LOCALSERVER-v19).apk` langsung di atas v18/v17
+   (keystore sama — tanpa uninstall).
+2. **Mode pesawat dari awal** → boot game → NOL popup "mengingat / Koneksi ke
+   jaringan gagal…" (kedua gerbang dialog sudah tak berpenghunung; SDK init
+   langsung jalan ke 127.0.0.1:9530).
+3. Boot normal → perilaku TIDAK berubah (init + bindService = path yang
+   selama ini dijalankan; game tetap berhenti sebelum server list —
+   loginServer belum dibuat, plan saja di `docs/LOGIN-SERVER-PLAN.md`).
+4. Dashboard `127.0.0.1:4000` → badge **v19**.
+5. Kalau ADA sisa popup lain (mis. dari layar login SDK): kirim screenshot +
+   ndjson lagi — popup ber-teks/latar berbeda berarti jalur lain, akan
+   dibedah sama persis sampai bytes.

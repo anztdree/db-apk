@@ -1,6 +1,6 @@
-/* Verifikasi browser console v17 — dashboard http://127.0.0.1:4000/
- * Fokus v17 (arahan owner): URL PENUH di baris log — nol pangkas,
- * nol tersembunyi. Cek: badge/banner v17, 4 kontrol fungsional, rincian
+/* Verifikasi browser console v19 — dashboard http://127.0.0.1:4000/
+ * Fokus v19 (arahan owner): URL PENUH di baris log — nol pangkas,
+ * nol tersembunyi. Cek: badge/banner v19, 4 kontrol fungsional, rincian
  * inline, entri socket.io memuat http://127.0.0.1:<port>/socket.io/?EIO=3&
  * transport=... apa adanya, WS frame juga URL penuh, NOL error console. */
 const { chromium } = require('/home/z/node_modules/playwright');
@@ -29,9 +29,9 @@ const { chromium } = require('/home/z/node_modules/playwright');
 
   // 1. versi + banner
   const ver = await page.textContent('#ver');
-  check('badge v17', ver.trim() === 'v17', ver);
+  check('badge v19', ver.trim() === 'v19', ver);
   const banner = await page.textContent('#banner .b1');
-  check('banner v17', banner.includes('MOD-LOCALSERVER v17'), banner);
+  check('banner v19', banner.includes('MOD-LOCALSERVER v19'), banner);
   const bannerSub = await page.textContent('#banner .bl');
   check('banner klaim URL penuh', bannerSub.includes('URL penuh') && bannerSub.includes('nol disembunyikan'), bannerSub);
 
@@ -61,7 +61,7 @@ const { chromium } = require('/home/z/node_modules/playwright');
   check('rincian inline ada & terlihat (nol klik)', dtl > 0 && dtlVisible === dtl,
     'dtl=' + dtl + ' visible=' + dtlVisible);
 
-  // 5. v17 INTI — URL PENUH socket.io di baris log (tidak dipangkas)
+  // 5. v19 INTI — URL PENUH socket.io di baris log (tidak dipangkas)
   const fullUrlRows = await page.$$eval('#tb .ln .ev', els =>
     els.filter(e => /http:\/\/127\.0\.0\.1:\d+\/socket\.io\/\?EIO=3&transport=(polling|websocket)&/.test(e.textContent))
        .map(e => e.textContent.trim()));
