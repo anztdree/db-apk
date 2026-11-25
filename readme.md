@@ -5408,4 +5408,91 @@ memakainya (selalu kosong → token SDK dipertahankan).
   dipakai client; history tidak disimpan client-side.
 - **STATUS: bedah TOTAL selesai. Usulan struktur berikutnya WAJIB merujuk
   baris atlas (offset verbatim) — tidak ada satu pun perilaku di luar atlas.**
-  Nol baris kode di APK sampai owner oke — PLAN ONLY.
+
+## Bagian 65 — STRUKTUR LOGIN-SERVER DITENTUKAN DARI ATLAS BEDAH TOTAL (plan only, nol kode)
+
+Jawaban owner: **"lalu tentukan struktur yg benar"** — sesuai aturan penutup
+atlas §13 ("usulan berikutnya wajib merujuk baris atlas — tidak ada satu pun
+perilaku di luar atlas"), struktur kini DITENTUKAN, bukan lagi diusulkan:
+BAGIAN 63 = struktur dulu, fakta menyusul (DITOLAK); BAGIAN 65 = fakta penuh
+dulu (atlas Bagian 64), struktur tinggal DIAMBIL dari situ.
+
+### 65.1 METODE — struktur diturunkan, tidak dikarang
+
+- Sumber tunggal = `docs/LOGIN-SERVER-BEDAH-TOTAL.md` (atlas Bagian 64).
+- Aturan: atlas §11 (13 baris WAJIB-parser / BEBAS-owner) = daftar LENGKAP
+  perilaku yang bisa dilayani server login lokal. File/field hanya boleh ada
+  kalau ada baris atlas yang MENGONSUMSINYA; yang tidak — TIDAK ADA.
+
+### 65.2 HASIL: struktur DIKONFIRMASI bedah — 3 file + 2 folder kondisional
+
+```
+Android/data/com.db.local/server/
+└── login-server/            ← self-seed BOOT, dibaca ulang tiap event
+    ├── config.json          ← SAKLAR 6 field
+    ├── serverlist.json      ← DATA (serverList[] 12-field)
+    ├── announce.json        ← PENGUMUMAN ({} = diam)
+    ├── data/history.sqlite  ← HANYA historyMode:"persist"
+    └── logs/                ← NDJSON HANYA saat enabled:true
+```
+
+Pemetaan FILE → BARIS ATLAS (inti — detail per field = docs §3.0):
+
+| File/field | Baris atlas yang MENGCPTA-nya |
+|---|---|
+| config `enabled` | atlas §1/§10: ack = ACK socket.io bawaan `42→43<n>`; tanpa ACK client berhenti sebelum serverlist (v19 terbukti) |
+| config `language` | atlas §2 dispatcher `a.language&&(ts.language=…)` di SEMUA ACK; §11 baris 2 |
+| config `offlineReasonTop` | atlas §6 `changeServerInfo` verbatim + §4.3 toast offline; §11 baris 1 |
+| config `historyMode` | atlas §6 `selectNewServer` history[0]??serverList[0] + auto-enter; §11 baris 3/4 |
+| config `todayLoginCount` | atlas §4.3 verbatim `e.todayLoginCount`; §11 baris 8 |
+| config `loginTokenReturn` **[BARU]** | atlas §4.3 pintu injeksi `e&&e.loginToken&&…`; §11 baris 7 (BEBAS) |
+| serverlist.json | atlas §4.1 + §6: 12 field, serverId STRING, urutan array = prioritas auto; §11 baris 3 |
+| announce.json | atlas §4.4 getNotice `text[lang]||""`, version, orderNo, alwaysPopup; §11 baris 5 |
+| data/history.sqlite | atlas §12.7: history tak pernah disimpan client-side → state murni server; §11 baris 4 |
+| logs/ | atlas §11 baris 9/13: DIAM aman (tanpa timeout); disiplin log verbatim + NO ACK |
+
+### 65.3 SATU-SATUNYA PERUBAHAN STRUKTUR: field BARU `loginTokenReturn`
+
+- Atlas menemukan pintu yang BELUM PERNAH dipetakan repo mana pun: ACK
+  SaveHistory yang membawa `loginToken` MENANAM token sesi game ke client
+  (`e&&e.loginToken&&(ts.loginInfo.userInfo.loginToken=e.loginToken)`) —
+  token itu dibawa lagi ke server GAME di enterGame (atlas §7).
+- Prinsip owner Bagian 62 ("harus tau alasannya — mau pakai ISI atau DIAM")
+  menuntut pintu ini DIEKSPOS di config, bukan disembunyikan di kode:
+  - **DIAM (default `""`)**: field tak pernah dikirim → token SDK
+    dipertahankan = perilaku teruji; alasan: asli tak pernah kirim +
+    gameServer v19 transport-only belum punya konsumen token.
+  - **ISI (diisi string)**: ACK SaveHistory membawa token itu → client
+    menanam ke sesi → dikirim ke server game. Kendali penuh di tangan owner.
+- Keputusan baru **K6** (docs §5).
+
+### 65.4 ATURAN WIRE DIPERKETAT DARI ATLAS: kunci data = kunci yang DIBACA parser
+
+- `errorCode` DIHAPUS dari ACK yang client tidak pernah baca: GetServerList
+  (atlas §4.1 "errorCode TIDAK dibaca client" + §12.5), SaveUserEnterInfo
+  (atlas §11 baris 11 → data `{}` cukup), loginGame (atlas §4.2: client hanya
+  baca `userId`+`channelCode` — ACK dipangkas ke dua kunci itu).
+- `errorCode` TETAP ADA di SaveLanguage karena parser MEMBACANYA
+  (`0===t.errorCode`, atlas §4.5).
+- SaveHistory ACK = `{"todayLoginCount":N}` + `loginToken` hanya bila K6 diisi.
+- Semua di docs §3.4 + §4.3; sketsa lama yang menyisakan `errorCode:0`
+  di GetServerList = inkonsistensi Bagian 63, kini beres.
+
+### 65.5 YANG SENGAJA TIDAK ADA — kini SEMUA ber-dasar ATLAS
+
+`README.txt`/`notes.md`/`captures/` (nol konsumen; pelajaran v16) ·
+`history.json` (atlas §6+§12.7) · `profile.json` (atlas §2+§11.1: envelope =
+milik parser) · `errors.json` (atlas §4.5+§11.6: pesan server tak pernah
+tampil) · `whitelist.json` (atlas §4.5+§8: daftar bahasa = ASET game
+supportLang en/fr/kr) · file utk bridge native `window.serverList`/
+`window.replaceServerName` (atlas §8+§11.12: layer NATIVE — di luar scope
+folder login) · file utk localStorage `last_game_server` (atlas §9: cache
+CLIENT).
+
+### 65.6 STATUS + LANGKAH
+
+- **STRUKTUR FINAL**: `server/login-server/` = config.json (6 field) +
+  serverlist.json + announce.json + data/history.sqlite (persist saja) +
+  logs/ (enabled saja). Dokumen penuh = docs/LOGIN-SERVER-PLAN.md §3.0/§3.2/§4.
+- Menunggu oke owner (K1–K6) → `LoginServerConfig.java` seed 3 file →
+  ack-gate §4.3 → smoke §3.6. NOL baris kode di APK — PLAN ONLY.
