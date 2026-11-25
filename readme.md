@@ -5138,3 +5138,97 @@ gameServer 5051 transport-only; dashboard tak berubah.
 - NOL baris kode di APK — PLAN ONLY. Urutan implementasi saat owner oke:
   LoginServerConfig.java (seed 2 file) → ack-gate SocketIoHandler (kode
   konstanta mirror asli per §4.3) → persist opsional → smoke 61.5 + smoke ACK.
+
+## Bagian 62 — KOREKSI OWNER #3: DILARANG JIPLAK — PRINSIP 3 KOLOM + announce.json PILIHAN OWNER (plan only, nol kode)
+
+Jawaban owner ("jangan kau samakan server kita dengan mereka!! mereka diam ya
+hanya diam — kalau kita diam jangan ikut diam, harus tau alasannya!! config
+asli gimana — mau pakai isi atau diam!! jangan semua disamakan tanpa
+kejelasan" + "ini baru tahap depan, belum gameplay — masuk tahap gameplay
+bingung lagi karena cuma asal niru server asli padahal gak punya dasar"):
+Bagian 61 benar soal buang sampah, tapi SALAH METODE — "server asli diam →
+kita diam" = jiplakan tanpa dasar. Diperbaiki:
+
+### 62.1 PRINSIP BARU — 3 KOLOM, DILARANG "KARENA ASLI BEGITU" (docs §3.1.1, K-P0)
+
+Tiap perilaku wajib dijawab TIGA kolom:
+1. KONTRAK JS (dasar teknis — apa yang main.min.js baca; wire wajib ikut
+   parser client: `0===e.ret`, data JSON string, compress opsional)
+2. FAKTA ASLI (informasi saja — status config MEREKA, bukan perintah)
+3. KEPUTUSAN KITA + ALASAN (dilarang "karena server asli begitu")
+
+Pembagian wewenang: BENTUK WIRE = milik kontrak parser; PERILAKU BISNIS
+(pengumuman, bahasa, loginGame, historyMode, todayLoginCount,
+offlineReasonTop) = milik keputusan owner — diekspos di config/file.
+
+### 62.2 announce.json KEMBALI — SEKARANG DGN DASAR + PILIHAN (docs §4.2b)
+
+Kontrak getNotice main.min DIBEDAH PENUH (inilah "config asli" yang diminta):
+ACK data = object {kunci: entri}; entri = text[lang], title[lang], version,
+orderNo, alwaysPopup. ≥1 entri → tombol pengumuman muncul di layar login;
+alwaysPopup → panel TERBUKA OTOMATIS; data {} → tombol TIDAK muncul (visual
+identik dengan diam — terbukti dari parser, bukan tebakan).
+
+Struktur final kini 3 FILE + 2 folder kondisional:
+```
+server/login-server/
+├── config.json        ← saklar 5 field (enabled/language/offlineReasonTop/
+│                        historyMode auto|persist/todayLoginCount)
+├── serverlist.json    ← DATA serverList 12-field (parser client)
+├── announce.json      ← {} default = diam KARENA BELUM ADA ISI (bukan krn
+│                        asli diam); owner isi kapan saja (edit tanpa
+│                        restart) → pengumuman tampil, BISA BAHASA INDONESIA
+│                        via text["in"] — client tetap ganti bahasa walau
+│                        SaveLanguage 111 (fakta kedua cabang changeLanguage)
+├── data/history.sqlite ← persist saja; terpisah dari accounts SDK (L1)
+└── logs/              ← NDJSON enabled:true saja
+```
+Seed boot = 3 file. Contoh announce terisi + tabel field ada di docs §4.2b.
+
+### 62.3 SEMUA ALASAN "MIRROR ASLI" DI-REBASE (hapus jiplakan dari §61)
+
+- Whitelist bahasa en/fr/kr: ALASAN BARU = aset teks game hanya en/fr/kr
+  (supportLang .bin) — terima `in` = UI game campur; client tetap ganti bahasa
+  walau ditolak → keputusan ini NOL efek UX, hanya kerapian; bisa dibalik
+  owner bila aset bahasa lain kelak ada. (BUKAN "karena asli menolak")
+- loginGame sukses (K2): ALASAN = server lokal tidak punya kebijakan bisnis
+  channel; 103 = aturan bisnis MEREKA, bukan kebutuhan teknis; JS tidak cek
+  errorCode jadi kedua pilihan aman. (BUKAN "beda dari asli")
+- Envelope tanpa compress: ALASAN = ikut parser (compress hanya menambah
+  kerja LZString tanpa manfaat lokal); fakta asli tidak compress = penguat,
+  bukan alasan.
+- GetServerList top-level: kunci yang dikirim = yang PUNYA konsumen JS
+  (serverList/history + opsional language/offlineReason) — bukan "3 kunci
+  karena asli 3 kunci".
+- historyMode auto|persist: PILIHAN UX (masuk instan vs resume manual) —
+  keduanya sah; bukan soal meniru.
+- enabled: kebutuhan KITA co-exist dengan transport-only v19 — asli selalu
+  hidup hanyalah informasi.
+
+### 62.4 YANG BERUBAH / TETAP dari Bagian 61
+
+BERUBAH: metodologi "turunan fakta asli" → prinsip 3 kolom (§3.1.1, K-P0);
+announce.json KEMBALI (file pilihan owner, format kontrak getNotice §4.2b);
+seed boot 2 file → 3 file; alasan K2/K4/K5 + semua baris "mirror" di-rebase;
+§6 ditambah PERINGATAN fase gameplay (bedah kontrak dulu, bukan jiplakan).
+TETAP: nama login-server/; 5 aturan folder; ACK gate satu logika dua pintu →
+session.deliver; tanpa port baru; nol file dokumentasi di device (L5);
+db.sqlite accounts tak disentuh; dashboard tak berubah.
+
+### 62.5 KRITERIA TAMBAHAN (announce)
+
+7. announce.json diisi 1 entri alwaysPopup:true (enabled:true) → popup
+   pengumuman tampil setelah login; teks bahasa client yang ada di file yang
+   tampil (termasuk "in").
+8. announce.json {} → tombol pengumuman TIDAK muncul (identik dengan diam —
+   kontrak getNotice).
+
+### 62.6 KEPUTUSAN + STATUS
+
+- FIX owner (3 koreksi terakumulasi): nama login-server/; multi-file dari
+  fakta; DILARANG JIPLAK — prinsip 3 kolom + announce = pilihan owner (K4
+  ditulis ulang: isi atau diam, dua-duanya sah, alasan kita).
+- Menunggu owner: K1–K5 + P0 (prinsip di-Setujui/tidak).
+- NOL baris kode di APK — PLAN ONLY. Fase gameplay kelak: BEDAH KONTRAK DULU
+  (UserDataParser, enterGame, registChat + capture live) → keputusan 3 kolom
+  → baru implement — tidak ada jiplakan tanpa dasar.

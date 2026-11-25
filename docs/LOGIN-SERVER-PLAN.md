@@ -37,6 +37,25 @@
 > serverlist.json + data/ (persist saja) + logs/ (enabled saja)** — 2 file
 > multi-file sungguhan (saklar vs DATA DB-padanan), arsitektur mengikuti
 > server asli: data bisnis di DB-analog, kebijakan di kode.
+>
+> **Bagian 62 (26 Nov 2026) — KOREKSI OWNER #3**: "JANGAN KAU SAMAKAN SERVER
+> KITA DENGAN MEREKA!! MEREKA DIAM YA HANYA DIAM — KALAU KITA DIAM JANGAN IKUT
+> DIAM!! HARUS TAU ALASANNYA!! CONFIG ASLI GIMANA — MAU PAKAI ISI ATAU DIAM!!
+> JANGAN SEMUA DISAMAKAN TANPA KEJELASAN" + peringatan fase gameplay ("ini
+> baru tahap depan — masuk tahap gameplay nanti bingung lagi karena cuma asal
+> niru server asli padahal gak punya dasar"). AKIBATNYA: (1) metodologi
+> "mirror asli" DIGANTI prinsip 3 kolom — KONTRAK JS (dasar teknis, wire
+> wajib ikut parser client) / FAKTA ASLI (informasi, bukan perintah) /
+> KEPUTUSAN KITA + ALASAN (dilarang "karena asli begitu"); (2) announce.json
+> KEMBALI sebagai FILE PILIHAN OWNER ({} = diam karena BELUM ADA ISI — visual
+> identik dgn tak menjawab, terbukti kontrak getNotice; diisi → pengumuman
+> tampil, bisa berbahasa Indonesia via text["in"]); format entry
+> DIDOKUMENTASIKAN dari bedah getNotice main.min (text/title per-bahasa,
+> version, orderNo, alwaysPopup) — inilah "config asli" yang diminta owner;
+> (3) SEMUA alasan "mirror asli" di-rebase: bahasa en/fr/kr krn ASET game
+> (bukan krn asli menolak), loginGame sukses krn TUJUAN lokal (103 = kebijakan
+> bisnis mereka, bukan kebutuhan teknis kita), envelope/compress krn PARSER
+> JS strict. Seed boot kini 3 file. Catatan fase gameplay ditulis di §6.
 
 ---
 
@@ -243,16 +262,33 @@ tak dijawab — batas berbeda, keduanya normal.)
 
 ---
 
-## 3. STRUKTUR FOLDER + CARA KERJA DI ANDROID/DATA — FINAL (diperbarui Bagian 61: TURUNAN FAKTA server asli + main.min.js)
+## 3. STRUKTUR FOLDER + CARA KERJA DI ANDROID/DATA — FINAL (diperbarui Bagian 62: prinsip 3 kolom, bukan jiplakan)
 
-> Riwayat §3: Bagian 59 salah nama (`login/`) + terlalu minimal (1 file) →
-> Bagian 60 benar nama (`login-server/`) tapi SALAH ISI — menghidupkan kembali
-> proposal sampah era v16 (README.txt / notes.md / captures/) yang sudah pernah
-> dihukum owner ("berasa jadi sampah") → **KOREKSI OWNER Bagian 61**: struktur
-> DITURUNKAN dari cara kerja SERVER ASLI (capture live 26 Nov) + main.min.js
-> (bedah ulang), bukan dari proposal lama mana pun. Semua tetap berpijak pada
-> kode yang berjalan v13–v19
-> (LocalServerStarter / ServerCore / SdkConfig / Db / SocketIoHandler).
+> Riwayat §3: Bagian 59 salah nama + terlalu minimal → Bagian 60 menghidupkan
+> sampah v16 (README.txt/notes.md/captures/) → Bagian 61 membuang sampah tapi
+> SALAH METODE: "server asli diam → kita diam" = JIPLAKAN TANPA DASAR (kritik
+> owner) → **KOREKSI OWNER Bagian 62**: prinsip 3 kolom + announce.json
+> kembali sebagai PILIHAN owner. Semua tetap berpijak pada kode v13–v19.
+
+### 3.1.1 PRINSIP KEPUTUSAN — 3 KOLOM, DILARANG "KARENA ASLI BEGITU" (Bagian 62)
+
+Setiap perilaku login-server wajib dijawab dgn TIGA kolom ini — satu kolom
+pun kosong = rencana belum matang:
+
+1. **KONTRAK JS** (DASAR TEKNIS): apa yang main.min.js baca/terima — wire
+   HARUS mengikuti parser client, di sinilah "dasar" yang diminta owner.
+2. **FAKTA ASLI** (INFORMASI): apa yang server asli lakukan saat ini — status
+   config MEREKA, bukan perintah untuk kita ("mereka diam ya hanya diam").
+3. **KEPUTUSAN KITA + ALASAN**: pilihan sendiri dgn alasan eksplisit — dilarang
+   memakai "karena server asli begitu" sebagai alasan.
+
+Pembagian wewenang:
+- BENTUK WIRE (envelope `ret/data`, data = JSON string, nama field, absen
+  `compress`) = milik KONTRAK JS — parser strict (`0===e.ret`,
+  `e.compress&&LZString…`, `JSON.parse(t)`) → kita ikut parser, bukan meniru.
+- PERILAKU BISNIS (announce isi/diam, terima/tolak bahasa, terima/tolak
+  loginGame, historyMode, nilai todayLoginCount, isi offlineReasonTop) =
+  milik KEPUTUSAN KITA — diekspos di config/file supaya owner pegang kendali.
 
 ### 3.1 Peta device yang SUDAH terbukti (bukti kode, bukan karangan)
 
@@ -283,30 +319,30 @@ editan owner bertahan = folder yang tidak pernah ada di assets/server_root,
 dibuat hanya bila belum ada. Pelajaran v16 (kata owner: "berasa jadi sampah"):
 file penanda/index dihapus — folder login wajib MINIMAL.
 
-### 3.2 Struktur final `login-server/` — DITURUNKAN DARI CARA KERJA SERVER ASLI (Bagian 61)
+### 3.2 Struktur final `login-server/` — PRINSIP 3 KOLOM (Bagian 62), bukan jiplakan
 
-Metode Bagian 61 — TIDAK mengarang: setiap file wajib punya PADANAN perilaku
-server asli yang TERBACA dari capture live 26 Nov (verify-artifacts/,
-`live-login-contract-20261126.txt` + ACK 618.309 B) dan main.min.js
-(tools/out/main.min_777039fc.js):
+Tabel keputusan PENUH — kolom 1 = DASAR teknis (parser client), kolom 2 =
+status config server asli (INFORMASI SAJA), kolom 3 = KEPUTUSAN kita + alasan
+(dilarang "karena asli begitu"):
 
-| Cara server ASLI bekerja (fakta) | Padanan WAJIB di `login-server/` |
-|---|---|
-| serverList = DATA DINAMIS di DB server: 2.112 entri, `openDate` mingguan Jumat 07:00 UTC, 2.073 entri `merge:true` (ACK 618.309 B) | **serverlist.json** — file DATA; entri 12-field PERSIS asli |
-| history = DB persist PER-AKUN: userId segar → `[]`, akun kita yang sudah pernah main → `["2112"]` (bukti [2] kontrak) | **data/history.sqlite** — persist per-accountToken; HANYA saat historyMode `persist` (asli = persist) |
-| todayLoginCount = hitungan per hari di DB server — ACK SaveHistory `{"errorCode":0,"todayLoginCount":2}` (bukti [3]); JS baca utk analytics (`4===t`, `6===t` → ReportToSdkCommon) | **config.json** `todayLoginCount` (mode auto) / dihitung dari history.sqlite (mode persist) |
-| LoginAnnounce tanpa pengumuman → server DIAM total 6 dtk (bukti [4]) | **BUKAN FILE** — perilaku DIAM = konstanta kode (mirror) |
-| whitelist bahasa en/fr/kr berasal dari `supportLang` config game .bin (BUKAN file server); dan main.min: SaveLanguage ditolak 111 PUN client tetap ganti bahasa (`window.changeLanguage(e)` di KEDUA cabang) | **BUKAN FILE** — konstanta kode en/fr/kr (mirror) |
-| pesan error = hardcode kode server ("不支持选择的语言in", "本服务器只允许特定的渠道来源") | **BUKAN FILE** — konstanta kode |
-| bentuk envelope `{"ret":0,"data":"<json string>"}`, field `compress` ABSEN — 618 KB pun tak dikompres; main.min: `e.compress&&(t=LZString…)`, `0===e.ret` | **BUKAN FILE** — fakta kode, mirror apa adanya |
-| top-level `offlineReason` ABSEN di ACK asli — dan main.min `changeServerInfo`: `t[n].offlineReason=e.offlineReason` MENIMPA offlineReason SEMUA entri dengan nilai top-level → absen = dialog offline tak pernah muncul | **config.json** `offlineReasonTop` default `""` = tak dikirim (mirror asli); diisi = SATU-SATUNYA tombol dialog "server maintenance" |
-| top-level `language` ABSEN di ACK asli; main.min: `a.language&&(ts.language=a.language)` | **config.json** `language` default `""` = tak dikirim (mirror asli) |
-| server asli SELALU hidup — tidak kenal saklar | **config.json** `enabled` — satu-satunya field TANPA padanan asli; alasan lokal: co-exist dengan mode transport-only v19 (default false) |
+| # | KONTRAK JS (dasar — main.min) | FAKTA ASLI (informasi saja) | KEPUTUSAN KITA + ALASAN + FILE |
+|---|---|---|---|
+| 1 | `selectNewServer`: baca `t.serverList[]` (12 field/entri; `matchServerUrl` banding `e==o.serverId`) + `t.history[]`; `onLoginSuccess` pakai `online/hot/new/name` | asli kirim 2.112 entri dari DB dinamis (openDate mingguan, merge) | **serverlist.json** (DATA) — entri 12-field sesuai parser; jumlah entri BEBAS (lokal cukup 1+). Alasan: file data, bukan DB, agar owner edit langsung di file manager |
+| 2 | `t.history` kosong → auto-enter; berisi → `history[0]` dicocokkan ke serverList → tombol start manual | asli persist per-akun di DB server (userId segar `[]`, akun lama `["2112"]`) | **historyMode** = pilihan UX KITA: `auto` (masuk cepat, cocok server lokal) atau `persist` (resume server terakhir). Persist pakai **data/history.sqlite** TERPISAH dari accounts SDK (L1). Alasan: dua UX berbeda keduanya sah — bukan soal meniru |
+| 3 | SaveHistory ACK dibaca `e.todayLoginCount` — hanya analytics (`4===t`, `6===t` → ReportToSdkCommon) | asli hitung per-hari di DB (contoh nyata `2`) | **config.json `todayLoginCount`:1** — nilai bebas, owner bisa ubah; persist kelak hitung nyata. Alasan: konsumen cuma analytics, tidak memengaruhi alur |
+| 4 | `getNotice` (LoginAnnounce): ACK data = OBJECT `{kunci: entri}`; baca `text[lang]||""`, `title[lang]||""`, `version`, `orderNo`, `alwaysPopup`; ≥1 entri → tombol pengumuman muncul; ada `alwaysPopup` → popup otomatis; data `{}` → tombol TIDAK muncul (visual identik dgn diam); server DIAM → callback tak jalan, hasil visual sama | asli DIAM (config pengumuman mereka kosong saat ini) | **announce.json (FILE PILIHAN OWNER)** — `{}` default = diam KARENA BELUM ADA ISI (bukan krn asli diam); diisi → pengumuman tampil, bisa **Bahasa Indonesia** via `text:{"in":…}` (client tetap ganti bahasa walau SaveLanguage 111 — fakta cabang changeLanguage). Alasan: fitur NYATA parser client + kebutuhan lokal menyampaikan info ke pemain |
+| 5 | SaveLanguage: `0===errorCode` → changeLanguage; selain itu JUGA changeLanguage (kedua cabang sama) | asli tolak `in` dgn 111; whitelist mereka en/fr/kr (sumber: supportLang config .bin game) | **whitelist en/fr/kr sebagai KODE** — alasan KITA: aset teks game hanya ada en/fr/kr; menerima `in` membuat UI game campur bahasa (rusak UX), padahal client tetap ganti bahasa walau ditolak → menolak/menerima TIDAK mengubah perilaku client; keputusan bisa dibalik owner bila aset bahasa lain kelak ada. BUKAN file (bukan pilihan harian) |
+| 6 | loginGame: JS TIDAK cek `data.errorCode` — lanjut dgn identitas apa pun yang dikirim | asli tolak semua channel uji dgn 103 (kebijakan bisnis "channel tertentu") | **loginGame = SUKSES (K2)** — alasan KITA: server lokal tidak punya kebijakan bisnis channel; penolakan 103 = aturan bisnis MEREKA, bukan kebutuhan teknis; tujuan lokal = semua jalur jalan. Implementasi konstanta kode setelah K2 disetujui |
+| 7 | Parser envelope strict: `0===e.ret` → `data` = JSON string → `e.compress&&LZString…` (compress OPSIONAL) | asli tak pernah compress (618 KB pun polos) | **envelope polos tanpa compress** — alasan: ikut PARSER (compress:true hanya menambah kerja LZString tanpa manfaat lokal); fakta asli cuma memperkuat pilihan, bukan alasannya |
+| 8 | `changeServerInfo`: `t[n].offlineReason=e.offlineReason` — top-level MENIMPA semua entri; absen → dialog offline tak pernah muncul | asli TIDAK mengirim top-level (status config mereka) | **config.json `offlineReasonTop":""`** — default kosong = kita tidak mau dialog offline saat fresh boot; diisi = SATU-SATUNYA tombol dialog maintenance milik owner. Fitur parser client yang kita ekspos |
+| 9 | `a.language&&(ts.language=a.language)` — top-level opsional | asli TIDAK mengirim | **config.json `language":""`** — default tak dikirim (biarkan client pakai bahasanya); diisi = paksa bahasa client dari server. Fitur parser client yang kita ekspos |
+| 10 | (tidak ada konsumen JS utk saklar server) | asli SELALU hidup | **config.json `enabled:false` default** — kebutuhan KITA: co-exist dgn mode transport-only v19 yang sudah teruji; saklar = kendali owner kapan ACK aktif |
+| 11 | pesan error tampil verbatim di dialog JS (`errorMessage`) | asli hardcode teks Tionghoa | **pesan error = konstanta kode** — alasan: bukan pilihan harian owner; teks baku cukup; file khusus = sampah kosong. Bisa dijadikan config kelak kalau ada kebutuhan nyata |
 
-Kesimpulan arsitektur: server asli menyimpan **data bisnis di DATABASE** dan
-**kebijakan di KODE**. Folder kita meniru arsitektur itu — file DATA
-(serverlist.json = padanan DB serverList, history.sqlite = padanan DB history)
-+ file SAKLAR (config.json) + KODE untuk semua sisanya.
+Kesimpulan arsitektur (tanpa jiplakan): wire mengikuti PARSER CLIENT;
+DATA bisnis (serverlist, history, announce) = file yang owner pegang;
+SAKLAR (enabled, language, offlineReasonTop, historyMode, todayLoginCount) =
+config.json; sisanya = keputusan yang sudah disetujui → konstanta kode.
 
 ```
 server/login-server/
@@ -314,29 +350,23 @@ server/login-server/
 │                         byte-identik v19), language(""),
 │                         offlineReasonTop(""), historyMode(auto|persist),
 │                         todayLoginCount(1)
-├── serverlist.json    ← DATA GetServerList: serverList[] 12-field PERSIS asli
-│                         (serverId STRING; url tetap http://127.0.0.1:9528)
+├── serverlist.json    ← DATA GetServerList: serverList[] 12-field (parser
+│                         client); serverId STRING; url http://127.0.0.1:9528
+├── announce.json      ← PENGUMUMAN — PILIHAN OWNER: {} = diam (belum ada
+│                         isi); diisi → tampil (format = kontrak getNotice,
+│                         bisa Bahasa Indonesia) — lihat §4.2b
 ├── data/
-│   └── history.sqlite ← persist per-accountToken (mirror asli) — HANYA bila
-│                         historyMode "persist"; TERPISAH dari
-│                         sdk/data/db.sqlite (accounts milik SDK, L1)
+│   └── history.sqlite ← persist per-accountToken — HANYA historyMode
+│                         "persist"; TERPISAH dari sdk/data/db.sqlite (L1)
 └── logs/              ← NDJSON scope login-server — HANYA saat enabled:true
-                          (folder kosong saat mati = bukan sampah)
 ```
 
-File yang SENGAJA TIDAK ADA — jangan dihidupkan lagi:
-- `README.txt` / `notes.md` / `captures/` — server asli TIDAK PERNAH mengirim
-  dokumentasi ke client (tak ada padanan di tabel di atas). Ini persis
-  pelajaran v16: SdkConfig.java:28 — index.txt DIHAPUS karena kata owner
-  "berasa jadi sampah", dan kini dibersihkan otomatis tiap boot. Dokumentasi
-  dan bukti kontrak tinggal di REPO (docs/, readme.md, verify-artifacts/),
-  bukan di device.
-- `announce.json` — asli DIAM; file kosong = sampah.
-- `history.json` (mode "fixed") — asli persist; mode fixed = spekulasi, DIHAPUS
-  (K3 kini auto|persist saja).
-- `profile.json` — bentuk envelope = fakta KODE (§2.1), bukan konfigurasi;
-  saklar K2/K4 = keputusan sekali di §5, dieksekusi sebagai konstanta kode.
-- `errors.json` — pesan error asli = hardcode kode server → konstanta kode.
+File yang SENGAJA TIDAK ADA (dgn alasan, bukan asal buang):
+- `README.txt` / `notes.md` / `captures/` — tak ada konsumen kode; pelajaran
+  v16 (SdkConfig.java:28, index.txt "berasa jadi sampah"); dokumentasi = REPO.
+- `history.json` — mode fixed DIHAPUS (spekulasi); K3 kini auto|persist.
+- `profile.json` — bentuk envelope = kontrak parser (baris 7), bukan pilihan.
+- `errors.json` — pesan error = konstanta kode (baris 11).
 
 ### 3.3 Aturan folder (5 aturan tetap + seed list)
 
@@ -351,11 +381,13 @@ File yang SENGAJA TIDAK ADA — jangan dihidupkan lagi:
 5. Tulis atomik: `.tmp` + fsync + rename (pola `SdkConfig.writeFile`).
 
 Seed boot (hanya bila BELUM ada — self-seed, editan owner dihormati):
-**2 file** = config.json, serverlist.json (padanan DB — harus ada sejak detik
-pertama). Folder `data/` dibuat HANYA saat historyMode persist; `logs/` baru
-berisi NDJSON saat enabled:true — kosong saat mati = bukan sampah. Nol file
-dokumentasi pernah dibuat, di boot maupun di event. Nama kelas Java:
-**LoginServerConfig.java** (konsistensi dgn nama folder).
+**3 file** = config.json (saklar), serverlist.json (DATA serverList),
+announce.json `{}` (pengumuman — kosong = pemain tidak melihat apa pun,
+diisi = pengumuman tampil; pilihan owner). Folder `data/` dibuat HANYA saat
+historyMode persist; `logs/` baru berisi NDJSON saat enabled:true — kosong
+saat mati = bukan sampah. Nol file dokumentasi pernah dibuat, di boot maupun
+di event. Nama kelas Java: **LoginServerConfig.java** (konsistensi dgn nama
+folder).
 
 ### 3.4 Cara kerja runtime (enabled:false = v19 persis; enabled:true = ACK real)
 
@@ -386,18 +418,19 @@ Titik ACK gate — SATU titik logika, dua pintu masuk yang sama:
 - WS frame: titik yang sama di loop frame WS.
 - `enabled:false` → kode persis v19 (log "EVENT (no ack)" verbatim).
 
-Envelope ACK = mirror asli (§2): `43<ackId>[{"ret":0,"data":"<JSON string>"}]`
-TANPA field `compress`. Daftar ACK per event = §4.3 (semua LIVE-verified).
+Envelope ACK = ikut PARSER client (§2): `43<ackId>[{"ret":0,"data":"<JSON string>"}]`
+TANPA field `compress` (parser: `0===e.ret` → `JSON.parse(data)`, compress opsional —
+polos lebih sederhana). Daftar ACK per event = §4.3 (semua LIVE-verified).
 
 Peta EVENT → FILE yang dibaca login-server (semua dibaca ulang tiap event —
 edit tanpa restart):
 
 | Event masuk | Sumber jawaban | ACK keluar (live-verified) |
 |---|---|---|
-| `GetServerList` | serverlist.json + config(language, offlineReasonTop) + history (auto → `[]`; persist → baca history.sqlite) | `{errorCode:0, serverList:[…12-field…], history:[…]}` — 3 kunci top-level PERSIS asli [2] |
+| `GetServerList` | serverlist.json + config(language, offlineReasonTop) + history (auto → `[]`; persist → baca history.sqlite) | `{errorCode:0, serverList:[…12-field…], history:[…]}` — kunci top-level = yang PUNYA konsumen JS |
 | `SaveHistory` | persist → tulis data/history.sqlite; auto → config(todayLoginCount) | `{"errorCode":0,"todayLoginCount":N}` [3] |
-| `LoginAnnounce` | KODE — DIAM (mirror asli [4]; tanpa file) | tidak dijawab |
-| `SaveLanguage` | KODE — whitelist konstanta en/fr/kr (mirror supportLang .bin) | 0 / 111 — JS tetap ganti bahasa walau 111 (fakta main.min, kedua cabang changeLanguage) |
+| `LoginAnnounce` | announce.json — `{}` → jawab `{}` ATAU diam (visual identik, keduanya aman per kontrak getNotice; pilihan implementasi = jawab `{}` supaya siklus ACK tuntas di log); diisi → ACK data itu (format §4.2b) | tombol pengumuman muncul; `alwaysPopup` → popup otomatis |
+| `SaveLanguage` | KODE — whitelist en/fr/kr (ALASAN: aset teks game hanya 3 bahasa itu; terima `in` = UI campur; client tetap ganti bahasa walau 111) | 0 / 111 — keputusan tidak memengaruhi UX client |
 | `SaveUserEnterInfo` | KODE | `{"errorCode":0}` [6] |
 | `loginGame` | KODE (keputusan K2: success / mirror103) + AccountStore read-only | loginGameResponse sukses / identitas kosong 103 [1] |
 
@@ -420,10 +453,11 @@ HANYA saat enabled:true — enabled:false = folder tetap kosong.
 
 ### 3.6 Kriteria terima folder (smoke kelak, saat implementasi)
 
-1. Fresh install → skeleton sejak boot: config.json + serverlist.json (data/
-   dan logs/ belum ada — kondisional); wire v19 byte-identik (enabled:false).
-   AUDIT TAMBAHAN: nol file dokumentasi pernah dibuat (tidak ada README.txt,
-   notes.md, captures/, announce.json, history.json, profile.json, errors.json).
+1. Fresh install → skeleton sejak boot: config.json + serverlist.json +
+   announce.json `{}` (data/ dan logs/ belum ada — kondisional); wire v19
+   byte-identik (enabled:false). AUDIT: nol file dokumentasi pernah dibuat
+   (tidak ada README.txt, notes.md, captures/, history.json, profile.json,
+   errors.json).
 2. Edit owner (enabled:true / serverlist.json) → berlaku tanpa restart.
 3. Reboot → editan BERTAHAN (bs/ ditimpa ekstraksi; login-server/ TIDAK).
 4. JSON mana pun diubah jadi teks sampah → boot berikut reseed + WARN; SDK aman.
@@ -431,12 +465,17 @@ HANYA saat enabled:true — enabled:false = folder tetap kosong.
    file tak pernah dibuat.
 6. enabled:true → `login-server/logs/` mulai menerima NDJSON event login
    (URL penuh, tanpa pangkas); enabled:false → folder tetap kosong.
+7. announce.json diisi 1 entri `alwaysPopup:true` (enabled:true) → popup
+   pengumuman tampil setelah login; tombol pengumuman terlihat; teks bahasa
+   yang dipilih client yang ada di file yang tampil (termasuk `in`).
+8. announce.json `{}` → tombol pengumuman TIDAK muncul (identik dgn perilaku
+   diam — kontrak getNotice).
 
 ---
 
 ## 4. DESAIN CONFIG LOGIN v3 (menggantikan skema v4.2 yang ngawur)
 
-### 4.1 File & lokasi — Bagian 61: `server/login-server/config.json` (5 field saklar/kebijakan) + `server/login-server/serverlist.json` (DATA serverList, padanan DB asli per §3.2); keduanya dibaca ulang tiap event. announce/whitelist/errors = konstanta kode (BUKAN file).
+### 4.1 File & lokasi — Bagian 62: `server/login-server/config.json` (5 field saklar/kebijakan) + `server/login-server/serverlist.json` (DATA serverList) + `server/login-server/announce.json` (PENGUMUMAN — pilihan isi/diam milik owner, format kontrak getNotice §4.2b); ketiganya dibaca ulang tiap event. whitelist bahasa / pesan error / bentuk envelope = kontrak parser + keputusan tetap → konstanta kode (BUKAN file).
 
 ### 4.2 Skema baru (default seed — `enabled:false` = byte-identik v19)
 
@@ -478,22 +517,63 @@ serverlist.json (DATA — skema entri = PERSIS server asli §2.2, default 1 entr
 
 | Field / File | Default | Alasan (bukti) |
 |---|---|---|
-| `enabled` | false | satu-satunya field tanpa padanan asli (server asli selalu hidup); false = v19 persis (transport only) |
-| `language` | "" | top-level `language` ACK — ABSEN di asli; JS: `a.language&&(ts.language=a.language)`; "" = field tak dikirim (mirror) |
-| `offlineReasonTop` | "" | top-level `offlineReason` — ABSEN di asli; main.min `changeServerInfo` MENIMPA offlineReason semua entri dgn nilai ini (absen = dialog offline tak pernah muncul) |
-| `historyMode` | `"auto"` | `auto` = ACK `history:[]` selalu (v17-proven: auto-enter); `persist` = tiru ASLI: per-accountToken di data/history.sqlite → history:[serverId terakhir] → tombol start manual. Mode `fixed` DIHAPUS Bagian 61 (spekulasi, tak ada di asli) |
+| `enabled` | false | KEBUTUHAN KITA: co-exist dgn transport-only v19 yang teruji (asli selalu hidup = informasi, bukan alasan); false = v19 persis |
+| `language` | "" | fitur parser: `a.language&&(ts.language=a.language)`; default "" = tak dikirim → client pakai bahasanya sendiri; diisi = server paksa bahasa client |
+| `offlineReasonTop` | "" | fitur parser: `changeServerInfo` menimpa offlineReason semua entri dgn nilai ini; default "" = kita tak mau dialog offline saat fresh boot; diisi = tombol dialog maintenance milik owner |
+| `historyMode` | `"auto"` | PILIHAN UX KITA (bukan soal meniru): `auto` = ACK `history:[]` selalu → auto-enter instan (cocok server lokal, v17-proven); `persist` = resume server terakhir → tombol start manual (per-accountToken di data/history.sqlite). Mode `fixed` DIHAPUS (spekulasi) |
 | `todayLoginCount` | 1 | di-ACK-kan pada SaveHistory (konsumen JS: analytics `4===t`, `6===t`); mode persist kelak dihitung nyata dari history.sqlite |
 | serverlist.json `serverList[]` | 1 entri 12 field | skema = PERSIS server asli (§2.2); `serverId` **STRING**; `url` tetap 9528 (fakta routing v3); `offlineReason` per-entry tetap diisi `""` seperti asli (efeknya ditimpa top-level — fakta changeServerInfo) |
-| (dihapus) `announce` | — | LoginAnnounce asli DIAM [4] → konstanta kode, bukan file |
-| (dihapus) `saveLanguageWhitelist` | — | asli = supportLang config .bin game; JS tetap ganti bahasa walau 111 → konstanta kode en/fr/kr, bukan file |
+| (diubah) `announce` | pindah ke FILE | announce.json khusus (Bagian 62): pengumuman = PILIHAN owner (isi/diam), bukan konstanta kode; format = kontrak getNotice §4.2b |
+| (dihapus) `saveLanguageWhitelist` | — | whitelist = konstanta kode en/fr/kr; ALASAN diperbarui Bagian 62: aset teks game hanya en/fr/kr — menerima `in` membuat UI campur, dan client tetap ganti bahasa walau ditolak (kedua cabang changeLanguage) → tolak/menerima tidak mengubah UX; bukan krn "asli menolak" |
+
+### 4.2b announce.json — format & pilihan (Bagian 62; dasar = kontrak getNotice main.min)
+
+Parser client (main.min `getNotice`): ACK data = OBJECT `{kunci: entri}`;
+per entri dibaca `text[bahasa]||""`, `title[bahasa]||""`, `version`,
+`orderNo`, `alwaysPopup`. ≥1 entri → tombol pengumuman muncul di layar login;
+ada `alwaysPopup` → panel pengumuman TERBUKA OTOMATIS setelah login. `{}` →
+tombol tidak muncul (visual sama dgn diam).
+
+```json
+{}
+```
+
+Contoh TERISI (bila owner mau memakai pengumuman — tinggal edit file,
+berlaku tanpa restart):
+
+```json
+{
+  "welcome": {
+    "title": {"in": "Pengumuman", "en": "Notice", "kr": "공지"},
+    "text": {"in": "Selamat datang di server lokal DragonBall!",
+             "en": "Welcome to the local DragonBall server!",
+             "kr": "로컬 서버에 오신 것을 환영합니다!"},
+    "version": "1",
+    "orderNo": 1,
+    "alwaysPopup": true
+  }
+}
+```
+
+| Field | Wajib | Efek (dari parser) |
+|---|---|---|
+| `text` | ya | isi pengumuman PER-BAHASA — kunci = kode bahasa client (`en`/`fr`/`kr`/`in`…); bahasa yang tidak ada → string kosong; **`"in"` (Indonesia) TAMPIL** walau SaveLanguage ditolak 111 (client tetap ganti bahasa) |
+| `title` | ya | judul per-bahasa, sama aturannya |
+| `version` | ya | tampil sebagai versi pengumuman di panel (bulletinVersion) |
+| `orderNo` | ya | urutan tampil (order) |
+| `alwaysPopup` | opsional | true → panel TERBUKA OTOMATIS saat login; tanpa ini → hanya tombol |
+
+KEPUTUSAN (kolom 3 prinsip §3.1.1): default `{}` karena BELUM ADA pengumuman
+yang mau disampaikan — BUKAN karena server asli diam. Owner isi kapan saja →
+fitur pengumuman (termasuk Bahasa Indonesia) langsung hidup.
 
 ### 4.3 Perilaku wire saat `enabled:true` (per event — semua bentuk LIVE-verified)
 
 | Event masuk | Respons lokal |
 |---|---|
-| `User/GetServerList` | ACK `{"ret":0,"data":"<JSON string {errorCode:0,serverList:[…12 field…],history:[…]>,language?}"}` — TANPA field compress (mirror asli); top-level keys = 3 PERSIS asli [2] |
+| `User/GetServerList` | ACK `{"ret":0,"data":"<JSON string {errorCode:0,serverList:[…12 field…],history:[…]>,language?}"}` — tanpa compress (ikut parser: compress hanya menambah kerja LZString); top-level = kunci yang PUNYA konsumen JS (serverList/history + opsional language/offlineReason) |
 | `User/SaveHistory` | ACK data `{"errorCode":0,"todayLoginCount":<config>}`; kalau `historyMode:"persist"` → simpan (accountToken→serverId) ke data/history.sqlite |
-| `User/LoginAnnounce` | DIAM (no ACK) — mirror asli [4]; konstanta kode (announce.json dihapus Bagian 61) |
+| `User/LoginAnnounce` | baca announce.json — `{}` → jawab data `{}` (siklus ACK tuntas; visual tanpa pengumuman, identik dgn diam per kontrak getNotice); diisi → jawab data itu (format §4.2b) — tombol pengumuman muncul, `alwaysPopup` → popup otomatis, teks `in` tampil |
 | `User/SaveLanguage` | whitelist konstanta kode en/fr/kr → `{"errorCode":0}`; di luar → `{"errorCode":111,"errorMessage":"不支持选择的语言<lang>"}` — client tetap ganti bahasa walau 111 (fakta main.min) |
 | `User/SaveUserEnterInfo` | ACK data `{"errorCode":0}` |
 | `User/loginGame` | ACK data `{"loginToken":"<uid>","userId":"<uid>","nickName":"Player","headerImage":"","isCreated":true,"errorCode":0,"errorMessage":"","channelCode":"<channel>"}` — server lokal MEMBIASAKAN sukses utk jalur origin (beda dari asli yang menolak 103; keputusan §5-K2, konstanta kode) |
@@ -529,30 +609,42 @@ halaman adalah HTTPS CDN sehingga bisa; device lokal origin halaman = 127.0.0.1:
 | # | Keputusan | Rekomendasi (basis bukti) |
 |---|---|---|
 | K1 | Lanjut implementasi login server sesuai §4? | Ya bila siap — semua kontrak kini live-verified, risiko wire nol |
-| K2 | `loginGame` lokal: sukses disiapkan (isCreated:true) atau mirror asli (tolak 103)? | Sukses — jalur origin jadi bonus tanpa merugikan jalur SDK (yang tak pernah kirim loginGame) |
-| K3 | `historyMode`: `auto` (auto-enter, v17-proven) atau `persist` (mirror asli: tombol start manual) | `auto` utk sekarang; `persist` mudah ditambah kemudian (SQLite sudah ada); mode `fixed` DIHAPUS Bagian 61 |
-| K4 | `LoginAnnounce` lokal: diam (mirror asli) atau ACK `{}` (kompatibel)? | Diam — mirror asli, UX sama |
-| K5 | Bahasa SaveLanguage lokal: whitelist en/fr/kr (mirror asli, "in" → 111) atau terima "in"? | Mirror asli — UI game hanya punya aset en/fr/kr (supportLang config asli); "in" akan membuat teks game campur |
+| K2 | `loginGame` lokal: sukses (isCreated:true) atau identitas kosong 103? | **Sukses** — alasan KITA: server lokal tidak punya kebijakan bisnis channel (103 = aturan bisnis MEREKA); tujuan lokal = semua jalur jalan; JS tidak cek errorCode jadi kedua pilihan aman secara teknis |
+| K3 | `historyMode`: `auto` (auto-enter instan) atau `persist` (resume server terakhir, tombol start manual)? | `auto` utk sekarang (cocok server lokal); `persist` mudah ditambah kemudian (SQLite sudah ada); mode `fixed` DIHAPUS (spekulasi) |
+| K4 | `announce.json`: DIAM (`{}`) atau ISI pengumuman? | **`{}` default** — alasan: BELUM ada pengumuman yang mau disampaikan (bukan krn server asli diam); visual `{}` = diam (kontrak getNotice). ISI kapan saja via edit file → pengumuman tampil, bisa Bahasa Indonesia (§4.2b) |
+| K5 | SaveLanguage lokal: tolak bahasa di luar en/fr/kr (111) atau terima semua? | **Tolak (111) utk en/fr/kr saja** — alasan KITA: ASET teks game hanya en/fr/kr (supportLang .bin); terima `in` membuat UI game campur bahasa; client tetap ganti bahasa walau ditolak (kedua cabang changeLanguage) → keputusan ini tidak memengaruhi UX, hanya kerapian server; bisa dibalik owner bila aset bahasa lain kelak ada |
+| P0 | PRINSIP (Bagian 62, mengikat semua keputusan): tiap perilaku wajib 3 kolom — KONTRAK JS (dasar wire) / FAKTA ASLI (informasi) / KEPUTUSAN KITA + ALASAN. Dilarang alasan "karena asli begitu"; fase gameplay kelak WAJIB mulai dari bedah kontrak (parser + capture), bukan jiplakan | Ditetapkan owner 26 Nov — "jangan semuanya disamakan tanpa kejelasan; jangan asal niru tanpa dasar" |
 
-### 5.1 KEPUTUSAN FOLDER (revisi Bagian 61)
+### 5.1 KEPUTUSAN FOLDER (revisi Bagian 62)
 
 KEPUTUSAN OWNER — sudah FIX, tidak ditanya lagi:
 - NAMA FOLDER = **`login-server/`** (koreksi langsung owner; `login/` salah nama).
-- MULTI-FILE sungguhan ("masak ya gitu cuma 1 file doang") — TAPI isi folder =
-  **TURUNAN FAKTA server asli + main.min.js** (koreksi #2 Bagian 61: "ULANGI YG
-  BENER!! LIHAT FAKTA"); README.txt/notes.md/captures/ TIDAK KEMBALI LAGI ke
-  device (pelajaran v16 yang sama).
+- MULTI-FILE sungguhan ("masak ya gitu cuma 1 file doang") — TAPI isi folder
+  wajib lewat prinsip 3 kolom.
+- **DILARANG JIPLAK** (koreksi #3 Bagian 62): "mereka diam ya hanya diam —
+  kalau kita diam jangan ikut diam, harus tau alasannya" → tiap perilaku =
+  KONTRAK JS + KEPUTUSAN + ALASAN (§3.1.1, K-P0); announce.json = pilihan
+  owner (isi/diam); README.txt/notes.md/captures/ tetap TIDAK KEMBALI (L5).
 
 | # | Keputusan | Rekomendasi (basis bukti) |
 |---|---|---|
 | L1 | DB history: file TERPISAH `login-server/data/history.sqlite` atau gabung `sdk/data/db.sqlite`? | **Terpisah** — scope SDK (tabel accounts) tidak tersentuh eksperimen login; Db.open masih hardcoded sdk/data (Bagian 30), memisah = nol risiko migrasi; DbSqlite dipakai ulang dgn dataDir berbeda |
-| L2 | Waktu seed `login-server/`: BOOT atau lazy (event pertama)? | **Boot** — satu panggilan `LoginServerConfig.ensure()` tepat setelah `Db.open`; 2 file padanan-DB terlihat sejak detik pertama; event pertama dijamin punya config |
-| L3 | Isi folder | **SELESAI Bagian 61**: 2 file (config.json = padanan kebijakan, serverlist.json = padanan DB serverList) + 2 folder kondisional (data/ persist saja, logs/ enabled saja) — SEMUA diturunkan dari tabel padanan §3.2 |
+| L2 | Waktu seed `login-server/`: BOOT atau lazy (event pertama)? | **Boot** — satu panggilan `LoginServerConfig.ensure()` tepat setelah `Db.open`; 3 file (config/serverlist/announce) terlihat sejak detik pertama; event pertama dijamin punya config |
+| L3 | Isi folder | **SELESAI Bagian 62**: 3 file (config.json = saklar, serverlist.json = DATA serverList, announce.json = pengumuman/pilihan owner) + 2 folder kondisional (data/ persist saja, logs/ enabled saja) — SEMUA lolos prinsip 3 kolom §3.2 |
 | L4 | `logs/` per-scope login-server (pisah dari logs/ global), hanya menulis saat enabled:true? | **Ya** — debug login tidak tercampur trafik SDK/CDN; folder kosong saat mati = bukan sampah |
 | L5 | File dokumentasi di device (README.txt/notes.md/captures/)? | **TIDAK, PERMANEN** — server asli tak punya padanannya; v16 sudah menghukum index.txt ("berasa jadi sampah", SdkConfig.java:28); dokumentasi = REPO saja (docs/, readme.md, verify-artifacts/) |
 | OPEN | K1–K5 (implementasi ACK, loginGame, historyMode, LoginAnnounce, bahasa) | Menunggu keputusan owner — struktur kini fakta-murni, tinggal persetujuan K1 |
 
-## 6. YANG TETAP OPEN (jujur, tak dikarangan)
+## 6. YANG TETAP OPEN + TAHAP BERIKUTNYA (jujur, tak dikarangan)
+
+PERINGATAN OWNER (Bagian 62) utk fase berikutnya: "ini baru tahap depan, belum
+ gameplay — masuk tahap gameplay nanti bingung lagi karena cuma asal niru
+server asli padahal gak punya dasar". MAKA fase gameServer/enterGame kelak
+WAJIB mulai dari BEDAH KONTRAK dulu (parser main.min: UserDataParser,
+enterGame/registChat; capture live server game + handshake verify XXTEA yang
+sudah terbukti Bagian 58) — baru KEPUTUSAN per perilaku dgn prinsip 3 kolom
+§3.1.1. Tidak ada implementasi dari jiplakan.
+
 - loginGame SUKSES server asli: tak bisa direkam — semua channel uji ditolak 103
   ("hanya channel tertentu"); butuh akun SDK asli yang sudah tidak bisa dibuat
   (product DB qsdk dikosongkan — LIVE_CONTRACT_20261123.md).
