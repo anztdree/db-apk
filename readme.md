@@ -4924,3 +4924,108 @@ JANGAN diganti.
   per docs §4.3; (3) history persist bila K3=persist; (4) smoke folder 59.6 +
   smoke ACK; (5) dashboard TIDAK berubah (disiplin v17).
 - STATUS: MENUNGGU KEPUTUSAN OWNER (K1–K5 §5 + L1–L3 §5.1).
+
+---
+
+## Bagian 60 — KOREKSI OWNER: FOLDER "login-server/" + STRUKTUR PENUH MULTI-FILE, BUKAN 1 FILE (plan only, nol kode)
+
+> Jawaban owner: ("jangan terpaku sama file sebelumnya lah , masak ya gitu cuma
+> 1 file doang", "nama yg benar login-server/")
+>
+> Dua koreksi LANGSUNG diterapkan ke rencana Bagian 59:
+> 1. NAMA FOLDER = **`login-server/`** — bukan `login/` (Bagian 59 salah nama).
+> 2. STRUKTUR = **PENUH multi-file** — proposal minimal "cuma config.json" DITOLAK
+>    owner. Keputusan L3 lama SELESAI oleh owner.
+> Riwayat §3: v2 (notes.md + captures/) → Bagian 59 (salah nama + terlalu minimal)
+> → Bagian 60 (fix keduanya). docs/LOGIN-SERVER-PLAN.md §3 + §5.1 direvisi lagi.
+
+### 60.1 STRUKTUR FINAL `server/login-server/` — 8 FILE + 3 FOLDER, TIAP FILE PUNYA PEKERJAAN
+
+```
+server/login-server/
+├── README.txt      ← peta folder + fungsi tiap file (Bahasa Indonesia) — penuntun
+│                     edit di file manager; ikut self-seed (terhapus → dibuat ulang)
+├── config.json     ← saklar & perilaku umum: enabled, language, offlineReasonTop,
+│                     historyMode(auto/persist/fixed), todayLoginCount,
+│                     saveLanguageWhitelist
+├── serverlist.json ← DATA GetServerList: serverList[] 12-field PERSIS server asli
+│                     (serverId STRING; url tetap http://127.0.0.1:9528) — dipisah
+│                     dari config: ini isi yang paling sering diedit
+├── announce.json   ← DATA LoginAnnounce: {} = DIAM (mirror asli); diisi → ACK
+├── history.json    ← historyMode "fixed": array serverId manual; mode lain tak dibaca
+├── profile.json    ← profil kawat + saklar kontrak: envelope {"ret":0,
+│                     "data":"<json string>"} TANPA compress (mirror asli Bagian 58),
+│                     pingInterval/pingTimeout, loginGameResponse:"success"|"mirror103"
+│                     (K2), loginAnnounce:"silent"|"ack" (K4), validateUserId:false
+├── errors.json     ← katalog error login (111 bahasa, 103 channel, ret 38) +
+│                     template errorMessage (mis. "不支持选择的语言<lang>")
+├── notes.md        ← log keputusan owner (append-only; seed template)
+├── captures/       ← salinan bukti kontrak live bertanggal (kosong default)
+├── data/           ← state: history.sqlite (hanya historyMode "persist")
+└── logs/           ← NDJSON scope login-server (event masuk + ACK keluar) —
+                       TERPISAH dari logs/ global; ditulis HANYA saat enabled:true
+```
+
+Pola pembagian = `sdk/` yang sudah jalan di device (profile.json = profil kawat,
+init.json = data kontrak, errors.json = katalog, data/ = db.sqlite) — kini untuk
+login-server. Pemisahan serverlist.json dari config.json = saklar vs BULK DATA
+(kontrak §2.2: ACK asli 618.309 B — inilah isi yang paling sering diedit owner).
+
+### 60.2 ATURAN + SEED (pola SdkConfig tetap, kelas baru LoginServerConfig.java)
+
+1. TIDAK pernah masuk assets/server_root (tak ditimpa ekstraksi — bukti SdkConfig:13-16).
+2. Seed BOOT: `LoginServerConfig.ensure()` tepat setelah Db.open — skeleton 8 file
+   + 3 folder TERLIHAT LENGKAP sejak detik pertama.
+3. Dibaca ulang tiap event → edit tanpa restart.
+4. JSON mana pun rusak → reseed + WARN → SDK tidak pernah ikut rusak (satu arah).
+5. Tulis atomik .tmp + fsync + rename.
+Seed hanya bila BELUM ada (editan owner dihormati). logs/ kosong saat enabled:false
+= bukan sampah.
+
+### 60.3 CARA KERJA PER EVENT — EVENT → FILE (dibaca ulang tiap event)
+
+| Event masuk | File dibaca | ACK keluar (docs §4.3, LIVE-verified) |
+|---|---|---|
+| GetServerList | serverlist.json + config(language, offlineReasonTop) | envelope per profile.json — 12-field persis asli |
+| SaveHistory | config(todayLoginCount); persist → tulis data/history.sqlite | {"errorCode":0,"todayLoginCount":N} |
+| LoginAnnounce | announce.json | kosong → DIAM (K4); diisi → ACK data itu |
+| SaveLanguage | config(saveLanguageWhitelist) + errors.json template | 0 / 111 |
+| SaveUserEnterInfo | — (tetap) | {"errorCode":0} |
+| loginGame | profile(loginGameResponse) + AccountStore read-only | success (K2) / mirror103 |
+| historyMode "fixed" | history.json | history:[...] menyertai GetServerList |
+
+Titik ACK gate & boot flow TIDAK berubah dari Bagian 59: satu logika dua pintu
+(POST polling cabang `42` + loop frame WS) → `session.deliver` (infra v6 sudah
+ada); TIDAK ada port baru; envelope tanpa compress; 9528 tetap satu-satunya origin.
+
+### 60.4 YANG BERUBAH / YANG TETAP dari Bagian 59
+
+BERUBAH: nama folder login/ → login-server/; 1 file → 8 file + 3 folder; kelas
+LoginConfig.java → LoginServerConfig.java; logs/ per-scope login-server (L4 baru);
+README.txt penuntun edit di device; notes.md + captures/ KEMBALI (pembatalan di
+Bagian 59 dicabut — bagian dari struktur penuh yang diminta owner).
+TETAP: 5 aturan folder; titik ACK gate; tanpa port baru; envelope mirror asli;
+identitas AccountStore read-only; db.sqlite accounts SDK tak disentuh; gameServer
+5051 tetap transport-only; dashboard TIDAK berubah.
+
+### 60.5 KRITERIA TERIMA FOLDER (update)
+
+1. Fresh boot → skeleton LENGKAP: 8 file + captures/ data/ logs/ (kosong); wire
+   v19 byte-identik (enabled:false).
+2. Edit serverlist.json / config.json → berlaku tanpa restart.
+3. Reboot → editan BERTAHAN (bs/ ditimpa ekstraksi; login-server/ TIDAK).
+4. JSON mana pun rusak → reseed + WARN; SDK aman.
+5. historyMode persist → data/history.sqlite dibuat; auto → tak pernah dibuat.
+6. enabled:true → logs/ menerima NDJSON event login (URL penuh, gaya v17);
+   enabled:false → logs/ tetap kosong.
+
+### 60.6 KEPUTUSAN + STATUS
+
+- FIX oleh owner: nama folder login-server/; struktur penuh (L3 selesai).
+- Rekomendasi tetap: L1 DB history terpisah (login-server/data/history.sqlite);
+  L2 seed BOOT; L4 logs/ per-scope hanya saat enabled:true.
+- OPEN: struktur 8+3 sudah pas atau boss mau tambah/kurangi — bersama K1–K5 (§5)
+  yang tetap menunggu.
+- NOL baris kode ditulis di APK — PLAN ONLY. Implementasi saat owner oke:
+  LoginServerConfig.java (seed skeleton) → ack-gate SocketIoHandler (baca per
+  event) → persist opsional → smoke folder 60.5 + smoke ACK.
