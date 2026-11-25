@@ -5029,3 +5029,112 @@ identitas AccountStore read-only; db.sqlite accounts SDK tak disentuh; gameServe
 - NOL baris kode ditulis di APK — PLAN ONLY. Implementasi saat owner oke:
   LoginServerConfig.java (seed skeleton) → ack-gate SocketIoHandler (baca per
   event) → persist opsional → smoke folder 60.5 + smoke ACK.
+
+## Bagian 61 — KOREKSI OWNER #2: STRUKTUR DITURUNKAN DARI CARA KERJA SERVER ASLI + main.min.js, BUKAN PROPOSAL LAMA (plan only, nol kode)
+
+Jawaban owner ("ULANGI YG BENER!! LIHAT FAKTA" + "baca tuh server asli dan
+main.min.js — gimana server Mereka bekerja dan HARUSnya struktur local kita,
+config loginserver kita gimana"): Bagian 60 salah metode — menghidupkan kembali
+proposal sampah era v16 (README.txt/notes.md/captures/) yang sudah pernah
+dihukum owner sejak v16 (index.txt "berasa jadi sampah", SdkConfig.java:28,
+kini dibersihkan otomatis tiap boot). Bagian 61 menulis ulang dari NOL fakta:
+
+### 61.1 CARA SERVER ASLI BEKERJA (fakta live 26 Nov + bedah main.min baru)
+
+1. ACK GetServerList ASLI (618.309 B) = 3 kunci top-level PERSIS:
+   `{errorCode:0, serverList:[2112 entri × 12 field], history:[...]}` — TIDAK
+   ada `language`, TIDAK ada top-level `offlineReason`, TIDAK ada `recommend`.
+2. serverList = DATA DINAMIS di DB server (openDate mingguan Jumat 07:00 UTC,
+   2.073/2.112 entri merge:true); history = DB persist PER-AKUN (userId segar →
+   `[]`, akun yang pernah main → `["2112"]` — bukti kontrak [2]).
+3. main.min `processHandlerWithLogin`: `0===e.ret` → `data` = JSON string →
+   `e.compress&&LZString…` (compress ABSEN di asli, 618 KB pun tak dikompres) →
+   `a.language&&(ts.language=a.language)` — language top-level opsional.
+4. main.min `changeServerInfo`: `t[n].offlineReason=e.offlineReason` — nilai
+   TOP-LEVEL menimpa offlineReason SEMUA entri → absen = dialog offline tak
+   pernah muncul (per-entry dari server PRAKTIS sia-sia).
+5. main.min `selectNewServer`: history kosong → auto-enter; history[0] →
+   `matchServerUrl` (`e==o.serverId`) → onLoginSuccess (online/hot/new = ikon,
+   name = label).
+6. main.min SaveLanguage: ditolak 111 PUN client TETAP ganti bahasa —
+   `window.changeLanguage(e)` di KEDUA cabang → whitelist server hanyalah
+   mirror, nol efek UX. Asal whitelist = `supportLang` config .bin game
+   (en/fr/kr), BUKAN file server.
+7. main.min `todayLoginCount` (ACK SaveHistory [3]): konsumen = analytics
+   (`4===t`/`6===t` → ReportToSdkCommon).
+8. LoginAnnounce tanpa pengumuman → server DIAM total (bukti [4], 6 dtk).
+9. Pesan error (111 "不支持选择的语言in", 103 "本服务器只允许特定的渠道来源")
+   = hardcode kode server.
+
+### 61.2 KESIMPULAN ARSITEKTUR → STRUKTUR FINAL (2 file + 2 folder kondisional)
+
+Server asli: DATA BISNIS di DATABASE, KEBIJAKAN di KODE. Folder lokal meniru:
+
+```
+Android/data/com.db.local/server/login-server/
+├── config.json        ← SAKLAR & KEBIJAKAN (5 field): enabled(false),
+│                        language(""), offlineReasonTop(""),
+│                        historyMode(auto|persist), todayLoginCount(1)
+├── serverlist.json    ← DATA GetServerList (padanan DB serverList asli):
+│                        serverList[] 12-field PERSIS asli; serverId STRING;
+│                        url tetap http://127.0.0.1:9528 (fakta routing v3)
+├── data/
+│   └── history.sqlite ← padanan DB history per-akun asli — HANYA historyMode
+│                        "persist"; TERPISAH dari sdk/data/db.sqlite (L1)
+└── logs/              ← NDJSON scope login — HANYA saat enabled:true
+```
+
+TABEL PADANAN LENGKAP (tiap file wajib punya padanan perilaku server asli)
+ada di docs §3.2 — mis. serverList DB asli → serverlist.json; DB history →
+history.sqlite; todayLoginCount DB → config; announce DIAM → kode; whitelist
+bahasa → kode (mirror supportLang); pesan error → konstanta kode; envelope →
+fakta kode; top-level offlineReason/language → config (default = TIDAK
+dikirim, mirror asli); `enabled` = satu-satunya field tanpa padanan asli
+(alasan: co-exist dgn transport-only v19, default false).
+
+### 61.3 FILE YANG SENGAJA TIDAK ADA — JANGAN DIHIDUPKAN LAGI
+
+- README.txt / notes.md / captures/ — server asli tak pernah mengirim
+  dokumentasi ke client; pelajaran v16 PERSIS (index.txt dihapus: "berasa jadi
+  sampah"). Dokumentasi & bukti = REPO (docs/, readme.md, verify-artifacts/).
+- announce.json — asli DIAM; file kosong = sampah. Perilaku DIAM = kode (K4).
+- history.json (mode "fixed") — mode fixed DIHAPUS (spekulasi; asli persist).
+  K3 kini auto|persist saja.
+- profile.json — bentuk envelope = fakta kode §2.1, bukan konfigurasi; saklar
+  K2/K4 = keputusan sekali di §5 → konstanta kode.
+- errors.json — pesan error asli = hardcode kode → konstanta kode.
+
+### 61.4 YANG BERUBAH / TETAP dari Bagian 60
+
+BERUBAH: 8 file + 3 folder → 2 file + 2 folder kondisional (semua turunan
+fakta); seed boot 8 file → 2 file (config.json + serverlist.json); skema
+config 8 field → 5 field (announce & saveLanguageWhitelist & serverList[] baru
+DIHAPUS dari config — serverList pindah serverlist.json sejak Bagian 60,
+kini skema §4.2 benar-benar sinkron); mode fixed hilang (K3).
+TETAP: nama folder login-server/; 5 aturan folder (self-seed BOOT setelah
+Db.open, baca ulang tiap event, rusak→reseed+WARN, tulis atomik .tmp+fsync+
+rename, tak pernah di assets); ACK gate satu logika dua pintu → session.deliver
+(infra v6); tanpa port baru; envelope tanpa compress; 9528 satu-satunya origin;
+db.sqlite accounts SDK tak disentuh; identitas AccountStore read-only;
+gameServer 5051 transport-only; dashboard tak berubah.
+
+### 61.5 KRITERIA TERIMA (update)
+
+1. Fresh boot → config.json + serverlist.json ADA (data/ logs/ belum ada);
+   wire v19 byte-identik; AUDIT: nol file dokumentasi pernah dibuat.
+2. Edit config/serverlist → berlaku tanpa restart; reboot → BERTAHAN.
+3. JSON rusak → reseed + WARN; SDK aman (rusak satu arah).
+4. persist → data/history.sqlite dibuat; auto → tak pernah dibuat.
+5. enabled:true → logs/ NDJSON event login (URL penuh gaya v17);
+   enabled:false → kosong.
+
+### 61.6 KEPUTUSAN + STATUS
+
+- FIX owner (2 koreksi terakumulasi): nama login-server/; multi-file DARI
+  FAKTA (L3 selesai Bagian 61; L5 BARU: nol file dokumentasi di device,
+  PERMANEN).
+- Menunggu owner: K1–K5 (§5) — struktur kini fakta-murni; tinggal persetujuan
+  implementasi.
+- NOL baris kode di APK — PLAN ONLY. Urutan implementasi saat owner oke:
+  LoginServerConfig.java (seed 2 file) → ack-gate SocketIoHandler (kode
+  konstanta mirror asli per §4.3) → persist opsional → smoke 61.5 + smoke ACK.
