@@ -5322,3 +5322,90 @@ parser) · errors.json (fakta baru #1: pesan server tak pernah tampil).
 - NOL baris kode di APK sampai owner oke — PLAN ONLY. Fase gameplay kelak:
   BEDAH KONTRAK DULU (UserDataParser/enterGame/registChat + capture live +
   verify XXTEA Bagian 58) → keputusan 3 kolom → baru implement.
+
+## Bagian 64 — USULAN Bagian 63 DITOLAK OWNER: BEDAH TOTAL LOGIN-SERVER DI main.min.js (atlas verbatim, plan only, nol kode)
+
+Jawaban owner: **"usulan di tolak!! saya sudah bilang bedah total dulu
+login-server yg ada di main.min.js!!"** — benar: selama ini fakta diambil
+SEBAGIAN untuk mendukung struktur; owner minta kebalikannya — BEDAH DULU
+SELURUHNYA, struktur belakangan. Produk: **docs/LOGIN-SERVER-BEDAH-TOTAL.md**
+(atlas verbatim + offset, bisa dicek siapa pun). Struktur TIDAK diusulkan
+di Bagian 64.
+
+### 64.1 KELAS SOCKET (offset 30514–33406 + instansiasi 762352)
+
+- `loginClient = new TSSocketClient("login-server", !1)` — SATU-SATUNYA verify
+  OFF (main/chat/dungeon verify XXTEA).
+- ACK = mekanisme ACK socket.io bawaan: `emit("handler.process", payload, ackFn)`
+  → server wajib memanggil ack → frame `43<id>[...]`. Tidak ada ackId buatan.
+- Reconnect maks 10 percobaan; offline ≥ 10 menit → "harus login ulang".
+- `connectToServer` selalu destroy socket lama; `isConnect` = socket.connected.
+
+### 64.2 DISPATCHER (774449) — processHandlerWithLogin
+
+- `0===e.ret` strict → `data` string JSON → compress opsional → JSON.parse →
+  **`a.language&&(ts.language=a.language)` di SEMUA ACK** (kendali bahasa
+  top-level berlaku utk event apa pun).
+- `ret!=0` → cuma log "登录出错" + onErr (tanpa dialog).
+- **autoConnect=false + socket belum connect = event DIBUANG SENYAP** (jalur
+  loginGame — verbatim, bukan tebakan).
+- **TIDAK ADA TIMEOUT jalur login** (jalur game punya 10 dtk + loading panel) —
+  server DIAM = client diam, tanpa crash (cocok live LoginAnnounce 6 dtk).
+
+### 64.3 INVENTARIS TOTAL — TEPAT 6 EVENT (7 hit = 1 def + 6 panggilan; tidak ada ke-7)
+
+| # | Event | Sender (offset) | autoConnect | Field ACK yang DIBACA client |
+|---|---|---|---|---|
+| 1 | GetServerList | clientRequestServerList (793433) | true | serverList[] (12 field), history[], offlineReason top-level, language top-level; errorCode TIDAK dibaca |
+| 2 | loginGame | clientLoginUser (792556) | false (tapi selalu connectToLogin dulu) | userId + channelCode (dipakai GetServerList); sisanya TIDAK dibaca |
+| 3 | SaveHistory | startBtnTap (1453497) | true | **loginToken (INJEKSI! menimpa token sesi)**, todayLoginCount (analytics 4/6); onErr=onOk → game tetap mulai |
+| 4 | LoginAnnounce | getNotice (1458983) | true | data={kunci:entri}: text[lang]||"", title[lang]||"", version, orderNo, alwaysPopup |
+| 5 | SaveLanguage | saveLanguage (790564) | true | errorCode 0/111 — kedua cabang tetap ganti bahasa; pesan server TIDAK pernah tampil |
+| 6 | SaveUserEnterInfo | reportToLoginEnterInfo (794977) | true | tidak dibaca → destroy() login socket (SATU-SATUNYA destroy) |
+
+FAKTA BARU #1 (belum pernah dicatat repo): **ACK SaveHistory bisa MENYISIPKAN
+loginToken** (`e&&e.loginToken&&(ts.loginInfo.userInfo.loginToken=e.loginToken)`)
+— pintu sah server login menanam token sesi game; server asli tidak pernah
+memakainya (selalu kosong → token SDK dipertahankan).
+
+### 64.4 RANTAI PEMILIH SERVER + 2 BRIDGE NATIVE "TERSEMBUNYI"
+
+- `selectNewServer`: filterByWhiteList → changeServerInfo → history[0] ?? serverList[0]
+  → matchServerUrl (loose `==`) → onLoginSuccess → showLoginSuccessStatus(isNew)
+  → isNew = AUTO startBtnTap. Jalur origin/manual berakhir di WINDOW MANUAL
+  (selectServer), bukan auto-enter.
+- **`window.serverList` (bridge native) = WHITELIST + ganti nama**: kalau bridge
+  ada & tidak kosong, serverId yang tidak ada di bridge DIHAPUS dari daftar;
+  yang ada, namanya diganti. **`window.replaceServerName`** = nama per-RANGE
+  serverId (from≤id<to, "{x}"), MENANG atas entry.name. Keduanya bisa mengubah
+  hasil serverlist kita SEBELUM pemain melihatnya — belum pernah dipetakan di
+  Bagian mana pun sebelumnya.
+- Ikon: !online→Maintain, hot→Hot, new→New; toast offline = entry.offlineReason
+  (hasil overwrite top-level).
+- Sumber URL login: bridge `getLoginServer()` dulu, fallback serversetting.json
+  `loginserver` (cache-buster random). Device kita: 127.0.0.1:9528 (bridge).
+
+### 64.5 STATE + WIRE
+
+- Dua wadah identitas: `ts.loginUserInfo` (scene; dipakai SaveLanguage userid)
+  vs `ts.loginInfo.userInfo` (sesi; dipakai accountToken SaveHistory/
+  SaveUserEnterInfo) — bedah ini yang memperjelas mana dipakai di mana.
+- localStorage `last_game_server`: origin = {username,password,lastServerID};
+  manual = {lastServerID}. Cache CLIENT — bukan server-side.
+- Urutan wire SDK path lengkap di atlas §10: connect → GetServerList +
+  LoginAnnounce (paralel) → start (auto/manual) → SaveHistory → clientStartGame
+  (url dari entri) → verify XXTEA server game → enterGame → SaveUserEnterInfo →
+  destroy login socket.
+- Kontras envelope: login `{ret:0,data}` vs game-Notify `{ret:"SUCCESS",data,compress}`.
+
+### 64.6 PETA KONSEKUENSI + NOL-HASIL + STATUS
+
+- Atlas §11 = 13 baris WAJIB (parser, tak bisa dilanggar) vs BEBAS (pilihan
+  owner) — bahan langsung untuk struktur berikutnya.
+- Atlas §12 = 7 nol-hasil (jujur): tak ada event ke-7; tak ada ping manual;
+  tak ada timeout login; tak ada dekompresi request; tak ada validasi errorCode
+  GetServerList/loginGame; openDate/merge/mergeTo/urlInner/chatInner tak
+  dipakai client; history tidak disimpan client-side.
+- **STATUS: bedah TOTAL selesai. Usulan struktur berikutnya WAJIB merujuk
+  baris atlas (offset verbatim) — tidak ada satu pun perilaku di luar atlas.**
+  Nol baris kode di APK sampai owner oke — PLAN ONLY.

@@ -68,6 +68,24 @@
 > kirim en/fr/kr; text[lang]||"" TANPA fallback). STRUKTUR TIDAK berubah
 > dari Bagian 62 (3 file + 2 folder kondisional) — yang baru = kejelasan
 > penyajian + penguat bukti. Menunggu oke owner (bareng K1–K5).
+>
+> **Bagian 64 (26 Nov 2026) — USULAN Bagian 63 DITOLAK OWNER; BEDAH TOTAL**:
+> owner: "usulan di tolak!! saya sudah bilang bedah total dulu login-server
+> yg ada di main.min.js!!" → dokumen BARU `docs/LOGIN-SERVER-BEDAH-TOTAL.md`
+> = atlas verbatim lengkap: kelas TSSocketClient (ack = ACK socket.io bawaan;
+> maks 10 reconnect; offline ≥10 menit = login ulang), dispatcher
+> processHandlerWithLogin (`a.language` dibaca di SEMUA ACK; autoConnect=false
+> + belum connect = event dibuang senyap; TANPA timeout), sumber URL
+> (bridge getLoginServer > serversetting.json), INVENTARIS TOTAL 6 event
+> (GetServerList/loginGame/SaveHistory/LoginAnnounce/SaveLanguage/
+> SaveUserEnterInfo — tidak ada ke-7), PINTU INJEKSI loginToken di ACK
+> SaveHistory (fakta baru), rantai pemilih server + 2 bridge native
+> `window.serverList` (WHITELIST+rename) dan `window.replaceServerName`
+> (nama per-range — bisa menimpa isi serverlist kita SEBELUM pemain lihat),
+> 2 wadah identitas (loginUserInfo vs loginInfo.userInfo), localStorage
+> last_game_server, wire end-to-end, peta konsekuensi WAJIB/BEBAS (§11),
+> 7 nol-hasil (§12). STRUKTUR TIDAK diusulkan di Bagian 64 — usulan
+> berikutnya wajib merujuk baris atlas.
 
 ---
 
