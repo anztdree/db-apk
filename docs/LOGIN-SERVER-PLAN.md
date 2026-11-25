@@ -56,6 +56,18 @@
 > (bukan krn asli menolak), loginGame sukses krn TUJUAN lokal (103 = kebijakan
 > bisnis mereka, bukan kebutuhan teknis kita), envelope/compress krn PARSER
 > JS strict. Seed boot kini 3 file. Catatan fase gameplay ditulis di §6.
+>
+> **Bagian 63 (26 Nov 2026) — USULAN ULANG**: owner minta struktur folder
+> login-server di-usulkan ULANG dgn benar ("yg jelas saya mau usulan ulang
+> struktur folder login-server yg benar"). §3.0 BARU = usulan FINAL satu
+> layar: SATU ATURAN "ISI / DIAM" (kosong = diam, diisi = pakai isi — file
+> TIDAK pernah dihapus untuk diam) + tabel per-file (peran / pilihan /
+> default / dasar kontrak main.min) + 3 fakta verbatim baru hasil verifikasi
+> ulang main.min (pesan 111 = console.log saja TIDAK pernah tampil; daftar
+> bahasa tombol = window.supportLang aset game — client UI hanya pernah
+> kirim en/fr/kr; text[lang]||"" TANPA fallback). STRUKTUR TIDAK berubah
+> dari Bagian 62 (3 file + 2 folder kondisional) — yang baru = kejelasan
+> penyajian + penguat bukti. Menunggu oke owner (bareng K1–K5).
 
 ---
 
@@ -191,7 +203,7 @@ Urutan serverList asli: TERMUDA dulu (2112 → 1). `history` kosong → JS auto-
 |---|---|---|---|
 | `SaveHistory` | `{type:"User",accountToken,channelCode,serverId,securityCode,subChannel,version:"1.0"}` (serverId STRING) | `43[{"ret":0,"data":"{\"errorCode\":0,\"todayLoginCount\":2}"}]` | **BUKAN `{}`** — `todayLoginCount` dipakai JS utk report; TIDAK ada `loginToken` di ACK ini (v2 salah); server persist history per-akun |
 | `LoginAnnounce` | `{type:"User",action:"LoginAnnounce"}` | **TIDAK DIJAWAB** (6 dtk diam) | v2 menyimpulkan ACK `{}` — server asli malah DIAM; JS: callback tak jalan → tombol notice tersembunyi (hasil UX sama dgn `{}`); mirror-real = diam |
-| `SaveLanguage` | `{type:"User",userid,sdk,appid,language}` (userid huruf kecil semua) | `43[{"ret":0,"data":"{\"errorCode\":111,\"errorMessage\":\"不支持选择的语言in\"}"}]` utk bahasa tak didukung | bahasa sah = `supportLang` config .bin (en/fr/kr); "in" ditolak 111 |
+| `SaveLanguage` | `{type:"User",userid,sdk,appid,language}` (userid huruf kecil semua) | `43[{"ret":0,"data":"{\"errorCode\":111,\"errorMessage\":\"不支持选择的语言in\"}"}]` utk bahasa tak didukung | bahasa sah = `supportLang` config .bin (en/fr/kr); "in" ditolak 111; VERIFIKASI ULANG Bagian 63: callback client utk 111 = `console.log` + `window.changeLanguage` — **pesan 111 TIDAK pernah tampil ke pemain** (console saja); daftar bahasa tombol = `window.supportLang` → client UI hanya pernah kirim en/fr/kr |
 | `SaveUserEnterInfo` | `{type:"User",accountToken,channelCode,subChannel,createTime,userLevel,version:"1.0"}` | `43[{"ret":0,"data":"{\"errorCode\":0}"}]` | dikirim SETELAH ACK enterGame; setelahnya JS `loginClient.destroy()` |
 | `loginGame` (hanya jalur akun-origin) | `{type:"User",userId,password,fromChannel,channelName:"",headImageUrl:"",nickName:"",subChannel,version:"1.0"}` | `43[{"ret":0,"data":"{\"loginToken\":\"\",\"userId\":\"\",\"nickName\":\"\",\"headerImage\":\"\",\"isCreated\":false,\"errorCode\":103,\"errorMessage\":\"本服务器只允许特定的渠道来源\",\"channelCode\":\"\"}"}]` | server asli menolak channel `game_origin` DAN `quick` (103); **envelope tetap ret:0** dan JS TIDAK mengecek `data.errorCode` — alur lanjut dgn identitas kosong (quirk asli; perilaku ini yang membuat jalur origin asli "masuk" tanpa akun lalu gagal di enterGame) |
 | event tak dikenal | — | (belum diuji di server asli; lokal: tetap NO ACK + log verbatim) | disiplin tetap |
@@ -268,7 +280,74 @@ tak dijawab — batas berbeda, keduanya normal.)
 > sampah v16 (README.txt/notes.md/captures/) → Bagian 61 membuang sampah tapi
 > SALAH METODE: "server asli diam → kita diam" = JIPLAKAN TANPA DASAR (kritik
 > owner) → **KOREKSI OWNER Bagian 62**: prinsip 3 kolom + announce.json
-> kembali sebagai PILIHAN owner. Semua tetap berpijak pada kode v13–v19.
+> kembali sebagai PILIHAN owner → **Bagian 63**: USULAN ULANG final (§3.0).
+> Semua tetap berpijak pada kode v13–v19.
+
+### 3.0 USULAN ULANG — STRUKTUR FINAL SATU LAYAR (Bagian 63; struktur = Bagian 62, penyajian = baru)
+
+**SATU ATURAN "ISI / DIAM" untuk SEMUA perilaku yang owner pegang:**
+
+- **DIAM** = file/field dibiarkan **KOSONG** (`{}`, `""`, `false`) — file TETAP
+  ADA; diam TIDAK pernah = hapus file.
+- **PAKAI ISI** = file/field **DIISI** — edit di file manager, berlaku TANPA
+  restart (dibaca ulang tiap event).
+- Perilaku TIDAK PERNAH berubah karena kode — hanya karena isi yang owner tulis.
+- Alasan lengkap tiap keputusan = REPO (docs §3.2 + readme Bagian 59–63) —
+  BUKAN di device (L5).
+
+**TREE (device):**
+
+```
+Android/data/com.db.local/server/
+├── bs/  sdk/  logs/  ← SUDAH ADA (v13–v19) — login TAK menyentuh
+│                         (bs/ ditimpa ekstraksi; sdk/data/db.sqlite = akun
+│                          MILIK SDK — L1)
+└── login-server/            ← [BARU] self-seed BOOT — 3 file + 2 folder kondisional
+    ├── config.json          ← SAKLAR (5 field — kosong/terisi = diam/pakai isi)
+    ├── serverlist.json      ← ISI daftar server (DATA 12-field)
+    ├── announce.json        ← ISI pengumuman ({} = diam)
+    ├── data/
+    │   └── history.sqlite   ← HANYA historyMode:"persist"
+    └── logs/                ← NDJSON HANYA saat enabled:true
+```
+
+**TABEL PER-FILE — peran / DIAM / PAKAI ISI / dasar teknis (kontrak main.min):**
+
+| File/field | Peran | DIAM (default seed) | PAKAI ISI | Dasar kontrak main.min |
+|---|---|---|---|---|
+| config `enabled` | saklar ACK login | `false` = wire PERSIS v19, tak jawab apa pun | `true` = ACK per §4.3 hidup | client kirim `420["handler.process"]` lalu TUNGGU `43<n>`; tanpa ACK game berhenti sebelum serverlist (v19 terbukti) |
+| config `language` | paksa bahasa client | `""` = field tak dikirim | `"en"`/`"kr"`/… = top-level `language` ikut ACK GetServerList → client ganti bahasa | `a.language&&(ts.language=a.language)` — opsional; kosong = fitur mati |
+| config `offlineReasonTop` | papan maintenance global | `""` = tak dikirim → tak ada dialog offline | diisi teks → MENIMPA `offlineReason` SEMUA entri → toast saat pemain tekan start di server offline | `changeServerInfo: t[n].offlineReason=e.offlineReason`; `startBtnTap: !online → ShowNormalErrror(offlineReason)` (BarTypeTips, teks verbatim) |
+| config `historyMode` | UX masuk server | `"auto"` = `history:[]` selalu → AUTO-ENTER instan | `"persist"` = resume server terakhir per akun (data/history.sqlite) | `selectNewServer`: history kosong → `serverList[0]`+auto-enter; berisi → cocokkan `history[0]` → tombol start manual |
+| config `todayLoginCount` | angka analytics | `1` | angka bebas | ACK SaveHistory dibaca `e.todayLoginCount` → hanya report (`4===t`/`6===t`) — nol efek alur |
+| serverlist.json | ISI daftar server | 1 entri lokal (`serverId:"1"`, `http://127.0.0.1:9528`, `online:true`) | tambah/ubah entri 12-field; `online:false`+`offlineReason` diisi = server terkunci dgn teks owner | parser baca 12 field/entri (serverId STRING; `matchServerUrl`; ikon new/hot/name/online) — jumlah entri BEBAS |
+| announce.json | ISI pengumuman | `{}` = tombol pengumuman TIDAK muncul (visual = diam) | diisi entri → tombol muncul; `alwaysPopup:true` → TERBUKA OTOMATIS; teks per-bahasa (`in` TAMPIL) | `getNotice`: data = `{kunci:entri}`; baca `text[lang]||""`, `title[lang]||""`, `version`, `orderNo`; ≥1 entri → `noticeBtn.visible=true` |
+| data/history.sqlite | state riwayat | tak pernah dibuat (mode auto) | dibuat otomatis saat mode persist | (turunan baris historyMode) |
+| logs/ | bukti runtime | kosong (enabled:false) | NDJSON per event saat enabled:true | (kebutuhan debug KITA — bukan kontrak) |
+
+**FAKTA VERBATIM BARU — verifikasi ulang main.min Bagian 63 (penguat, bukan pengubah struktur):**
+
+1. `saveLanguage` callback utk 111: `console.log("failed save language",t)` +
+   `window.changeLanguage(e)` — **errorMessage TIDAK PERNAH tampil ke pemain**
+   (console saja; dialog lain pakai teks ASET game `ToolCommon.getLanguageWithEditor`,
+   bukan pesan server) → teks 111 kita bebas ditulis; TIDAK ada dasar buat
+   errors.json.
+2. Daftar bahasa tombol = `window.supportLang` (aset .bin game: en/fr/kr) —
+   client UI hanya PERNAH mengirim en/fr/kr → kode 111 di server lokal praktis
+   tak pernah terjadi lewat UI asli; whitelist = kerapian server, bukan UX (K5).
+3. `text[lang]||""` **TANPA fallback** — bahasa client yang tak ada di entri =
+   string KOSONG (bukan bahasa lain) → announce.json minimal isi `en` + `in`
+   supaya tidak ada panel kosong (§4.2b).
+
+**YANG SENGAJA TIDAK ADA (permanen — masing-masing dgn dasar, bukan asal buang):**
+`README.txt`/`notes.md`/`captures/` (nol konsumen kode; pelajaran v16
+SdkConfig.java:28; dokumentasi = REPO) · `history.json` (mode fixed = spekulasi,
+sudah dihapus) · `profile.json` (bentuk envelope = milik parser, bukan pilihan) ·
+`errors.json` (fakta baru #1 di atas: pesan server tak pernah tampil).
+
+**STATUS:** struktur FINAL menunggu oke owner (bareng K1–K5 §5). Setelah oke →
+`LoginServerConfig.java` seed 3 file → ack-gate §4.3 → smoke §3.6. Nol kode
+sampai owner oke.
 
 ### 3.1.1 PRINSIP KEPUTUSAN — 3 KOLOM, DILARANG "KARENA ASLI BEGITU" (Bagian 62)
 
@@ -331,7 +410,7 @@ status config server asli (INFORMASI SAJA), kolom 3 = KEPUTUSAN kita + alasan
 | 2 | `t.history` kosong → auto-enter; berisi → `history[0]` dicocokkan ke serverList → tombol start manual | asli persist per-akun di DB server (userId segar `[]`, akun lama `["2112"]`) | **historyMode** = pilihan UX KITA: `auto` (masuk cepat, cocok server lokal) atau `persist` (resume server terakhir). Persist pakai **data/history.sqlite** TERPISAH dari accounts SDK (L1). Alasan: dua UX berbeda keduanya sah — bukan soal meniru |
 | 3 | SaveHistory ACK dibaca `e.todayLoginCount` — hanya analytics (`4===t`, `6===t` → ReportToSdkCommon) | asli hitung per-hari di DB (contoh nyata `2`) | **config.json `todayLoginCount`:1** — nilai bebas, owner bisa ubah; persist kelak hitung nyata. Alasan: konsumen cuma analytics, tidak memengaruhi alur |
 | 4 | `getNotice` (LoginAnnounce): ACK data = OBJECT `{kunci: entri}`; baca `text[lang]||""`, `title[lang]||""`, `version`, `orderNo`, `alwaysPopup`; ≥1 entri → tombol pengumuman muncul; ada `alwaysPopup` → popup otomatis; data `{}` → tombol TIDAK muncul (visual identik dgn diam); server DIAM → callback tak jalan, hasil visual sama | asli DIAM (config pengumuman mereka kosong saat ini) | **announce.json (FILE PILIHAN OWNER)** — `{}` default = diam KARENA BELUM ADA ISI (bukan krn asli diam); diisi → pengumuman tampil, bisa **Bahasa Indonesia** via `text:{"in":…}` (client tetap ganti bahasa walau SaveLanguage 111 — fakta cabang changeLanguage). Alasan: fitur NYATA parser client + kebutuhan lokal menyampaikan info ke pemain |
-| 5 | SaveLanguage: `0===errorCode` → changeLanguage; selain itu JUGA changeLanguage (kedua cabang sama) | asli tolak `in` dgn 111; whitelist mereka en/fr/kr (sumber: supportLang config .bin game) | **whitelist en/fr/kr sebagai KODE** — alasan KITA: aset teks game hanya ada en/fr/kr; menerima `in` membuat UI game campur bahasa (rusak UX), padahal client tetap ganti bahasa walau ditolak → menolak/menerima TIDAK mengubah perilaku client; keputusan bisa dibalik owner bila aset bahasa lain kelak ada. BUKAN file (bukan pilihan harian) |
+| 5 | SaveLanguage: `0===errorCode` → changeLanguage; selain itu JUGA changeLanguage (kedua cabang sama); VERIFIKASI ULANG Bagian 63: cabang 111 = `console.log` saja — pesan server TIDAK pernah tampil ke pemain; daftar bahasa tombol = `window.supportLang` | asli tolak `in` dgn 111; whitelist mereka en/fr/kr (sumber: supportLang config .bin game) | **whitelist en/fr/kr sebagai KODE** — alasan KITA: aset teks game hanya ada en/fr/kr; menerima `in` membuat UI game campur bahasa (rusak UX), padahal client tetap ganti bahasa walau ditolak → menolak/menerima TIDAK mengubah perilaku client; keputusan bisa dibalik owner bila aset bahasa lain kelak ada. BUKAN file (bukan pilihan harian) |
 | 6 | loginGame: JS TIDAK cek `data.errorCode` — lanjut dgn identitas apa pun yang dikirim | asli tolak semua channel uji dgn 103 (kebijakan bisnis "channel tertentu") | **loginGame = SUKSES (K2)** — alasan KITA: server lokal tidak punya kebijakan bisnis channel; penolakan 103 = aturan bisnis MEREKA, bukan kebutuhan teknis; tujuan lokal = semua jalur jalan. Implementasi konstanta kode setelah K2 disetujui |
 | 7 | Parser envelope strict: `0===e.ret` → `data` = JSON string → `e.compress&&LZString…` (compress OPSIONAL) | asli tak pernah compress (618 KB pun polos) | **envelope polos tanpa compress** — alasan: ikut PARSER (compress:true hanya menambah kerja LZString tanpa manfaat lokal); fakta asli cuma memperkuat pilihan, bukan alasannya |
 | 8 | `changeServerInfo`: `t[n].offlineReason=e.offlineReason` — top-level MENIMPA semua entri; absen → dialog offline tak pernah muncul | asli TIDAK mengirim top-level (status config mereka) | **config.json `offlineReasonTop":""`** — default kosong = kita tidak mau dialog offline saat fresh boot; diisi = SATU-SATUNYA tombol dialog maintenance milik owner. Fitur parser client yang kita ekspos |
@@ -539,7 +618,9 @@ tombol tidak muncul (visual sama dgn diam).
 ```
 
 Contoh TERISI (bila owner mau memakai pengumuman — tinggal edit file,
-berlaku tanpa restart):
+berlaku tanpa restart). Minimal isi `en` + `in` — `en` karena aman utk default
+client, `in` utk pemain lokal; bahasa lain boleh ditambah (tanpa fallback: yang
+tak ada = kosong):
 
 ```json
 {
@@ -557,8 +638,8 @@ berlaku tanpa restart):
 
 | Field | Wajib | Efek (dari parser) |
 |---|---|---|
-| `text` | ya | isi pengumuman PER-BAHASA — kunci = kode bahasa client (`en`/`fr`/`kr`/`in`…); bahasa yang tidak ada → string kosong; **`"in"` (Indonesia) TAMPIL** walau SaveLanguage ditolak 111 (client tetap ganti bahasa) |
-| `title` | ya | judul per-bahasa, sama aturannya |
+| `text` | ya | isi pengumuman PER-BAHASA — kunci = kode bahasa client (`en`/`fr`/`kr`/`in`…); ATURAN VERBATIM Bagian 63: parser baca `text[lang]||""` **TANPA fallback** — bahasa client yang tak ada di entri = string KOSONG (bukan bahasa lain) → minimal isi `en` + `in`; **`"in"` (Indonesia) TAMPIL** walau SaveLanguage ditolak 111 (client tetap ganti bahasa) |
+| `title` | ya | judul per-bahasa, sama aturannya (`title[lang]||""` tanpa fallback) |
 | `version` | ya | tampil sebagai versi pengumuman di panel (bulletinVersion) |
 | `orderNo` | ya | urutan tampil (order) |
 | `alwaysPopup` | opsional | true → panel TERBUKA OTOMATIS saat login; tanpa ini → hanya tombol |

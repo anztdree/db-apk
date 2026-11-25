@@ -5232,3 +5232,93 @@ db.sqlite accounts tak disentuh; dashboard tak berubah.
 - NOL baris kode di APK — PLAN ONLY. Fase gameplay kelak: BEDAH KONTRAK DULU
   (UserDataParser, enterGame, registChat + capture live) → keputusan 3 kolom
   → baru implement — tidak ada jiplakan tanpa dasar.
+
+## Bagian 63 — USULAN ULANG STRUKTUR FOLDER LOGIN-SERVER: SATU ATURAN "ISI / DIAM" + TABEL PER-FILE (plan only, nol kode)
+
+Jawaban owner: **"yg jelas saya mau usulan ulang struktur folder login-server yg
+benar"** — setelah 3 koreksi beruntun (Bagian 60/61/62), owner minta strukturnya
+DIUSULKAN ULANG secara utuh.
+
+### 63.1 JUJUR: APA YANG KURANG SAMPAI DISURUH USULAN ULANG
+
+Struktur Bagian 62 sudah lolos 3 koreksi (nol file sampah; diturunkan dari
+fakta; tiap perilaku = pilihan + alasan), TAPI penyajiannya TERSEBAR di tiga
+bagian + metodologi — tidak ada SATU tempat yang menunjukkan strukturnya
+sekaligus pilihan isi/diam per file. Bagian 63 = usulan ulang FINAL:
+**struktur TIDAK berubah dari Bagian 62 (3 file + 2 folder kondisional)** —
+yang diganti adalah KEJELASAN: satu aturan, satu tree, satu tabel per-file,
+plus 3 fakta verbatim baru hasil verifikasi ulang main.min (63.4).
+
+### 63.2 SATU ATURAN "ISI / DIAM" — jawaban langsung "mau pakai isi atau diam!!"
+
+Berlaku untuk SEMUA perilaku yang owner pegang, tanpa kecuali:
+
+1. **DIAM** = file/field dibiarkan **KOSONG** (`{}` / `""` / `false`) — file
+   TETAP ADA; diam TIDAK pernah = hapus file, dan TIDAK pernah = ubah kode.
+2. **PAKAI ISI** = file/field **DIISI** — edit langsung di file manager,
+   berlaku TANPA restart (semua file dibaca ulang tiap event).
+3. Perilaku TIDAK PERNAH berubah karena kode — hanya karena isi yang owner
+   tulis. Ini pengawet prinsip Bagian 62: tidak ada perilaku tersembunyi.
+4. Alasan lengkap tiap keputusan = REPO (docs §3.2 + readme Bagian 59–63) —
+   BUKAN di device (L5: nol file dokumentasi permanen).
+
+### 63.3 TREE FINAL (device) — 3 FILE + 2 FOLDER KONDISIONAL
+
+```
+Android/data/com.db.local/server/
+├── bs/  sdk/  logs/         ← SUDAH ADA (v13–v19) — login TAK menyentuh
+│                              (bs/ ditimpa ekstraksi tiap boot; sdk/data/
+│                              db.sqlite = akun MILIK SDK — L1)
+└── login-server/            ← [BARU] self-seed BOOT — 3 file + 2 folder kondisional
+    ├── config.json          ← SAKLAR (5 field — kosong/terisi = diam/pakai isi)
+    ├── serverlist.json      ← ISI daftar server (DATA 12-field)
+    ├── announce.json        ← ISI pengumuman ({} = diam)
+    ├── data/
+    │   └── history.sqlite   ← HANYA historyMode:"persist"
+    └── logs/                ← NDJSON HANYA saat enabled:true
+```
+
+### 63.4 TABEL PER-FILE — peran / DIAM / PAKAI ISI / dasar kontrak main.min
+
+| File/field | Peran | DIAM (default seed) | PAKAI ISI | Dasar kontrak main.min |
+|---|---|---|---|---|
+| config `enabled` | saklar ACK login | `false` = wire PERSIS v19 | `true` = ACK §4.3 hidup | client `420["handler.process"]` → TUNGGU `43<n>`; tanpa ACK berhenti sebelum serverlist (v19) |
+| config `language` | paksa bahasa client | `""` = tak dikirim | `"en"`/`"kr"`/… = top-level language → client ganti bahasa | `a.language&&(ts.language=a.language)` opsional |
+| config `offlineReasonTop` | papan maintenance global | `""` = tak ada dialog offline | diisi → MENIMPA offlineReason semua entri → toast saat start server offline | `changeServerInfo` + `startBtnTap → ShowNormalErrror(offlineReason)` (verbatim) |
+| config `historyMode` | UX masuk server | `"auto"` = auto-enter instan | `"persist"` = resume server terakhir (data/history.sqlite) | `selectNewServer`: history kosong → serverList[0]+auto-enter; berisi → history[0] |
+| config `todayLoginCount` | analytics | `1` | angka bebas | ACK SaveHistory dibaca `e.todayLoginCount` — hanya report, nol efek alur |
+| serverlist.json | ISI daftar server | 1 entri lokal (127.0.0.1:9528, online:true) | entri 12-field bebas; `online:false`+offlineReason = server terkunci dgn teks owner | parser baca 12 field; serverId STRING; jumlah entri BEBAS |
+| announce.json | ISI pengumuman | `{}` = tombol tak muncul (visual = diam) | diisi → tombol muncul; alwaysPopup → popup otomatis; teks per-bahasa (`in` TAMPIL) | `getNotice`: data={kunci:entri}; text[lang]||"", title, version, orderNo; ≥1 entri → noticeBtn.visible |
+| data/history.sqlite | state riwayat | tak pernah dibuat (auto) | dibuat otomatis (persist) | turunan historyMode |
+| logs/ | bukti runtime | kosong (enabled:false) | NDJSON per event (enabled:true) | kebutuhan debug KITA, bukan kontrak |
+
+### 63.5 FAKTA VERBATIM BARU (verifikasi ulang main.min Bagian 63 — penguat, bukan pengubah struktur)
+
+1. **Pesan 111 TIDAK pernah tampil ke pemain**: callback `saveLanguage` utk
+   111 = `console.log("failed save language",t)` + `window.changeLanguage(e)`
+   — console saja; dialog error lain memakai teks ASET game
+   (`ToolCommon.getLanguageWithEditor`), bukan pesan server → teks 111 kita
+   bebas ditulis, dan TIDAK ada dasar buat errors.json.
+2. **Daftar bahasa tombol = `window.supportLang`** (aset .bin game: en/fr/kr)
+   → client UI hanya PERNAH mengirim en/fr/kr; kode 111 di server lokal
+   praktis tak pernah terjadi lewat UI asli — whitelist = kerapian server,
+   bukan UX (K5 makin kuat).
+3. **`text[lang]||""` TANPA fallback**: bahasa client yang tak ada di entri
+   pengumuman = string KOSONG (bukan bahasa lain) → announce.json minimal
+   isi `en` + `in` supaya tidak ada panel kosong (docs §4.2b diperbarui).
+
+Yang SENGAJA TIDAK ADA tetap 4, masing-masing dgn dasar: README.txt/notes.md/
+captures/ (nol konsumen kode; pelajaran v16 SdkConfig.java:28; dokumentasi =
+REPO) · history.json (mode fixed = spekulasi) · profile.json (envelope = milik
+parser) · errors.json (fakta baru #1: pesan server tak pernah tampil).
+
+### 63.6 STATUS + LANGKAH SETELAH OKE
+
+- Struktur FINAL menunggu oke owner (bareng K1–K5 §5 docs; P0 prinsip 3 kolom
+  tetap mengikat).
+- Setelah oke: `LoginServerConfig.java` seed 3 file → ack-gate SocketIoHandler
+  (tabel §4.3) → persist opsional → smoke §3.6 (8 kriteria, termasuk popup
+  pengumuman #7 dan tombol-tak-muncul #8).
+- NOL baris kode di APK sampai owner oke — PLAN ONLY. Fase gameplay kelak:
+  BEDAH KONTRAK DULU (UserDataParser/enterGame/registChat + capture live +
+  verify XXTEA Bagian 58) → keputusan 3 kolom → baru implement.
