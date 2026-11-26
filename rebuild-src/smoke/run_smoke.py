@@ -134,6 +134,32 @@ open(DOCROOT + "/bs/resource/properties/clientversion.json", "w").write(
     '{\n\t"clientVersion": "202109150935"\n}\n')
 open(DOCROOT + "/bs/resource/properties/serversetting.json", "w").write(
     '{\n\t"loginserver": "http://127.0.0.1:9528",\n\t"requireSDK": false\n}\n')
+# Bagian 72 — halaman uji capture client (struktur sama index-native.html asli:
+# <head>…</head> + inline script body). Demo aksi: console.*, script load
+# (sukses+gagal), XHR (sukses+404), window error — semua dijalankan BODY
+# SETELAH capture (injeksi </head>) terpasang.
+os.makedirs(DOCROOT + "/bs/js", exist_ok=True)
+open(DOCROOT + "/bs/index-native.html", "w").write(
+    "<!DOCTYPE HTML>\n<html>\n<head>\n<meta charset=\"utf-8\">\n"
+    "<title>Uji Capture</title>\n<style>body{background:#888}</style>\n"
+    "</head>\n<body>\n<div class=\"egret-player\" data-entry-class=\"Main\"></div>\n"
+    "<script>\n"
+    "console.log('uji-console-log-v72', {a:1});\n"
+    "console.info('uji-console-info-v72');\n"
+    "console.warn('uji-console-warn-v72');\n"
+    "console.error('uji-console-error-v72', 'detail-gagal');\n"
+    "setTimeout(function(){\n"
+    " var s1=document.createElement('script');s1.src='js/uji-ada.js';\n"
+    " document.body.appendChild(s1);\n"
+    " var s2=document.createElement('script');s2.src='js/uji-gagal.js';\n"
+    " document.body.appendChild(s2);\n"
+    " var x1=new XMLHttpRequest();x1.open('GET','uji-xhr-ok.json',true);x1.send(null);\n"
+    " var x2=new XMLHttpRequest();x2.open('GET','uji-xhr-404.json',true);x2.send(null);\n"
+    " setTimeout(function(){ throw new Error('uji-jserror-v72: error sengaja untuk uji capture'); }, 60);\n"
+    "}, 30);\n"
+    "</script>\n</body>\n</html>\n")
+open(DOCROOT + "/bs/js/uji-ada.js", "w").write("// uji script load sukses\n")
+open(DOCROOT + "/bs/uji-xhr-ok.json", "w").write('{"uji":true}\n')
 # legacy migration source (v8-v13 formats)
 GUEST_UID, GUEST_TOKEN, GUEST_NAME = "1700000000001", "a" * 32, "Guest1234"
 EMAIL_UID, EMAIL_TOKEN, EMAIL_PW = "1700000000002", "b" * 32, hashlib.md5(b"rahasia123").hexdigest()
@@ -1581,6 +1607,192 @@ try:
     p42 = must_params(email="baru@db.local"); p42["password"] = PW2
     st, hd, bd = sdk_post("/v1/user/loginByName", p42)
     check("v42-tips-tidak-ada-loginemail", '"tips"' not in bd, bd[:120])
+
+    # ============ Bagian 72 — CAPTURE CLIENT (cara kerja eruda → log global) ==========
+    # Laporan owner (kata-kata persis):
+    #  "sudah di bilang di game itu sedang loading !! artinya ada log yg jelas
+    #   gk tertangkap malah log anda itu isinya apa babi ."
+    #  "Sudah di bilang log natural masih aja ngeyel !!! kalau loading ya dia
+    #   itu loading apa ! lihat log eruda sebagai contoh goblok !!"
+    # Akar buta-log (bukti device v22: antara index-native.html dan socket.io
+    # TIDAK ADA satu pun request js/resource di log): js/resource dilayani
+    # shell EgretNative dari penyimpanan lokal — TIDAK PERNAH sampai ke
+    # listener HTTP; console.*/jserror hanya ada di WebView. v72: script
+    # capture diinjeksi ke index-native.html yang dilayani server sendiri →
+    # tiap kejadian client = baris kind CLIENT di server.ndjson yang SAMA.
+    def _client_rows():
+        st, hd, bd = get400("/logs?mode=port&port=9528&limit=900")
+        return [e for e in json.loads(bd)["entries"] if e.get("kind") == "CLIENT"]
+
+    def _wait_client(pred, tries=120):
+        for _i72 in range(tries):
+            rows72 = [r for r in _client_rows() if pred(r)]
+            if rows72:
+                return rows72[-1]
+            time.sleep(0.05)
+        return None
+
+    # 1. injeksi serve-time index-native.html — capture ada, SEBELUM </head>
+    with urllib.request.urlopen("http://127.0.0.1:9528/bs/index-native.html?rnd=0.72", timeout=10) as r:
+        bd_inj = r.read().decode("utf-8", "replace")
+        hd_inj = dict(r.headers)
+    check("v72-injeksi-capture-ada", "__dbClientCapture" in bd_inj
+          and "/log/client" in bd_inj, "len=%d" % len(bd_inj))
+    _he72 = bd_inj.find("</head>")
+    _ia72 = bd_inj.find("__dbClientCapture")
+    check("v72-injeksi-sebelum-head-tutup", 0 < _ia72 < _he72,
+          "%d < %d" % (_ia72, _he72))
+    check("v72-cache-control-no-store", hd_inj.get("Cache-Control") == "no-store",
+          str(hd_inj.get("Cache-Control")))
+    # 2. file non-HTML TIDAK disentuh
+    with urllib.request.urlopen("http://127.0.0.1:9528/bs/resource/properties/clientversion.json", timeout=10) as r:
+        bd_cv = r.read().decode("utf-8", "replace")
+    check("v72-non-html-tanpa-injeksi", "__dbClientCapture" not in bd_cv, "")
+    # 3. file di DISK byte tetap asli (injeksi hanya di respons HTTP — bs/ utuh)
+    check("v72-file-disk-tetap-asli", "__dbClientCapture" not in open(
+        DOCROOT + "/bs/index-native.html", encoding="utf-8").read(), "")
+    # 4. baris 200 halaman ber-extra "capture client terinjeksi"
+    row_inj72 = _waitrow71(lambda ln: "index-native" in ln and '"status":200' in ln
+                           and "capture client terinjeksi" in ln)
+    check("v72-extra-injeksi-di-log", row_inj72 != "",
+          row_inj72[-200:] if row_inj72 else "baris injeksi tidak ada")
+
+    # 5. POST /log/client — console.error → kind CLIENT level ERROR, teks verbatim
+    _ts72 = int(time.time() * 1000)
+    batch72a = json.dumps({"v": 1, "events": [
+        {"ts": _ts72, "type": "console.error", "level": "ERROR",
+         "text": "[ERR] uji-console-error-v72 detail-gagal"},
+        {"ts": _ts72, "type": "console.info", "level": "INFO",
+         "text": "uji-console-info-v72"},
+    ]}, ensure_ascii=False).encode()
+    req72a = urllib.request.Request("http://127.0.0.1:9528/log/client",
+                                    data=batch72a, method="POST")
+    req72a.add_header("Content-Type", "application/json")
+    with urllib.request.urlopen(req72a, timeout=10) as r:
+        check("v72-logclient-post-200", r.read().decode().strip() == "ok", "")
+    row_ce72 = _wait_client(lambda r: r.get("method") == "console.error"
+                            and "uji-console-error-v72" in (r.get("path") or ""))
+    check("v72-client-console-error", row_ce72 is not None
+          and row_ce72.get("level") == "ERROR"
+          and "console.error dari halaman game" in (row_ce72.get("error") or "")
+          and row_ce72.get("port") == 9528,
+          str(row_ce72)[:240] if row_ce72 else "tidak ada")
+    row_ci72 = _wait_client(lambda r: r.get("method") == "console.info"
+                            and "uji-console-info-v72" in (r.get("path") or ""))
+    check("v72-client-info-tanpa-level", row_ci72 is not None
+          and "level" not in row_ci72,
+          str(row_ci72)[:180] if row_ci72 else "tidak ada")
+
+    # 6. jserror / script GAGAL / xhr 404 → level ERROR dgn sebab jujur;
+    #    script sukses & XHR 200 → tanpa level (access log alami)
+    batch72b = json.dumps({"v": 1, "events": [
+        {"ts": _ts72, "type": "jserror", "level": "ERROR",
+         "text": "uji-jserror-v72: error sengaja untuk uji capture"},
+        {"ts": _ts72, "type": "script", "level": "ERROR",
+         "text": "script load: script http://127.0.0.1:9528/bs/js/uji-gagal.js — GAGAL 12 ms"},
+        {"ts": _ts72, "type": "script", "level": "INFO",
+         "text": "script load: script http://127.0.0.1:9528/bs/js/uji-ada.js — selesai 8 ms"},
+        {"ts": _ts72, "type": "xhr", "level": "ERROR",
+         "text": "xhr GET http://127.0.0.1:9528/bs/uji-xhr-404.json → 404 (5 ms)"},
+    ]}, ensure_ascii=False).encode()
+    req72b = urllib.request.Request("http://127.0.0.1:9528/log/client",
+                                    data=batch72b, method="POST")
+    req72b.add_header("Content-Type", "application/json")
+    with urllib.request.urlopen(req72b, timeout=10) as r:
+        r.read()
+    row_js72 = _wait_client(lambda r: r.get("method") == "jserror"
+                            and "uji-jserror-v72" in (r.get("path") or ""))
+    check("v72-client-jserror", row_js72 is not None
+          and row_js72.get("level") == "ERROR"
+          and "window.onerror dari halaman game" in (row_js72.get("error") or ""),
+          str(row_js72)[:240] if row_js72 else "tidak ada")
+    row_sg72 = _wait_client(lambda r: r.get("method") == "script"
+                            and "uji-gagal.js" in (r.get("path") or ""))
+    check("v72-client-script-gagal", row_sg72 is not None
+          and row_sg72.get("level") == "ERROR"
+          and "script halaman game gagal dimuat di client" in (row_sg72.get("error") or "")
+          and "GAGAL" in row_sg72.get("path", ""),
+          str(row_sg72)[:240] if row_sg72 else "tidak ada")
+    row_so72 = _wait_client(lambda r: r.get("method") == "script"
+                            and "uji-ada.js" in (r.get("path") or ""))
+    check("v72-client-script-sukses-tanpa-level", row_so72 is not None
+          and "level" not in row_so72 and "selesai" in row_so72.get("path", ""),
+          str(row_so72)[:200] if row_so72 else "tidak ada")
+    row_xg72 = _wait_client(lambda r: r.get("method") == "xhr"
+                            and "uji-xhr-404.json" in (r.get("path") or ""))
+    check("v72-client-xhr-404", row_xg72 is not None
+          and row_xg72.get("level") == "ERROR"
+          and "XHR halaman game gagal/4xx di client" in (row_xg72.get("error") or "")
+          and "→ 404" in row_xg72.get("path", ""),
+          str(row_xg72)[:240] if row_xg72 else "tidak ada")
+
+    # 7. jujur di error juga: body rusak → 400 + baris error; GET → 405;
+    #    batch kosong → 200 tanpa baris; oversize → 413
+    req72c = urllib.request.Request("http://127.0.0.1:9528/log/client",
+                                    data=b'{"v":1,"events":[ TIDAK-VALID', method="POST")
+    try:
+        with urllib.request.urlopen(req72c, timeout=10) as r:
+            st72c = r.status
+    except urllib.error.HTTPError as e72:
+        st72c = e72.code
+    check("v72-logclient-rusak-400", st72c == 400, str(st72c))
+    # baris 400 = access log HTTP (bukan event client) — jujur: request rusak
+    # ditolak dan tercatat dgn sebab, bukan diam
+    row_bad72 = None
+    for _i72 in range(100):
+        st, hd, bd = get400("/logs?mode=port&port=9528&limit=900")
+        cand72 = [e for e in json.loads(bd)["entries"]
+                  if e.get("kind") == "HTTP" and (e.get("path") or "") == "/log/client"
+                  and "batch log client tidak valid" in (e.get("error") or "")]
+        if cand72:
+            row_bad72 = cand72[-1]
+            break
+        time.sleep(0.05)
+    check("v72-logclient-rusak-terlog", row_bad72 is not None
+          and row_bad72.get("status") == 400,
+          str(row_bad72)[:240] if row_bad72 else "tidak ada")
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:9528/log/client", timeout=10) as r:
+            st72d = r.status
+    except urllib.error.HTTPError as e72:
+        st72d = e72.code
+    check("v72-logclient-get-405", st72d == 405, str(st72d))
+    req72e = urllib.request.Request("http://127.0.0.1:9528/log/client",
+                                    data=b'{"v":1,"events":[]}', method="POST")
+    req72e.add_header("Content-Type", "application/json")
+    with urllib.request.urlopen(req72e, timeout=10) as r:
+        check("v72-logclient-kosong-200", r.read().decode().strip() == "ok", "")
+    _n_before72 = len(_client_rows())
+    req72f = urllib.request.Request("http://127.0.0.1:9528/log/client",
+                                    data=b'{"v":1,"events":[]}' + b" " * 270000,
+                                    method="POST")
+    try:
+        with urllib.request.urlopen(req72f, timeout=10) as r:
+            st72f = r.status
+    except urllib.error.HTTPError as e72:
+        st72f = e72.code
+    check("v72-logclient-oversize-413", st72f == 413, str(st72f))
+    time.sleep(0.6)
+    check("v72-logclient-oversize-tanpa-baris", len(_client_rows()) == _n_before72, "")
+
+    # 8. warisan v71: baris timeout sesi pola socket GAME kini BER-ALASAN
+    #    (setiap timeout membawa alasan loading macet — owner menonton log
+    #    SAAT loading; satu baris penjelasan di open saja tidak cukup)
+    rows_to72 = [ln for ln in open(sl70, encoding="utf-8", errors="replace").read().splitlines()
+                 if '"long-poll timeout 10 dtk' in ln and s71b in ln]
+    check("v72-timeout-gamepattern-beralasan", len(rows_to72) >= 1
+          and "pola socket GAME: client menunggu event 'verify'" in rows_to72[-1]
+          and "loading macet di sini" in rows_to72[-1],
+          rows_to72[-1][-260:] if rows_to72 else "baris timeout sesi game tidak ada")
+
+    # 9. E2E BROWSER NYATA (Playwright — pola verify_console_v16): halaman +
+    #    injeksi + hook + POST /log/client + baris NDJSON, satu rantai utuh
+    node72 = subprocess.run(["node", WS + "/verify_capture_v24.js"], timeout=180,
+                            capture_output=True, text=True)
+    print((node72.stdout or "")[-1600:])
+    check("v72-browser-e2e-capture", node72.returncode == 0,
+          (node72.stderr or "")[-400:])
+
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
 

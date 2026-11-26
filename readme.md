@@ -6291,3 +6291,152 @@ dihapus) + 16 kasus v70 baru:
   menuliskan kurangnya ini di tempat kejadiannya.
 - NOL perubahan bs/, sdk/, dashboard, arsc, assets, smali — hanya
   classes2.dex + tanda tangan.
+
+## Bagian 72 — LAPORAN OWNER: "SUDAH DI BILANG DI GAME ITU SEDANG LOADING !! ARTINYA ADA LOG YG JELAS GK TERTANGKAP MALAH LOG ANDA ITU ISINYA APA BABI ." + "SUDAH DI BILANG LOG NATURAL MASIH AJA NGEYEL !!! KALAU LOADING YA DIA ITU LOADING APA ! LIHAT LOG ERUDA SEBAGAI CONTOH GOBLOK !!" — CAPTURE CLIENT: CARA KERJA ERUDA → LOG GLOBAL SATU FILE — dex v24 + APK v24 SELESAI (beda hanya classes2.dex + re-sign; smoke desktop 263 PASS / 0 FAIL + E2E BROWSER NYATA 10/10)
+
+### 72.1 APA YANG OWNER TUNJUKKAN (log device v23, potongan yang ditempel owner)
+
+- Saat loading, baris terakhir log = transport socket.io DIAM saja:
+  `WS http://127.0.0.1:9528/socket.io/…&sid=b2C8wNsLV9sGnywUZ5Fk 200 /
+  recv:(6 B) 2probe / send:(6 B) 3probe` lalu 10 detik kemudian
+  `GET …/socket.io/…&sid=… 200 · 10.0s / data:long-poll timeout 10 dtk
+  tanpa data — sesi …: umur 10 dtk, diterima 1 paket (hanya probe WS —
+  nol event dari client), dikirim 0, upgrade WS belum ('5' tak diterima);
+  client tidak pernah mengirim '5' — upgrade WS tidak selesai`.
+- Keluhan owner SAH: game sedang LOADING (bar loading berjalan) tapi log
+  tidak menunjukkan SATU PUN aktivitas loading — "loading apa"? — padahal
+  owner membuktikan tool client (eruda) MENAMPILKAN aktivitas itu.
+
+### 72.2 AKAR BUTA-LOG — DIBEDAH, BUKAN DIKARANG
+
+- Fakta 1 (log device v22, 66 baris): antara `index-native.html`/`manifest.json`
+  (seq 42-43) dan `clientversion.json` (seq 45) ada celah ~4 dtk di mana
+  SEMUA 15 file js game (11,3 MB) termuat — TANPA SATU PUN request js di log
+  server, padahal Cache-Control no-store dan fresh install (cache kosong)
+  → js/resource dilayani shell EgretNative dari penyimpanan lokal
+  (interceptor native) — request itu TIDAK PERNAH sampai ke listener HTTP
+  server, jadi log server TIDAK MUNGKIN melihatnya.
+- Fakta 2 (bedah main.min_777039fc.js, verbatim): `Logger.showErrorLog` →
+  `console.error([timestamp], "[ERR]", …)` — TANPA guard, selalu cetak;
+  `Logger.showInfoLog` → dibungkam `window&&window.Log_Clean` — dan
+  index-native.html baris 34 memasang `window["Log_Clean"] = true` — jadi
+  `[Logger] 网络已连接，等待验证` (socket game tersambung, menunggu verify)
+  TIDAK PERNAH tercetak di build ini; yang hidup = `[ERR]` + log engine
+  egret + jaringan.
+- Fakta 3: window.onerror / unhandledrejection hanya saksi client.
+- KESIMPULAN: satu-satunya saksi aktivitas loading sisi client adalah
+  HALAMAN itu sendiri. Log server tidak bisa menangkapnya "dari luar" —
+  harus ada jembatan dari dalam halaman.
+
+### 72.3 KEPUTUSAN — CARA KERJA ERUDA (contoh yang owner pakai) DIARAHKAN KE LOG GLOBAL
+
+- eruda bekerja dengan diinjeksi ke halaman lalu meng-hook permukaan
+  halaman. v24 melakukan PERSIS itu, tapi output-nya masuk log global kita:
+  script capture (ClientCapture.java, ES5 murni) diinjeksi SERVE-TIME ke
+  respons `index-native.html` (sebelum `</head>` — jalan sebelum semua
+  script halaman); file di disk/assets BYTE-IDENTIK (bs/ tidak tersentuh —
+  injeksi hanya di memori respons).
+- Yang di-hook (semua try/catch, wrap lewatkan apa adanya — NOL perubahan
+  perilaku game): console.log/info/warn/error/debug · window 'error' ·
+  'unhandledrejection' · document.createElement utk script/img/audio/video
+  (src + load/error + durasi) · XMLHttpRequest open+loadend (method/url/
+  status/durasi; GAGAL network/timeout = error) · fetch.
+- Filter: `/socket.io/*` TIDAK dicapture client (sudah utuh di sisi server
+  — frames/headers/timing — jangan dobel); `/log/client` dikecualikan
+  (anti-loop).
+- Transport: flush batch 500 ms → POST /log/client (origin sama 9528);
+  buffer cap 400 event; teks cap 1200 char; berhenti bersih setelah 8 POST
+  gagal (server mati = tidak di-spam).
+- Kejujuran kehadiran: baris 200 halaman ber-extra
+  "capture client terinjeksi (script N B)" — terlihat di log, bukan
+  tersembunyi.
+
+### 72.4 PENERIMA — POST /log/client (ClientLogHandler.java BARU)
+
+- Tiap kejadian = SATU baris kind CLIENT di file global yang SAMA
+  (server.ndjson): port=9528 (chip CDN di dashboard — channel yang owner
+  tonton), method=jenis kejadian (console.error/jserror/script/media/xhr/
+  fetch), path=teks PERSIS dari halaman (nol karangan, nol pelengkap).
+- LOG NATURAL: kejadian error (console.error / jserror /
+  unhandledrejection / script-media GAGAL muat / XHR gagal atau 4xx-5xx)
+  → level ERROR + field error sebab jujur ("console.error dari halaman
+  game" / "window.onerror dari halaman game" / "script halaman game gagal
+  dimuat di client" / "XHR halaman game gagal/4xx di client — mungkin
+  tidak pernah sampai ke server"); kejadian normal TANPA level (access
+  log alami).
+- Jujur di error juga: body rusak → 400 + baris "batch log client tidak
+  valid — …" (access log HTTP); >262144 B → 413; GET → 405; batch kosong
+  → 200 tanpa baris. Transport POST /log/client sendiri = countSelf
+  (bukan baris access — anti-pollution pola Bagian 18).
+- Parser JSON minimal milik sendiri (string/esc \u/number/bool/null) —
+  nol dependensi, tetap -source 8.
+
+### 72.5 SETIAP BARIS TIMEOUT SESI GAME KINI BER-ALASAN (SocketIoHandler)
+
+- Arahan owner: owner MENONTON log SAAT loading — satu baris penjelasan di
+  open saja tidak cukup. Session.gamePattern (sesi terbuka sbg socket game
+  saat login sudah dijawab) → SETIAP long-poll timeout sesi itu kini:
+  `… — pola socket GAME: client menunggu event 'verify' dari server
+  (fase gameserver belum dibangun) — loading macet di sini`.
+
+### 72.6 DASHBOARD (LoggerHandler)
+
+- Baris CLIENT: `CLIENT <jenis> — <teks>`; level ERROR merah / console.warn
+  WARN / lainnya INFO; error client masuk banner PENTING; Salin = plainLine
+  CLIENT. Chip komponen tetap CDN (port 9528).
+
+### 72.7 BUILD + BUKTI
+
+- dex v24: javac 21.0.13 (stubs 8 + javasrc 26 — BARU ClientCapture +
+  ClientLogHandler; edit StaticHandler/ServerCore/SocketIoHandler/
+  LoggerHandler; TANPA SmokeMain) → D8 8.3.37 (input jar) → 164.748 B
+  (v23 153.884 B) → patch_marker_v24.py v19→v24 tepat 4 string
+  (judul/banner/BOOT/crash) sha 9060d66e…; kontrak warisan v20-v23 utuh +
+  kontrak v24 BARU (/log/client/__dbClientCapture/CLIENT/console.error dari
+  halaman game/window.onerror…/capture client terinjeksi (script/pola
+  socket GAME: client menunggu event/loading macet di sini/batch log client
+  tidak valid/script halaman game gagal…/XHR halaman game gagal/4xx…);
+  fabrikasi lama v18 NOL (v24=4[v19=0]/v23=0/v22=0/v21=0/v20=0/v18=0).
+- rebuild RAW-COPY v24 (rebuild_v24_raw.py): base APK v23 (sha256 722eee78…
+  dicek ulang), 6.428 entri byte-per-byte, verifikasi zipfile beda HANYA
+  classes2.dex, classes.dex = airplane v19 byte-identik (6.697.176 B, sha
+  62803bb1…, byte patch @0x5e8180/@0x5d2438 dicek ulang), arsc STORED
+  aligned-4, metode 3471+2957 identik, QHinfo proven; zipalign + sign
+  uber-apk-signer 1.3.0 keystore dblocalmod SAMA (zipalign verified +
+  signature verified [v1,v2,v3], CN=DB Local Mod s.d. 2056).
+- APK v24 final release-mod/db-local(MOD-LOCALSERVER-v24).apk =
+  202.691.550 B sha256 137e3e9a4f24c24be6e2d2fe73df283cd4b0ba8e81521ad8b5
+  fbf3472afd3f80, diff entri-per-entri vs v23 = classes2.dex + META-INF
+  (re-sign) SAJA — arsc/assets/bs/sdk/console/dashboard byte-identik;
+  rotasi pointer LFS v23→v24 (git-lfs 3.6.1).
+- SMOKE DESKTOP: 21 kasus v72 — injeksi (capture ada, SEBELUM </head>,
+  no-store, file disk tetap asli, non-HTML tak tersentuh, extra
+  "capture client terinjeksi"), /log/client (post 200, console.error level
+  ERROR + sebab, info tanpa level, jserror, script GAGAL/sukses, xhr 404),
+  jujur di error (rusak 400+terlog, GET 405, kosong 200, oversize 413
+  tanpa baris), timeout gamepattern ber-alasan ("loading macet di sini"),
+  dan E2E BROWSER NYATA (verify_capture_v24.js, Playwright/Chromium):
+  halaman + injeksi + hook + POST + baris NDJSON satu rantai utuh — 10/10
+  (console.log/warn/error, jserror, script sukses+GAGAL, xhr 200+404,
+  capture terpasang di halaman, anti-loop). HASIL 263 PASS / 0 FAIL
+  = 242 lama tetap + 21 baru → verify-artifacts/
+  login_server_v24_smoke_20261126.txt; catatan jujur: run pertama 1 FAIL =
+  jarum uji PYTHON (baris 400 = access log HTTP kind, bukan kind CLIENT) —
+  NOL perubahan Java; run kedua 263 PASS.
+- docs sinkron: LOGIN-SERVER-PLAN header Bagian 72 + §7.6 BARU (capture
+  client — cara kerja eruda → log global + batas jujur).
+
+### 72.8 YANG SISA (fakta, bukan fase)
+
+- smoke DEVICE (install-over v23 aman — sertifikat sama): buka APK v24
+  sampai loading → log kini MENAMPILKAN fase loading sisi client: tiap
+  script/resource/console/error halaman = baris CLIENT di server.ndjson
+  yang SAMA; saat loading macet di socket game, SETIAP timeout membawa
+  alasan "loading macet di sini". Catatan jujur: selama client benar-benar
+  diam menunggu 'verify', halaman tidak menghasilkan kejadian baru —
+  keadaan itu dijelaskan oleh baris timeout ber-alasan, bukan dikarang.
+- FASE GAMESERVER = satu-satunya yang membuat loading LANJUT: challenge
+  "verify" (server→client) + ack verify {ret:0} + enterGame + Notify —
+  usulan berikutnya wajib merujuk baris atlas (§13).
+- NOL perubahan bs/, sdk/, dashboard, arsc, assets, smali — hanya
+  classes2.dex + tanda tangan.

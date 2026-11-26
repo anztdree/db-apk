@@ -93,6 +93,44 @@
 > verify-artifacts/login_server_v23_smoke_20261126.txt +
 > login_server_v23_build_20261126.txt. Sisa = smoke DEVICE + fase
 > GAMESERVER (§7.5).
+>
+> **Bagian 72 (26 Nov 2026) — CAPTURE CLIENT: cara kerja eruda → log global
+> (dex v24 + APK v24 SELESAI, beda HANYA classes2.dex + re-sign, sha256
+> 137e3e9a…)**: jawaban laporan owner: "sudah di bilang di game itu sedang
+> loading !! artinya ada log yg jelas gk tertangkap malah log anda itu
+> isinya apa babi ." + "Sudah di bilang log natural masih aja ngeyel !!!
+> kalau loading ya dia itu loading apa ! lihat log eruda sebagai contoh
+> goblok !!". AKAR BUTA-LOG (bukti device v22/v23: antara index-native.html
+> dan socket.io TIDAK ADA satu pun request js/resource di log): (1) 15 file
+> js + mayoritas resource dilayani shell EgretNative dari penyimpanan
+> lokal — TIDAK PERNAH sampai ke listener HTTP server; (2) console.*
+> halaman (showErrorLog "[ERR]" selalu cetak; showInfoLog dibungkam
+> window.Log_Clean=true dari index-native.html; log engine egret) hidup
+> di WebView; (3) window.onerror/unhandledrejection hanya saksi client.
+> SATU-SATUNYA saksi = halaman itu sendiri → script capture (Cara kerja
+> eruda, contoh owner) diinjeksi serve-time ke index-native.html yang
+> dilayani server sendiri (file di disk/assets byte-identik — bs/ tidak
+> tersentuh): hook console.log/info/warn/error/debug + window error +
+> unhandledrejection + pemuatan script/img/audio/video (src, sukses/GAGAL,
+> durasi) + XHR/fetch (method/url/status/durasi; GAGAL network = error) —
+> /socket.io/* dan /log/client dikecualikan (anti-dobel, anti-loop); flush
+> batch 500 ms POST /log/client; semua hook try/catch (nol perubahan
+> perilaku game). ClientLogHandler (BARU): tiap kejadian = SATU baris kind
+> CLIENT di server.ndjson yang SAMA (port 9528 = chip CDN; teks PERSIS
+> dari halaman; level ERROR + sebab jujur utk error client; transport
+> capture sendiri countSelf — bukan baris access; body rusak 400 terlog;
+> oversize 413). SocketIoHandler: Session.gamePattern → SETIAP long-poll
+> timeout sesi socket game ber-alasan "pola socket GAME: client menunggu
+> event 'verify' dari server (fase gameserver belum dibangun) — loading
+> macet di sini" (owner menonton log SAAT loading — tiap baris menjawab
+> "loading apa"). Dashboard: baris CLIENT + level merah + banner PENTING.
+> Smoke desktop 263 PASS / 0 FAIL (21 kasus v72) + E2E BROWSER NYATA
+> (Playwright, verify_capture_v24.js): halaman+injeksi+hook+POST+baris
+> NDJSON satu rantai utuh 10/10. dex v24 164.748 B marker v24 (4 string).
+> Bukti: verify-artifacts/login_server_v24_smoke_20261126.txt +
+> login_server_v24_build_20261126.txt. Sisa = smoke DEVICE + fase
+> GAMESERVER (§7.5).
+
 > smoke_20261126.txt + login_server_v22_build_20261126.txt. Sisa = smoke
 > DEVICE §3.6 + §7.5.
 >
@@ -1058,3 +1096,33 @@ sudah terbukti Bagian 58) — baru KEPUTUSAN per perilaku dgn prinsip 3 kolom
   Satu-satunya yang membuat loading LANJUT = FASE GAMESERVER: challenge
   "verify" (server→client) + ack verify {ret:0} + enterGame + Notify —
   usulan wajib merujuk baris atlas (§13).
+
+### 7.6 CAPTURE CLIENT — cara kerja eruda → log global (Bagian 72, SELESAI)
+
+- Laporan owner (kata-kata persis): "sudah di bilang di game itu sedang
+  loading !! artinya ada log yg jelas gk tertangkap malah log anda itu
+  isinya apa babi ." + "Sudah di bilang log natural masih aja ngeyel !!!
+  kalau loading ya dia itu loading apa ! lihat log eruda sebagai contoh
+  goblok !!" — owner melihat LOADING bar berjalan sementara log hanya
+  berisi transport socket.io diam.
+- Akar buta-log (dibuktikan dari log device v22 + bedah index-native.html):
+  js game + mayoritas resource dilayani shell EgretNative dari penyimpanan
+  lokal (tidak pernah sampai ke listener HTTP); console.*/jserror hanya ada
+  di WebView — log server TIDAK MUNGKIN melihatnya dari sisi server saja.
+  main.min_777039fc.js fakta: showErrorLog → console.error "[ERR]" (SELALU
+  cetak); showInfoLog dibungkam window["Log_Clean"]=true (index-native.html
+  baris 34) — jadi [Logger] info tidak pernah tercetak; yang tersisa =
+  [ERR] + log engine + jaringan.
+- Keputusan (sesuai contoh owner): script capture dipasang DI HALAMAN —
+  serve-time injection ke index-native.html yang dilayani server sendiri;
+  kejadian halaman (console/error/script/img/audio/video/XHR/fetch)
+  dikirim batch 500 ms ke POST /log/client → SATU baris kind CLIENT per
+  kejadian di file global yang SAMA (server.ndjson). File bs/ di
+  APK/assets byte-identik — injeksi hanya di respons (serve-time, memori).
+- JUJUR soal batas: (1) capture mengirim apa yang halaman kerjakan — selama
+  client benar-benar diam menunggu 'verify', tidak ada kejadian untuk
+  dikirim — keadaan itu tetap dijelaskan server (baris timeout
+  ber-alasan "loading macet di sini"); (2) pemuatan lewat jalur NATIVE
+  murni (bukan DOM/XHR/fetch) tetap di luar jangkauan hook halaman —
+  apa adanya, ditulis di sini, bukan disembunyikan.
+

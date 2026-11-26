@@ -50,6 +50,12 @@ public final class ServerCore {
         // anti-race ekstraksi (base.version dkk. dilayani dari assets saat ekstraksi
         // belum selesai → popup "Server base.version is Not Exist" tidak pernah terjadi)
         final StaticHandler cdnHandler = new StaticHandler(docroot, assets, readyEarly, LoggerCore.PORT_CDN);
+        // Bagian 72 CAPTURE CLIENT — penerima event halaman game (console/js
+        // error/pemuatan script & media/XHR yang TIDAK PERNAH sampai ke
+        // listener HTTP karena dijawab shell EgretNative dari penyimpanan
+        // lokal). Arahan owner: "kalau loading ya dia itu loading apa !
+        // lihat log eruda sebagai contoh goblok !!"
+        final ClientLogHandler clientLog = new ClientLogHandler();
         final SdkHandler sdk = new SdkHandler();
         final SocketIoHandler login = new SocketIoHandler(false);
         // v20 (Bagian 67, oke owner "implementasi dengan ini"): 5050/9528
@@ -79,13 +85,16 @@ public final class ServerCore {
         // menghormati URL absolut MAUPUN bila ia memaksa origin halaman.
         final HttpWorker.Handler cdnChain = (req, out, sock) -> {
             String p = (req.path == null || req.path.isEmpty()) ? req.rawPath : req.path;
+            if (p != null && p.startsWith("/log/client")) {
+                return clientLog.handle(req, out, sock);
+            }
             if (p != null && (p.startsWith("/socket.io/") || p.startsWith("/socket.io?"))) {
                 return login.handle(req, out, sock);
             }
             return cdnHandler.handle(req, out, sock);
         };
         bindAndServe(LoggerCore.PORT_CONFIG, configHandler, "config bin (mirror configus…:443)");
-        bindAndServe(LoggerCore.PORT_CDN, cdnChain, "CDN game + socket.io login (mirror dragonh5cdn…:443)");
+        bindAndServe(LoggerCore.PORT_CDN, cdnChain, "CDN game + socket.io login + /log/client capture (mirror dragonh5cdn…:443)");
         bindAndServe(LoggerCore.PORT_LOGIN, login, "login socket.io v2.1.2 EIO=3 + loginchecknative (mirror login…:610)");
         bindAndServe(LoggerCore.PORT_GAME, game, "server game socket.io v2.1.2 EIO=3 (serverItem.url — Bagian 21)");
         bindAndServe(LoggerCore.PORT_SDK, sdk, "API SDK t4game (mirror qsdk.t4game.com:80)");

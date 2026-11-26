@@ -129,6 +129,10 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         /** v21: true HANYA setelah client mengirim '5' (upgrade engine.io
          *  selesai) — bukan lagi saat handshake 101. */
         public volatile boolean upgraded = false;
+        /** Bagian 72: sesi ini terbuka sebagai pola socket GAME (ada sesi lain
+         *  yang sudah menjawab login saat open). Setiap long-poll timeout sesi
+         *  ini membawa ALASAN loading macet, bukan hanya "no data". */
+        public volatile boolean gamePattern = false;
         public volatile OutputStream wsOut = null;   // v6: ACK bisa lewat WS langsung
         /** v21: kunci tulis WS — deliverWs / migrasi upgrade / probe / pong
          *  tidak boleh saling menyela frame di socket yang sama. */
@@ -401,6 +405,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 if (nOthers > 0) {
                     e.extra += " — sesi aktif lain: " + nOthers + " → " + others;
                     if (loginTerjawab) {
+                        s.gamePattern = true;   // Bagian 72: tiap timeout sesi ini membawa alasannya
                         e.extra += "; koneksi ke-2 setelah login dijawab = pola socket GAME"
                                 + " (atlas §4.3: clientStartGame → socket game ke serverItem.url"
                                 + " = port ini dari serverList) — listener game TRANSPORT ONLY:"
@@ -459,6 +464,15 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     e.extra += "; client belum memulai probe WS";
                 } else if (!s.upgraded) {
                     e.extra += "; client tidak pernah mengirim '5' — upgrade WS tidak selesai";
+                }
+                // Bagian 72: sesi pola socket GAME — SETIAP timeout membawa
+                // alasan loading macet (bukan sekali di open lalu hilang —
+                // owner menonton log SAAT loading dan tiap baris harus
+                // menjawab "loading apa").
+                if (s.gamePattern) {
+                    e.extra += " — pola socket GAME: client menunggu event 'verify'"
+                            + " dari server (fase gameserver belum dibangun) —"
+                            + " loading macet di sini";
                 }
             } else {
                 e.respPreview = payload;

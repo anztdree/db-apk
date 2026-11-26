@@ -139,17 +139,31 @@ public final class StaticHandler implements HttpWorker.Handler {
         }
 
         String ct = JsonUtil.contentType(req.path);
+        // Bagian 72 CAPTURE CLIENT — halaman HTML dilayani DENGAN script capture
+        // (injeksi serve-time, memori; file di disk/assets byte-identik — bs/
+        // tidak tersentuh). Halaman game dari server kita = satu-satunya saksi
+        // aktivitas loading sisi client (js/resource dilayani shell EgretNative
+        // dari lokal — tidak pernah sampai ke listener HTTP; console.* hanya
+        // ada di WebView). Arahan owner: "kalau loading ya dia itu loading
+        // apa ! lihat log eruda sebagai contoh goblok !!"
+        byte[] respData = data;
+        boolean injected = false;
+        if (ct.startsWith("text/html")) {
+            byte[] inj = ClientCapture.inject(data);
+            if (inj != data) { respData = inj; injected = true; }
+        }
         Map<String, String> h = HttpWorker.baseHeaders(ct);
         h.put("Cache-Control", "no-store");
         h.put("Access-Control-Allow-Origin", "*");
-        HttpWorker.writeResponse(out, 200, "OK", h, data, head);
+        HttpWorker.writeResponse(out, 200, "OK", h, respData, head);
 
         e.status = 200;
-        e.respLen = data.length;
+        e.respLen = respData.length;
         e.durMs = System.currentTimeMillis() - t0;
         StringBuilder extra = new StringBuilder(64);
         if (fromAssets != null) extra.append("src=assets | ");   // v14 — tanpa label karangan
         extra.append("respCT=").append(ct);
+        if (injected) extra.append(" | capture client terinjeksi (script ").append(respData.length - data.length).append(" B)");
         if (head) extra.append(" (HEAD, no body)");
 
         if (e.port == LoggerCore.PORT_CONFIG && req.path.endsWith(".bin")) {
@@ -160,13 +174,13 @@ public final class StaticHandler implements HttpWorker.Handler {
             e.respPreview = "[xor " + data.length + " B — decoded in data]";
         } else if (isTextType(ct)) {
             e.extra = extra.toString();
-            int n = Math.min(data.length, LoggerCore.STATIC_TEXT_PREVIEW);
-            e.respPreview = new String(data, 0, n, java.nio.charset.StandardCharsets.UTF_8);
-            if (data.length > n) e.respPreview += "…[+" + (data.length - n) + "B]";
+            int n = Math.min(respData.length, LoggerCore.STATIC_TEXT_PREVIEW);
+            e.respPreview = new String(respData, 0, n, java.nio.charset.StandardCharsets.UTF_8);
+            if (respData.length > n) e.respPreview += "…[+" + (respData.length - n) + "B]";
         } else {
             // biner (png/jpg/zip/mp3/…) — kompakt, tetap lengkap di disk (NDJSON)
             e.extra = extra.toString();
-            e.respPreview = "[bin " + data.length + " B]";
+            e.respPreview = "[bin " + respData.length + " B]";
         }
         LoggerCore.log(e);
         return true;

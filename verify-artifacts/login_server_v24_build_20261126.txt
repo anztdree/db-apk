@@ -1,0 +1,169 @@
+BUILD & VERIFIKASI APK v24 — CAPTURE CLIENT (Bagian 72, 26 Nov 2026)
+================================================================================
+Lanjut natural tanpa fase (kesepakatan Bagian 68) — jawaban langsung laporan
+owner (kata-kata persis):
+
+  1. "sudah di bilang di game itu sedang loading !! artinya ada log yg jelas
+     gk tertangkap malah log anda itu isinya apa babi ."
+  2. "Sudah di bilang log natural masih aja ngeyel !!! kalau loading ya dia
+     itu loading apa ! lihat log eruda sebagai contoh goblok !!"
+
+JAWABAN TEKNIS (akar buta-log fase loading — bukti device v22/v23:
+release-mod/server.ndjson — antara index-native.html/manifest.json dan
+socket.io TIDAK ADA satu pun request js/resource di log, padahal loading
+bar berjalan):
+  - 15 file js game + mayoritas resource dilayani shell EgretNative dari
+    penyimpanan lokal (interceptor native) — request itu TIDAK PERNAH sampai
+    ke listener HTTP server, jadi log server tidak mungkin melihatnya;
+  - console.* halaman game (showErrorLog "[ERR]" selalu cetak; showInfoLog
+    dibungkam window.Log_Clean=true dari index-native.html; log engine
+    egret) hidup di WebView — tidak pernah melewati server mana pun;
+  - window.onerror / unhandledrejection hanya saksi client.
+  → SATU-SATUNYA saksi aktivitas loading sisi client adalah halaman itu
+    sendiri. Jadi capture dipasang DI HALAMAN — persis cara kerja eruda
+    (contoh yang owner pakai), hanya saja outputnya masuk log global kita.
+
+IMPLEMENTASI v24 (classes2.dex — 4 file edit + 2 file BARU):
+  ClientCapture.java (BARU)
+    - script capture ES5 diinjeksi serve-time ke respons text/html
+      (index-native.html) sebelum </head> — file di disk/assets
+      BYTE-IDENTIK (injeksi hanya di memori respons; bs/ tidak tersentuh);
+    - hook: console.log/info/warn/error/debug · window.addEventListener
+      ('error') · 'unhandledrejection' · document.createElement wrap utk
+      script/img/audio/video (src + load/error + durasi) · XHR open+loadend
+      (method/url/status/durasi; GAGAL network/timeout = error) · fetch;
+    - filter anti-dobel & anti-loop: /socket.io/* (sudah utuh di sisi
+      server) dan /log/client (transport capture sendiri) tidak dicapture;
+    - flush batch 500 ms → POST /log/client (origin sama 9528); buffer cap
+      400 event, teks cap 1200 char; berhenti bersih setelah 8 POST gagal;
+      SEMUA hook try/catch — nol perubahan perilaku game, nol throw keluar.
+  ClientLogHandler.java (BARU)
+    - POST /log/client: tiap kejadian = SATU baris kind CLIENT di file
+      global yang SAMA (port 9528 = chip CDN di dashboard); method=jenis
+      kejadian; path=teks PERSIS dari halaman (nol karangan); level ERROR +
+      field error sebab jujur utk console.error / jserror /
+      unhandledrejection / script-media GAGAL muat / XHR gagal-4xx; entri
+      normal tanpa level (access log alami);
+    - transport POST /log/client sendiri = countSelf (bukan baris access —
+      pola anti-pollution Bagian 18);
+    - jujur di error juga: body rusak → 400 + baris "batch log client
+      tidak valid"; >262144 B → 413; GET → 405; batch kosong → 200 tanpa
+      baris. Parser JSON minimal (string/esc \u, tanpa dependensi).
+  StaticHandler.java (edit)
+    - text/html → ClientCapture.inject(data) sebelum dikirim + extra baris
+      200 halaman: "capture client terinjeksi (script N B)" — kehadiran
+      capture TERLIHAT di log, bukan tersembunyi.
+  ServerCore.java (edit)
+    - rute /log/client di chain 9528 (sebelum socket.io / static); label
+      bind: "CDN game + socket.io login + /log/client capture".
+  SocketIoHandler.java (edit)
+    - Session.gamePattern (sesi terbuka sbg socket game saat login sudah
+      dijawab) → SETIAP long-poll timeout sesi itu kini ber-alasan:
+      "— pola socket GAME: client menunggu event 'verify' dari server
+      (fase gameserver belum dibangun) — loading macet di sini".
+      Owner menonton log SAAT loading — satu baris penjelasan di open saja
+      tidak cukup; tiap baris harus menjawab "loading apa".
+  LoggerHandler.java (edit)
+    - dashboard render kind CLIENT: baris "CLIENT <jenis> — <teks>", level
+      ERROR merah / console.warn WARN / lain INFO (chip CDN via port 9528),
+      error client masuk banner PENTING, plainLine utk Salin.
+
+TOOLCHAIN (semua sama dgn v14–v23)
+  javac  21.0.13  — openjdk-21-jdk-headless deb 21.0.13+9-1~deb13u2 (dpkg -x,
+                    /tmp/v23/jdk/ext — SAMA v23); javac -version = 21.0.13
+  D8     8.3.37   — r8-8.3.37.jar com.android.tools.r8.D8 (input jar)
+  sign   uber-apk-signer 1.3.0 + keystore release-mod/dblocal-mod.keystore
+                    (alias dblocalmod, storepass/keypass dblocalmod123 —
+                    SAMA semua versi, install-over aman; CN=DB Local Mod,
+                    O=Owner, C=ID, berlaku s.d. 14 Nov 2056)
+  base   APK v23 LOKAL (sha256 722eee78… = oid LFS — dicek ulang)
+
+DEX classes2.dex v24 (login-server)
+  sumber   8 stubs + 26 javasrc com/db/local/server (24 lama + ClientCapture
+           + ClientLogHandler) — TANPA SmokeMain
+  compile  javac -encoding UTF-8 -source 8 -target 8 → PASS (warning -source
+           8 obsolete = standar rantai)
+  dexing   D8 --release --min-api 21 (input jar) → 164.748 B (v23: 153.884 B
+           — script capture + handler + parser JSON ditambah)
+  marker   rebuild-src/scripts/patch_marker_v24.py — v19→v24 tepat 4 string
+           (judul dashboard, banner, BOOT LocalServerStarter, crash CrashHook;
+           ukuran string sama, SHA1+adler32 header dihitung ulang)
+  sha256   9060d66e7c4c5cc692547a3ae011e74d682e8c6f4ec35baca30eac6047a47aae
+  kontrak warisan v20/v21/v22/v23 utuh (handler.process/DragonBall Local/
+           server.ndjson/level ERROR/404 MISSING/EXITINFO/pola socket GAME/
+           gameserver belum dibangun/menunggu event 'verify'/long-poll
+           timeout 10 dtk/tidak pernah mengirim '5'/berisi:/serverlist
+           SAMPAI ke client/WS berakhir/WS close dari client — semua ADA)
+  kontrak v24 BARU: /log/client · __dbClientCapture · CLIENT · console.error
+           dari halaman game · window.onerror dari halaman game ·
+           unhandledrejection dari halaman game · capture client terinjeksi
+           (script · pola socket GAME: client menunggu event · loading macet
+           di sini · batch log client tidak valid · script halaman game gagal
+           dimuat di client · XHR halaman game gagal/4xx di client — semua ADA
+  terlarang (fabrikasi lama v18 NOL): serverListJson/enterGameResponse/
+           routeEvent/"ACK: 43" — v24=4(v19=0)/v23=0/v22=0/v21=0/v20=0/v18=0
+
+REBUILD RAW-COPY v24 (scripts/rebuild_v24_raw.py — pola 46..56..67..68..69..70..71)
+  base   = APK v23 (sha256 722eee78… cocok)
+  6.428 entri byte-per-byte LFH+CD+EOCD; verifikasi zipfile: beda HANYA
+  classes2.dex; classes.dex = airplane v19 byte-identik (6.697.176 B, sha
+  62803bb1…, byte patch @0x5e8180/@0x5d2438 dicek ulang); arsc STORED
+  (data_off aligned-4); metode 3471 deflate + 2957 stored identik; QHinfo
+  proven (http://127.0.0.1:9530)
+
+ZIPALIGN + SIGN
+  uber-apk-signer 1.3.0: zipalign success + sign success — zipalign verified
+  + signature verified [v1, v2, v3]
+  sertifikat: CN=DB Local Mod, O=Owner, C=ID — SHA256
+  f58a5b9a097656440b5cb21f5ed2e70b879c3879d6a0926ff951aa181fa91170
+  (SHA384withRSA, berlaku s.d. Tue Nov 14 11:15:27 UTC 2056 — SAMA v14..v23)
+
+APK v24 FINAL
+  file    release-mod/db-local(MOD-LOCALSERVER-v24).apk
+  ukuran  202.691.550 B
+  sha256  137e3e9a4f24c24be6e2d2fe73df283cd4b0ba8e81521ad8b5fbf3472afd3f80
+  diff vs v23 (entri-per-entri, verified): classes2.dex +
+          META-INF/MANIFEST.MF + META-INF/DBLOCALM.SF + META-INF/DBLOCALM.RSA
+          (re-sign) SAJA — arsc/assets/bs/sdk/console/dashboard byte-identik
+  LFS     rotasi pointer v23→v24 (pola lama; pointer v23 dihapus, pointer
+          v24 masuk repo — git-lfs 3.6.1)
+
+SMOKE DESKTOP v24 (verify-artifacts/login_server_v24_smoke_20261126.txt)
+  263 PASS / 0 FAIL = 242 kasus lama tetap + 21 kasus v72 baru:
+    - v72-injeksi-capture-ada / v72-injeksi-sebelum-head-tutup (capture
+      terpasang SEBELUM </head> — jalan sebelum semua script halaman)
+    - v72-cache-control-no-store / v72-non-html-tanpa-injeksi /
+      v72-file-disk-tetap-asli (file di disk byte asli — injeksi hanya
+      di respons) / v72-extra-injeksi-di-log
+    - v72-logclient-post-200 / v72-client-console-error (kind CLIENT +
+      level ERROR + sebab "console.error dari halaman game") /
+      v72-client-info-tanpa-level (access log alami)
+    - v72-client-jserror (window.onerror) / v72-client-script-gagal /
+      v72-client-script-sukses-tanpa-level / v72-client-xhr-404
+    - v72-logclient-rusak-400 + terlog (400 + baris jujur) /
+      v72-logclient-get-405 / v72-logclient-kosong-200 /
+      v72-logclient-oversize-413 + tanpa-baris
+    - v72-timeout-gamepattern-beralasan (SETIAP timeout sesi socket game
+      kini ber-alasan "loading macet di sini")
+    - v72-browser-e2e-capture → E2E BROWSER NYATA (Playwright/Chromium,
+      verify_capture_v24.js): halaman + injeksi + hook + POST /log/client +
+      baris kind CLIENT di log global — 10/10 PASS di dalamnya:
+      capture-terpasang, console.log/warn/error, jserror, script sukses +
+      GAGAL, xhr 200 + 404, anti-loop /log/client
+  catatan jujur: run pertama 1 FAIL — v72-logclient-rusak-terlog, jarum uji
+  PYTHON salah (baris 400 = access log HTTP kind, bukan kind CLIENT —
+  request rusak memang bukan kejadian halaman; predikat uji kini cari kind
+  HTTP) — NOL perubahan Java; run kedua 263 PASS / 0 FAIL.
+
+SISA KERJA (jujur — sekali lagi):
+  - smoke DEVICE (install-over v23 aman — sertifikat sama): buka APK v24
+    sampai loading → log kini MENAMPILKAN fase loading sisi client: tiap
+    script/resource/console/error halaman = baris CLIENT di server.ndjson
+    yang SAMA; saat loading macet di socket game, SETIAP timeout membawa
+    alasan "loading macet di sini".
+  - FASE GAMESERVER (PLAN §7.5) = satu-satunya yang membuat loading lanjut:
+    challenge "verify" (server→client) + ack verify {ret:0} + enterGame +
+    Notify — WAJIB bedah/plan dulu per §13 atlas (usulan merujuk baris
+    atlas). Log v24 kini menuliskan kurangnya ini di SETIAP titik kejadian.
+  - NOL perubahan bs/, sdk/, dashboard arsc assets smali — hanya
+    classes2.dex + tanda tangan.
