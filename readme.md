@@ -5496,3 +5496,90 @@ CLIENT).
   logs/ (enabled saja). Dokumen penuh = docs/LOGIN-SERVER-PLAN.md §3.0/§3.2/§4.
 - Menunggu oke owner (K1–K6) → `LoginServerConfig.java` seed 3 file →
   ack-gate §4.3 → smoke §3.6. NOL baris kode di APK — PLAN ONLY.
+
+## Bagian 66 — TREE LAMA DITOLAK OWNER KEDUA KALI: STRUKTUR = TABEL EVENT ATLAS DIBUAT FILE — 1 EVENT = 1 FILE (plan only, nol kode)
+
+Jawaban owner: **"ini bukankah struktur folders yg saya tolak tadi anda usulkan
+lagi … parah paraaaaah"** — BENAR, dan diakui tanpa alibi:
+
+### 66.1 DIAGNOSIS JUJUR KESALAHAN
+
+- Tree `config.json`/`serverlist.json`/`announce.json`/`data/`/`logs/` yang
+  ditentukan di Bagian 65 = **struktur yang SAMA PERSIS** dengan yang ditolak
+  di Bagian 63 — saya hanya mengganti LABEL "usulan" → "ditentukan" tanpa
+  mengubah isi. Itu bukan menurunkan struktur dari atlas; itu mendaur ulang.
+- AKAR salahnya: pengelompokan "saklar / data / pengumuman" adalah KARANGAN
+  saya — kategori itu TIDAK ADA di kontrak client. Kontrak yang benar = tabel
+  6 event atlas (yang owner tempel sendiri di pesan) — dan struktur haruslah
+  tabel itu dibuat file.
+
+### 66.2 STRUKTUR BARU — 1 BARIS ATLAS §4 = 1 FILE JAWABAN
+
+Nama file = action string PERSIS yang client kirim (verbatim atlas §4):
+`{type:"User",action:"GetServerList"}` → **GetServerList.json**, dst.
+
+```
+Android/data/com.db.local/server/
+└── login-server/              ← self-seed BOOT; dibaca ulang tiap event
+    ├── GetServerList.json     ← event 1 (atlas §4.1, offset 793433)
+    ├── loginGame.json         ← event 2 (atlas §4.2, offset 792556)
+    ├── SaveHistory.json       ← event 3 (atlas §4.3, offset 1453497)
+    ├── LoginAnnounce.json     ← event 4 (atlas §4.4, offset 1458983)
+    ├── SaveLanguage.json      ← event 5 (atlas §4.5, offset 790564)
+    ├── data/history.sqlite    ← state history per-akun — persist saja (§6/§12.7)
+    └── logs/                  ← NDJSON per event yang DIJAWAB
+    (event 6 SaveUserEnterInfo — TANPA FILE: konstanta kode `{}`; isi TIDAK
+     dibaca client (§11 baris 11) dan SELALU dijawab supaya socket login
+     di-destroy rapi — destroy itu satu-satunya, §4.6)
+```
+
+SATU ATURAN ISI/DIAM — kini PER EVENT: file BERISI = event DIJAWAB dgn isi
+file; file DIKOSONGKAN `{}` = event DIAM (NO ACK — atlas §11 baris 9: client
+diam tanpa crash). Menghapus file = seed default kembali.
+
+### 66.3 ISI TIAP FILE = KUNCI PERSIS YANG DIBACA CLIENT (baris atlas)
+
+| Event (offset) | File | Isi = yang DIBACA client | DIAM (`{}`) efek dari atlas |
+|---|---|---|---|
+| GetServerList (793433) | GetServerList.json | `serverList[]` 12 field (urutan = prioritas auto §11.3) + `history[]` (§11.4) + `offlineReason` top (§6) + `language` top (§2 semua ACK); errorCode TIDAK dibaca | berhenti sebelum serverlist |
+| loginGame (792556) | loginGame.json | cuma `userId`+`channelCode` (echo) → file = kebijakan `{"jawab":"sukses"/"tolak103"}` | jalur origin macet di tombol login |
+| SaveHistory (1453497) | SaveHistory.json | `loginToken` PINTU INJEKSI (§11.7) + `todayLoginCount` (§11.8); onErr=onOk | macet di LoadingPanel |
+| LoginAnnounce (1458983) | LoginAnnounce.json | `{kunci:entri}` text/title/version/orderNo/alwaysPopup (§11.5) | TIDAK APA-APA — visual = diam (tombol tak muncul) |
+| SaveLanguage (790564) | SaveLanguage.json | `errorCode` 0/111 dua-duanya ganti bahasa → file = `{"whitelist":["en","fr","kr"]}` (`[]` = terima semua) | dialog bahasa tak tertutup (callback satu-satunya closeWindow) |
+| SaveUserEnterInfo (794977) | TANPA FILE | tak dibaca → destroy() | — (selalu dijawab `{}`) |
+
+Seed default (login AKTIF): GetServerList.json = serverList 1 entri lokal +
+`history:[]` + `historyMode:"auto"` + `offlineReason:""` + `language:""`;
+loginGame.json = `{"jawab":"sukses"}`; SaveHistory.json =
+`{"todayLoginCount":1,"loginToken":""}`; LoginAnnounce.json = `{}` (diam);
+SaveLanguage.json = `{"whitelist":["en","fr","kr"]}`.
+
+### 66.4 YANG HILANG DARI STRUKTUR LAMA (dengan alasan)
+
+- **`config.json` DIHAPUS sebagai nama** — pengelompokan saklar/data/pengumuman
+  karangan saya; tiap field pindah ke file event yang MEMBACANYA (language &
+  offlineReason & historyMode → GetServerList.json; todayLoginCount & loginToken
+  → SaveHistory.json; whitelist → SaveLanguage.json; jawab → loginGame.json).
+- **Saklar global `enabled` DIHAPUS (K7)** — file ada = dijawab, file kosong =
+  DIAM per event; meta-saklar bukan kontrak (asli SELALU hidup = informasi).
+- **`serverlist.json`/`announce.json` ganti nama** → GetServerList.json /
+  LoginAnnounce.json (nama = action string verbatim, bukan nama karangan).
+- Tetap: data/history.sqlite (L1, atlas §12.7), logs/ (disiplin §11.9/13),
+  5 aturan folder (self-seed boot, baca ulang tiap event, rusak→reseed+WARN,
+  atomik, tak pernah di assets).
+
+### 66.5 KEPUTUSAN KINI SEMUA JADI FILE YANG BISA OWNER BALIKKAN VIA EDIT
+
+K2 (loginGame sukses/tolak103) · K3 (historyMode auto/persist) ·
+K4 (pengumuman isi/diam) · K5 (whitelist bahasa, `[]` = terima semua) ·
+K6 (loginToken inject) — SEMUA tinggal edit file event-nya, tanpa sentuh kode;
+K7 BARU (enabled dihapus). Implementasi = LoginServerConfig.java seed 5 file →
+ack-gate `<action>.json` → smoke §3.6 (kriteria 1–9 termasuk "file kosong =
+NO ACK" dan "SaveUserEnterInfo selalu dijawab tanpa file").
+
+### 66.6 STATUS
+
+- Struktur FINAL (Bagian 66): **5 file event bernama action string** +
+  data/history.sqlite (persist saja) + logs/. docs §3.0/§3.2/§3.3/§3.4/§3.6/
+  §4.1–§4.7 + §5 (K1–K7, L1–L5) sudah sinkron semua; bagian historis tak disentuh.
+- Menunggu oke owner. NOL baris kode di APK — PLAN ONLY.
