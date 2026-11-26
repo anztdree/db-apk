@@ -83,6 +83,15 @@ Dampak: gambar kosong/pecah + suara klik tidak bunyi. TIDAK menghalangi login.
 File ini TIDAK ada di assets APK (ekstraksi tiap boot menimpa `bs/` — edit
 manual `bs/` hilang saat reboot).
 
+PEMBUKTIAN ULANG 26 Nov (Bagian 69, jawaban pertanyaan owner): file-file ini
+juga TIDAK ADA di DALAM all.zip (652 entri di-parse via HTTP Range dari
+dalam APK — isi: js/ 12 + resource/ 639 + resource.version; nol
+Instagram_png/Telegram_png/Discord_png/denglujiemian…new21/Logo18) dan
+TIDAK ADA di manapun di repo/capture = file yang TIDAK PERNAH kita punya.
+Sesuatu yang tidak pernah ada tidak bisa dilayani 200 oleh server manapun
+(asli maupun lokal) — 404 ini bukan cacat server, ini file yang hilang dari
+sumbernya sejak awal (perlu DIBUAT placeholder bila mau diisi).
+
 Dua opsi penyempurnaan (menunggu keputusan owner, keduanya butuh iterasi build):
 1. **Opsi A (APK)**: suntik 6 file placeholder PNG/MP3 ke assets APK pada path
    persis di atas → ikut ekstraksi otomatis tiap boot.
@@ -102,7 +111,7 @@ v20 bila owner mau.
 | D1 | Lanjut bangun config loginServer sesuai docs/LOGIN-SERVER-PLAN.md §4? (ini kerja loginServer, bukan SDK) | tidak — tetap plan |
 | D2 | SDK: kerjakan §2.1 (pesan error CDKey/unbind/trash)? | tidak — fallback sudah aman |
 | D3 | SDK: ganti `loginTypes` `["1"]` → `["1","13"]` (tombol Kode Migrasi seperti server asli)? | tidak — TAMU+email sudah cukup; migrasi butuh bukti format kode |
-| D4 | Kosmetik 404 layar login (§3) — Opsi A atau B? | tunda ke iterasi berikutnya |
+| D4 | Kosmetik 404 layar login (§3) — Opsi A atau B? | tunda ke iterasi berikutnya (Bagian 69 menambah bukti: file TIDAK ADA juga di all.zip — kalau dikerjakan = HARUS buat placeholder, bukan "mengambil" file) |
 | D5 | `history` config login: kosong (auto-enter) vs diisi (perilaku **OPEN** — perlu uji device dulu) | kosong (perilaku terbukti v17: auto-enter) |
 
 ## 5. ATURAN YANG TETAP (disiplin berjalan)

@@ -57,6 +57,34 @@ import java.util.concurrent.locks.ReentrantLock;
  *   tetap TRANSPORT ONLY sampai fase gameServer. Log tetap GLOBAL 1 (NDJSON
  *   logs/ — TIDAK ada logs/ di login-server/).
  *
+ * v21 (Bagian 69) — FIX "SERVERLIST TIDAK MUNCUL" (bukti device owner:
+ *   release-mod/log-20261126-181501.ndjson seq 58-61):
+ *   BUG v20: handleWebSocket menandai s.upgraded=true SEKETIKA saat handshake
+ *   101, SEBELUM engine.io selesai upgrade (probe 2probe/3probe bahkan belum
+ *   dikirim). Emit GetServerList datang via POST-polling 3 ms kemudian →
+ *   deliver() menulis frame 430 ke socket WS → client (MASIH MODE POLLING)
+ *   membuangnya → upgrade pun batal (client tak pernah kirim '5') → poll
+ *   berikutnya 10 detik KOSONG (seq 61 "long-poll timeout, no data") → ACK
+ *   HILANG → serverlist tidak pernah tampil. Log v20 lama mengaku "ACK 430"
+ *   padahal frame tidak sampai = log bohong.
+ *   FIX v21 (aturan transport 1:1 engine.io):
+ *   1. upgraded=true HANYA saat client mengirim packet upgrade '5' via WS
+ *      (bukan saat 101) — probe tidak lagi menandai upgrade.
+ *   2. ACK routing = transport ASAL emit: emit via POST-polling → ACK SELALU
+ *      masuk antre polling (deliverPolling); emit via WS setelah upgrade →
+ *      ACK lewat WS langsung (deliverWs). NOL penulisan WS sebelum '5'.
+ *   3. Saat '5' diterima: semua packet yang sempat mengantre pindah ke WS
+ *      (migrasi), lalu noop '6' masuk antre polling agar long-poll menggantung
+ *      segera kembali (perilaku engine.io asli).
+ *   4. Semua tulisan WS dikunci wsWriteLock (deliverWs / migrasi / probe /
+ *      pong tidak boleh saling menyela frame).
+ *   5. LOG JUJUR: extra mencatat KEMANA frame benar-benar dikirim
+ *      ("→ dikirim: antre polling" / "→ dikirim: WS langsung") — tidak ada
+ *      lagi klaim ACK tanpa bukti transport.
+ *   6. Port di log = port listener SEBENARNYA (header __listenerport dari
+ *      HttpWorker) — bukti device v20: entri socket.io di 9528 selama ini
+ *      salah label "port":5050.
+ *
  * v17 — LOG URL PENUH, NOL PANGKAS (arahan owner: "kalau log nampilin url
  *   socket misal http://127.0.0.1:<port>/socket.io/?EIO=3&transport=polling&t=…
  *   yaaa jangan anda pangkas" + "masih ada yg di sembunyikan"):
@@ -84,8 +112,13 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         public final ReentrantLock lock = new ReentrantLock();
         public volatile boolean closed = false;
         public volatile boolean closePendingNotified = false;
+        /** v21: true HANYA setelah client mengirim '5' (upgrade engine.io
+         *  selesai) — bukan lagi saat handshake 101. */
         public volatile boolean upgraded = false;
         public volatile OutputStream wsOut = null;   // v6: ACK bisa lewat WS langsung
+        /** v21: kunci tulis WS — deliverWs / migrasi upgrade / probe / pong
+         *  tidak boleh saling menyela frame di socket yang sama. */
+        public final Object wsWriteLock = new Object();
 
         Session(String sid) { this.sid = sid; }
 
@@ -99,18 +132,57 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             }
         }
 
-        /** v6: kirim ACK — via WS bila sudah upgrade, selain itu antre untuk polling */
-        void deliver(String pkt) {
+        /** v21: ACK utk emit yang datang via WS — lewat WS langsung, TAPI
+         *  hanya bila upgrade BENAR-BENAR selesai (client sudah kirim '5').
+         *  Bila belum (client masih polling) → antre polling; migrasi di
+         *  completeUpgrade() yang meneruskan. */
+        String deliverWs(String pkt) {
             OutputStream ws = wsOut;
             if (upgraded && ws != null) {
                 try {
-                    wsSendText(ws, pkt);
-                    return;
+                    synchronized (wsWriteLock) { wsSendText(ws, pkt); }
+                    return "WS langsung";
                 } catch (Throwable t) {
                     // WS putus → jatuh ke antre polling
                 }
             }
             offer(pkt);
+            return "antre polling";
+        }
+
+        /** v21: ACK utk emit yang datang via POST-polling — SELALU antre
+         *  polling. Client yang meng-emit lewat polling mendengarkan lewat
+         *  polling; frame ditulis ke WS sebelum '5' = dibuang client
+         *  (bukti bug v20 di device owner). */
+        String deliverPolling(String pkt) {
+            offer(pkt);
+            return "antre polling";
+        }
+
+        /** v21: client selesai upgrade (kirim '5' via WS) — pindahkan semua
+         *  packet yang masih mengantre polling ke WS, lalu noop '6' masuk
+         *  antre polling agar long-poll menggantung segera kembali
+         *  (perilaku engine.io asli: server menutup transport lama dgn noop). */
+        String completeUpgrade(OutputStream out) {
+            upgraded = true;
+            wsOut = out;
+            int moved = 0;
+            lock.lock();
+            try {
+                String p;
+                while ((p = queue.pollFirst()) != null) {
+                    try {
+                        synchronized (wsWriteLock) { wsSendText(out, p); }
+                        moved++;
+                    } catch (Throwable t) {
+                        offer(p);   // WS gagal — kembalikan ke antre
+                    }
+                }
+            } finally {
+                lock.unlock();
+            }
+            offer("6");   // noop di transport lama — tanda upgrade selesai
+            return "upgrade selesai — " + moved + " antre pindah ke WS + noop 6";
         }
 
         String drain(long waitMs) {
@@ -194,7 +266,17 @@ public final class SocketIoHandler implements HttpWorker.Handler {
     public boolean handle(HttpWorker.Request req, OutputStream out, Socket sock) throws IOException {
         long t0 = System.currentTimeMillis();
         LoggerCore.Entry e = new LoggerCore.Entry();
-        e.port = gameMode ? LoggerCore.PORT_GAME : LoggerCore.PORT_LOGIN;
+        // v21 (Bagian 69): port di log = port listener SEBENARNYA. Handler
+        // login yang sama dilayani di 5050 DAN di-chain di 9528 (ServerCore
+        // cdnChain) — v20 lama selalu menulis PORT_LOGIN (5050) sehingga entri
+        // socket.io di 9528 salah label (bukti log device: seq 56-61 URL
+        // 127.0.0.1:9528 tapi "port":5050 = log membingungkan owner).
+        int realPort = -1;
+        try {
+            String lp = req.header("__listenerport");
+            if (lp != null && !lp.isEmpty()) realPort = Integer.parseInt(lp.trim());
+        } catch (Throwable ignore) {}
+        e.port = realPort > 0 ? realPort : (gameMode ? LoggerCore.PORT_GAME : LoggerCore.PORT_LOGIN);
         e.method = req.method;
         e.path = fullUrl(req, e.port);   // v17: URL PENUH — tanpa pangkas
         e.reqLen = req.body.length;
@@ -346,7 +428,11 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 if ("41".equals(pkt)) { s.closed = true; dead = true; }
                 else if ("2probe".equals(pkt)) s.offer("3probe");
                 else if ("2".equals(pkt)) s.offer("3");
-                else if ("5".equals(pkt)) { /* upgrade ack — tidak perlu balasan */ }
+                else if ("5".equals(pkt)) {
+                    // v21: '5' lewat polling = client menutup transport lama
+                    // (jarang) — tidak perlu balasan; upgrade resmi dicatat
+                    // lewat frame WS di handleWebSocket.
+                }
                 else if ("40".equals(pkt)) { /* connect namespace — open sudah mengirim 40 */ }
                 else if (pkt.startsWith("42")) {
                     // Bagian 67 — ACK-GATE login-server (oke owner "implementasi
@@ -364,7 +450,13 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                                 + " — docs/LOGIN-SERVER-PLAN.md §6)";
                     } else {
                         String ack = LoginAck.build(pkt, e);
-                        if (ack != null) s.deliver(ack);
+                        if (ack != null) {
+                            // v21: ACK emit-polling SELALU antre polling —
+                            // klien mendengarkan di transport yang ia pakai
+                            String via = s.deliverPolling(ack);
+                            e.extra = (e.extra == null ? "" : e.extra + " ")
+                                    + "→ dikirim: " + via;
+                        }
                     }
                 } else if (pkt.startsWith("2")) {
                     s.offer("3");
@@ -460,11 +552,17 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         String qs = req.q("sid");
         if (qs != null) s = SESSIONS.get(qs);
         if (s == null) {
+            // v21: koneksi WS-FIRST (tanpa polling sebelumnya) — sesi baru,
+            // memang langsung WS murni → upgraded=true benar utk kasus ini.
             s = createSession();
             s.upgraded = true;
-        } else {
-            s.upgraded = true;
         }
+        // v21 FIX BUG SERVERLIST: sesi polling yang membuka WS untuk probe
+        // TIDAK lagi ditandai upgraded di sini. upgraded=true hanya setelah
+        // client mengirim '5' (completeUpgrade di loop frame di bawah).
+        // v20 lama: s.upgraded = true di sini → ACK emit-polling ditulis ke
+        // WS pra-probe → frame hilang → serverlist tidak muncul (bukti
+        // log-20261126-181501.ndjson seq 58-61).
 
         String accept = wsAccept(key);
         StringBuilder h = new StringBuilder(200);
@@ -563,8 +661,24 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     le.path = wsUrl;
                     le.reqLen = payload.length;
                     le.reqPreview = text;
-                    if ("2probe".equals(text)) { wsSendText(out, "3probe"); le.respPreview = "3probe"; le.respLen = 6; le.status = 200; }
-                    else if ("2".equals(text)) { wsSendText(out, "3"); le.respPreview = "3"; le.respLen = 1; le.status = 200; }
+                    if ("2probe".equals(text)) {
+                        synchronized (s.wsWriteLock) { wsSendText(out, "3probe"); }
+                        le.respPreview = "3probe"; le.respLen = 6; le.status = 200;
+                    }
+                    else if ("2".equals(text)) {
+                        synchronized (s.wsWriteLock) { wsSendText(out, "3"); }
+                        le.respPreview = "3"; le.respLen = 1; le.status = 200;
+                    }
+                    else if ("5".equals(text) && qs != null && !s.upgraded) {
+                        // v21 — packet upgrade engine.io: BARU SEKARANG client
+                        // resmi pindah transport ke WS. Migrasi antre polling
+                        // → WS + noop '6' ke antre polling (tutup long-poll
+                        // lama). Ini satu-satunya pintu upgraded=true utk
+                        // sesi polling.
+                        le.status = 200;
+                        le.reqPreview = text;
+                        le.extra = s.completeUpgrade(out) + " sid=" + s.sid;
+                    }
                     else if (text.startsWith("42")) {
                         // Bagian 67 — ACK-GATE login-server (pintu WS yang sama
                         // dgn POST-polling): file <action>.json per event;
@@ -576,9 +690,14 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                         } else {
                             String ack = LoginAck.build(text, le);
                             if (ack != null) {
-                                s.deliver(ack);
+                                // v21: ACK emit-WS lewat WS langsung — tapi
+                                // HANYA bila upgrade benar-benar selesai; bila
+                                // belum, antre polling (migrasi '5' meneruskan)
+                                String via = s.deliverWs(ack);
                                 le.respPreview = ack;
                                 le.respLen = ack.getBytes(StandardCharsets.UTF_8).length;
+                                le.extra = (le.extra == null ? "" : le.extra + " ")
+                                        + "→ dikirim: " + via;
                             }
                         }
                     }

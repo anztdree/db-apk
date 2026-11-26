@@ -1,0 +1,90 @@
+BUILD & VERIFIKASI APK v21 — FIX SERVERLIST + LOG PER-OPEN MURNI (Bagian 69, 26 Nov 2026)
+==========================================================================================
+Lanjut natural tanpa fase (kesepakatan Bagian 68) — jawaban langsung 3 laporan
+owner pada log device v20 (log-20261126-181501.ndjson, dianalisis baris-per-baris).
+
+TOOLCHAIN (semua sama dgn v14–v20)
+  javac  21.0.13  — openjdk-21-jdk-headless + openjdk-21-jre-headless
+                    _21.0.13+9-1~deb13u2_amd64.deb, dpkg -x lokal (2 deb;
+                    jdk deb diunduh deb.debian.org 83.2 MB — versi DEB PERSIS
+                    sama dgn v14-v20)
+  D8     8.3.37   — r8-8.3.37.jar (16.628.796 B) com.android.tools.r8.D8
+  sign   uber-apk-signer 1.3.0 + keystore release-mod/dblocal-mod.keystore
+                    (alias dblocalmod, pass tercatat readme Bagian 19 — SAMA
+                    semua versi, install-over aman)
+  base   APK v20 via Git LFS batch API (tools/fetch_lfs pola) + downloader
+                    chunked RESUMABLE baru (tools/download_chunked2.py —
+                    pola Bagian 68: 6 worker × 1,5 MB + Range + retry; kali
+                    ini 136 chunk selesai 8 dtk)
+                    sha256 = oid LFS efccaefb… (verifikasi cocok)
+
+DIAGNOSIS DARI LOG DEVICE v20 (61 baris, full-parse)
+  seq 58  WS upgrade 101 @18:15:13.836 (sid Nrjug2NGOwBESIzRogOU)
+  seq 59  POST emit GetServerList @13.839 — extra: "ACK 430 — GetServerList
+          (file GetServerList.json dibaca ulang) | frame: 430[{\"ret\":0,
+          \"data\":\"{\\\"serverList\\\":…" → frame DIBANGUN + DIISI SEED SAH,
+          TAPI ditulis ke socket WS (s.upgraded=true sejak 101 — kode v20
+          SocketIoHandler.handleWebSocket) → client masih mode POLLING
+          (probe 2probe/3probe bahkan baru @13.964 seq 60) → frame dibuang
+  seq 61  GET polling @23.855 — dur 10.014 ms, resp 0, "long-poll timeout,
+          no data" → ACK TIDAK PERNAH SAMPAI → serverlist tidak muncul
+  (bonus) port salah label: URL 127.0.0.1:9528 tapi "port":5050 (handler login
+          di-chain di 9528 selalu menulis PORT_LOGIN)
+  (bonus) seq 2-6 EXITINFO: 4 exit sesi lama hari itu (18:14:59 / 18:12:35 /
+          18:11:48 / 18:11:03) + 1 exit 25 Nov = backlog lintas sesi di dalam
+          log satu open → kesan "log global diteruskan" (keluhan owner #2)
+  (bonus) 404 bs/Instagram_png, bs/Telegram_png, bs/Discord_png,
+          bs/denglujiemianxuanzhejiemiannew21_png, bs/Logo18+Full_png —
+          DIVERIFIKASI ulang 26 Nov: file itu TIDAK ADA di APK (CD 6.428
+          entri), TIDAK ADA di all.zip (652 entri di-parse via HTTP Range
+          dari dalam APK), sudah tercatat docs/SDK-REFINEMENT-PLAN.md §3
+          (dampak kosmetik, TIDAK menghalangi login — keputusan D4 owner)
+
+DEX classes2.dex v21 (login-server)
+  sumber   8 stubs + 24 javasrc com/db/local/server (edit SocketIoHandler:
+           state machine upgrade engine.io + routing ACK per transport asal
+           + migrasi antre + wsWriteLock + log jujur "→ dikirim:" + port
+           __listenerport; edit ExitInfo: riwayat exit → file terpisah
+           logs/exit-history.ndjson, log per-open = BOOT line tunggal)
+           — TANPA SmokeMain
+  compile  javac -encoding UTF-8 -source 8 -target 8 → 39 class — PASS
+  dexing   D8 --release --min-api 21 → 151.896 B
+  marker   rebuild-src/scripts/patch_marker_v21.py — v19→v21 tepat 4 string
+           (judul dashboard, banner, BOOT LocalServerStarter, crash CrashHook;
+           ukuran string sama, SHA1+adler32 header dihitung ulang)
+  sha256   1bf79945d839ce4cad782c2d88149e804ee2fada402ce8982f2e14226ca6ff59
+  kontrak  MOD-LOCALSERVER v21 · >v21< · handler.process · DragonBall Local
+           (seed sah Bagian 66/67) · login-server · history.sqlite ·
+           SaveUserEnterInfo · jawab/tolak103/whitelist/historyMode/
+           todayLoginCount/loginToken — semua ADA (warisan v20 utuh)
+  kontrak v21 BARU: exit-history.ndjson · antre polling · WS langsung ·
+           upgrade selesai · __listenerport — semua ADA
+  terlarang (fabrikasi lama v18 NOL) serverListJson · enterGameResponse ·
+           routeEvent · "ACK: 43" · pangkas lama — v21=0/v20=0/v19=0/v18=0
+
+REBUILD RAW-COPY v21 (scripts/rebuild_v21_raw.py — pola 46..56..67..68)
+  6.428 entri byte-per-byte LFH+CD+EOCD; verifikasi zipfile: beda HANYA
+  classes2.dex; classes.dex = airplane v20 byte-identik (6.697.176 B, sha
+  62803bb1…, byte patch @0x5e8180/@0x5d2438 dicek ulang); arsc STORED;
+  metode 3471 deflate + 2957 stored identik; QHinfo proven
+  (http://127.0.0.1:9530); kontrak entri server_root/bs/upgrade/all.zip +
+  serversetting.json hadir (jawaban keluhan #3 — semua sumber dilayani
+  server berasal dari APK sendiri)
+
+SMOKE DESKTOP v21 (verify-artifacts/login_server_v21_smoke_20261126.txt)
+  221 PASS / 0 FAIL = 204 kasus lama tetap + 17 kasus v21 baru; kasus baru
+  menguji URUTAN PERSIS DEVICE (polling open → WS upgrade sid sama → POST
+  emit pra-probe → ACK via polling <3 dtk → probe → '5' → noop '6' ke
+  polling → emit WS → ACK via WS) + log per-open murni + port benar
+
+APK v21 FINAL
+  zipalign + sign uber-apk-signer 1.3.0 keystore dblocalmod SAMA:
+  zipalign verified + signature verified [v1, v2, v3]
+  release-mod/db-local(MOD-LOCALSERVER-v21).apk
+    = 202.687.454 B
+    sha256 6c89116f6f8bfd5c0eb958d15553624e610909e8aeadb8e48b56400062bafc00
+    diff entri-per-entri vs v20 = classes2.dex + META-INF/MANIFEST.MF +
+    DBLOCALM.SF + DBLOCALM.RSA (re-sign) SAJA — arsc/assets/bs/sdk/console/
+    dashboard byte-identik
+  rotasi pointer LFS (pola lama): pointer v20 dihapus, pointer v21 masuk repo
+    (134 B, git-lfs pola Bagian 68)

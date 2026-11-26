@@ -5762,3 +5762,208 @@ repro: `rebuild-src/scripts/patch_marker_v20.py` +
   (Bagian 68) — tanpa fase, satu tarikan napas menyambung oke owner.
 - NOL perubahan bs/, sdk/, dashboard, arsc, assets, smali — hanya
   classes2.dex + tanda tangan.
+
+---
+
+## Bagian 69 — JAWABAN 3 LAPORAN OWNER (LOG DEVICE v20 DIBEDAH TOTAL): FIX "SERVERLIST GAK MUNCUL" (ACK 430 HILANG DI TRANSPORT SALAH — BUG v20) + LOG PER-OPEN MURNI (EXIT HISTORY = FILE TERPISAH) + PENJELASAN "KENAPA FILE SAMA PERSIS DIBUAT DI SERVER" — dex v21 + APK v21 SELESAI (beda hanya classes2.dex + re-sign; smoke desktop 221 PASS / 0 FAIL, 17 kasus = URUTAN PERSIS DEVICE)
+
+Laporan owner (kata-kata persis, 26 Nov malam, log device di-push
+`release-mod/log-20261126-181501.ndjson`):
+
+> "1. serverlist gak muncul . tapi log lancar semua jelas ini kesalahan pada
+>    log anda yg kek tai"
+> "2. log itu global.. di teruskan!! kalau jangan di pisahkan tiap waktu!!
+>    gk efektif gk efisien!! kalau log bisa sampai ada 4 atau lebih tergantung
+>    apk di buka!"
+> "3. buknkah client asinya punya file main.min.js dan lainnya atau folder
+>    json? dan kenapa file nya sama persis masih di buat di server lagi dengan
+>    nama yg sama? ini saya butuh penjelasan!! beda halnya dengan all.zip atau
+>    serversetting.json itu emang di client gk ada dan di baca dari server!!!"
+
+### 69.1 LAPORAN #1 — BEDAH LOG 61 BARIS: OWNER BENAR, LOG v20 MEMANG BOHONG
+
+Bedah penuh `log-20261126-181501.ndjson` (61 entri, sesi 18:15:01 — 18:15:23,
+clear data 2 detik sebelumnya):
+
+- seq 1-23: BOOT v20 normal — serverRoot, seeds, 6 bind OK.
+- seq 24-32: alur upgrade normal — setting_BS_Android.bin, com_db_local.bin,
+  base/resource.version, upgrade.json, size.json, all.zip 19.385.098 B (200).
+- seq 33-43: SDK normal — init/getNotice/registerVisitor → Guest4555,
+  loginchecknative 200.
+- seq 44-47: WebView buka `bs/index-native.html` (10.792 B, 200) → manifest →
+  EXTRACT 2759 file (ekstraksi assets → server/).
+- seq 49-50: clientversion.json + serversetting.json (`loginserver:
+  http://127.0.0.1:9528`) — keduanya 200.
+- seq 51-57: 5 file 404 layar login (`denglujiemianxuanzhejiemiannew21_png`,
+  `Instagram_png`, `Discord_png`, `Telegram_png`, `Logo18+Full_png`) —
+  KOSMETIK (lihat 69.4), bukan penyebab serverlist.
+- **seq 58: WS upgrade 101 @18:15:13.836 (sid `Nrjug2NGOwBESIzRogOU`).**
+- **seq 59: POST emit `GetServerList` @13.839 — extra: "ACK 430 —
+  GetServerList (file GetServerList.json dibaca ulang) | frame: 430[{\"ret\":0,
+  \"data\":\"{\\\"serverList\\\"…" → ACK DIBANGUN + DIISI SEED SAH — TAPI
+  v20 MENULISNYA KE SOCKET WS** (kode v20: `handleWebSocket` menandai
+  `s.upgraded=true` SEKETIKA saat 101 + `s.wsOut=out`), padahal client masih
+  mode POLLING (probe `2probe/3probe` bahkan baru @13.964 — seq 60) →
+  engine.io client MEMBUANG frame yang datang sebelum upgrade selesai.
+- **seq 61: GET polling @23.855 — dur 10.014 ms, respLen 0, "long-poll
+  timeout, no data"** → poll berikutnya KOSONG → ACK TIDAK PERNAH SAMPAI →
+  `serverList` tidak pernah ada di tangan parser → serverlist tidak muncul.
+- Bonus cacat log v20 yang membingungkan owner: entri socket.io di 9528
+  ditulis "port":5050 (URL-nya sendiri 127.0.0.1:9528) — handler login
+  di-chain di 9528 (ServerCore cdnChain) tapi selalu melabel PORT_LOGIN.
+
+**AKAR**: satu baris kode v20 — `s.upgraded = true` saat handshake 101
+(WebSocket BARU DIBUKA untuk probe, belum jadi transport). Dulu smoke
+hanya menguji polling murni / WS murni — kombinasi urutan device (polling
+open → WS upgrade sid sama → emit via polling SAAT WS baru dibuka) tidak
+pernah dilatih. Keluhan owner "log lancar semua" + "kesalahan pada log anda"
+= TEPAT: log mengaku "ACK 430" padahal frame tidak sampai.
+
+### 69.2 FIX #1 (v21) — TRANSPORT 1:1 ENGINE.IO + LOG JUJUR
+
+`SocketIoHandler.java` ditulis ulang bagian transportnya:
+
+1. **`upgraded=true` HANYA saat client mengirim packet upgrade `5` via WS**
+   (bukan saat 101; probe tidak lagi menandai upgrade).
+2. **ACK routing = transport ASAL emit**: emit via POST-polling → ACK SELALU
+   masuk antre polling (`deliverPolling` — client yang polling mendengarkan
+   di polling); emit via WS setelah upgrade → ACK lewat WS langsung
+   (`deliverWs`). NOL penulisan ke WS sebelum `5`.
+3. Saat `5` diterima: `completeUpgrade` — semua packet yang sempat mengantre
+   pindah ke WS (migrasi), lalu **noop `6` masuk antre polling** agar
+   long-poll lama segera kembali (perilaku engine.io asli 1:1).
+4. `wsWriteLock` — deliverWs / migrasi / probe / pong tidak bisa menyela
+   frame di socket yang sama (anti korupsi frame).
+5. **LOG JUJUR** — extra kini mencatat KEMANA frame benar-benar dikirim:
+   "→ dikirim: antre polling" / "→ dikirim: WS langsung" / "upgrade selesai —
+   N antre pindah ke WS + noop 6". Tidak ada lagi klaim ACK tanpa bukti
+   transport (jawaban "log anda yg kek tai").
+6. **Port di log = listener sebenarnya** (header `__listenerport` dari
+   HttpWorker) — entri socket.io 9528 kini "port":9528.
+
+### 69.3 FIX #2 (v21) — LOG PER-OPEN MURNI; RIWAYAT EXIT = FILE TERPISAH
+
+Bukti keluhan owner benar: seq 2-6 log satu open memuat backlog exit LIMA
+sesi lama (18:14:59 "clear data", 18:12:35, 18:11:48, 18:11:03, dan bahkan
+25 Nov 16:26) — `ExitInfo` v18 menulis riwayat 5 exit lintas sesi ke log
+baru di tiap boot. Perbaikan:
+
+1. **Log per-open = MURNI sesi itu saja.** NOL baris sesi lama.
+2. Seluruh riwayat exit (semua + trace) pindah ke **FILE TERPISAH
+   `<serverRoot>/logs/exit-history.ndjson`** — append lintas sesi; ini
+   wadah "masa lalu", tidak pernah tercampur log open.
+3. Log per-open hanya mendapat SATU baris BOOT ringkas: "sesi sebelumnya
+   berakhir: reason=… time=… — riwayat lengkap (N exit):
+   logs/exit-history.ndjson" — info tidak hilang, log tetap bersih.
+4. Catatan yang SUDAH benar sejak v18 dan tetap: satu open = satu file
+   `log-<waktu-open>.ndjson` (nama file = waktu open) — pemisahan per
+   waktu sudah ada; yang "diteruskan" adalah ISI backlog-nya, kini dipisah
+   total.
+
+### 69.4 JAWABAN #3 — KENAPA "FILE SAMA PERSIS" ADA DI server/
+
+Pertanyaan owner: client asli punya main.min.js — kenapa dibuat lagi di
+server dengan nama sama? Jawaban DENGAN BUKTI (dibuktikan dari APK v20 —
+CD 6.428 entri di-parse, plus all.zip di-parse via HTTP Range tanpa unduh
+penuh):
+
+1. **Semua file yang dilayani server berasal dari APK sendiri.**
+   `assets/server_root/bs/js/main.min_777039fc.js` (+
+   `main.min_243021c9.js`) ADA di APK; `assets/server_root/bs/upgrade/all.zip`
+   (19.385.098 B) JUGA ada di APK; `assets/server_root/bs/resource/
+   properties/serversetting.json` JUGA ada di APK (versi mod
+   `loginserver: 127.0.0.1:9528`). Yang owner maksud "client tidak punya
+   all.zip/serversetting.json" benar untuk APK ASLI — di APK MOD keduanya
+   di-bake ke assets (capture live, build sebelumnya).
+2. **Kenapa harus disalin ke server/**: WebView memuat game via HTTP
+   (`GET /bs/index-native.html` 200 — seq 44) → SEMUA request game =
+   HTTP ke 127.0.0.1:9528 (mirror host CDN mati) → HTTP server hanya bisa
+   melayani FILE DI DISK → tiap boot `assets/server_root/**` di-unpack ke
+   `server/` (2759 file — seq 46-47). "File sama persis" = BYTE SAMA karena
+   di-unpack dari APK sendiri — server melayani salinan itu lewat HTTP,
+   PERSIS kerja CDN asli yang melayani pohon bs/. Ini transport, bukan
+   duplikasi karangan.
+3. **Kenapa tidak dilayani langsung dari assets tanpa salin**: StaticHandler
+   java.io murni + satu docroot (bisa diuji desktop smoke); AssetManager
+   tidak punya semantik File/tree HTTP stabil; tree di disk bisa diperluas
+   (resource update fase gameServer kelak).
+4. **Efek samping yang owner alami**: ekstraksi berjalan TIAP BOOT dan
+   menimpa `bs/` → EDIT MANUAL di `server/bs/…` HILANG saat reboot (sudah
+   tercatat SDK-REFINEMENT-PLAN §3). Yang AMAN diedit di device =
+   `server/login-server/` (5 file event) dan `server/sdk/` — keduanya
+   seed-hormati isi yang sudah ada. Perubahan web permanen = sunting APK →
+   build baru.
+5. **File 404 (Instagram_png dkk) — fakta baru**: TIDAK ADA di APK, TIDAK
+   ADA di DALAM all.zip (652 entri: js/ 12 + resource/ 639 +
+   resource.version — nol nama itu), TIDAK ADA di capture = file yang TIDAK
+   PERNAH kita punya di mana pun; tidak bisa dilayani 200 oleh server
+   manapun. Dampak = kosmetik (sudah tercatat); kalau mau diisi = HARUS
+   buat placeholder (keputusan D4 tetap milik owner).
+   Penjelasan lengkap = `docs/LOGIN-SERVER-PLAN.md` §7 BARU.
+
+### 69.5 SMOKE DESKTOP v21 — KASUS PERSIS DEVICE DIUJI
+
+`run_smoke.py` + 17 kasus v69 (urutan IDENTIK device yang gagal — dulu
+smoke hanya polling murni, kombinasi ini tidak pernah dilatih):
+polling open 9528 → WS upgrade SID SAMA → POST emit GetServerList SEBELUM
+probe → poll segera membawa ACK 431 (<3 dtk — dulu hilang 10 dtk) → isi
+serverList + "DragonBall Local" → probe 2probe/3probe → kirim `5` → poll
+membawa noop `6` (<3 dtk) → emit via WS → ACK lewat WS langsung → log jujur
+("→ dikirim: antre polling" / "→ dikirim: WS langsung" / "upgrade selesai")
+→ port 9528 benar → `logs/exit-history.ndjson` file terpisah + append 2
+baris → NOL "last exit[" di log per-open → NOL method EXITINFO.
+Uji lama disesuaikan bentuk: `v19-exitinfo-desktop` (kini menuntut NOL
+EXITINFO + BOOT line baru). Hasil: **221 PASS / 0 FAIL**
+(= 204 kasus lama tetap + 17 baru) →
+`verify-artifacts/login_server_v21_smoke_20261126.txt`.
+
+### 69.6 dex v21 + APK v21 (SELESAI — natural, tanpa fase)
+
+1. dex `classes2.dex` v21: javac 21.0.13 (deb openjdk-21-jdk-headless
+   21.0.13+9-1~deb13u2 — SAMA dgn v14-v20; stubs 8 + javasrc 24, TANPA
+   SmokeMain) → 39 class → D8 8.3.37 --release --min-api 21 → 151.896 B →
+   marker v19→v21 tepat 4 string (judul/banner/BOOT/crash;
+   `patch_marker_v21.py` BARU) sha 1bf79945…; kontrak: MOD-LOCALSERVER v21 +
+   >v21< + handler.process + DragonBall Local (seed sah) + login-server +
+   history.sqlite + SaveUserEnterInfo + jawab/tolak103/whitelist/
+   historyMode/todayLoginCount/loginToken ADA; kontrak v21 BARU:
+   exit-history.ndjson / antre polling / WS langsung / upgrade selesai /
+   __listenerport ADA; fabrikasi lama v18 NOL.
+2. base = APK v20 dari Git LFS batch API + downloader chunked RESUMABLE baru
+   (`tools/download_chunked2.py` — pola Bagian 68, 136 chunk 8 dtk), sha256
+   = oid LFS efccaefb… cocok.
+3. rebuild RAW-COPY v21 (`rebuild_v21_raw.py` BARU): 6.428 entri
+   byte-per-byte LFH+CD+EOCD; verifikasi zipfile beda HANYA classes2.dex;
+   classes.dex = airplane v20 byte-identik (6.697.176 B sha 62803bb1…,
+   byte patch @0x5e8180/@0x5d2438 dicek ulang); arsc STORED; metode
+   3471+2957 identik; QHinfo proven; kontrak entri all.zip +
+   serversetting.json hadir.
+4. zipalign + sign uber-apk-signer 1.3.0 keystore dblocalmod SAMA:
+   zipalign verified + signature verified [v1, v2, v3].
+5. APK v21 final `release-mod/db-local(MOD-LOCALSERVER-v21).apk` =
+   202.687.454 B, sha256 6c89116f6f8bfd5c0eb958d15553624e610909e8aeadb8e48b
+   56400062bafc00; diff entri-per-entri vs v20 = classes2.dex +
+   META-INF/MANIFEST.MF + DBLOCALM.SF + DBLOCALM.RSA (re-sign) SAJA —
+   arsc/assets/bs/sdk/console/dashboard byte-identik.
+6. Rotasi pointer LFS (pola lama): pointer v20 dihapus, pointer v21 masuk
+   repo (134 B).
+7. Bukti build: `verify-artifacts/login_server_v21_build_20261126.txt`
+   (toolchain + sha tiap lapis + marker + byte patch + zipalign/sign +
+   diff final). Docs sinkron: LOGIN-SERVER-PLAN.md (header Bagian 69 +
+   §7 BARU penjelasan lengkap no.3 + §5.1) + SDK-REFINEMENT-PLAN.md §3
+   (pembuktian ulang all.zip); readme Bagian 69 (69.1-69.6); bagian
+   historis tak disentuh.
+
+### 69.7 YANG SISA (fakta, bukan fase)
+
+- **smoke DEVICE §3.6 kriteria 1-9 + §4.7 no.6-7** (pesawat, offline
+  penuh; install-over v20 aman — sertifikat sama): butuh DEVICE owner;
+  APK v21 siap pasang.
+- Setelah serverlist tampil: alur lanjutan (SaveHistory → clientStartGame
+  → socket game ke `serverItem.url` = 127.0.0.1:9528 → enterGame) =
+  FASE GAMESERVER — listener game masih TRANSPORT ONLY; gameplay TIDAK
+  langsung jalan; saat fase itu dibangun, routing /socket.io/ di 9528
+  untuk sesi GAME harus dipisah dari sesi LOGIN (tercatat
+  LOGIN-SERVER-PLAN §7.5).
+- NOL perubahan bs/, sdk/, dashboard, arsc, assets, smali — hanya
+  classes2.dex + tanda tangan.

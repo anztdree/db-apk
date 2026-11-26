@@ -14,8 +14,13 @@ public class SmokeMain {
         String root = args.length > 0 ? args[0] : "/tmp/v13root";
         String doc  = args.length > 1 ? args[1] : "/home/z/ws9/server_root";
         LoggerCore.serverRootPath = root;
-        // v18 — ExitInfo jalur desktop (entri SYS/EXITINFO "desktop — dilewati")
+        // v18 — ExitInfo jalur desktop (BOOT line "desktop — skipped")
         ExitInfo.logPrevious(null);
+        // v21 (Bagian 69) — uji ExitInfo.appendHistoryLine: file riwayat exit
+        // TERPISAH (logs/exit-history.ndjson, append lintas sesi) — 2 baris
+        // sintetis; run_smoke.py memverifikasi file + append berfungsi.
+        ExitInfo.appendHistoryLine("{\"loggedAt\":\"smoke\",\"reason\":\"EXIT_SELF\",\"desc\":\"uji-append-smoke-v21\",\"exitTime\":\"smoke\",\"abnormal\":false,\"trace\":\"\"}");
+        ExitInfo.appendHistoryLine("{\"loggedAt\":\"smoke\",\"reason\":\"USER_REQUESTED\",\"desc\":\"uji-append-smoke-v21-baris2\",\"exitTime\":\"smoke\",\"abnormal\":false,\"trace\":\"\"}");
         new File(root, "sdk").mkdirs();
         Db.open(root);   // Bagian 30 — migrasi lokasi lama di boot (persis APK)
         // Bagian 67 — mirror APK boot: self-seed login-server 5 file event

@@ -40,6 +40,27 @@
 > Bukti: verify-artifacts/login_server_v20_build_20261126.txt. Sisa =
 > smoke DEVICE §3.6 (kriteria 1–9, pesawat, offline penuh).
 >
+> **Bagian 69 (26 Nov 2026) — FIX "SERVERLIST GAK MUNCUL" + "LOG PER-OPEN
+> MURNI"**: laporan owner (log device v20 log-20261126-181501.ndjson):
+> (1) serverlist tidak muncul — DIBUATKAN DARI LOG: ACK 430 GetServerList
+> DIBANGUN (seq 59 extra) tapi v20 menulisnya ke socket WS SEBELUM engine.io
+> upgrade selesai (seq 58 101 @13.836 → seq 59 emit @13.839 → probe baru
+> @13.964 seq 60) → client yang masih POLLING membuang frame → poll 10 dtk
+> kosong (seq 61) → ACK hilang. FIX v21: upgraded HANYA saat client kirim
+> '5'; ACK emit-polling SELALU antre polling (deliverPolling); emit-WS
+> pasca-upgrade lewat WS langsung (deliverWs); '5' = migrasi antre → WS +
+> noop '6' tutup long-poll lama; wsWriteLock; LOG JUJUR "→ dikirim:
+> <transport>"; port log = listener sebenarnya (__listenerport).
+> (2) log global diteruskan — riwayat exit 5 sesi lama (seq 2-6) pindah ke
+> FILE TERPISAH logs/exit-history.ndjson (append lintas sesi); log per-open
+> = MURNI sesi itu + SATU baris BOOT ringkas. (3) Penjelasan main.min.js
+> dll = §7 BARU (ekstraksi = unpack assets APK sendiri; bukan duplikasi).
+> Smoke desktop 221 PASS / 0 FAIL (17 kasus v21 = urutan PERSIS device).
+> dex v21 (151.896 B, marker v21) + APK v21 (base v20, beda HANYA
+> classes2.dex + re-sign, sha256 6c89116f…) masuk repo (rotasi LFS
+> v20→v21). Bukti: verify-artifacts/login_server_v21_smoke_20261126.txt +
+> login_server_v21_build_20261126.txt. Sisa = smoke DEVICE §3.6 + §7.5
+>
 > **Bagian 59 (26 Nov 2026)**: §3 DIGANTI TOTAL — struktur folder final + cara
 > kerja login-server di Android/data berseleban dengan SDK (peta device dari kode,
 > aturan self-seed, titik ACK gate, handoff identitas, keputusan L1–L3 §5.1).
@@ -450,6 +471,9 @@ gate · LocalServerStarter seed boot. Bukti: verify-artifacts/
 login_ack_smoke_20261126.txt (28 cek v67). DEX v20 + APK v20 = SELESAI
 Bagian 68 — lanjut natural tanpa fase
 (verify-artifacts/login_server_v20_build_20261126.txt).
+DEX v21 + APK v21 = SELESAI Bagian 69 — fix routing transport ACK
++ log per-open murni (verify-artifacts/login_server_v21_smoke_20261126.txt
++ login_server_v21_build_20261126.txt).
 
 ### 3.1.1 PRINSIP KEPUTUSAN — 3 KOLOM, DILARANG "KARENA ASLI BEGITU" (Bagian 62)
 
@@ -878,7 +902,7 @@ KEPUTUSAN OWNER — sudah FIX, tidak ditanya lagi:
 | L3 | Isi folder | **Bagian 66+67 FINAL (IMPLEMENTASI)** — 5 file event bernama action string verbatim (1 event = 1 file jawaban) + data/history.sqlite (persist saja, lazy) — TANPA logs/ (dibatalkan owner, lihat L4); config.json/serverlist.json/announce.json DIHAPUS sebagai nama; SaveUserEnterInfo = tanpa file (konstanta kode) — SEMUA lolos prinsip 3 kolom §3.2 + tiap baris menunjuk atlas Bedah Total |
 | L4 | Log login-server | **DIBATALKAN OWNER (Bagian 67)** — arahan owner kata-kata persis: "tanpa log !! log global jdi 1" → login-server/logs/ TIDAK ADA; SEMUA jejak login (ACK penuh / no-ack / WARN reseed / WARN persist) masuk NDJSON GLOBAL `<serverRoot>/logs/` yang sudah ada (DiskWriter sejak v3) — nol file log baru pernah dibuat. Disiplin v17 tetap: URL penuh, frame penuh, nol pangkas |
 | L5 | File dokumentasi di device (README.txt/notes.md/captures/)? | **TIDAK, PERMANEN** — server asli tak punya padanannya; v16 sudah menghukum index.txt ("berasa jadi sampah", SdkConfig.java:28); dokumentasi = REPO saja (docs/, readme.md, verify-artifacts/) |
-| OPEN | K1–K7 (implementasi ACK, loginGame, historyMode, LoginAnnounce, bahasa, loginToken, saklar-enabled) | **DITUTUP Bagian 67 — owner oke "implementasi dengan ini"** (semua K terlaksana di kode + seed; K2–K6 kini file event yang bisa owner balikkan via edit). dex v20 + APK v20 SELESAI Bagian 68 (tanpa fase — lanjut natural; bukti verify-artifacts/login_server_v20_build_20261126.txt). Sisa: smoke device §3.6 |
+| OPEN | K1–K7 (implementasi ACK, loginGame, historyMode, LoginAnnounce, bahasa, loginToken, saklar-enabled) | **DITUTUP Bagian 67 — owner oke "implementasi dengan ini"** (semua K terlaksana di kode + seed; K2–K6 kini file event yang bisa owner balikkan via edit). dex v20 + APK v20 SELESAI Bagian 68; dex v21 + APK v21 SELESAI Bagian 69 (bukti verify-artifacts/login_server_v21_build_20261126.txt). Sisa: smoke device §3.6 + §7.5 |
 
 ## 6. YANG TETAP OPEN + TAHAP BERIKUTNYA (jujur, tak dikarangan)
 
@@ -896,3 +920,67 @@ sudah terbukti Bagian 58) — baru KEPUTUSAN per perilaku dgn prinsip 3 kolom
 - Data penuh `enterGame` sukses (UserDataParser): butuh loginToken sah — fase gameServer.
 - Isi ACK `registChat` + `_chatServerUrl` dll: kontrak terbaca dari JS, respons asli
   belum terekam (butuh enterGame sukses dulu).
+
+## 7. KENAPA "FILE SAMA PERSIS" ADA DI server/ — PENJELASAN (Bagian 69, jawaban
+## laporan owner #3: "bukankah client asinya punya file main.min.js dan lainnya
+## atau folder json? dan kenapa file nya sama persis masih di buat di server lagi
+## dengan nama yg sama?")
+
+### 7.1 Fakta sumber (dibuktikan dari APK v20, CD 6.428 entri di-parse)
+
+- `assets/server_root/bs/js/main.min_777039fc.js` + `main.min_243021c9.js` —
+  ADA di APK (client memang punya main.min.js).
+- `assets/server_root/bs/upgrade/all.zip` (19.385.098 B) — JUGA ada di APK
+  (di-bake saat build mod, hasil capture live).
+- `assets/server_root/bs/resource/properties/serversetting.json` — JUGA ada
+  di APK (versi mod: `loginserver: http://127.0.0.1:9528`).
+- Jadi di APK MOD: SEMUA yang dilayani server sumbernya = APK sendiri. Yang
+  owner katakan "client tidak punya" (all.zip/serversetting.json) hanya benar
+  untuk APK ASLI — di APK MOD keduanya di-bake ke assets.
+
+### 7.2 Kenapa harus DISALIN (ekstraksi) — bukan duplikasi, tapi transport
+
+- WebView memuat game via HTTP: `GET /bs/index-native.html` (log device seq
+  44, 200 OK) → SEMUA request game (js/json/gambar) = HTTP ke 127.0.0.1:9528
+  (mirror host CDN mati).
+- HTTP server hanya bisa melayani FILE DI DISK (`server/` = docroot);
+  WebView/browser TIDAK bisa fetch langsung isi assets APK.
+- Maka tiap boot: `assets/server_root/**` (mirror CDN yang di-bake ke APK)
+  di-unpack ke `server/` (2759 file — log seq 46-47). "File sama persis" =
+  BYTE SAMA karena di-unpack dari APK sendiri — server melayani salinan itu
+  lewat HTTP, persis kerja CDN asli. Nol penggabungan isi dari luar.
+- Kenapa tidak melayani langsung dari assets tanpa salin: (a) StaticHandler
+  java.io murni + satu docroot = bisa diuji di desktop smoke (221 PASS);
+  (b) AssetManager tidak punya semantik File/tree HTTP yang stabil; (c) tree
+  di disk bisa diperluas (resource update fase gameServer kelak).
+
+### 7.3 Efek samping yang owner alami (WAJIB tahu)
+
+- Ekstraksi berjalan TIAP BOOT dan menimpa `bs/` → EDIT MANUAL di
+  `server/bs/…` HILANG saat reboot (tercatat SDK-REFINEMENT-PLAN §3).
+  Yang AMAN diedit di device = `server/login-server/` (5 file event) dan
+  `server/sdk/` — keduanya seed-hormati isi yang sudah ada.
+- Perubahan web yang mau permanen = sunting APK (assets/server_root) →
+  build baru; ATAU minta StaticHandler override (sudah ada polanya: 9527
+  melayani config bin dari lapisan sendiri).
+
+### 7.4 File 404 layar login (Instagram_png dkk) — fakta terbaru 26 Nov
+
+- Diverifikasi ulang: TIDAK ADA di APK (CD 6.428 entri), TIDAK ADA di dalam
+  all.zip (652 entri di-parse via HTTP Range dari dalam APK), TIDAK ADA di
+  capture. = file yang TIDAK PERNAH kita punya di mana pun.
+- Sudah tercatat SDK-REFINEMENT-PLAN §3: dampak kosmetik (gambar kosong,
+  suara klik mati), TIDAK menghalangi login/serverlist. Keputusan Opsi A
+  (suntik placeholder ke APK) vs B (peta di StaticHandler) tetap milik
+  owner (D4) — keputusan D4 default = tunda.
+
+### 7.5 SISA KERJA (jujur)
+
+- Smoke DEVICE kriteria §3.6 (butuh device owner, pesawat, offline penuh)
+  + §4.7 no.6-7.
+- Setelah serverlist tampil: alur lanjutan (SaveHistory → clientStartGame →
+  socket game ke serverItem.url 127.0.0.1:9528 → enterGame) = FASE
+  GAMESERVER (§6) — listener game masih TRANSPORT ONLY; jangan disangka
+  gameplay langsung jalan. serverItem.url menunjuk 9528 = rantai socket.io
+  login di 9528 (ServerCore cdnChain) — saat fase gameServer dibangun,
+  routing /socket.io/ di 9528 utk sesi GAME harus dipisah dari sesi LOGIN.

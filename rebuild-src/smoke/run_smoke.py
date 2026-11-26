@@ -445,9 +445,13 @@ try:
     # EXITINFO masuk log SYS di desktop (entri "desktop — dilewati")
     st, hd, bd = get400("/logs?limit=200")
     lg = json.loads(bd)
-    check("v19-exitinfo-desktop", any(
-        e.get("method") == "EXITINFO" and "desktop" in (e.get("path") or "")
-        for e in lg["entries"]), str(lg["entries"][:3]))
+    # v21 (Bagian 69): EXITINFO bukan lagi kind log per-open — jalur desktop
+    # kini SATU baris BOOT "desktop — skipped (Android 11+ feature)"; backlog
+    # sesi lama pindah ke logs/exit-history.ndjson (uji v69).
+    check("v19-exitinfo-desktop", not any(
+        e.get("method") == "EXITINFO" for e in lg["entries"])
+        and any(e.get("kind") == "BOOT" and "desktop — skipped" in (e.get("path") or "")
+                for e in lg["entries"]), str(lg["entries"][:3]))
 
     # entri SESI-GUARD tidak boleh muncul di desktop (ctx null)
     check("v19-autoguard-desktop-skip", not any(
@@ -874,6 +878,190 @@ try:
         and e.get("kind") == "SYS" for e in lg["entries"]), "")
     check("v67-tanpa-log-baru-di-loginserver", not os.path.isdir(LS + "/logs"),
           "logs/ di login-server tidak pernah dibuat (log global 1)")
+
+    # ================= Bagian 69 — FIX SERVERLIST (KASUS DEVICE) + LOG PER-OPEN =================
+    # Laporan owner 26 Nov malam (kata-kata persis): "1. serverlist gak muncul
+    # . tapi log lancar semua jelas ini kesalahan pada log anda yg kek tai"
+    # Bukti device v20 (release-mod/log-20261126-181501.ndjson):
+    #   seq 58 WS upgrade 101 @13.836 → seq 59 POST emit GetServerList @13.839
+    #   (ACK 430 dibangun — tapi v20 menulisnya ke socket WS PRA-PROBE →
+    #   dibuang client yang masih polling) → seq 60 2probe/3probe @13.964 →
+    #   seq 61 poll 10 dtk KOSONG @23.855 → ACK hilang → serverlist tak muncul.
+    # Dulu smoke hanya polling murni (upgrade WS tak pernah dilatih bareng
+    # emit) — KASUS PERSIS DEVICE diuji sekarang, urutan identik.
+    import socket as _v69sock, base64 as _v69b64
+
+    def _wsframe69(payload):
+        b = bytearray([0x81, 0x80 | len(payload)])
+        mk = os.urandom(4)
+        b += mk
+        for i, ch in enumerate(payload):
+            b.append(ch ^ mk[i & 3])
+        return bytes(b)
+
+    def _wsread69(s_, want, tmo=6):
+        s_.settimeout(tmo)
+        buf = b""
+        try:
+            while want not in buf:
+                chunk = s_.recv(4096)
+                if not chunk:
+                    break
+                buf += chunk
+        except Exception:
+            pass
+        return buf
+
+    # 1. polling open di 9528 (persis device: serversetting loginserver=9528)
+    with urllib.request.urlopen("http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&t=v69a", timeout=10) as r:
+        openbd69 = r.read().decode()
+    _ms69 = re.search(r'"sid":"([A-Za-z0-9]+)"', openbd69)
+    s69 = _ms69.group(1) if _ms69 else ""
+    check("v69-open-9528-sid", len(s69) == 20, openbd69[:120])
+
+    # 2. WS upgrade DGN sid yang sama (persis device) — v21: TIDAK dianggap upgraded
+    ws69 = _v69sock.create_connection(("127.0.0.1", 9528), timeout=10)
+    wskey69 = _v69b64.b64encode(os.urandom(16)).decode()
+    ws69.sendall(("GET /socket.io/?EIO=3&transport=websocket&sid=" + s69 + "&t=v69ws HTTP/1.1\r\n"
+                  "Host: 127.0.0.1:9528\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                  "Sec-WebSocket-Key: " + wskey69 + "\r\nSec-WebSocket-Version: 13\r\n\r\n").encode())
+    wshdr69 = b""
+    while b"\r\n\r\n" not in wshdr69:
+        wshdr69 += ws69.recv(4096)
+    check("v69-ws-101-same-sid", b"101 Switching Protocols" in wshdr69,
+          wshdr69[:60].decode("utf-8", "replace"))
+
+    # 3. POST emit GetServerList via polling SEBELUM probe (urutan persis device)
+    msg69 = json.dumps({"type": "User", "action": "GetServerList",
+                        "userId": "1795691706847", "subChannel": "",
+                        "channel": "quick"}, separators=(",", ":"))
+    pkt69 = '421["handler.process",' + msg69 + ']'
+    body69 = "%d:%s" % (len(pkt69), pkt69)
+    req69 = urllib.request.Request(
+        "http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&sid=" + s69,
+        data=body69.encode(), method="POST")
+    req69.add_header("Content-Type", "text/plain; charset=UTF-8")
+    with urllib.request.urlopen(req69, timeout=10) as r:
+        post69 = r.read().decode()
+    check("v69-post-ok", post69 == "ok", repr(post69[:40]))
+
+    # 4. poll SEGERA harus membawa ACK 431 (dulu: hilang — poll 10 dtk kosong)
+    t69 = time.time()
+    with urllib.request.urlopen(
+            "http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&sid=" + s69,
+            timeout=15) as r:
+        pl69 = r.read().decode()
+    dt69 = time.time() - t69
+    _ack69 = ""
+    _i69 = 0
+    while _i69 < len(pl69):
+        _c69 = pl69.find(":", _i69)
+        if _c69 < 0:
+            break
+        try:
+            _n69 = int(pl69[_i69:_c69])
+        except ValueError:
+            break
+        _p69 = pl69[_c69 + 1:_c69 + 1 + _n69]
+        if _p69.startswith("43"):
+            _ack69 = _p69
+            break
+        _i69 = _c69 + 1 + _n69
+    check("v69-ack-dipolling-cepat", _ack69.startswith("431[") and dt69 < 3.0,
+          "dt=%.1fs ack=%r" % (dt69, _ack69[:70]))
+    # isi ACK diverifikasi SETELAH envelope di-parse (data = JSON string
+    # ter-escape — substring mentah \"DragonBall Local\" tidak mungkin cocok
+    # di frame mentah; pola sama dgn uji v67)
+    _env69, _data69 = {}, ""
+    _m69 = re.match(r'^43\d+\[(.+)\]$', _ack69, re.S)
+    if _m69:
+        try:
+            _env69 = json.loads(_m69.group(1))
+            _data69 = _env69.get("data") or ""
+        except ValueError:
+            pass
+    check("v69-ack-isi-serverlist", _env69.get("ret") == 0
+          and '"DragonBall Local"' in _data69
+          and '"serverList":[' in _data69,
+          repr(_ack69[:140]))
+
+    # 5. probe WS (2probe→3probe tetap bekerja pada sesi yang sama)
+    ws69.sendall(_wsframe69(b"2probe"))
+    probe69 = _wsread69(ws69, b"3probe")
+    check("v69-ws-probe", b"3probe" in probe69, repr(probe69[:40]))
+
+    # 6. kirim '5' = upgrade RESMI → noop '6' ditutupkan ke antre polling
+    ws69.sendall(_wsframe69(b"5"))
+    time.sleep(0.5)
+    t69b = time.time()
+    with urllib.request.urlopen(
+            "http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&sid=" + s69,
+            timeout=15) as r:
+        noop69 = r.read().decode()
+    dtn69 = time.time() - t69b
+    check("v69-upgrade-noop-poll", noop69.strip() == "1:6" and dtn69 < 3.0,
+          "dt=%.1fs body=%r" % (dtn69, noop69[:40]))
+
+    # 7. emit via WS SETELAH upgrade → ACK lewat WS langsung (frame di socket WS)
+    pktws69 = '422["handler.process",' + json.dumps(
+        {"type": "User", "action": "loginGame", "userId": "v69wsuser",
+         "channelCode": "quick"}, separators=(",", ":")) + ']'
+    ws69.sendall(_wsframe69(pktws69.encode()))
+    wsack69 = _wsread69(ws69, b"432")
+    check("v69-ws-emit-ack-ws-langsung", b"432[" in wsack69
+          and b'"ret":0' in wsack69 and b"v69wsuser" in wsack69,
+          repr(wsack69[:90]))
+    ws69.close()
+    time.sleep(0.8)
+
+    # ================= Bagian 69 — LOG PER-OPEN MURNI (exit history terpisah) =================
+    # Laporan owner (kata-kata persis): "log itu global.. di teruskan!! kalau
+    # jangan di pisahkan tiap waktu !! gk efektif gk efisien !! kalau log bisa
+    # sampai ada 4 atau lebih tergantung apk di buka !"
+    # v21: log per-open TIDAK memuat jejak sesi lama; seluruh riwayat exit =
+    # file terpisah logs/exit-history.ndjson (append lintas sesi).
+    st, hd, bd = get400("/logs?limit=4000")
+    lg = json.loads(bd)
+    eh69 = os.path.join(ROOT, "logs", "exit-history.ndjson")
+    check("v69-exit-history-file", os.path.isfile(eh69)
+          and "uji-append-smoke-v21" in open(eh69).read()
+          and "uji-append-smoke-v21-baris2" in open(eh69).read(),
+          open(eh69).read()[:160] if os.path.isfile(eh69) else "file tidak ada")
+    check("v69-exit-history-2baris", os.path.isfile(eh69)
+          and len([x for x in open(eh69).read().splitlines() if x.strip()]) == 2,
+          "jumlah baris=%d" % (len(open(eh69).read().splitlines())
+                               if os.path.isfile(eh69) else -1))
+    check("v69-nol-exitinfo-lama", not any(
+        "last exit[" in (e.get("path") or "") for e in lg["entries"]),
+        "backlog sesi lama tidak boleh masuk log per-open")
+    check("v69-boot-exitinfo-baru", any(
+        e.get("kind") == "BOOT" and "desktop — skipped" in (e.get("path") or "")
+        for e in lg["entries"]), "")
+    check("v69-nol-method-exitinfo", not any(
+        (e.get("method") or "") == "EXITINFO" for e in lg["entries"]),
+        "EXITINFO bukan lagi kind log per-open")
+
+    # log jujur — extra mencatat transport pengiriman ACK yang sebenarnya
+    _v69acks = [e for e in lg["entries"]
+                if (e.get("extra") or "").find("ACK 431 — GetServerList") >= 0
+                and "dikirim" in (e.get("extra") or "")]
+    check("v69-log-dikirim-polling", len(_v69acks) >= 1
+          and "→ dikirim: antre polling" in _v69acks[-1].get("extra"),
+          (_v69acks[-1].get("extra") or "")[-110:] if _v69acks else "tidak ada")
+    check("v69-log-dikirim-ws", any(
+        (e.get("extra") or "").find("ACK 432 — loginGame") >= 0
+        and "→ dikirim: WS langsung" in (e.get("extra") or "")
+        for e in lg["entries"]), "")
+    check("v69-log-upgrade-5", any(
+        e.get("kind") == "WS" and "upgrade selesai" in (e.get("extra") or "")
+        for e in lg["entries"]), "")
+    # port di log = listener sebenarnya (dulu entri 9528 salah label 5050)
+    _ent9528 = [e for e in lg["entries"]
+                if "127.0.0.1:9528/socket.io/" in (e.get("path") or "")]
+    check("v69-port-9528-benar", len(_ent9528) > 0
+          and all(e.get("port") == 9528 for e in _ent9528),
+          "entri=%d salah_port=%d" % (len(_ent9528),
+          sum(1 for e in _ent9528 if e.get("port") != 9528)))
 
     # ============ Bagian 50 — console RAW SERVER LOG (guard RAW) ==========
     # Arahan owner (kata-kata persis):
