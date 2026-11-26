@@ -445,13 +445,14 @@ try:
     # EXITINFO masuk log SYS di desktop (entri "desktop — dilewati")
     st, hd, bd = get400("/logs?limit=200")
     lg = json.loads(bd)
-    # v21 (Bagian 69): EXITINFO bukan lagi kind log per-open — jalur desktop
-    # kini SATU baris BOOT "desktop — skipped (Android 11+ feature)"; backlog
-    # sesi lama pindah ke logs/exit-history.ndjson (uji v69).
-    check("v19-exitinfo-desktop", not any(
-        e.get("method") == "EXITINFO" for e in lg["entries"])
-        and any(e.get("kind") == "BOOT" and "desktop — skipped" in (e.get("path") or "")
-                for e in lg["entries"]), str(lg["entries"][:3]))
+    # v22 (Bagian 70): entri EXIT (kind=EXIT, method=EXITINFO) kini MEMANG ada
+    # di log global — uji sintetis SmokeMain (3 baris, dedup). Yang dilarang:
+    # backlog gaya lama "last exit[N/M]" (bukan entri, cuma susunan ulang).
+    check("v19-exitinfo-desktop", any(
+        e.get("kind") == "BOOT" and "desktop — skipped" in (e.get("path") or "")
+        for e in lg["entries"])
+        and not any("last exit[" in (e.get("path") or "") for e in lg["entries"]),
+        str(lg["entries"][:3]))
 
     # entri SESI-GUARD tidak boleh muncul di desktop (ctx null)
     check("v19-autoguard-desktop-skip", not any(
@@ -1014,32 +1015,103 @@ try:
     ws69.close()
     time.sleep(0.8)
 
-    # ================= Bagian 69 — LOG PER-OPEN MURNI (exit history terpisah) =================
-    # Laporan owner (kata-kata persis): "log itu global.. di teruskan!! kalau
-    # jangan di pisahkan tiap waktu !! gk efektif gk efisien !! kalau log bisa
-    # sampai ada 4 atau lebih tergantung apk di buka !"
-    # v21: log per-open TIDAK memuat jejak sesi lama; seluruh riwayat exit =
-    # file terpisah logs/exit-history.ndjson (append lintas sesi).
-    st, hd, bd = get400("/logs?limit=4000")
+    # ================= Bagian 70 — LOG = 1 FILE DI-TUMPUK (append lintas sesi) =================
+    # Arahan owner (kata-kata persis): "ANDA KOK NGEYEL SIH !! ITU LOG KENAPA
+    # MASIH ADA BANYAK TIAP MASUK APLIKASI BIKIN LOG BARU LGI ! KEK TAI ! LOG
+    # ITU 1 FILE DI TUMPUK !! BUKAN MALAH BIKIN BARU TIAP MASUK APLIKASI!!"
+    # v22: SATU file logs/server.ndjson, nama TETAP — tiap open APK APPEND ke
+    # file yang SAMA (simulasi open ke-2 ada di SmokeMain: 2 baris sesi lama
+    # ditulis SEBELUM DiskWriter.init, lalu init harus menambah, bukan menimpa).
+    sl70 = os.path.join(ROOT, "logs", "server.ndjson")
+    nd70 = sorted(f for f in os.listdir(ROOT + "/logs") if f.endswith(".ndjson"))
+    check("v70-log-satu-file", nd70 == ["server.ndjson"],
+          "file ndjson di logs/: %s" % nd70)
+    st, hd, bd = get400("/logs?limit=4000")   # dibutuhkan uji v69 log jujur di bawah
     lg = json.loads(bd)
-    eh69 = os.path.join(ROOT, "logs", "exit-history.ndjson")
-    check("v69-exit-history-file", os.path.isfile(eh69)
-          and "uji-append-smoke-v21" in open(eh69).read()
-          and "uji-append-smoke-v21-baris2" in open(eh69).read(),
-          open(eh69).read()[:160] if os.path.isfile(eh69) else "file tidak ada")
-    check("v69-exit-history-2baris", os.path.isfile(eh69)
-          and len([x for x in open(eh69).read().splitlines() if x.strip()]) == 2,
-          "jumlah baris=%d" % (len(open(eh69).read().splitlines())
-                               if os.path.isfile(eh69) else -1))
-    check("v69-nol-exitinfo-lama", not any(
-        "last exit[" in (e.get("path") or "") for e in lg["entries"]),
-        "backlog sesi lama tidak boleh masuk log per-open")
-    check("v69-boot-exitinfo-baru", any(
-        e.get("kind") == "BOOT" and "desktop — skipped" in (e.get("path") or "")
-        for e in lg["entries"]), "")
-    check("v69-nol-method-exitinfo", not any(
-        (e.get("method") or "") == "EXITINFO" for e in lg["entries"]),
-        "EXITINFO bukan lagi kind log per-open")
+    check("v70-tanpa-log-timestamp", not any(
+        f.startswith("log-") for f in os.listdir(ROOT + "/logs")),
+        "v18-v21 membuat log-<waktu-open>.ndjson — v22 TIDAK boleh")
+    check("v70-tanpa-exit-history", not os.path.exists(
+        os.path.join(ROOT, "logs", "exit-history.ndjson")),
+        "file terpisah exit-history.ndjson DIHAPUS dari desain (semuanya 1 file)")
+    sl_txt70 = open(sl70, encoding="utf-8", errors="replace").read() \
+        if os.path.isfile(sl70) else ""
+    i_lama70 = sl_txt70.find("uji-sesi-lama-baris-1")
+    i_baru70 = sl_txt70.find("uji-append-smoke-v22-sesi-baru")
+    check("v70-append-lama-dan-baru-1file", i_lama70 >= 0 and i_baru70 > i_lama70,
+          "sesi-lama@%d sesi-baru@%d — baris lama HARUS selamat (append, bukan overwrite)"
+          % (i_lama70, i_baru70))
+    i_lama2_70 = sl_txt70.find("uji-sesi-lama-baris-2")
+    check("v70-append-dua-baris-lama", i_lama2_70 >= 0 and i_lama2_70 < i_baru70,
+          "lama2@%d" % i_lama2_70)
+
+    # entri EXIT di log global + DEDUP: 4 panggilan appendExitEntry → 3 baris
+    # (EXIT_SELF duplikat exitTime TIDAK ditulis ulang); exit abnormal (CRASH)
+    # membawa level ERROR (LOG NATURAL — error ya error), normal tanpa error.
+    exit70 = [ln for ln in sl_txt70.splitlines() if '"kind":"EXIT"' in ln]
+    check("v70-exit-3baris-dedup", len(exit70) == 3,
+          "jumlah entri EXIT=%d (harus 3 — 1 duplikat skip)" % len(exit70))
+    check("v70-exit-dup-skip", sum(
+        1 for ln in exit70 if "desc=uji-exit-smoke-v22 " in ln) == 1,
+        "exitTime sama TIDAK boleh tercatat dua kali")
+    check("v70-exit-abnormal-level-error", any(
+        '"abnormal exit: CRASH"' in ln and '"level":"ERROR"' in ln for ln in exit70),
+        "exit CRASH/ANR/LOW_MEMORY/SIGNALED = ERROR (LOG NATURAL)")
+    check("v70-exit-normal-tanpa-error", any(
+        '"path":"sesi sebelumnya berakhir: reason=EXIT_SELF' in ln
+        and '"level"' not in ln for ln in exit70),
+        "exit normal (EXIT_SELF) = tanpa level ERROR")
+    check("v70-exit-trace-di-log", any(
+        "trace-crash-uji-v22" in ln for ln in exit70),
+        "trace exit masuk respPreview entri EXIT di log global")
+
+    # /download memantul pada 1 file: list = server.ndjson saja
+    st, hd, bd = get400("/download")
+    dj70 = json.loads(bd)
+    check("v70-dl-list-1file", dj70.get("files") and len(dj70["files"]) == 1
+          and dj70["files"][0]["name"] == "server.ndjson", str(dj70)[:160])
+    st, hd, bd = get400("/download?latest=1")
+    check("v70-dl-latest", st == 200 and "uji-sesi-lama-baris-1" in bd,
+          ("status=%s" % st))
+    st, hd, bd = get400("/download?file=server.ndjson")
+    check("v70-dl-file-server-ndjson", st == 200
+          and "uji-append-smoke-v22-sesi-baru" in bd, ("status=%s" % st))
+
+    # ============ Bagian 70 — 404 NATURAL: ERROR YA ERROR, NOL PLACEHOLDER ============
+    # Arahan owner (kata-kata persis): "JANGAN PERNAH KASIHS PLACEHOLDER !!
+    # KALAU ERROR YA ERROR !! ... BIAR JELAS KITA ITU KURANGNYA DIMANAAA"
+    # Path diambil PERSIS bukti device v20 (log-20261126-181501.ndjson seq 51-57):
+    # bs/Instagram_png dkk — tidak pernah ada di APK/all.zip → 404 tetap 404.
+    def get9528(path):
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:9528" + path,
+                                        timeout=10) as r:
+                return r.status, r.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as e2:
+            return e2.code, e2.read().decode("utf-8", "replace")
+    st, bd = get9528("/bs/Instagram_png")
+    check("v70-404-tetap-404", st == 404 and "404 not found: /bs/Instagram_png" in bd,
+          "status=%s body=%r" % (st, bd[:60]))
+    # entri 404 ditulis async (DiskWriter thread) — poll maks 5 dtk sampai flush
+    line404 = []
+    for _i70 in range(100):
+        sl_txt70 = open(sl70, encoding="utf-8", errors="replace").read()
+        line404 = [ln for ln in sl_txt70.splitlines()
+                   if "/bs/Instagram_png" in ln and '"status":404' in ln]
+        if line404:
+            break
+        time.sleep(0.05)
+    check("v70-404-di-log-dengan-level-error", len(line404) >= 1
+          and '"level":"ERROR"' in line404[-1]
+          and "404 MISSING" in line404[-1]
+          and "tidak ada di server/" in line404[-1],
+          line404[-1][-260:] if line404 else "tidak ada baris 404 Instagram_png")
+    # entri 200 normal TANPA level (access log alami — bukan semua entry diberi label)
+    line200 = [ln for ln in sl_txt70.splitlines()
+               if "clientversion.json" in ln and '"status":200' in ln]
+    check("v70-200-tanpa-level", len(line200) >= 1
+          and '"level"' not in line200[-1],
+          line200[-1][-160:] if line200 else "tidak ada baris 200 clientversion.json")
 
     # log jujur — extra mencatat transport pengiriman ACK yang sebenarnya
     _v69acks = [e for e in lg["entries"]

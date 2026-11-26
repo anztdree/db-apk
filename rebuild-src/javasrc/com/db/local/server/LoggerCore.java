@@ -13,9 +13,16 @@ import java.util.concurrent.atomic.AtomicLong;
  *                req/resp (teks 4096/2048; biner kompakt "[bin N B]"), status, durasi,
  *                error; khusus 9527 menyertakan JSON config TER-DECODE pasca-XOR
  *                "DragonBall" di extra.
- *  - PERSISTEN DISK: setiap entri ditulis NDJSON ke <serverRoot>/logs/log-*.ndjson
- *    (DiskWriter thread tunggal; rotasi 16 MB/part, maks 8 file) — log selamat dari
- *    restart app dan bisa diunduh via logger /download. INI JAWABAN "log itu utama".
+ *  - PERSISTEN DISK: setiap entri ditulis NDJSON ke SATU FILE
+ *    <serverRoot>/logs/server.ndjson (DiskWriter v22 — 1 file di-tumpuk,
+ *    append lintas sesi; v22 Bagian 70: NOL file baru per open APK) — log
+ *    selamat dari restart app dan bisa diunduh via logger /download. INI
+ *    JAWABAN "log itu utama".
+ *  - LOG NATURAL v22 (arahan owner: "KALAU ERROR YA ERROR ! KALAU KURANG YAA
+ *    KURANG ! BIAR JELAS KITA ITU KURANGNYA DIMANAAA"): entri bermasalah
+ *    (status >= 400 atau ada field error) membawa "level":"ERROR" di NDJSON
+ *    — grep level langsung menunjukkan kurangnya di mana; entri normal tanpa
+ *    field level (access log server apa adanya).
  *  - akurasi kelengkapan: droppedGlobal/droppedPort menghitung entri yang terbuang
  *    dari buffer (terlihat di /stats & dashboard); logger TIDAK mencatat request
  *    miliknya sendiri (anti-pollution — hanya counter) sehingga alur game tidak
@@ -66,8 +73,12 @@ public final class LoggerCore {
              .append(",\"kind\":\"").append(esc(kind))
              .append("\",\"method\":\"").append(esc(method))
              .append("\",\"path\":\"").append(esc(path))
-             .append("\",\"status\":").append(status)
-             .append(",\"durMs\":").append(durMs)
+             .append("\",\"status\":").append(status);
+            // v22 LOG NATURAL: level ERROR eksplisit utk entri bermasalah —
+            // status >= 400 atau field error terisi. Entri normal TANPA level
+            // (access log alami, bukan karangan).
+            if (status >= 400 || error != null) b.append(",\"level\":\"ERROR\"");
+            b.append(",\"durMs\":").append(durMs)
              .append(",\"reqLen\":").append(reqLen)
              .append(",\"respLen\":").append(respLen);
             if (headers != null)     b.append(",\"headers\":\"").append(esc(headers)).append('"');

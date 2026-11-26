@@ -598,6 +598,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" return false}\n")
          .append("function levelOf(e){\n")
          .append(" var k=e.kind||'',m=e.method||'',p=e.path||'';\n")
+         .append(" if((e.level||'')=='ERROR')return {word:'ERROR',cls:'r',icon:'x'};\n")
          .append(" if(k=='CRASH')return {word:'ERROR',cls:'r',icon:'x'};\n")
          .append(" if(k=='LOGCAT')return {word:'DEBUG',cls:'d',icon:'search'};\n")
          .append(" if(k=='SYS'&&m=='OVERLAY')return {word:'INFO',cls:'g',icon:'check'};\n")

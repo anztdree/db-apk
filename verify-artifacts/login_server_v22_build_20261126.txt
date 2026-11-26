@@ -1,0 +1,150 @@
+BUILD & VERIFIKASI APK v22 — LOG 1 FILE DI-TUMPUK + 404 NATURAL (Bagian 70, 26 Nov 2026)
+=========================================================================================
+Lanjut natural tanpa fase (kesepakatan Bagian 68) — jawaban langsung arahan owner:
+
+  1. "File 404 (Instagram_png dkk): JANGAN PERNAH KASIHS PLACEHOLDER !! KALAU
+     ERROR YA ERROR !!"
+  2. "ANDA KOK NGEYEL SIH !! ITU LOG KENAPA MASIH ADA BANYAK TIAP MASUK
+     APLIKASI BIKIN LOG BARU LGI ! KEK TAI ! LOG ITU 1 FILE DI TUMPUK !!
+     BUKAN MALAH BIKIN BARU TIAP MASUK APLIKASI!!"
+  3. "ITU LAGI JELAS JELAS DI GAME LOADING MASIH NGEYEL LOG YG SEKARANG GAK DI
+     BENERIN .. ITU LOG YG SEKARANG TERJADI TUU APA !! SURUH BENERIN LOG MALAH
+     NGEYEL!! LOG NATURAL !! KALAU ERROR YA ERROR ! KALAU KURANG YAA KURANG !
+     BIAR JELAS KITA ITU KURANGNYA DIMANAAA"
+
+TOOLCHAIN (semua sama dgn v14–v21)
+  javac  21.0.13  — openjdk-21-jdk-headless + openjdk-21-jre-headless
+                    _21.0.13+9-1~deb13u2_amd64.deb, dpkg -x lokal (jdk deb
+                    diunduh ulang deb.debian.org 83.187.032 B — versi DEB
+                    PERSIS sama dgn v14-v21); javac -version = 21.0.13
+  D8     8.3.37   — r8-8.3.37.jar (16.628.796 B) com.android.tools.r8.D8
+  sign   uber-apk-signer 1.3.0 + keystore release-mod/dblocal-mod.keystore
+                    (alias dblocalmod, pass dblocalmod123 — SAMA semua versi,
+                    install-over aman; CN=DB Local Mod, O=Owner, C=ID,
+                    berlaku s.d. 14 Nov 2056)
+  base   APK v21 via Git LFS batch API (tools/fetch_lfs pola) + downloader
+                    chunked RESUMABLE tools/download_chunked2.py — 136 chunk
+                    @1,5 MB selesai 16 dtk; sha256 = oid LFS 6c89116f… (cocok)
+
+PERUBAHAN KODE (5 file javasrc — semua di classes2.dex)
+  DiskWriter.java   LOG = 1 FILE DI TUMPUK (server.ndjson): nama TETAP tanpa
+                    timestamp, tiap open APK APPEND ke file yang SAMA — NOL
+                    file baru log-<waktu-open>.ndjson, NOL rotasi/part 16 MB,
+                    NOL prune 8 file; penulisan = 1 syscall write() per baris
+                    pada fd APPEND (atomik per baris, selamat mati mendadak
+                    tanpa BufferedWriter yang bisa terpotong di tengah baris);
+                    file log-*.ndjson LAMA tetap terbaca via /download?file=
+                    (legacy read-only), tidak pernah ditulis lagi.
+  ExitInfo.java     entri kind=EXIT ke LOG GLOBAL yang SAMA (server.ndjson)
+                    tepat sebelum BOOT sesi baru — kronologis alami: …sesi
+                    lama… → EXIT (kenapa mati) → BOOT sesi baru → …; DEDUP
+                    exitTime (memori sesi + ekor file 256 KB) — Application-
+                    ExitInfo menyimpan 5 exit terakhir, exit yang sudah pernah
+                    tercatat TIDAK ditulis ulang (tiap exit muncul TEPAT
+                    SEKALI); exit abnormal (CRASH/ANR/LOW_MEMORY/SIGNALED)
+                    bawa error "abnormal exit: <reason>" → level ERROR
+                    otomatis; file terpisah exit-history.ndjson DIHAPUS dari
+                    desain (v21 dihapus).
+  LoggerCore.java   LOG NATURAL: Entry.toJson menambah "level":"ERROR" HANYA
+                    utk entri bermasalah (status >= 400 atau field error
+                    terisi); entri normal TANPA field level (access log
+                    server alami, bukan semua diberi label).
+  StaticHandler.java 404 TETAP 404 — TIDAK PERNAH placeholder (keputusan D4
+                    owner, kata-kata persis "JANGAN PERNAH KASIHS PLACE-
+                    HOLDER !!"); field error menjelaskan KURANGNYA DI MANA:
+                    "404 MISSING: <path> — tidak ada di server/ dan tidak
+                    ada di APK (assets)" (di device; desktop: "tidak ada di
+                    server/" saja — assets tidak diperiksa); body respons ke
+                    client TIDAK berubah ("404 not found: <path>" — protokol
+                    client utuh, popup mapping smali tidak tersentuh).
+  LoggerHandler.java console levelOf() menghormati field "level" baru:
+                    e.level=='ERROR' → baris ERROR merah (konsisten dgn
+                    NDJSON); fallback lama tetap (kind/error/status).
+
+DEX classes2.dex v22 (login-server)
+  sumber   8 stubs + 24 javasrc com/db/local/server — TANPA SmokeMain
+  compile  javac -encoding UTF-8 -source 8 -target 8 → 47 class — PASS
+  dexing   D8 --release --min-api 21 (input jar) → 150.416 B
+           (v21: 151.896 B — mesin exit-history/per-open file dihapus,
+           entri EXIT + level ditambah)
+  marker   rebuild-src/scripts/patch_marker_v22.py — v19→v22 tepat 4 string
+           (judul dashboard, banner, BOOT LocalServerStarter, crash CrashHook;
+           ukuran string sama, SHA1+adler32 header dihitung ulang)
+  sha256   25fb448c12146d5370d4c309ca342f0a63ba1380061f070a78621a9bd61973e1
+  kontrak  MOD-LOCALSERVER v22 · >v22< · handler.process · DragonBall Local
+           (seed sah Bagian 66/67) · login-server · history.sqlite ·
+           SaveUserEnterInfo · jawab/tolak103/whitelist/historyMode/
+           todayLoginCount/loginToken — semua ADA (warisan v20/v21 utuh)
+  kontrak v21 (routing transport ACK) tetap: antre polling · WS langsung ·
+           upgrade selesai · __listenerport · sesi sebelumnya berakhir ·
+           completeUpgrade — semua ADA
+  kontrak v22 BARU: server.ndjson · level":"ERROR · 404 MISSING: ·
+           tidak ada di server/ · dan tidak ada di APK (assets) ·
+           abnormal exit: · EXITINFO · no exit history (normal for a fresh
+           install) — semua ADA
+  dihapus: exit-history.ndjson = NOL di dex (file terpisah tidak kembali)
+  terlarang (fabrikasi lama v18 NOL) serverListJson · enterGameResponse ·
+           routeEvent · "ACK: 43" · pangkas lama — v22=0/v21=0/v20=0/v19=0/v18=0
+
+REBUILD RAW-COPY v22 (scripts/rebuild_v22_raw.py — pola 46..56..67..68..69)
+  6.428 entri byte-per-byte LFH+CD+EOCD; verifikasi zipfile: beda HANYA
+  classes2.dex; classes.dex = airplane v21 byte-identik (6.697.176 B, sha
+  62803bb1…, byte patch @0x5e8180/@0x5d2438 dicek ulang); arsc STORED
+  (data_off aligned-4); metode 3471 deflate + 2957 stored identik; QHinfo
+  proven (http://127.0.0.1:9530); kontrak entri
+  server_root/bs/upgrade/all.zip + serversetting.json hadir
+
+ZIPALIGN + SIGN
+  uber-apk-signer 1.3.0: zipalign verified + signature verified [v1, v2, v3]
+  sertifikat: CN=DB Local Mod, O=Owner, C=ID — SHA256
+  f58a5b9a097656440b5cb21f5ed2e70b879c3879d6a0926ff951aa181fa91170
+  (SHA384withRSA, berlaku s.d. Tue Nov 14 11:15:27 UTC 2056 — SAMA v14..v21)
+
+APK v22 FINAL
+  file    release-mod/db-local(MOD-LOCALSERVER-v22).apk
+  ukuran  202.683.358 B
+  sha256  4418abce8420c97dc1f3d75ea91c6a6fe1e15cf465e6b92183c6dac2a77b2ed6
+  diff vs v21 (entri-per-entri, verified): classes2.dex +
+          META-INF/MANIFEST.MF + META-INF/DBLOCALM.SF + META-INF/DBLOCALM.RSA
+          (re-sign) SAJA — arsc/assets/bs/sdk/console/dashboard byte-identik
+  LFS     rotasi pointer v21→v22 (pola lama; pointer v21 dihapus, pointer
+          v22 masuk repo — 134 B, git-lfs 3.6.1)
+
+SMOKE DESKTOP v22 (verify-artifacts/login_server_v22_smoke_20261126.txt)
+  232 PASS / 0 FAIL = 221 kasus lama tetap (5 uji v69 exit-history diganti
+  karena file terpisah dihapus) + 16 kasus v22 baru:
+    - v70-log-satu-file: logs/ berisi TEPAT SATU ndjson = server.ndjson
+    - v70-tanpa-log-timestamp: NOL file log-<waktu>.ndjson
+    - v70-tanpa-exit-history: exit-history.ndjson tidak ada lagi
+    - v70-append-lama-dan-baru-1file + v70-append-dua-baris-lama: simulasi
+      open ke-2 (SmokeMain menulis 2 baris sesi lama SEBELUM DiskWriter.init)
+      → baris lama selamat + baris baru masuk FILE YANG SAMA (append)
+    - v70-exit-3baris-dedup (4 panggilan → 3 entri EXIT; dup exitTime skip)
+    - v70-exit-dup-skip · v70-exit-abnormal-level-error (CRASH → ERROR) ·
+      v70-exit-normal-tanpa-error (EXIT_SELF tanpa level) ·
+      v70-exit-trace-di-log (trace di respPreview entri EXIT)
+    - v70-dl-list-1file (list = server.ndjson saja) · v70-dl-latest ·
+      v70-dl-file-server-ndjson
+    - v70-404-tetap-404 (GET /bs/Instagram_png — path PERSIS bukti device
+      v20 seq 52 → 404, body "404 not found: /bs/Instagram_png") ·
+      v70-404-di-log-dengan-level-error ("level":"ERROR" + "404 MISSING" +
+      "tidak ada di server/") · v70-200-tanpa-level (200 tanpa field level)
+
+CATATAN JUJUR SMOKE
+  run pertama 2 FAIL — KEDUANYA salah jarum uji PYTHON, nol perubahan Java:
+  (a) v70-exit-dup-skip memakai substring "uji-exit-smoke-v22\" yang juga
+  cocok dgn desc "-b" dan "-crash" (3 baris) — diganti needle "desc=…-v22 "
+  (dengan spasi) → 1 baris; (b) v70-exit-normal-tanpa-error memakai needle
+  "\"reason=EXIT_SELF\"" yang tak pernah cocok karena quote JSON ada di depan
+  "sesi", bukan depan "reason" — diganti needle "\"path\":\"sesi sebelumnya
+  berakhir: reason=EXIT_SELF". Dedup + level sendiri TERBUKTI bekerja di run
+  pertama (v70-exit-3baris-dedup & v70-exit-abnormal-level-error sudah PASS).
+
+YANG SISA = smoke DEVICE (butuh device owner):
+  - buka APK v22 BEBERAPA kali → logs/ TIDAK menambah file baru;
+    logs/server.ndjson TUMBUH (append) — BOOT tiap open terlihat bertumpuk
+    dalam 1 file, entri EXIT sesi sebelumnya muncul TEPAT SEKALI per exit
+  - 404 Instagram_png dkk di game loading → TETAP 404 (tanpa placeholder) +
+    baris log membawa "level":"ERROR" dan kalimat MISSING yang menjelaskan
+    file tidak ada di server/ dan tidak ada di APK
+  - install-over v21 aman (sertifikat sama)

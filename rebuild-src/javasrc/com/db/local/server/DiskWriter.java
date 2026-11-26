@@ -1,39 +1,47 @@
 package com.db.local.server;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Arsip log NDJSON ke disk (BARU — Bagian 18, jawaban "log itu utama"):
- *  - setiap entri LoggerCore = 1 baris JSON di <serverRoot>/logs/log-<waktu-boot>.ndjson
+ * Arsip log NDJSON ke disk (BARU — Bagian 18, jawaban "log itu utama").
+ *
+ * v22 (Bagian 70) — LOG = 1 FILE DI-TUMPUK (arahan owner, kata-kata persis:
+ * "LOG ITU 1 FILE DI TUMPUK !! BUKAN MALAH BIKIN BARU TIAP MASUK APLIKASI!!"):
+ *   - SALAH v18-v21: tiap open APK membuat FILE BARU log-<waktu-open>.ndjson
+ *     (+ part rotasi 16 MB, + prune 8 file) → 4+ file log tergantung banyaknya
+ *     buka APK — tidak efektif, tidak efisien.
+ *   - BENAR v22: SATU file <serverRoot>/logs/server.ndjson, nama TETAP tanpa
+ *     timestamp; tiap buka APK TIDAK membuat file baru — APPEND ke file yang
+ *     SAMA (baris tersusun kronologis lintas sesi: BOOT menandai batas sesi).
+ *   - NOL rotasi, NOL part, NOL prune: file ditumpuk terus; pemilik bebas
+ *     menghapus/mengunduhnya kapan pun (dashboard 4000 → unduh).
+ *   - Penulisan = SATU syscall write() per baris pada fd APPEND yang tetap
+ *     terbuka: atomik per baris (aman antar-proses), selamat app mati mendadak
+ *     tanpa flush eksplisit (BufferWriter lama dibuang — buffer parsial bisa
+ *     terpotong di tengah baris bila proses mati).
+ *   - file log-*.ndjson LAMA (v18-v21) TIDAK disentuh — tetap terbaca via
+ *     /download?file=NAME (nama legacy diizinkan), tapi tidak pernah ditulis lagi.
  *  - thread tunggal + queue 20000 baris: request handler TIDAK pernah blok I/O
- *  - flush per baris → data selamat walau proses app mati mendadak
- *  - rotasi: file > 16 MB → part berikutnya; maks 8 file (tertua dihapus)
  *  - SEMUA exception ditelan + dicatat di lastError (tidak pernah crash app)
  *  - diunduh via logger: GET /download (list), /download?latest=1, /download?file=NAME
  *  - murni java.io (tanpa java.nio.file — API 26+) agar aman minSdk 21.
  */
 public final class DiskWriter implements Runnable {
     public static volatile DiskWriter INSTANCE;
-    public static final long ROTATE_BYTES = 16L * 1024 * 1024;
-    public static final int MAX_FILES = 8;
+    /** v22: SATU nama file tetap — di-tumpuk (append) lintas sesi/APK open */
+    public static final String SERVER_LOG = "server.ndjson";
     private static final int QUEUE_CAP = 20000;
 
     private final File dir;
     private final LinkedBlockingQueue<String> q = new LinkedBlockingQueue<>(QUEUE_CAP);
-    private BufferedWriter w;
+    private FileOutputStream out;   // v22: fd append tetap terbuka — 1 write per baris
     private File cur;
-    private String baseName = "";
     private long curBytes;
-    private int part;
     public long lines;
     public long dropped;
     public String lastError = "";
@@ -62,11 +70,6 @@ public final class DiskWriter implements Runnable {
 
     @Override
     public void run() {
-        try {
-            openNew();
-        } catch (Throwable t) {
-            lastError = "openNew: " + t;
-        }
         while (running) {
             try {
                 String line = q.poll(1, TimeUnit.SECONDS);
@@ -76,73 +79,27 @@ public final class DiskWriter implements Runnable {
                 // lanjut
             } catch (Throwable t) {
                 lastError = "loop: " + t;
-                try { if (w != null) w.close(); } catch (IOException ignored) {}
-                w = null;
+                try { if (out != null) out.close(); } catch (IOException ignored) {}
+                out = null;
             }
         }
     }
 
     private void writeLine(String line) throws IOException {
-        if (w == null) openNew();
-        w.write(line);
-        w.write('\n');
-        w.flush();
+        if (out == null) openCur();
+        byte[] b = (line + "\n").getBytes(StandardCharsets.UTF_8);
+        out.write(b);          // SATU syscall per baris (fd APPEND) — atomik per baris
         lines++;
-        curBytes += line.length() + 1;
-        if (curBytes >= ROTATE_BYTES) rotatePart();
-    }
-
-    private static String tsName() {
-        java.util.Calendar c = java.util.Calendar.getInstance();
-        return String.format("log-%04d%02d%02d-%02d%02d%02d",
-                c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH) + 1,
-                c.get(java.util.Calendar.DAY_OF_MONTH),
-                c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE),
-                c.get(java.util.Calendar.SECOND));
-    }
-
-    private void openNew() throws IOException {
-        baseName = tsName();
-        part = 1;
-        openCur();
-        prune();
-    }
-
-    private void rotatePart() throws IOException {
-        try { if (w != null) w.close(); } catch (IOException ignored) {}
-        w = null;
-        part++;
-        openCur();
-        prune();
+        curBytes += b.length;
     }
 
     private void openCur() throws IOException {
-        String name = part == 1 ? baseName + ".ndjson" : baseName + "-part" + part + ".ndjson";
-        cur = new File(dir, name);
-        w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(cur, true),
-                StandardCharsets.UTF_8), 131072);
+        cur = new File(dir, SERVER_LOG);   // v22: nama TETAP — bukan file baru per open
+        out = new FileOutputStream(cur, true);   // APPEND — baris lama dihormati
         curBytes = cur.length();
     }
 
-    /** simpan maks MAX_FILES file arsip; hapus tertua */
-    private void prune() {
-        try {
-            File[] fs = dir.listFiles();
-            if (fs == null) return;
-            java.util.ArrayList<File> logs = new java.util.ArrayList<>();
-            for (File f : fs) if (f.isFile() && f.getName().startsWith("log-") && f.getName().endsWith(".ndjson")) logs.add(f);
-            if (logs.size() <= MAX_FILES) return;
-            Arrays.sort(logs.toArray(new File[0]), new Comparator<File>() {
-                public int compare(File a, File b) { return a.getName().compareTo(b.getName()); }
-            });
-            int over = logs.size() - MAX_FILES;
-            for (int i = 0; i < over; i++) logs.get(i).delete();
-        } catch (Throwable t) {
-            lastError = "prune: " + t;
-        }
-    }
-
-    /** daftar file arsip (nama, ukuran, waktu-modifikasi) — terurut nama naik */
+    /** daftar arsip (nama, ukuran, waktu-modifikasi) — v22: hanya server.ndjson */
     public static String listJson() {
         DiskWriter d = INSTANCE;
         StringBuilder b = new StringBuilder(256);
@@ -150,18 +107,8 @@ public final class DiskWriter implements Runnable {
         b.append(d == null ? "" : JsonUtil.esc(d.dir.getAbsolutePath()));
         b.append("\",\"files\":[");
         if (d != null) {
-            File[] fs = d.dir.listFiles();
-            java.util.ArrayList<File> logs = new java.util.ArrayList<>();
-            if (fs != null) {
-                for (File f : fs) if (f.isFile() && f.getName().startsWith("log-") && f.getName().endsWith(".ndjson")) logs.add(f);
-            }
-            java.util.ArrayList<File> arr = new java.util.ArrayList<>(logs);
-            java.util.Collections.sort(arr, new Comparator<File>() {
-                public int compare(File a, File b) { return a.getName().compareTo(b.getName()); }
-            });
-            for (int i = 0; i < arr.size(); i++) {
-                File f = arr.get(i);
-                if (i > 0) b.append(',');
+            File f = new File(d.dir, SERVER_LOG);
+            if (f.isFile()) {
                 b.append("{\"name\":\"").append(JsonUtil.esc(f.getName()))
                  .append("\",\"bytes\":").append(f.length())
                  .append(",\"modified\":").append(f.lastModified()).append('}');
@@ -171,28 +118,22 @@ public final class DiskWriter implements Runnable {
         return b.toString();
     }
 
-    /** file arsip TERBARU (untuk /download?latest=1) atau null */
+    /** file arsip TERBARU (untuk /download?latest=1) = server.ndjson, atau null */
     public static File newestFile() {
         DiskWriter d = INSTANCE;
         if (d == null) return null;
-        File[] fs = d.dir.listFiles();
-        File newest = null;
-        if (fs != null) {
-            for (File f : fs) {
-                if (f.isFile() && f.getName().startsWith("log-") && f.getName().endsWith(".ndjson")) {
-                    if (newest == null || f.getName().compareTo(newest.getName()) > 0) newest = f;
-                }
-            }
-        }
-        return newest;
+        File f = new File(d.dir, SERVER_LOG);
+        return f.isFile() ? f : null;
     }
 
-    /** file arsip berdasar nama tervalidasi (anti path traversal) */
+    /** file arsip berdasar nama tervalidasi (anti path traversal).
+     *  v22: server.ndjson + legacy log-*.ndjson (baca-saja, sisa v18-v21). */
     public static File fileByName(String name) {
         DiskWriter d = INSTANCE;
         if (d == null || name == null) return null;
         if (!name.matches("[A-Za-z0-9._\\-]{1,128}")) return null;
-        if (!name.startsWith("log-") || !name.endsWith(".ndjson")) return null;
+        boolean legacy = name.startsWith("log-") && name.endsWith(".ndjson");
+        if (!SERVER_LOG.equals(name) && !legacy) return null;
         File f = new File(d.dir, name);
         try {
             if (!f.getCanonicalPath().startsWith(d.dir.getCanonicalPath() + File.separator)
@@ -208,7 +149,7 @@ public final class DiskWriter implements Runnable {
         synchronized (d) {
             return "{\"enabled\":true"
                     + ",\"dir\":\"" + JsonUtil.esc(d.dir.getAbsolutePath()) + '"'
-                    + ",\"file\":\"" + JsonUtil.esc(d.cur == null ? "" : d.cur.getName()) + '"'
+                    + ",\"file\":\"" + JsonUtil.esc(d.cur == null ? SERVER_LOG : d.cur.getName()) + '"'
                     + ",\"bytes\":" + (d.cur == null ? 0 : d.cur.length())
                     + ",\"lines\":" + d.lines
                     + ",\"dropped\":" + d.dropped

@@ -40,6 +40,30 @@
 > Bukti: verify-artifacts/login_server_v20_build_20261126.txt. Sisa =
 > smoke DEVICE §3.6 (kriteria 1–9, pesawat, offline penuh).
 >
+> **Bagian 70 (26 Nov 2026) — LOG = 1 FILE DI-TUMPUK + 404 NATURAL (dex v22 +
+> APK v22 SELESAI, beda HANYA classes2.dex + re-sign, sha256 4418abce…)**:
+> arahan owner kata-kata persis: "LOG ITU 1 FILE DI TUMPUK !! BUKAN MALAH
+> BIKIN BARU TIAP MASUK APLIKASI!!" + "JANGAN PERNAH KASIHS PLACEHOLDER !!
+> KALAU ERROR YA ERROR !!" + "LOG NATURAL !! KALAU ERROR YA ERROR ! KALAU
+> KURANG YAA KURANG ! BIAR JELAS KITA ITU KURANGNYA DIMANAAA". (1) DiskWriter
+> v22: SATU file `logs/server.ndjson` nama TETAP — tiap open APK APPEND ke
+> file yang SAMA (nol log-<waktu>.ndjson baru, nol rotasi/part 16 MB, nol
+> prune 8 file; 1 syscall write per baris pada fd APPEND — atomik per baris,
+> selamat mati mendadak). (2) ExitInfo v22: entri kind=EXIT ke log global
+> yang SAMA + DEDUP exitTime (tiap exit tercatat TEPAT SEKALI; exit abnormal
+> = level ERROR) — FILE TERPISAH exit-history.ndjson DIHAPUS dari desain
+> (koreksi jujur atas Bagian 69.3 yang masih membuat file terpisah). (3)
+> LoggerCore v22 LOG NATURAL: "level":"ERROR" HANYA di entri bermasalah
+> (status>=400/error) — entri normal tanpa label. (4) StaticHandler v22:
+> 404 TETAP 404 TANPA placeholder (D4 DIPUTUSKAN OWNER); field error
+> menjelaskan kurangnya di mana: "404 MISSING: <path> — tidak ada di server/
+> dan tidak ada di APK (assets)". (5) D4 ditutup di SDK-REFINEMENT-PLAN §4.
+> Smoke desktop 232 PASS / 0 FAIL (16 kasus v70: 1-file append, dedup EXIT,
+> 404 Instagram_png natural). dex v22 150.416 B marker v22; base v21 via LFS
+> (download_chunked2 136 chunk). Bukti: verify-artifacts/login_server_v22_
+> smoke_20261126.txt + login_server_v22_build_20261126.txt. Sisa = smoke
+> DEVICE §3.6 + §7.5.
+>
 > **Bagian 69 (26 Nov 2026) — FIX "SERVERLIST GAK MUNCUL" + "LOG PER-OPEN
 > MURNI"**: laporan owner (log device v20 log-20261126-181501.ndjson):
 > (1) serverlist tidak muncul — DIBUATKAN DARI LOG: ACK 430 GetServerList
@@ -515,7 +539,7 @@ Pembagian wewenang:
     │   ├── errors.json / QHinfo
     │   └── data/db.sqlite     ← tabel accounts (akun tamu/email) — MILIK SDK;
     │                            login TIDAK BOLEH menulis di sini (Bagian 30)
-    └── logs/                  ← NDJSON DiskWriter + crash-*.txt (dari detik pertama)
+    └── logs/                  ← SATU NDJSON server.ndjson (v22 — 1 file di-tumpuk) + crash-*.txt (dari detik pertama)
 ```
 
 Alasan teknis aturan "self-seed, bukan assets" (header SdkConfig, terbukti
@@ -662,9 +686,11 @@ event — edit tanpa restart):
 global jdi 1"): SETIAP event yang DIJAWAB / DIAM tercatat di entri
 HTTP/WS listener login yang sama (extra membawa frame ACK penuh / penanda
 no-ack — URL penuh, NOL pangkas, disiplin v17) → NDJSON GLOBAL
-`<serverRoot>/logs/`. ACK SaveUserEnterInfo, WARN reseed, WARN persist
-— semuanya baris SYS/HTTP di arsip global itu. nol ACK = nol baris khusus
-(selain entri request verbatim).
+`<serverRoot>/logs/server.ndjson` (Bagian 70 — SATU file nama tetap, semua
+sesi di-TUMPUK dlm satu file; entri bermasalah membawa "level":"ERROR").
+ACK SaveUserEnterInfo, WARN reseed, WARN persist — semuanya baris SYS/HTTP
+di arsip global itu. nol ACK = nol baris khusus (selain entri request
+verbatim).
 
 ### 3.5 Titik "berselebahan" SDK ↔ loginServer (rawan salah — dipetakan eksplisit)
 
@@ -964,15 +990,20 @@ sudah terbukti Bagian 58) — baru KEPUTUSAN per perilaku dgn prinsip 3 kolom
   build baru; ATAU minta StaticHandler override (sudah ada polanya: 9527
   melayani config bin dari lapisan sendiri).
 
-### 7.4 File 404 layar login (Instagram_png dkk) — fakta terbaru 26 Nov
+### 7.4 File 404 layar login (Instagram_png dkk) — FAKTA + KEPUTUSAN OWNER (Bagian 70)
 
 - Diverifikasi ulang: TIDAK ADA di APK (CD 6.428 entri), TIDAK ADA di dalam
   all.zip (652 entri di-parse via HTTP Range dari dalam APK), TIDAK ADA di
   capture. = file yang TIDAK PERNAH kita punya di mana pun.
-- Sudah tercatat SDK-REFINEMENT-PLAN §3: dampak kosmetik (gambar kosong,
-  suara klik mati), TIDAK menghalangi login/serverlist. Keputusan Opsi A
-  (suntik placeholder ke APK) vs B (peta di StaticHandler) tetap milik
-  owner (D4) — keputusan D4 default = tunda.
+- KEPUTUSAN OWNER (kata-kata persis Bagian 70: "JANGAN PERNAH KASIHS
+  PLACEHOLDER !! KALAU ERROR YA ERROR !!"): **D4 DITUTUP — TANPA
+  placeholder, SELAMANYA**. Opsi A (suntik PNG ke APK) dan Opsi B (peta ke
+  file lain) DIBATALKAN berdua; 404 tetap 404, tidak ada file yang dibuat.
+- v22 StaticHandler: field error entri 404 kini menjelaskan kurangnya di
+  mana — `404 MISSING: <path> — tidak ada di server/ dan tidak ada di APK
+  (assets)` + `"level":"ERROR"` di NDJSON (LOG NATURAL — grep level
+  langsung menunjukkan file apa yang kurang). Body respons ke client TIDAK
+  berubah (`404 not found: <path>` — protokol client utuh).
 
 ### 7.5 SISA KERJA (jujur)
 

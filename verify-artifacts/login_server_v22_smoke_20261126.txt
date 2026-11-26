@@ -1,0 +1,234 @@
+PASS init-GET-200
+PASS header-poweredby
+PASS header-ct-text-json
+PASS init-default-loginTypes
+PASS init-payTypes-wajib
+PASS v2-init-penuh-productConfig
+PASS v2-init-penuh-version
+PASS v2-init-penuh-first-install-country
+PASS sdk-files-seeded
+PASS v16-index-txt-dihapus
+PASS v16-upgrade-profile-30001
+PASS v16-upgrade-profile-legacy-awet
+PASS qhinfo-seeded
+PASS qhinfo-isi
+PASS migrasi-lokasi-db-sqlite
+PASS migrasi-lokasi-legacy-json
+PASS lokasi-lama-tidak-hilang
+PASS init-livereload-edit
+PASS gerbang-20000-data-kosong
+PASS gerbang-20002-sign-salah
+PASS gerbang-20003-sdkVersion
+PASS gerbang-20003-productCode
+PASS gerbang-20003-authToken
+PASS gerbang-30001-product
+PASS init-POST-lolos-gerbang
+PASS v16-init-product-asli-lolos
+PASS migrasi-tamu-uid-awet
+PASS migrasi-tamu-nama
+PASS session-isGuest-12
+PASS migrasi-email-login
+PASS login-isGuest-0-openType-1
+PASS login-salah-sandi-20004
+PASS login-belum-daftar-20001
+PASS register-user-sukses
+PASS register-dup-20001
+PASS autoLogin-email
+PASS autoLogin-bogus-fallback-tamu
+PASS getUserInfo-email
+PASS getUserInfo-tamu
+PASS bindMail-sukses
+PASS bindMail-login-uid-token-awet
+PASS bindMail-tamu-baru-uid-bedaa
+PASS changePassword-sukses
+PASS changePassword-sandi-lama-ditolak
+PASS ckRegVistor-kontrak
+PASS fallback-envelope
+PASS findPass-belum-daftar-20001
+PASS profile-header-livereload
+PASS backend-desktop-json
+PASS v43-rute-dihapus-404 /sdkconfig
+PASS v43-rute-dihapus-404 /sdkconfig/api
+PASS v43-rute-dihapus-404 /sdkconfig/save
+PASS v43-rute-dihapus-404 /sdkconfig/preset
+PASS v43-rute-dihapus-404 /sdkconfig/product-add
+PASS v43-rute-dihapus-404 /sdkconfig/session-reset
+PASS v43-rute-dihapus-404 /fix/overlay
+PASS v43-session-reset-404
+PASS v43-save-404
+PASS v43-fix-overlay-404
+PASS v43-qhinfo-utuh
+PASS v43-console-200
+PASS v43-stream-markup
+PASS v17-salin-tabel
+PASS v17-banner-crash-js
+PASS v17-banner-overlay-js
+PASS v19-ver-dashboard
+PASS v17-crash-route
+PASS v17-crash-sintetis
+PASS v17-crash-entry-logger
+PASS v17-crash-file-disk
+PASS v17-stats-overlay
+PASS v1-ver-dashboard
+PASS v41-banner-sesi-dihapus
+PASS v41-sysline-dihapus
+PASS v41-banner-crash-js-masih
+PASS v19-exitinfo-desktop
+PASS v19-autoguard-desktop-skip
+PASS v19-crash-route-masih
+PASS v3-clientversion-200
+PASS v3-serversetting-9528
+PASS v3-sockio-open-9528
+PASS v3-sockio-sid-9528
+PASS v3-sockio-post-ok
+PASS v67-sockio-ack-serverlist
+PASS v3-bind-label-cdn-chain
+PASS v17-url-penuh-open9528
+PASS v17-url-penuh-post9528
+PASS v67-ack-getserverlist-extra
+PASS v17-ws-101
+PASS v17-ws-3probe
+PASS v17-ws-url-penuh
+PASS v17-ws-open-frame-dilog
+PASS v17-ws-probe-penuh
+PASS v17-ws-semua-url-penuh
+PASS v17-nol-path-telanjang
+PASS v67-seed-5file
+PASS v67-tanpa-logs-dir
+PASS v67-tanpa-nama-lama
+PASS v67-logingame-echo
+PASS v67-logingame-tolak103
+PASS v67-savelanguage-111
+PASS v67-savelanguage-0
+PASS v67-saveuserenterinfo-frame
+PASS v67-saveuserenterinfo-tanpa-file
+PASS v67-savehistory-ack
+PASS v67-savehistory-logintoken
+PASS v67-announce-diam
+PASS v67-unknown-action-noack
+PASS v67-getserverlist-kosong-diam
+PASS v67-hapus-file-reseed
+PASS v67-hapus-logingame-reseed
+PASS v67-corrupted-reseed
+PASS v67-persist-savehistory
+PASS v67-persist-getserverlist-desktop
+PASS v67-game-5051-transport-only
+PASS v67-log-ack-userenterinfo
+PASS v67-log-diam-kosong
+PASS v67-log-corrupted-warn
+PASS v67-log-history-warn-desktop
+PASS v67-log-seed-boot
+PASS v67-tanpa-log-baru-di-loginserver
+PASS v69-open-9528-sid
+PASS v69-ws-101-same-sid
+PASS v69-post-ok
+PASS v69-ack-dipolling-cepat
+PASS v69-ack-isi-serverlist
+PASS v69-ws-probe
+PASS v69-upgrade-noop-poll
+PASS v69-ws-emit-ack-ws-langsung
+PASS v70-log-satu-file
+PASS v70-tanpa-log-timestamp
+PASS v70-tanpa-exit-history
+PASS v70-append-lama-dan-baru-1file
+PASS v70-append-dua-baris-lama
+PASS v70-exit-3baris-dedup
+PASS v70-exit-dup-skip
+PASS v70-exit-abnormal-level-error
+PASS v70-exit-normal-tanpa-error
+PASS v70-exit-trace-di-log
+PASS v70-dl-list-1file
+PASS v70-dl-latest
+PASS v70-dl-file-server-ndjson
+PASS v70-404-tetap-404
+PASS v70-404-di-log-dengan-level-error
+PASS v70-200-tanpa-level
+PASS v69-log-dikirim-polling
+PASS v69-log-dikirim-ws
+PASS v69-log-upgrade-5
+PASS v69-port-9528-benar
+PASS v44-console-title
+PASS v60-level-of
+PASS v44-fmtB-detail
+PASS v44-comp-of
+PASS v44-comp-tags
+PASS v44-banner-boot
+PASS v14-banner-slim
+PASS v44-hdr-premium
+PASS v39-overlay-info-verdict
+PASS v39-overlay-not-problem
+PASS v63-overlay-from-data
+PASS v49-no-modal
+PASS v49-stream-no-click
+PASS v63-inline-raw
+PASS v63-full-disclosure
+PASS v49-trunc
+PASS v60-sub-style
+PASS v14-sub-collapse
+PASS v14-sub-sum
+PASS v63-salin-raw
+PASS v49-guide-panel
+PASS v49-ver
+PASS v60-icon-registry
+PASS v60-icon-shape
+PASS v63-no-emoji-all
+PASS v60-btn-paint
+PASS v60-chips
+PASS v60-chip-ports
+PASS v60-row-card
+PASS v60-meta-right
+PASS v63-raw-mainline
+PASS v63-raw-ws
+PASS v63-no-describe
+PASS v63-no-synthetic
+PASS v60-comp-icon
+PASS v60-lv-tint
+PASS v60-fade
+PASS v60-toast-rise
+PASS v60-title-grad
+PASS v63-no-emoji-copy
+PASS v60-stbadge
+PASS v63-guide
+PASS v39-overlay-banner-dihapus
+PASS v43-stline-server
+PASS v43-live-cursor
+PASS v43-filter-lengkap
+PASS v41-no-sdkconfig-leak
+PASS v41-icon-buttons
+PASS v41-js-id-semua-ada
+PASS v41-crashbn-ada
+PASS v41-salin-icon
+PASS v16-filter-error-ada
+PASS v16-salin-ada
+PASS v16-4-kontrol
+PASS v51-init-extra-fakta
+PASS v51-init-no-comment GATE-PASS
+PASS v51-init-no-comment cointhreat
+PASS v51-init-no-comment psalmicvolleyball
+PASS v51-init-no-comment owner editable
+PASS v51-init-no-comment GUEST button
+PASS v51-init-no-comment REGISTER button
+PASS v51-init-no-comment LOGIN button
+PASS v51-init-no-comment dishbesideshockey
+PASS v51-init-no-comment loginTypes drives
+PASS v51-init-no-comment payTypes required
+PASS v51-init-no-comment GET-TEST
+PASS v51-init-no-comment try/catch safe
+PASS v51-init-no-comment fast-path
+PASS v51-init-no-comment anti-race
+PASS v51-init-no-comment Account Center
+PASS v51-init-no-comment honest answer
+PASS v51-init-no-comment uid stable across restarts
+PASS v51-register-extra-fakta
+PASS v51-no-indo-server diganti pihak lain
+PASS v51-no-indo-server ditekan
+PASS v51-no-indo-server MIGRASI tamu
+PASS v51-no-indo-server MIGRASI akun
+PASS v51-no-indo-server SESI-GUARD
+PASS v51-no-indo-server tombol dashboard
+PASS v51-no-indo-server dipotong 16KB
+PASS v42-tips-tidak-ada-registervisitor
+PASS v42-tips-tidak-ada-autologin
+PASS v42-tips-tidak-ada-loginemail
+
+===== SMOKE v2: 232 PASS, 0 FAIL =====

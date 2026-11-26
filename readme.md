@@ -5967,3 +5967,161 @@ EXITINFO + BOOT line baru). Hasil: **221 PASS / 0 FAIL**
   LOGIN-SERVER-PLAN §7.5).
 - NOL perubahan bs/, sdk/, dashboard, arsc, assets, smali — hanya
   classes2.dex + tanda tangan.
+
+## Bagian 70 — ARAHAN OWNER: "LOG ITU 1 FILE DI TUMPUK!! BUKAN BIKIN BARU TIAP MASUK APLIKASI!!" + "JANGAN PERNAH KASIHS PLACEHOLDER!! KALAU ERROR YA ERROR!!" + "LOG NATURAL!!" — LOG = SATU FILE server.ndjson APPEND LINTAS SESI + 404 TETAP 404 TANPA PLACEHOLDER + "level":"ERROR" DI NDJSON — dex v22 + APK v22 SELESAI (beda hanya classes2.dex + re-sign; smoke desktop 232 PASS / 0 FAIL, 16 kasus v70)
+
+Arahan owner (kata-kata persis, 26 Nov malam, menjawab Bagian 69):
+
+> "File 404 (Instagram_png dkk): JANGAN PERNAH KASIHS PLACEHOLDER !! KALAU
+>  ERROR YA ERROR !!"
+> "ANDA KOK NGEYEL SIH !! ITU LOG KENAPA MASIH ADA BANYAK TIAP MASUK APLIKASI
+>  BIKIN LOG BARU LGI ! KEK TAI ! LOG ITU 1 FILE DI TUMPUK !! BUKAN MALAH
+>  BIKIN BARU TIAP MASUK APLIKASI!!"
+> "ITU LAGI JELAS JELAS DI GAME LOADING MASIH NGEYEL LOG YG SEKARANG GAK DI
+>  BENERIN .. ITU LOG YG SEKARANG TERJADI TUU APA !! SURUH BENERIN LOG MALAH
+>  NGEYEL!! LOG NATURAL !! KALAU ERROR YA ERROR ! KALAU KURANG YAA KURANG !
+>  BIAR JELAS KITA ITU KURANGNYA DIMANAAA"
+
+### 70.1 DIAGNOSIS JUJUR: BAGIAN 69.3 MASIH NGEYEL — MASIH ADA FILE LOG BARU TIAP OPEN
+
+Diagnosis dari kata-kata owner sendiri: Bagian 69.3 memperbaiki ISI log
+per-open (backlog exit sesi lama dipindah), tapi MENGGELAPKAN fakta bahwa
+file per-open itu SENDIRI tetap dibuat baru tiap masuk aplikasi
+(`log-<waktu-open>.ndjson` — pola v18) + ditambah FILE TERPISAH baru
+`logs/exit-history.ndjson` (v69.3) + part rotasi 16 MB + prune 8 file (pola
+Bagian 18). Hitungan owner: "log bisa sampai ada 4 atau lebih tergantung apk
+di buka" — BENAR, dan v21 TIDAK mengubah hitungan itu (malah +1 exit-history).
+Perintah "SURUH BENERIN LOG" sudah turun; yang dikirim Bagian 69 = perbaikan
+isi, bukan perbaikan BENTUK yang diminta. 404 Instagram_png dkk: Bagian 69.4
+menawarkan Opsi A/B yang dua-duanya membuat placeholder — owner menolak
+keduanya dan menutup D4: placeholder TIDAK PERNAH dibuat; error tetap error.
+
+### 70.2 LOG = 1 FILE DI-TUMPUK — DiskWriter v22 (jawaban langsung)
+
+- SATU file `<serverRoot>/logs/server.ndjson`, nama TETAP tanpa timestamp.
+  Tiap masuk aplikasi TIDAK membuat file baru — APPEND ke file yang SAMA;
+  baris tersusun kronologis lintas sesi: …baris sesi lama… → EXIT (kenapa
+  mati) → BOOT sesi baru → …baris baru…
+- NOL rotasi 16 MB, NOL part -part2, NOL prune 8 file (pola Bagian 18
+  dihapus total). File ditumpuk terus; pemilik bebas unduh/hapus via
+  dashboard 4000 (unduh = /download, satu file itu sendiri).
+- Penulisan = SATU syscall `write()` per baris pada fd APPEND yang tetap
+  terbuka (BufferedWriter lama dibuang — buffer parsial bisa terpotong di
+  tengah baris saat proses mati mendadak): atomik per baris, data selamat
+  tanpa flush eksplisit, request handler tetap tidak pernah blok I/O
+  (queue 20000 + thread tunggal tetap).
+- File `log-*.ndjson` LAMA (sisa v18-v21 di device) tidak disentuh — masih
+  terbaca via `/download?file=NAME` (legacy read-only), tidak pernah
+  ditulis lagi.
+- `exit-history.ndjson` (Bagian 69.3) DIHAPUS dari desain — koreksi jujur:
+  file terpisah = kebalikan dari "1 FILE DI TUMPUK".
+
+### 70.3 ENTRI EXIT KEMBALI KE LOG GLOBAL + DEDUP — ExitInfo v22
+
+- Tiap cara mati sesi sebelumnya (ApplicationExitInfo, API 30+, refleksi —
+  CRASH/ANR/LOW_MEMORY/SIGNALED/USER_REQUESTED/… beserta trace s.d. 16 KB)
+  = SATU entri `kind=EXIT` di log global server.ndjson, ditulis tepat
+  sebelum BOOT sesi baru.
+- DEDUP exitTime: ApplicationExitInfo menyimpan 5 exit terakhir dan daftar
+  itu tetap ada di boot berikutnya — exit yang SUDAH pernah tercatat
+  (dicocokkan dgn memori sesi ini + ekor file log 256 KB) TIDAK ditulis
+  ulang → tiap exit muncul TEPAT SEKALI dalam sejarah log (tanpa backlog
+  gaya v18, tanpa file terpisah gaya v69). Kalau log dihapus owner, exit
+  lama boleh tercatat lagi — wajar.
+- LOG NATURAL: exit abnormal (CRASH/ANR/LOW_MEMORY/SIGNALED) membawa field
+  `error:"abnormal exit: <reason>"` → otomatis `"level":"ERROR"` di NDJSON;
+  exit normal (EXIT_SELF/USER_REQUESTED) tanpa error. BOOT ringkas tetap 1
+  baris sebagai batas sesi: "sesi sebelumnya berakhir: reason=… time=… (N
+  exit baru tercatat, total M)" — tanpa pointer file (tidak ada lagi).
+
+### 70.4 LOG NATURAL — "level":"ERROR" DI NDJSON + 404 YANG JELAS KURANGNYA DI MANA
+
+- LoggerCore v22: entri bermasalah (status >= 400 atau field error terisi)
+  membawa `"level":"ERROR"` di NDJSON; entri normal TANPA field level
+  (access log server apa adanya — bukan semua baris diberi label karangan).
+  grep `"level":"ERROR"` di server.ndjson = daftar lengkap kurangnya.
+- StaticHandler v22: 404 TETAP 404 — TIDAK PERNAH placeholder (keputusan D4
+  owner, ditutup); field error kini menjelaskan kurangnya di mana dengan
+  fakta sumber: `404 MISSING: /bs/Instagram_png — tidak ada di server/ dan
+  tidak ada di APK (assets)` (di device; di desktop smoke: "tidak ada di
+  server/" saja karena assets tidak diperiksa). Body respons ke client TIDAK
+  berubah (`404 not found: <path>` — protokol client + mapping popup smali
+  utuh, tidak tersentuh).
+- Console dashboard: levelOf() menghormati field `level` baru — baris
+  ERROR tampil merah konsisten dengan NDJSON (fallback lama tetap).
+
+### 70.5 D4 DITUTUP — TANPA PLACEHOLDER, SELAMANYA (SDK-REFINEMENT-PLAN §4)
+
+Keputusan owner dicatat: Opsi A (suntik PNG placeholder ke assets APK) dan
+Opsi B (StaticHandler memetakan 404 ke file lain) DIBATALKAN BERDUA. File
+Instagram_png/Telegram_png/Discord_png/denglujiemian…new21_png/Logo18+Full_png
+TIDAK PERNAH ada di APK (CD 6.428 entri), TIDAK ADA di all.zip (652 entri),
+TIDAK ADA di capture — sesuatu yang tidak pernah ada tidak dibuatkan
+penggantinya; 404 = bukti jujur file hilang dari sumber, kini TERLIHAT jelas
+(level ERROR + MISSING + path) bukan disembunyikan. docs sinkron:
+LOGIN-SERVER-PLAN §7.4 + SDK-REFINEMENT-PLAN §3/§4 (D4).
+
+### 70.6 dex v22 + APK v22 SELESAI (bukti verify-artifacts/login_server_v22_build_20261126.txt)
+
+- Toolchain SAMA v14-v21: javac 21.0.13 (deb13u2, jdk deb diunduh ulang
+  83.187.032 B + dpkg -x lokal), D8 8.3.37, uber-apk-signer 1.3.0, keystore
+  dblocalmod SAMA.
+- classes2.dex v22: 8 stubs + 24 javasrc (edit DiskWriter + ExitInfo +
+  LoggerCore + StaticHandler + LoggerHandler; TANPA SmokeMain) → 150.416 B
+  (v21: 151.896 B — mesin per-open/rotasi/exit-history dihapus, EXIT + level
+  ditambah); marker patch_marker_v22.py v19→v22 tepat 4 string; sha256
+  25fb448c12146d5370d4c309ca342f0a63ba1380061f070a78621a9bd61973e1.
+  Kontrak warisan utuh (handler.process/DragonBall Local/5 file event/
+  history.sqlite/loginToken + routing transport v21: antre polling/WS
+  langsung/upgrade selesai/__listenerport) + kontrak v22 BARU (server.ndjson/
+  level":"ERROR/404 MISSING:/abnormal exit:/EXITINFO); `exit-history.ndjson`
+  = NOL di dex; fabrikasi lama v18 tetap NOL (v22=0/v21=0/v20=0/v19=0/v18=0).
+- Base APK v21 via LFS batch API + tools/download_chunked2.py (136 chunk
+  @1,5 MB, sha256 = oid LFS 6c89116f… cocok); rebuild RAW-COPY v22
+  (rebuild_v22_raw.py): 6.428 entri byte-per-byte, verifikasi zipfile beda
+  HANYA classes2.dex; classes.dex = airplane v21 byte-identik (6.697.176 B,
+  sha 62803bb1…, byte patch @0x5e8180/@0x5d2438 dicek ulang); arsc STORED;
+  metode 3471+2957 identik; QHinfo proven; zipalign verified + signature
+  verified [v1,v2,v3] (CN=DB Local Mod, s.d. 2056).
+- APK v22 final `release-mod/db-local(MOD-LOCALSERVER-v22).apk` =
+  202.683.358 B, sha256 4418abce8420c97dc1f3d75ea91c6a6fe1e15cf465e6b92183c6d
+  ac2a77b2ed6; diff entri-per-entri vs v21 = classes2.dex + META-INF (re-sign)
+  SAJA — arsc/assets/bs/sdk/console/dashboard byte-identik. Rotasi pointer
+  LFS v21→v22 (git-lfs 3.6.1, pointer 134 B).
+
+### 70.7 SMOKE DESKTOP 232 PASS / 0 FAIL (verify-artifacts/login_server_v22_smoke_20261126.txt)
+
+221 kasus lama tetap (5 uji v69 exit-history diganti — file terpisah
+dihapus) + 16 kasus v70 baru:
+- 1 FILE: v70-log-satu-file (logs/ = TEPAT SATU ndjson: server.ndjson) ·
+  v70-tanpa-log-timestamp (NOL log-<waktu>.ndjson) · v70-tanpa-exit-history ·
+  v70-dl-list-1file · v70-dl-latest · v70-dl-file-server-ndjson.
+- APPEND LINTAS SESI: SmokeMain menulis 2 baris sesi lama SEBELUM
+  DiskWriter.init (simulasi open ke-2) → v70-append-lama-dan-baru-1file +
+  v70-append-dua-baris-lama: baris lama SELAMAT + baris baru masuk FILE
+  YANG SAMA, urut (lama dulu).
+- EXIT + DEDUP: 4 panggilan appendExitEntry → v70-exit-3baris-dedup (3
+  entri; dup exitTime TIDAK ditulis ulang) · v70-exit-dup-skip ·
+  v70-exit-abnormal-level-error (CRASH → level ERROR) ·
+  v70-exit-normal-tanpa-error (EXIT_SELF tanpa level) ·
+  v70-exit-trace-di-log.
+- 404 NATURAL: GET /bs/Instagram_png (path PERSIS bukti device v20 seq 52)
+  → v70-404-tetap-404 (404 + body "404 not found: /bs/Instagram_png") ·
+  v70-404-di-log-dengan-level-error ("level":"ERROR" + "404 MISSING" +
+  "tidak ada di server/") · v70-200-tanpa-level (200 tanpa field level).
+- Catatan jujur: run pertama 2 FAIL — KEDUANYA salah jarum uji PYTHON
+  (substring needle), nol perubahan Java; dedup & level sendiri sudah PASS
+  di run pertama.
+
+### 70.8 YANG SISA (fakta, bukan fase)
+
+- smoke DEVICE (butuh device owner; install-over v21 aman — sertifikat
+  sama): buka APK v22 BEBERAPA kali → logs/ TIDAK menambah file baru;
+  logs/server.ndjson TUMBUH (BOOT tiap open terlihat bertumpuk dalam 1
+  file); entri EXIT sesi sebelumnya muncul TEPAT SEKALI per exit; 404
+  Instagram_png dkk saat game loading TETAP 404 dan kini ber-level ERROR
+  dengan kalimat MISSING.
+- Fase GAMESERVER tetap terbuka (listener game masih TRANSPORT ONLY —
+  LOGIN-SERVER-PLAN §7.5).
+- NOL perubahan bs/, sdk/, dashboard, arsc, assets, smali — hanya
+  classes2.dex + tanda tangan.

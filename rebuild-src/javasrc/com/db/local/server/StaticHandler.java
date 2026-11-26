@@ -117,12 +117,21 @@ public final class StaticHandler implements HttpWorker.Handler {
         }
 
         if (data == null) {
+            // v22 LOG NATURAL (Bagian 70 — arahan owner kata-kata persis:
+            // "JANGAN PERNAH KASIHS PLACEHOLDER !! KALAU ERROR YA ERROR !! ...
+            // BIAR JELAS KITA ITU KURANGNYA DIMANAAA"):
+            //   - 404 TETAP 404 — TIDAK PERNAH ada placeholder/pengganti;
+            //   - field error menjelaskan KURANGNYA DI MANA dengan fakta sumber:
+            //     tidak ada di server/ (disk) dan (di device) tidak ada juga di
+            //     APK (assets) → file itu memang tidak pernah ada di mana pun;
+            //   - level ERROR otomatis di NDJSON (LoggerCore.toJson status>=400).
             byte[] b = HttpWorker.text("404 not found: " + req.path);
             Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=utf-8");
             HttpWorker.writeResponse(out, 404, "Not Found", h, b);
             e.status = 404;
             e.respLen = b.length;
-            e.error = "file not found under server/";
+            e.error = "404 MISSING: " + req.path + " — tidak ada di server/"
+                    + (assets != null ? " dan tidak ada di APK (assets)" : "");
             e.respPreview = "404 not found: " + req.path;
             e.durMs = System.currentTimeMillis() - t0;
             LoggerCore.log(e);

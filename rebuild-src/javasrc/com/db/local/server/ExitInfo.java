@@ -1,9 +1,8 @@
 package com.db.local.server;
 
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -16,26 +15,25 @@ import java.nio.charset.StandardCharsets;
  * owner itel S665L osVersion=31). Dibaca via REFLEKSI murni agar lolos
  * kompilasi stub (android.jar API21 tidak punya kelas ini).
  *
- * v21 (Bagian 69) — PERBAIKAN "LOG GLOBAL DITERUSKAN" (arahan owner, kata-kata
- * persis: "log itu global.. di teruskan!! kalau jangan di pisahkan tiap waktu!!
- * gk efektif gk efisien!! kalau log bisa sampai ada 4 atau lebih tergantung
- * apk di buka!"):
- *   SALAH v18: semua riwayat exit sesi LAMA (sampai 5 — lintas hari!) ditulis
- *   ke log NDJSON per-open yang BARU dibuat — setiap buka APK, log baru dibuka
- *   dgn jejak 4-5 sesi lama → terasa "log global yang diteruskan", tidak
- *   efektif/efisien (bukti device v20: log-20261126-181501.ndjson seq 2-6
- *   memuat exit 18:14:59 / 18:12:35 / 18:11:48 / 18:11:03 hari itu + exit
- *   25 Nov — 5 sesi lain di dalam log satu open).
- *   BENAR v21:
- *   - Log per-open = MURNI sesi itu saja. NOL baris sesi lama.
- *   - Seluruh riwayat exit pindah ke FILE TERPISAH
- *     <serverRoot>/logs/exit-history.ndjson (append lintas sesi — inilah
- *     wadah "masa lalu", tidak pernah tercampur log open).
- *   - Log per-open hanya mendapat SATU baris BOOT ringkas (exit TERBARU saja
- *     + pointer ke file riwayat) supaya info "kenapa sesi kemarin mati" tidak
- *     hilang tanpa menimpa log.
- *   - File riwayat ditulis APPEND (java.io murni — minSdk 21), satu baris
- *     NDJSON per exit: loggedAt/reason/desc/exitTime/abnormal/trace.
+ * v21 (Bagian 69) — riwayat exit dipisah ke logs/exit-history.ndjson.
+ *
+ * v22 (Bagian 70) — LOG = 1 FILE DI TUMPUK (arahan owner, kata-kata persis:
+ * "LOG ITU 1 FILE DI TUMPUK !! BUKAN MALAH BIKIN BARU TIAP MASUK APLIKASI!!"):
+ *   - FILE TERPISAH exit-history.ndjson DIHAPUS dari desain — semua masuk
+ *     SATU log global server.ndjson (DiskWriter v22).
+ *   - Tiap exit sesi sebelumnya = SATU entri kind=EXIT di log global, APPEND
+ *     tepat sebelum BOOT sesi baru → kronologis alami di satu file:
+ *     …baris sesi lama… → EXIT (kenapa mati) → BOOT sesi baru → …baris baru…
+ *   - DEDUP: ApplicationExitInfo menyimpan sampai 5 exit terakhir dan daftar
+ *     itu tetap ada di boot berikutnya — exit yang SUDAH pernah dicatat
+ *     (dicocokkan exitTime: dilihat di memori sesi ini + ekor file log)
+ *     TIDAK ditulis ulang → tiap exit muncul TEPAT SEKALI dalam sejarah log.
+ *   - LOG NATURAL (arahan owner: "KALAU ERROR YA ERROR ! KALAU KURANG YAA
+ *     KURANG !"): exit abnormal (CRASH/ANR/LOW_MEMORY/SIGNALED) membawa field
+ *     error "abnormal exit: <reason>" → otomatis level=ERROR di NDJSON; exit
+ *     normal (EXIT_SELF/USER_REQUESTED) tanpa error = level INFO.
+ *   - BOOT ringkas tetap 1 baris (batas sesi): "sesi sebelumnya berakhir:
+ *     reason=… time=…" — TANPA pointer file terpisah (tidak ada lagi).
  *
  * Dipanggil sekali di boot (LocalServerStarter).
  */
@@ -43,31 +41,90 @@ public final class ExitInfo {
 
     private ExitInfo() {}
 
-    /** v21: nama file riwayat exit (relatif terhadap serverRoot) */
-    public static final String HISTORY_FILE = "logs/exit-history.ndjson";
+    /** v22: exitTime yang sudah pernah dicatat SESI INI (anti duplikat) */
+    private static final java.util.HashSet<String> SEEN_EXIT_TIMES =
+            new java.util.HashSet<String>();
 
     /**
-     * v21: tambahkan SATU baris NDJSON ke logs/exit-history.ndjson (append).
-     * return "" bila sukses, else pesan error. public static agar smoke
-     * desktop bisa mengujinya langsung.
+     * v22: tulis SATU entri kind=EXIT ke log global server.ndjson (append).
+     * Dedup: exitTime yang sudah pernah tercatat (memori sesi ini + ekor file
+     * log) TIDAK ditulis ulang → return "dup". return "" bila ditulis, else
+     * pesan error. public static agar smoke desktop bisa mengujinya langsung.
      */
-    public static String appendHistoryLine(String jsonLine) {
+    public static String appendExitEntry(String reason, String desc, long exitTs, String trace) {
         try {
-            String root = LoggerCore.serverRootPath;
-            if (root == null || root.isEmpty()) return "serverRoot kosong";
-            File logsDir = new File(root, "logs");
-            if (!logsDir.exists()) logsDir.mkdirs();
-            File f = new File(logsDir, "exit-history.ndjson");
-            OutputStream out = new FileOutputStream(f, true);
-            try {
-                out.write((jsonLine + "\n").getBytes(StandardCharsets.UTF_8));
-                out.flush();
-            } finally {
-                out.close();
+            String timeStr = exitTs > 0 ? LoggerCore.Entry.fmtTime(exitTs) : "?";
+            boolean bad = reason != null && (reason.indexOf("CRASH") >= 0
+                    || "ANR".equals(reason) || "LOW_MEMORY".equals(reason)
+                    || "SIGNALED".equals(reason));
+            // dedup hanya utk exitTime yang JELAS; timeStr "?" (ts tak diketahui)
+            // selalu ditulis (tidak mungkin dicocokkan)
+            if (!"?".equals(timeStr) && alreadyLogged(timeStr)) return "dup";
+            LoggerCore.Entry e = new LoggerCore.Entry();
+            e.port = LoggerCore.PORT_LOGGER;
+            e.kind = "EXIT";
+            e.method = "EXITINFO";
+            e.path = "sesi sebelumnya berakhir: reason=" + reason + " time=" + timeStr;
+            e.extra = "desc=" + (desc == null ? "" : desc) + " abnormal=" + bad;
+            if (bad) e.error = "abnormal exit: " + reason;   // LOG NATURAL — ERROR ya ERROR
+            if (trace != null && trace.length() > 0) {
+                e.respPreview = trace.length() > 4000
+                        ? trace.substring(0, 4000) + "…[trace cut at 16KB]"
+                        : trace;
             }
+            LoggerCore.log(e);
+            SEEN_EXIT_TIMES.add(timeStr);
             return "";
         } catch (Throwable t) {
             return String.valueOf(t);
+        }
+    }
+
+    /**
+     * v22: cek exitTime sudah pernah dicatat? Sumber: (1) memori sesi ini,
+     * (2) ekor file log global (256 KB terakhir — cukup utk boot-boot terakhir;
+     * kalau log dihapus owner, exit lama boleh tercatat lagi — wajar).
+     * Murni java.io (minSdk 21).
+     */
+    private static boolean alreadyLogged(String exitTime) {
+        if (SEEN_EXIT_TIMES.contains(exitTime)) return true;
+        try {
+            String root = LoggerCore.serverRootPath;
+            if (root == null || root.isEmpty()) return false;
+            File f = new File(new File(root, "logs"), DiskWriter.SERVER_LOG);
+            if (!f.isFile()) return false;
+            long len = f.length();
+            int cap = 262144;
+            long skip = Math.max(0, len - cap);
+            FileInputStream in = new FileInputStream(f);
+            try {
+                long s = 0;
+                while (s < skip) {
+                    long r = in.skip(skip - s);
+                    if (r <= 0) break;
+                    s += r;
+                }
+                byte[] buf = new byte[(int) (len - skip)];
+                int off = 0;
+                while (off < buf.length) {
+                    int r = in.read(buf, off, buf.length - off);
+                    if (r < 0) break;
+                    off += r;
+                }
+                String tail = new String(buf, 0, off, StandardCharsets.UTF_8);
+                String needle = "\"exitTime\":\"" + exitTime + "\"";
+                if (tail.indexOf(needle) < 0) return false;
+                // needle ada — pastikan barisnya memang entri EXIT (bukan kebetulan)
+                for (String ln : tail.split("\n")) {
+                    if (ln.indexOf("\"kind\":\"EXIT\"") >= 0 && ln.indexOf(needle) >= 0)
+                        return true;
+                }
+                return false;
+            } finally {
+                in.close();
+            }
+        } catch (Throwable t) {
+            return false;
         }
     }
 
@@ -97,14 +154,17 @@ public final class ExitInfo {
 
             int n = list.size();
             String newestReason = null, newestTime = null;
+            int logged = 0;
             for (int i = 0; i < n; i++) {
                 Object info = list.get(i);
                 int reason = (Integer) mReason.invoke(info);
                 String desc = (String) mDesc.invoke(info);
                 long ts = (Long) mTs.invoke(info);
                 String rn = reasonName(reason);
-                String timeStr = ts > 0 ? LoggerCore.Entry.fmtTime(ts) : "?";
-                if (i == 0) { newestReason = rn; newestTime = timeStr; }
+                if (i == 0) {
+                    newestReason = rn;
+                    newestTime = ts > 0 ? LoggerCore.Entry.fmtTime(ts) : "?";
+                }
                 String trace = "";
                 if (mTrace != null) {
                     try {
@@ -114,36 +174,26 @@ public final class ExitInfo {
                         trace = "(trace unavailable: " + t.getClass().getSimpleName() + ")";
                     }
                 }
-                boolean bad = rn.indexOf("CRASH") >= 0 || "ANR".equals(rn)
-                        || "LOW_MEMORY".equals(rn) || "SIGNALED".equals(rn);
-                // v21: riwayat LENGKAP (semua exit + trace) → file terpisah,
-                // TIDAK pernah ke log per-open
-                StringBuilder jb = new StringBuilder(256);
-                jb.append("{\"loggedAt\":\"").append(JsonUtil.esc(LoggerCore.Entry.fmtTime(
-                                System.currentTimeMillis())))
-                 .append("\",\"reason\":\"").append(JsonUtil.esc(rn))
-                 .append("\",\"desc\":\"").append(JsonUtil.esc(desc == null ? "" : desc))
-                 .append("\",\"exitTime\":\"").append(JsonUtil.esc(timeStr))
-                 .append("\",\"abnormal\":").append(bad)
-                 .append(",\"trace\":\"").append(JsonUtil.esc(trace))
-                 .append("\"}");
-                String err = appendHistoryLine(jb.toString());
-                if (err.length() > 0) {
-                    bootLine("exit-history gagal ditulis: " + err);
+                // v22: entri EXIT ke LOG GLOBAL (server.ndjson) — dedup exitTime;
+                // exit yang sudah pernah tercatat di sesi/boot sebelumnya tidak
+                // ditulis ulang (tiap exit muncul TEPAT SEKALI dalam sejarah log)
+                String err = appendExitEntry(rn, desc == null ? "" : desc, ts, trace);
+                if (err.length() == 0) logged++;
+                else if (!"dup".equals(err)) {
+                    bootLine("entri EXIT gagal ditulis: " + err);
                 }
             }
-            // v21: SATU baris BOOT ringkas di log per-open — exit TERBARU
-            // (index 0 = paling baru) + pointer file riwayat. Bukan lagi
-            // backlog 5 sesi lama.
+            // v22: SATU baris BOOT ringkas sebagai batas sesi — tanpa pointer
+            // file riwayat (tidak ada lagi file terpisah; semuanya di log ini)
             bootLine("sesi sebelumnya berakhir: reason=" + newestReason
                     + " time=" + newestTime
-                    + " — riwayat lengkap (" + n + " exit): " + HISTORY_FILE);
+                    + " (" + logged + " exit baru tercatat, total " + n + ")");
         } catch (Throwable t) {
             bootLine("unavailable on this device: " + t);
         }
     }
 
-    /** v21: satu baris BOOT di log per-open (bukan lagi kind SYS/EXITINFO) */
+    /** v22: satu baris BOOT di log global (batas sesi) */
     private static void bootLine(String msg) {
         LoggerCore.Entry e = new LoggerCore.Entry();
         e.port = LoggerCore.PORT_LOGGER;

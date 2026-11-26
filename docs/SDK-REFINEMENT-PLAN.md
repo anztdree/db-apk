@@ -90,9 +90,15 @@ Instagram_png/Telegram_png/Discord_png/denglujiemian…new21/Logo18) dan
 TIDAK ADA di manapun di repo/capture = file yang TIDAK PERNAH kita punya.
 Sesuatu yang tidak pernah ada tidak bisa dilayani 200 oleh server manapun
 (asli maupun lokal) — 404 ini bukan cacat server, ini file yang hilang dari
-sumbernya sejak awal (perlu DIBUAT placeholder bila mau diisi).
+sumbernya sejak awal. KEPUTUSAN OWNER (Bagian 70, kata-kata persis:
+"JANGAN PERNAH KASIHS PLACEHOLDER !! KALAU ERROR YA ERROR !!") — **D4 DITUTUP:
+TANPA placeholder, SELAMANYA**. Sesuatu yang tidak pernah ada TIDAK DIBUATKAN
+penggantinya; 404 tetap 404. v22: log kini menandainya jelas — "level":"ERROR"
++ "404 MISSING: <path> — tidak ada di server/ dan tidak ada di APK (assets)"
+(LOG NATURAL — kurangnya terlihat persis di mana).
 
-Dua opsi penyempurnaan (menunggu keputusan owner, keduanya butuh iterasi build):
+~~Dua opsi penyempurnaan (menunggu keputusan owner)~~ DIBATALKAN Bagian 70
+(keputusan owner — tidak ada placeholder):
 1. **Opsi A (APK)**: suntik 6 file placeholder PNG/MP3 ke assets APK pada path
    persis di atas → ikut ekstraksi otomatis tiap boot.
 2. **Opsi B (server, tanpa APK)**: StaticHandler memetakan path 404 image/audio
@@ -111,7 +117,7 @@ v20 bila owner mau.
 | D1 | Lanjut bangun config loginServer sesuai docs/LOGIN-SERVER-PLAN.md §4? (ini kerja loginServer, bukan SDK) | tidak — tetap plan |
 | D2 | SDK: kerjakan §2.1 (pesan error CDKey/unbind/trash)? | tidak — fallback sudah aman |
 | D3 | SDK: ganti `loginTypes` `["1"]` → `["1","13"]` (tombol Kode Migrasi seperti server asli)? | tidak — TAMU+email sudah cukup; migrasi butuh bukti format kode |
-| D4 | Kosmetik 404 layar login (§3) — Opsi A atau B? | tunda ke iterasi berikutnya (Bagian 69 menambah bukti: file TIDAK ADA juga di all.zip — kalau dikerjakan = HARUS buat placeholder, bukan "mengambil" file) |
+| D4 | Kosmetik 404 layar login (§3) — Opsi A atau B? | **DITUTUP Bagian 70 — keputusan owner: JANGAN PERNAH placeholder, 404 tetap 404 (error ya error); log v22 menandai "level":"ERROR" + "404 MISSING: <path>" agar kurangnya jelas** |
 | D5 | `history` config login: kosong (auto-enter) vs diisi (perilaku **OPEN** — perlu uji device dulu) | kosong (perilaku terbukti v17: auto-enter) |
 
 ## 5. ATURAN YANG TETAP (disiplin berjalan)
