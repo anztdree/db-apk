@@ -61,6 +61,38 @@
 > Smoke desktop 232 PASS / 0 FAIL (16 kasus v70: 1-file append, dedup EXIT,
 > 404 Instagram_png natural). dex v22 150.416 B marker v22; base v21 via LFS
 > (download_chunked2 136 chunk). Bukti: verify-artifacts/login_server_v22_
+
+> **Bagian 71 (26 Nov 2026) — LOG NATURAL FASE LOADING (dex v23 + APK v23
+> SELESAI, beda HANYA classes2.dex + re-sign, sha256 722eee78…)**: jawaban
+> laporan owner: "emang tai anda ini !! itu error itu apakah harus berwujud
+> file !!" + "heee itu hlo loading tanpa ada keterangan apapun di log yg
+> sudah saya update !!!" + "ringkas juga itu github banyak file sampah yg
+> udah gk kepake !!". (1) JAWABAN: TIDAK — 404 file = kosmetik jujur (file
+> memang tak pernah ada; D4 tetap); error beneran = loading macet (socket
+> game) dan log v22 menyembunyikannya total (baris telanjang "long-poll
+> timeout, no data" lalu log berakhir). (2) BEDAH LOG DEVICE v22 (66 baris,
+> push owner): login BERES — ACK 430 serverlist SAMPAI (seq 55), ACK 431
+> SaveHistory SAMPAI (seq 60), upgrade WS ✓, LoginAnnounce diam ✓; sesi
+> KEDUA YfX dibuka 0 ms setelah upgrade sesi-1 = pola socket GAME (atlas
+> §4.3: clientStartGame → serverItem.url = port ini dari serverList) —
+> open ✓ probe ✓ lalu client DIAM 10+ dtk (nol '5', nol event). AKAR
+> (atlas §1 verbatim): socket game verifyEnable=true MENUNGGU EVENT
+> "verify" DARI SERVER (challenge XXTEA "verification") — listener game
+> TRANSPORT ONLY → challenge tak pernah datang → loading macet. Fase
+> gameserver = satu-satunya kelanjutan (§7.5). (3) SocketIoHandler v23:
+> fakta per-sesi (framesIn/packetsOut/eventsSeen/probeDone); open sesi
+> ke-2 berketerangan "sesi aktif lain … pola socket GAME … fase gameserver
+> belum dibangun (§7.5) … client menunggu event 'verify' dari server
+> (atlas §1) — loading game tidak lanjut sampai fase itu ada"; GET
+> ber-isi "berisi: ACK 43x …/noop 6 …" + "serverlist SAMPAI ke client";
+> long-poll timeout ber-fakta ("umur … diterima … tidak pernah mengirim
+> '5'"); WS close ber-fakta; WS EOF/putus TIDAK lagi senyap ("WS
+> berakhir"). (4) LoggerCore v23 SEQLOCK: seq == urutan tulis file (dulu
+> swap 59/60 di log device). Smoke desktop 242 PASS / 0 FAIL (10 kasus
+> v71). dex v23 153.884 B marker v23 (4 string). Bukti:
+> verify-artifacts/login_server_v23_smoke_20261126.txt +
+> login_server_v23_build_20261126.txt. Sisa = smoke DEVICE + fase
+> GAMESERVER (§7.5).
 > smoke_20261126.txt + login_server_v22_build_20261126.txt. Sisa = smoke
 > DEVICE §3.6 + §7.5.
 >
@@ -1015,3 +1047,14 @@ sudah terbukti Bagian 58) — baru KEPUTUSAN per perilaku dgn prinsip 3 kolom
   gameplay langsung jalan. serverItem.url menunjuk 9528 = rantai socket.io
   login di 9528 (ServerCore cdnChain) — saat fase gameServer dibangun,
   routing /socket.io/ di 9528 utk sesi GAME harus dipisah dari sesi LOGIN.
+- **TERBUKTI DI DEVICE (Bagian 71 — log v22 owner)**: client sampai di
+  tahap ini dan BERHENTI — sesi kedua (socket game) open+probe lalu diam
+  10+ dtk tanpa paket; log v22 tidak berkata apa-apa. AKAR (atlas §1
+  verbatim): socket game verifyEnable=true MENUNGGU EVENT "verify" DARI
+  SERVER — challenge yang kita tidak pernah kirim. Log v23 kini MENULIS
+  kurangnya ini di tempat kejadiannya (open sesi ke-2 = "pola socket GAME
+  … fase gameserver belum dibangun … client menunggu event 'verify' dari
+  server (atlas §1) — loading game tidak lanjut sampai fase itu ada").
+  Satu-satunya yang membuat loading LANJUT = FASE GAMESERVER: challenge
+  "verify" (server→client) + ack verify {ret:0} + enterGame + Notify —
+  usulan wajib merujuk baris atlas (§13).

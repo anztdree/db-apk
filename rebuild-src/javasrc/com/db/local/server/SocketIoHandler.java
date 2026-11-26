@@ -112,6 +112,20 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         public final ReentrantLock lock = new ReentrantLock();
         public volatile boolean closed = false;
         public volatile boolean closePendingNotified = false;
+
+        /* ---- v23 LOG NATURAL (perintah owner: "hlo loading tanpa ada
+         * keterangan apapun di log" + "BIAR JELAS KITA ITU KURANGNYA
+         * DIMANAAA") — FAKTA sesi yang terlihat di sisi server, ditulis
+         * apa adanya di keterangan log: apa yang diterima, apa yang
+         * dikirim, upgrade selesai atau tidak. Nol karangan. ---- */
+        public int framesIn = 0;              // paket engine.io/socket.io DITERIMA dari client
+        public int packetsOut = 0;            // paket yang dikirim/diantrekan ke client
+        public final java.util.List<String> eventsSeen =
+                new java.util.ArrayList<String>();   // action 42-handler.process (max 20)
+        public volatile boolean probeDone = false;   // 2probe diterima (probe WS jalan)
+        /** deskripsi payload terakhir yang mengantre polling — muncul di baris
+         *  GET yang membawanya ("berisi: ACK 43x … — serverlist SAMPAI …"). */
+        public volatile String lastQueuedDesc = null;
         /** v21: true HANYA setelah client mengirim '5' (upgrade engine.io
          *  selesai) — bukan lagi saat handshake 101. */
         public volatile boolean upgraded = false;
@@ -182,6 +196,10 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 lock.unlock();
             }
             offer("6");   // noop di transport lama — tanda upgrade selesai
+            // v23: noop '6' = payload polling berikutnya — keterangannya
+            // muncul di baris GET yang membawanya.
+            packetsOut += moved + 1;
+            lastQueuedDesc = "noop 6 (upgrade selesai — transport pindah WS)";
             return "upgrade selesai — " + moved + " antre pindah ke WS + noop 6";
         }
 
@@ -353,6 +371,23 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             Session s = sid == null ? null : SESSIONS.get(sid);
             if (s == null && sid == null) {
                 // OPEN — persis capture live: open + socket.io CONNECT 40 dalam body sama
+                // v23: fakta sesi lain yang masih hidup — keterangan koneksi ke-2
+                // (bukti device v22: open sesi ke-2 = socket game, log v22 tidak
+                // memberi keterangan apa pun — owner: "hlo loading tanpa ada
+                // keterangan apapun di log")
+                StringBuilder others = new StringBuilder();
+                int nOthers = 0;
+                boolean loginTerjawab = false;
+                for (Session x : SESSIONS.values()) {
+                    if (x.closed) continue;
+                    nOthers++;
+                    if (others.length() > 0) others.append(" | ");
+                    others.append("sid=").append(x.sid).append(" (")
+                          .append(sessionFacts(x)).append(')');
+                    synchronized (x.eventsSeen) {
+                        if (!x.eventsSeen.isEmpty()) loginTerjawab = true;
+                    }
+                }
                 s = createSession();
                 String body = frame("0" + openJson(s.sid)) + frame("40");
                 Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=UTF-8");
@@ -363,6 +398,17 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 e.status = 200; e.respLen = bb.length;
                 e.respPreview = body;
                 e.extra = "open sid=" + s.sid;
+                if (nOthers > 0) {
+                    e.extra += " — sesi aktif lain: " + nOthers + " → " + others;
+                    if (loginTerjawab) {
+                        e.extra += "; koneksi ke-2 setelah login dijawab = pola socket GAME"
+                                + " (atlas §4.3: clientStartGame → socket game ke serverItem.url"
+                                + " = port ini dari serverList) — listener game TRANSPORT ONLY:"
+                                + " fase gameserver belum dibangun (LOGIN-SERVER-PLAN §7.5),"
+                                + " client menunggu event 'verify' dari server (atlas §1) —"
+                                + " loading game tidak lanjut sampai fase itu ada";
+                    }
+                }
                 e.durMs = System.currentTimeMillis() - t0;
                 LoggerCore.log(e);
                 return true;
@@ -401,8 +447,28 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             byte[] bb = payload.getBytes(StandardCharsets.UTF_8);
             HttpWorker.writeResponse(out, 200, "OK", h, bb);
             e.status = 200; e.respLen = bb.length;
-            if (payload.isEmpty()) e.extra = "long-poll timeout, no data";
-            else e.respPreview = payload;
+            if (payload.isEmpty()) {
+                // v23 LOG NATURAL — keterangan penuh saat client menunggu sia-sia:
+                // umur sesi, apa yang sudah diterima/dikirim, upgrade selesai atau
+                // tidak (bukti device v22: sesi game YfX diam 10+ dtk setelah probe
+                // dan log v22 hanya menulis "long-poll timeout, no data" tanpa
+                // keterangan apa pun — owner: "tanpa ada keterangan apapun").
+                e.extra = "long-poll timeout 10 dtk tanpa data — sesi " + s.sid + ": "
+                        + sessionFacts(s);
+                if (!s.probeDone) {
+                    e.extra += "; client belum memulai probe WS";
+                } else if (!s.upgraded) {
+                    e.extra += "; client tidak pernah mengirim '5' — upgrade WS tidak selesai";
+                }
+            } else {
+                e.respPreview = payload;
+                String d = s.lastQueuedDesc;
+                e.extra = "berisi: " + (d == null ? "paket engine.io/socket.io" : d);
+                if (d != null && d.contains("GetServerList")) {
+                    e.extra += " — serverlist SAMPAI ke client (client lanjut: "
+                            + "LoginAnnounce/SaveHistory/clientStartGame — atlas §4)";
+                }
+            }
             e.durMs = System.currentTimeMillis() - t0;
             LoggerCore.log(e);
             return true;
@@ -423,10 +489,11 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             boolean dead = false;
             StringBuilder seen = new StringBuilder();
             for (String pkt : parseFramed(new String(req.body, StandardCharsets.UTF_8))) {
+                s.framesIn++;   // v23: fakta — paket dari client dihitung
                 if (seen.length() > 0) seen.append(" | ");
                 seen.append(pkt);   // v17: PAKET PENUH — nol pangkas (1800 dihapus)
                 if ("41".equals(pkt)) { s.closed = true; dead = true; }
-                else if ("2probe".equals(pkt)) s.offer("3probe");
+                else if ("2probe".equals(pkt)) { s.probeDone = true; s.offer("3probe"); }
                 else if ("2".equals(pkt)) s.offer("3");
                 else if ("5".equals(pkt)) {
                     // v21: '5' lewat polling = client menutup transport lama
@@ -445,15 +512,21 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     // ACK penuh / no-ack dicatat di extra entri ini (v17: nol
                     // pangkas).
                     if (gameMode) {
+                        noteEvent(s, actionOf(pkt));   // v23: fakta event client
                         if (e.extra == null) e.extra = "EVENT (no ack): " + pkt
                                 + " | gameServer transport-only (fase gameServer"
                                 + " — docs/LOGIN-SERVER-PLAN.md §6)";
                     } else {
+                        noteEvent(s, actionOf(pkt));   // v23: fakta event client
                         String ack = LoginAck.build(pkt, e);
                         if (ack != null) {
                             // v21: ACK emit-polling SELALU antre polling —
                             // klien mendengarkan di transport yang ia pakai
                             String via = s.deliverPolling(ack);
+                            s.packetsOut++;   // v23
+                            if ("antre polling".equals(via)) {
+                                s.lastQueuedDesc = shortAckDesc(e.extra);   // v23
+                            }
                             e.extra = (e.extra == null ? "" : e.extra + " ")
                                     + "→ dikirim: " + via;
                         }
@@ -482,6 +555,61 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         e.status = 405; e.respLen = b.length; e.durMs = System.currentTimeMillis() - t0;
         LoggerCore.log(e);
         return true;
+    }
+
+    /* ---------- v23 LOG NATURAL — helper fakta sesi ----------
+     * Perintah owner: "heee itu hlo loading tanpa ada keterangan apapun
+     * di log" + "BIAR JELAS KITA ITU KURANGNYA DIMANAAA". Fakta yang
+     * terlihat di server ditulis apa adanya — nol karangan. */
+
+    /** nama action dari packet 42…["handler.process",{…,"action":"X",…}] */
+    static String actionOf(String pkt) {
+        int i = pkt.indexOf("\"action\":\"");
+        if (i < 0) return null;
+        int a = i + 10;
+        int b = pkt.indexOf('"', a);
+        if (b < 0 || b - a > 64 || b - a == 0) return null;
+        return pkt.substring(a, b);
+    }
+
+    static void noteEvent(Session s, String act) {
+        if (act == null) return;
+        synchronized (s.eventsSeen) {
+            if (s.eventsSeen.size() < 20 && !s.eventsSeen.contains(act)) s.eventsSeen.add(act);
+        }
+    }
+
+    /** ringkasan fakta satu sesi — satu baris utk keterangan log */
+    static String sessionFacts(Session s) {
+        long ageS = Math.max(0, (System.currentTimeMillis() - s.createdAt) / 1000);
+        StringBuilder b = new StringBuilder(160);
+        b.append("umur ").append(ageS).append(" dtk, diterima ").append(s.framesIn)
+         .append(" paket");
+        synchronized (s.eventsSeen) {
+            if (!s.eventsSeen.isEmpty()) {
+                b.append(" (event: ");
+                for (int i = 0; i < s.eventsSeen.size(); i++) {
+                    if (i > 0) b.append(',');
+                    b.append(s.eventsSeen.get(i));
+                }
+                b.append(')');
+            } else if (s.probeDone) {
+                b.append(" (hanya probe WS — nol event dari client)");
+            } else {
+                b.append(" (nol event dari client)");
+            }
+        }
+        b.append(", dikirim ").append(s.packetsOut)
+         .append(", upgrade WS ").append(s.upgraded ? "selesai" : "belum ('5' tak diterima)");
+        return b.toString();
+    }
+
+    /** v23 — potong deskripsi ACK dari extra (bagian sebelum " | frame:") */
+    static String shortAckDesc(String extra) {
+        if (extra == null) return null;
+        int i = extra.indexOf(" | frame:");
+        String d = i >= 0 ? extra.substring(0, i) : extra;
+        return d.length() > 160 ? d.substring(0, 160) : d;
     }
 
     /** parse payload polling "<len>:<packet>..." → daftar packet */
@@ -629,6 +757,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     for (int i = 0; i < payload.length; i++) payload[i] ^= maskKey[i & 3];
                 }
                 String text = new String(payload, StandardCharsets.UTF_8);
+                s.framesIn++;   // v23: fakta — setiap frame dari client dihitung
 
                 if (opcode == 0x8) { // close
                     LoggerCore.Entry ce = new LoggerCore.Entry();
@@ -637,6 +766,10 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     ce.method = "WS";
                     ce.path = wsUrl + " close";
                     ce.status = 1000; ce.reqLen = payload.length;
+                    // v23 LOG NATURAL — keterangan akhir sesi: apa yang sempat
+                    // diterima/dikirim (dulu baris close tanpa keterangan)
+                    ce.extra = "WS close dari client — sesi " + s.sid + ": "
+                            + sessionFacts(s);
                     LoggerCore.log(ce);
                     try { sock.close(); } catch (IOException ignored) {}
                     s.closed = true;
@@ -662,6 +795,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     le.reqLen = payload.length;
                     le.reqPreview = text;
                     if ("2probe".equals(text)) {
+                        s.probeDone = true;   // v23: fakta probe
                         synchronized (s.wsWriteLock) { wsSendText(out, "3probe"); }
                         le.respPreview = "3probe"; le.respLen = 6; le.status = 200;
                     }
@@ -684,6 +818,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                         // dgn POST-polling): file <action>.json per event;
                         // gameMode tetap TRANSPORT ONLY.
                         le.status = 200;
+                        noteEvent(s, actionOf(text));   // v23: fakta event client
                         if (gameMode) {
                             le.extra = "EVENT (no ack) — gameServer transport-only"
                                     + " (fase gameServer — docs/LOGIN-SERVER-PLAN.md §6)";
@@ -694,6 +829,10 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                                 // HANYA bila upgrade benar-benar selesai; bila
                                 // belum, antre polling (migrasi '5' meneruskan)
                                 String via = s.deliverWs(ack);
+                                s.packetsOut++;   // v23
+                                if ("antre polling".equals(via)) {
+                                    s.lastQueuedDesc = shortAckDesc(le.extra);   // v23
+                                }
                                 le.respPreview = ack;
                                 le.respLen = ack.getBytes(StandardCharsets.UTF_8).length;
                                 le.extra = (le.extra == null ? "" : le.extra + " ")
@@ -715,12 +854,27 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 }
             }
         } catch (IOException ioe) {
-            // koneksi putus — normal saat game mati
+            // v23 LOG NATURAL — koneksi putus TIDAK lagi ditelan senyap
+            // (dulu: komentar "normal saat game mati" dan NOL baris log —
+            // persis fase yang tidak diberi keterangan apa pun pada log v22).
         } finally {
             s.closed = true;
             SESSIONS.remove(s.sid);
             try { sock.close(); } catch (IOException ignored) {}
         }
+        // v23: baris akhir sesi WS (EOF / koneksi putus tanpa close frame).
+        // Jalur close-frame (opcode 0x8) sudah mencatat sendiri dan langsung
+        // return false — sampai di sini hanya bila loop berakhir tanpa itu.
+        LoggerCore.Entry de = new LoggerCore.Entry();
+        de.port = e.port;
+        de.kind = "WS";
+        de.method = "WS";
+        de.path = wsUrl + " berakhir";
+        de.status = 200; de.reqLen = 0;
+        de.extra = "WS berakhir (EOF/koneksi putus tanpa close frame) — sesi "
+                + s.sid + ": " + sessionFacts(s)
+                + " — normal saat aplikasi ditutup / koneksi hilang";
+        LoggerCore.log(de);
         return false;
     }
 

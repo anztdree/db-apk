@@ -6125,3 +6125,169 @@ dihapus) + 16 kasus v70 baru:
   LOGIN-SERVER-PLAN §7.5).
 - NOL perubahan bs/, sdk/, dashboard, arsc, assets, smali — hanya
   classes2.dex + tanda tangan.
+
+## Bagian 71 — LAPORAN OWNER: "ITU ERROR ITU APAKAH HARUS BERWUJUD FILE !!" + "HEEE ITU HLO LOADING TANPA ADA KETERANGAN APAPUN DI LOG YG SUDAH SAYA UPDATE !!!" + "RINGKAS JUGA ITU GITHUB BANYAK FILE SAMPAH YG UDah GAK KEPAKE !!" — LOG NATURAL FASE LOADING: SETIAP TITIK BETA DIBERI FAKTA (pola socket game + gameserver belum dibangun + menunggu 'verify') + seq == URUTAN TULIS — dex v23 + APK v23 SELESAI (beda hanya classes2.dex + re-sign; smoke desktop 242 PASS / 0 FAIL, 10 kasus v71)
+
+### 71.1 JAWABAN "APAKAH HARUS BERWUJUD FILE" — TIDAK
+
+- TIDAK. Entri `level":"ERROR"` di log v22 yang berupa 404 file
+  (Instagram_png, Telegram_png, Discord_png, denglujiemian…new21_png,
+  Logo18+Full_png, sound_click.mp3) = kosmetik jujur: file-file itu
+  MEMANG tidak pernah ada di mana pun (tidak di APK 6.428 entri, tidak
+  di dalam all.zip 652 entri, tidak di capture) — tidak ada yang perlu
+  dibuatkan, 404 tetap 404 (keputusan D4 Bagian 70).
+- Error yang BENERAN justru BUKAN berkas: game macet di loading. Dan
+  log v22 menyembunyikannya total: dari 66 baris log device owner,
+  fase loading hanya menghasilkan baris telanjang "long-poll timeout,
+  no data" dan log BERAKHIR tanpa satu pun keterangan — sementara
+  satu-satunya entri ERROR di seluruh log justru 404 kosmetik.
+  Itulah cacat yang dibetulkan Bagian 71: error sebenarnya kini
+  TERTULIS di tempat kejadiannya.
+
+### 71.2 BEDAH LOG DEVICE v22 (release-mod/server.ndjson — 66 baris, di-push owner)
+
+- Yang BEKERJA (Bagian 69/70 terbukti di device): server.ndjson = 1 file
+  (nol file baru per open ✓); login BERES — seq 55 GET polling
+  mengembalikan ACK 430 (444 B, serverList "DragonBall Local") =
+  SERVERLIST SAMPAI ke client; seq 59-60 SaveHistory ACK 431 SAMPAI;
+  seq 61 '5' via WS → upgrade selesai; seq 63 LoginAnnounce 422 dijawab
+  DIAM sesuai seed {} (atlas §11 baris 9).
+- Yang MATI SUNYI: seq 62 sesi KEDUA (sid YfX) dibuka 0 ms setelah
+  upgrade sesi-1 selesai = pola socket GAME (atlas §4.3: clientStartGame
+  → socket game ke serverItem.url — url port ini dari serverList yang
+  KITA kirim); open ✓, WS upgrade ✓ (seq 64), probe 2probe→3probe ✓
+  (seq 65) — lalu client DIAM 10+ detik (nol '5', nol event) → seq 66
+  polling 10 dtk habis → log berakhir. NOL keterangan.
+- AKAR MEKANISME (atlas §1 verbatim, main.min_777039fc.js): socket game
+  TSSocketClient verifyEnable=true — saat 'connect' client MENERIMA
+  challenge: server meng-emit event "verify" → client enkripsi XXTEA
+  key "verification" → emit balik dgn ACK → server jawab {ret:0} →
+  onOk → loading lanjut. Listener game kita TRANSPORT ONLY (fase
+  gameserver belum dibangun — PLAN §7.5) → challenge tidak pernah
+  datang → client diam di "等待验证" → loading macet selamanya.
+  INI SATU-SATUNYA KURANGNYA — dan kini DITULIS di log (71.3), bukan
+  disembunyikan; fase gameserver sendiri = Bagian berikutnya (usulan
+  wajib merujuk baris atlas — §13).
+
+### 71.3 LOG NATURAL FASE LOADING — SocketIoHandler v23 (jawaban langsung)
+
+- FAKTA PER-SESI (fields baru Session v23): framesIn (paket DITERIMA
+  dari client), packetsOut (dikirim/diantrekan), eventsSeen (action
+  42-handler.process yang benar-benar datang, max 20), probeDone,
+  lastQueuedDesc — semua yang terlihat di server, ditulis apa adanya.
+- OPEN SESI KE-2 (kasus persis device): extra = "open sid=… — sesi
+  aktif lain: 1 → sid=… (umur X dtk, diterima N paket (event:
+  GetServerList,…), dikirim N, upgrade WS selesai/belum)" + bila login
+  sudah dijawab: "; koneksi ke-2 setelah login dijawab = pola socket
+  GAME (atlas §4.3: clientStartGame → socket game ke serverItem.url =
+  port ini dari serverList) — listener game TRANSPORT ONLY: fase
+  gameserver belum dibangun (LOGIN-SERVER-PLAN §7.5), client menunggu
+  event 'verify' dari server (atlas §1) — loading game tidak lanjut
+  sampai fase itu ada".
+- GET POLLING BER-ISI: extra "berisi: <desc>" — ACK = "ACK 43x —
+  <action> (file … dibaca ulang)", noop = "noop 6 (upgrade selesai —
+  transport pindah WS)"; bila ACK GetServerList: "— serverlist SAMPAI
+  ke client (client lanjut: LoginAnnounce/SaveHistory/clientStartGame
+  — atlas §4)" — bukan lagi frame tanpa keterangan.
+- GET POLLING TIMEOUT: extra "long-poll timeout 10 dtk tanpa data —
+  sesi <sid>: umur N dtk, diterima N paket (…), dikirim N, upgrade WS
+  selesai/belum" + "client tidak pernah mengirim '5' — upgrade WS
+  tidak selesai" (probe jalan, '5' tak datang — persis device) atau
+  "client belum memulai probe WS".
+- WS PUTUS TIDAK SENYAP LAGI: dulu IOException di catch ditelan dengan
+  komentar "normal saat game mati" — NOL baris. Kini SATU baris:
+  "WS berakhir (EOF/koneksi putus tanpa close frame) — sesi <sid>:
+  <fakta> — normal saat aplikasi ditutup / koneksi hilang"; WS close
+  frame (0x8) juga ber-fakta: "WS close dari client — sesi <sid>: …".
+
+### 71.4 seq == URUTAN TULIS FILE — LoggerCore v23 (cacat tersembunyi log device)
+
+- Bukti device v22: seq 60 tercetak SEBELUM seq 59 (keduanya 21:47:48.359)
+  — LoggerCore.log assign seq dan enqueue TIDAK dalam satu kunci; dua
+  thread bisa saling sisip → tumpukan tidak benar-benar berurutan.
+- v23: seq + build JSON + enqueue dalam SATU kunci (SEQLOCK) — urutan
+  seq == urutan baris di server.ndjson. smoke v71-seq-monotonik
+  mengunci ini.
+
+### 71.5 dex v23 + APK v23 SELESAI (bukti verify-artifacts/login_server_v23_build_20261126.txt)
+
+- dex: javac 21.0.13 deb13u2 (jdk deb diunduh ulang + dpkg -x, jre deb
+  lokal — SAMA v14-v22) → 8 stubs + 24 javasrc (edit SocketIoHandler +
+  LoggerCore; TANPA SmokeMain) → 47 class → D8 8.3.37 --release
+  --min-api 21 → 153.884 B (v22: 150.416 B) → patch_marker_v23.py
+  v19→v23 tepat 4 string (judul/banner/BOOT/crash) sha c55dd9e1…;
+  kontrak warisan v20/v21/v22 utuh + kontrak v23 BARU (pola socket
+  GAME / gameserver belum dibangun / menunggu event 'verify' dari
+  server / long-poll timeout 10 dtk tanpa data / tidak pernah
+  mengirim '5' / berisi: / serverlist SAMPAI ke client / WS berakhir
+  (EOF…) / WS close dari client); fabrikasi lama v18 NOL; base APK v22
+  via LFS batch API + download_chunked2.py (136 chunk, sha = oid
+  4418abce… cocok); rebuild RAW-COPY v23 (rebuild_v23_raw.py): 6.428
+  entri byte-per-byte, verifikasi zipfile beda HANYA classes2.dex,
+  classes.dex airplane v19 byte-identik (sha 62803bb1…, byte patch
+  dicek ulang), arsc STORED aligned-4, metode 3471+2957 identik,
+  QHinfo proven; zipalign + sign uber-apk-signer 1.3.0 keystore
+  dblocalmod SAMA (verified v1/v2/v3 s.d. 2056); APK v23 final
+  release-mod/db-local(MOD-LOCALSERVER-v23).apk = 202.687.454 B sha256
+  722eee785b22797c00da97eef527147ea9d0c7e54d17cb9f7998a49c5e37a617,
+  diff entri-per-entri vs v22 = classes2.dex + META-INF (re-sign)
+  SAJA; rotasi pointer LFS v22→v23.
+
+### 71.6 SMOKE DESKTOP 242 PASS / 0 FAIL (verify-artifacts/login_server_v23_smoke_20261126.txt)
+
+- 232 kasus lama tetap + 10 kasus v71 baru: v71-serverlist-sampai
+  (GET pembawa ACK GetServerList = "berisi: ACK … — serverlist SAMPAI
+  ke client"), v71-open-sesi-2-fakta-lain + v71-open-sesi-2-pola-socket-
+  game (open ke-2 = "sesi aktif lain" + "pola socket GAME" + "'verify'"
+  + "gameserver belum dibangun"), v71-noop-berisi ("berisi: noop 6
+  (upgrade selesai — transport pindah WS)"), v71-ws-close-fakta (close
+  frame ber-fakta sesi), v71-ws-eof-tidak-senyap (TCP putus tanpa close
+  frame → "WS berakhir" — dulu senyap total), v71-poll-timeout-fakta
+  (dt ≥ 9 dtk → "long-poll timeout 10 dtk tanpa data — sesi … umur …
+  tidak pernah mengirim '5'"), v71-seq-monotonik (urutan file == seq),
+  v71-post-ok / v71-ack-di-poll.
+- catatan jujur: run pertama 4 FAIL — SEMUA jarum uji PYTHON (pola
+  quote '"open sid=X"' padahal extra berlanjut; 'socket.io close' tak
+  pernah substring; uji seq menghitung 2 baris simulasi sesi lama uji
+  v70 sebagai pelanggaran — padahal seq per-proses, BOOT = batas sesi)
+  — NOL perubahan Java untuk lulus; run kedua 242 PASS / 0 FAIL.
+
+### 71.7 RINGKAS GITHUB — FILE SAMPAH DIHAPUS (perintah owner, commit terpisah)
+
+- Dihapus dari repo (riwayat git tetap menyimpan semuanya — recoverable):
+  rantai build versi LAMA yang sudah tidak pernah dipakai lagi
+  (rebuild_v12..v21_raw.py, repack.py + repack_v1_clean/v3..v8.py,
+  patch_airplane.py + v18/v19, patch_console_v19.py, patch_smoke_v16.py,
+  patch_marker_v20.py + v21.py, probe_airplane.py, dex_dump_method.py,
+  dex_net_scan.py), work-folder smali v19 (rebuild-src/scripts/v19-work/
+  — classes.dex airplane sudah beku byte-identik sejak v19), dan
+  verify-artifacts era awal yang sudah tidak jadi acuan
+  (v1/v2_baksmali_diff_vs_original.txt, verify_final.txt,
+  com_db_local_v2.bin, setting_BS_Android_v2_final.bin,
+  setting_BS_Android_live_fresh.bin, qsdk_v1_system_init_raw.txt,
+  qsdk_v1_system_init_response.json, qsdk_live_contract_probe_20261123.json,
+  live_login_handshake_capture_20261122.txt) — total 45 file.
+  DIPERTAHANKAN walau era lama karena masih DIRUJUK dokumen aktif:
+  verify_total.txt (SDK-REFINEMENT-PLAN + SdkConfig.java) dan
+  LIVE_CONTRACT_20261123.md (3 dokumen — "tetap sahih").
+- YANG TETAP: docs/ (5 dokumen aktif), atlas main.min
+  (tools/out/main.min_777039fc.js), capture live
+  (live-capture-login-20261125-174027.txt), bukti LIVE 20261126
+  (live-login-contract / getserverlist-ack-LIVE / game-verify-LIVE),
+  smoke+build v20/v21/v22/v23, rantai build AKTIF (rebuild_v22_raw.py +
+  rebuild_v23_raw.py, patch_marker_v22.py + v23.py), tool capture/probe
+  (tools/*.py), keystore, log device owner (release-mod/server.ndjson),
+  APK original + v23 (LFS).
+
+### 71.8 YANG SISA (fakta, bukan fase)
+
+- smoke DEVICE (install-over v22 aman — sertifikat sama): buka APK v23
+  sampai loading → log kini MENUNJUKKAN: open sesi ke-2 berketerangan
+  socket game + "menunggu event 'verify' dari server"; poll timeout
+  ber-fakta sesi; WS berakhir tercatat; serverlist SAMPAI tertulis.
+- FASE GAMESERVER = satu-satunya yang membuat loading LANJUT: challenge
+  "verify" (server→client) + ack verify {ret:0} + enterGame + Notify —
+  usulan berikutnya wajib merujuk baris atlas (§13). Log v23 sudah
+  menuliskan kurangnya ini di tempat kejadiannya.
+- NOL perubahan bs/, sdk/, dashboard, arsc, assets, smali — hanya
+  classes2.dex + tanda tangan.

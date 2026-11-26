@@ -1113,6 +1113,155 @@ try:
           and '"level"' not in line200[-1],
           line200[-1][-160:] if line200 else "tidak ada baris 200 clientversion.json")
 
+    # ================= Bagian 71 — LOG NATURAL FASE LOADING (socket game) =================
+    # Laporan owner (kata-kata persis): "heee itu hlo loading tanpa ada
+    # keterangan apapun di log yg sudah saya update !!!" + "KALAU ERROR YA
+    # ERROR ! KALAU KURANG YAA KURANG ! BIAR JELAS KITA ITU KURANGNYA DIMANAAA"
+    # Bukti device v22 (release-mod/server.ndjson owner): login BERES (ACK 430
+    # serverlist + ACK 431 SaveHistory SAMPAI ke client), lalu client buka
+    # sesi ke-2 (socket game, serverItem.url=9528), probe WS, lalu DIAM 10+
+    # dtk — log v22 hanya "long-poll timeout, no data" TANPA keterangan, dan
+    # WS putus (IOException) ditelan SENYAP total. v23: setiap titik buta
+    # kini diberi fakta apa adanya (nol karangan).
+    def _waitrow71(pred, tries=100):
+        for _i71 in range(tries):
+            txt71 = open(sl70, encoding="utf-8", errors="replace").read()
+            cand71 = [ln for ln in txt71.splitlines() if pred(ln)]
+            if cand71:
+                return cand71[-1]
+            time.sleep(0.05)
+        return ""
+
+    # 1. sesi login pertama + emit GetServerList + poll → ACK SAMPAI
+    with urllib.request.urlopen("http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&t=v71a", timeout=10) as r:
+        openbd71a = r.read().decode()
+    _m71a = re.search(r'"sid":"([A-Za-z0-9]+)"', openbd71a)
+    s71a = _m71a.group(1) if _m71a else ""
+    pkt71a = '421["handler.process",' + json.dumps(
+        {"type": "User", "action": "GetServerList", "userId": "v71user",
+         "subChannel": "", "channel": "quick"}, separators=(",", ":")) + ']'
+    req71a = urllib.request.Request(
+        "http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&sid=" + s71a,
+        data=("%d:%s" % (len(pkt71a), pkt71a)).encode(), method="POST")
+    req71a.add_header("Content-Type", "text/plain; charset=UTF-8")
+    with urllib.request.urlopen(req71a, timeout=10) as r:
+        check("v71-post-ok", r.read().decode() == "ok", "")
+    with urllib.request.urlopen(
+            "http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&sid=" + s71a,
+            timeout=15) as r:
+        pl71a = r.read().decode()
+    check("v71-ack-di-poll", "43" in pl71a[:8] or ":431[" in pl71a or pl71a.startswith("4:431["),
+          repr(pl71a[:60]))
+    row71 = _waitrow71(lambda ln: '"berisi: ACK' in ln and "GetServerList" in ln)
+    check("v71-serverlist-sampai", "serverlist SAMPAI ke client" in row71
+          and "berisi: ACK" in row71,
+          row71[-240:] if row71 else "baris berisi ACK GetServerList tidak ada")
+
+    # 2. OPEN sesi ke-2 → keterangan "sesi aktif lain" + pola socket GAME
+    with urllib.request.urlopen("http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&t=v71b", timeout=10) as r:
+        openbd71 = r.read().decode()
+    _ms71 = re.search(r'"sid":"([A-Za-z0-9]+)"', openbd71)
+    s71 = _ms71.group(1) if _ms71 else ""
+    row_open71 = _waitrow71(lambda ln: ('open sid=' + s71) in ln)
+    check("v71-open-sesi-2-fakta-lain", ("sesi aktif lain" in row_open71
+          and ("sid=" + s71a) in row_open71 and "GetServerList" in row_open71),
+          row_open71[-260:] if row_open71 else "baris open sesi ke-2 tidak ada")
+    check("v71-open-sesi-2-pola-socket-game", ("pola socket GAME" in row_open71
+          and "'verify'" in row_open71 and "gameserver belum dibangun" in row_open71),
+          row_open71[-260:] if row_open71 else "")
+
+    # 3. noop '6' pasca-upgrade (dari sesi v69) kini diberi keterangan
+    row_noop71 = _waitrow71(lambda ln: '"berisi: noop 6' in ln)
+    check("v71-noop-berisi", "upgrade selesai — transport pindah WS" in row_noop71,
+          row_noop71[-220:] if row_noop71 else "baris noop 6 tidak ada")
+
+    # 4. WS close frame → baris close dengan fakta sesi
+    ws71c = _v69sock.create_connection(("127.0.0.1", 9528), timeout=10)
+    wskey71 = _v69b64.b64encode(os.urandom(16)).decode()
+    ws71c.sendall(("GET /socket.io/?EIO=3&transport=websocket&sid=" + s71
+                   + "&t=v71ws HTTP/1.1\r\nHost: 127.0.0.1:9528\r\nUpgrade: websocket\r\n"
+                   "Connection: Upgrade\r\nSec-WebSocket-Key: " + wskey71
+                   + "\r\nSec-WebSocket-Version: 13\r\n\r\n").encode())
+    wshdr71 = b""
+    while b"\r\n\r\n" not in wshdr71:
+        wshdr71 += ws71c.recv(4096)
+    ws71c.sendall(_wsframe69(b"2probe"))
+    _wsread69(ws71c, b"3probe")
+    _cl71 = bytearray([0x88, 0x80 | 2]); _mk71 = os.urandom(4)
+    _cl71 += _mk71
+    for _i71, _ch71 in enumerate(b"\x03\xe8"):
+        _cl71.append(_ch71 ^ _mk71[_i71 & 3])
+    ws71c.sendall(bytes(_cl71))
+    time.sleep(0.8)
+    row_close71 = _waitrow71(lambda ln: '"status":1000' in ln
+                             and ('sid=' + s71) in ln)
+    check("v71-ws-close-fakta", ("WS close dari client" in row_close71
+          and "diterima" in row_close71 and "upgrade WS belum" in row_close71),
+          row_close71[-240:] if row_close71 else "baris close tidak ada")
+
+    # 5. EOF/putus TANPA close frame → baris "WS berakhir" (dulu: senyap total)
+    ws72 = _v69sock.create_connection(("127.0.0.1", 9528), timeout=10)
+    wskey72 = _v69b64.b64encode(os.urandom(16)).decode()
+    ws72.sendall(("GET /socket.io/?EIO=3&transport=websocket&t=v71ws2 HTTP/1.1\r\n"
+                  "Host: 127.0.0.1:9528\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                  "Sec-WebSocket-Key: " + wskey72 + "\r\nSec-WebSocket-Version: 13\r\n\r\n").encode())
+    wshdr72 = b""
+    while b"\r\n\r\n" not in wshdr72:
+        wshdr72 += ws72.recv(4096)
+    ws72.sendall(_wsframe69(b"2probe"))
+    _wsread69(ws72, b"3probe")
+    ws72.close()   # TCP close TANPA close frame → EOF di server
+    time.sleep(0.8)
+    row_eof71 = _waitrow71(lambda ln: "WS berakhir (EOF/koneksi putus" in ln)
+    check("v71-ws-eof-tidak-senyap", ("WS berakhir" in row_eof71
+          and "hanya probe WS" in row_eof71),
+          row_eof71[-240:] if row_eof71 else "baris WS berakhir tidak ada")
+
+    # 6. long-poll timeout → fakta sesi: probe jalan tapi '5' tak pernah datang
+    with urllib.request.urlopen("http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&t=v71c", timeout=10) as r:
+        openbd71b = r.read().decode()
+    _ms71b = re.search(r'"sid":"([A-Za-z0-9]+)"', openbd71b)
+    s71b = _ms71b.group(1) if _ms71b else ""
+    ws73 = _v69sock.create_connection(("127.0.0.1", 9528), timeout=10)
+    wskey73 = _v69b64.b64encode(os.urandom(16)).decode()
+    ws73.sendall(("GET /socket.io/?EIO=3&transport=websocket&sid=" + s71b
+                  + "&t=v71ws3 HTTP/1.1\r\nHost: 127.0.0.1:9528\r\nUpgrade: websocket\r\n"
+                  "Connection: Upgrade\r\nSec-WebSocket-Key: " + wskey73
+                  + "\r\nSec-WebSocket-Version: 13\r\n\r\n").encode())
+    wshdr73 = b""
+    while b"\r\n\r\n" not in wshdr73:
+        wshdr73 += ws73.recv(4096)
+    ws73.sendall(_wsframe69(b"2probe"))   # probe TANPA '5' — persis device v22
+    _wsread69(ws73, b"3probe")
+    t71 = time.time()
+    with urllib.request.urlopen(
+            "http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&sid=" + s71b,
+            timeout=15) as r:
+        pl71b = r.read().decode()
+    dt71 = time.time() - t71
+    row_to71 = _waitrow71(lambda ln: '"long-poll timeout 10 dtk' in ln and s71b in ln)
+    check("v71-poll-timeout-fakta", (dt71 >= 9.0 and row_to71 != ""
+          and "umur" in row_to71 and "tidak pernah mengirim '5'" in row_to71),
+          "dt=%.1fs %s" % (dt71, row_to71[-220:] if row_to71 else "baris timeout tidak ada"))
+
+    # 7. seq = urutan tulis file (monotonik — dulu swap 59/60 di log device v22)
+    #    Catatan: 2 baris pertama = simulasi sesi lama milik uji v70 (seq 1-2,
+    #    ditulis SmokeMain sebelum init) — seq adalah per-proses dan BOOT
+    #    menandai batas sesi (desain v22). Yang diuji: DALAM sesi baru,
+    #    urutan baris di file == urutan seq (nol swap, nol duplikat).
+    seqs71 = []
+    for ln in open(sl70, encoding="utf-8", errors="replace").read().splitlines():
+        m71 = re.match(r'^\{"seq":(\d+)', ln)
+        if m71:
+            seqs71.append(int(m71.group(1)))
+    check("v71-seq-monotonik", len(seqs71) >= 3
+          and seqs71[:2] == [1, 2]
+          and seqs71[2:] == sorted(seqs71[2:])
+          and len(set(seqs71[2:])) == len(seqs71[2:]),
+          "n=%d sim=%s naik=%s unik=%s" % (len(seqs71), seqs71[:2],
+                                           seqs71[2:] == sorted(seqs71[2:]),
+                                           len(set(seqs71[2:])) == len(seqs71[2:])))
+
     # log jujur — extra mencatat transport pengiriman ACK yang sebenarnya
     _v69acks = [e for e in lg["entries"]
                 if (e.get("extra") or "").find("ACK 431 — GetServerList") >= 0

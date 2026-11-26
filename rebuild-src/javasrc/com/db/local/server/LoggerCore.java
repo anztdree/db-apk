@@ -113,6 +113,11 @@ public final class LoggerCore {
     }
 
     private static final Object LOCK = new Object();
+    /** v23: kunci seq+tulis-disk — nomor seq == urutan baris di server.ndjson.
+     *  Dulu (v22): seq di-assign sebelum enqueue tanpa kunci — dua thread bisa
+     *  saling menyisip → baris bertukar urutan di file (bukti device: seq 59
+     *  ditulis SETELAH seq 60 di server.ndjson owner). */
+    private static final Object SEQLOCK = new Object();
     private static final ArrayDeque<Entry> GLOBAL = new ArrayDeque<>();
     @SuppressWarnings("unchecked")
     private static final ArrayDeque<Entry>[] PER_PORT = new ArrayDeque[6];
@@ -151,11 +156,16 @@ public final class LoggerCore {
 
     /** catat entri ke ring buffer (memori) + arsip NDJSON disk. Thread-safe. */
     public static void log(Entry e) {
-        e.seq = SEQ.incrementAndGet();
-        if (e.ts == 0) e.ts = System.currentTimeMillis();
-        String json = e.toJson();
-        DiskWriter w = DiskWriter.INSTANCE;
-        if (w != null) w.enqueue(json);
+        String json;
+        // v23: seq + build JSON + enqueue DALAM SATU kunci — urutan seq ==
+        // urutan tulis file (tumpukan kronologis benar-benar berurutan).
+        synchronized (SEQLOCK) {
+            e.seq = SEQ.incrementAndGet();
+            if (e.ts == 0) e.ts = System.currentTimeMillis();
+            json = e.toJson();
+            DiskWriter w = DiskWriter.INSTANCE;
+            if (w != null) w.enqueue(json);
+        }
         Counter c = COUNTERS.get(e.port);
         synchronized (LOCK) {
             if (c != null) {
