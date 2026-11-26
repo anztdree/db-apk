@@ -15,8 +15,9 @@
 > Alat capture (reproduksi): `tools/probe_live_battery.py`, `tools/probe_live_game_verify.py`,
 > `tools/zip_partial.py` (ekstrak main.min dari APK tanpa unduh penuh).
 >
-> Arahan owner tetap berlaku: "login server belum boleh di kerjakan!!" → dokumen ini
-> RENCANA; nol implementasi sampai owner oke.
+> Arahan awal owner "login server belum boleh di kerjakan!!" sudah diganti:
+> oke owner Bagian 67 ("implementasi dengan ini") + lanjut NATURAL Bagian 68
+> (dex v20 + APK v20 selesai — tanpa fase; smoke device tinggal di device owner).
 >
 > **Bagian 67 (26 Nov 2026) — OWNER OKE + IMPLEMENTASI SELESAI (smoke desktop)**:
 > owner setuju struktur Bagian 66 + DUA PERUBAHAN: (a) "tanpa log !!" —
@@ -28,6 +29,16 @@
 > LocalServerStarter. Smoke desktop 204 PASS / 0 FAIL
 > (verify-artifacts/login_ack_smoke_20261126.txt). DEX/classes2.dex v20 +
 > rebuild APK = langkah berikutnya setelah oke owner.
+>
+> **Bagian 68 (26 Nov 2026) — TANPA FASE: dex v20 + APK v20 SELESAI**: oke
+> owner "yg nyuruh pake fase siapa!! kesepakatan dari awal!! natural!!
+> CONFIG sendiri!! sempurna!!" — gerbang approval buatan DIHAPUS; lanjut
+> natural menyambung Bagian 67: dex v20 (javac 21.0.13 → D8 8.3.37 →
+> 147.952 B → marker v20 4 string) + rebuild RAW-COPY APK v20 (base v19
+> LFS, beda HANYA classes2.dex + re-sign; zipalign + signature verified
+> v1/v2/v3, sha256 efccaefb…) masuk repo (rotasi pointer LFS v19→v20).
+> Bukti: verify-artifacts/login_server_v20_build_20261126.txt. Sisa =
+> smoke DEVICE §3.6 (kriteria 1–9, pesawat, offline penuh).
 >
 > **Bagian 59 (26 Nov 2026)**: §3 DIGANTI TOTAL — struktur folder final + cara
 > kerja login-server di Android/data berseleban dengan SDK (peta device dari kode,
@@ -436,8 +447,9 @@ GLOBAL logs/); SaveUserEnterInfo = konstanta kode (tanpa file).
 Implementasi: LoginServerConfig.java (seed + parser) · LoginAck.java
 (ack-gate 2 pintu) · LoginHistoryDb.java (persist) · SocketIoHandler
 gate · LocalServerStarter seed boot. Bukti: verify-artifacts/
-login_ack_smoke_20261126.txt (28 cek v67). DEX v20 + rebuild APK =
-langkah berikutnya setelah oke owner.
+login_ack_smoke_20261126.txt (28 cek v67). DEX v20 + APK v20 = SELESAI
+Bagian 68 — lanjut natural tanpa fase
+(verify-artifacts/login_server_v20_build_20261126.txt).
 
 ### 3.1.1 PRINSIP KEPUTUSAN — 3 KOLOM, DILARANG "KARENA ASLI BEGITU" (Bagian 62)
 
@@ -817,8 +829,11 @@ halaman adalah HTTPS CDN sehingga bisa; device lokal origin halaman = 127.0.0.1:
    26 cek v67 termasuk echo loginGame, tolak103, 111/0, userenterinfo-exact,
    DIAM kosong, hapus→reseed, rusak→reseed, persist-desktop, 5051-only).
 4. Dashboard tak berubah (disiplin v17: URL penuh, nol pangkas).
-5. ⏳ BERIKUTNYA (menunggu oke owner): dex classes2.dex v20 (javac→D8) +
-   rebuild RAW-COPY APK + smoke device §3.6 (kriteria 1–9, offline penuh).
+5. ✅ dex classes2.dex v20 (javac 21 → D8 8.3.37 → marker v20 4 string,
+   147.952 B) + rebuild RAW-COPY APK v20 (base v19, beda HANYA classes2.dex
+   + re-sign; zipalign + signature verified v1/v2/v3) — SELESAI Bagian 68
+   (verify-artifacts/login_server_v20_build_20261126.txt). Sisa: smoke
+   DEVICE §3.6 (kriteria 1–9, pesawat, offline penuh) — butuh device owner.
 
 ### 4.7 Kriteria terima (pesawat, offline penuh) — diperbarui
 1. SEMUA file event kosong `{}` → v19 persis (nol dialog network; berhenti sebelum serverlist — atlas §11 baris 9).
@@ -863,7 +878,7 @@ KEPUTUSAN OWNER — sudah FIX, tidak ditanya lagi:
 | L3 | Isi folder | **Bagian 66+67 FINAL (IMPLEMENTASI)** — 5 file event bernama action string verbatim (1 event = 1 file jawaban) + data/history.sqlite (persist saja, lazy) — TANPA logs/ (dibatalkan owner, lihat L4); config.json/serverlist.json/announce.json DIHAPUS sebagai nama; SaveUserEnterInfo = tanpa file (konstanta kode) — SEMUA lolos prinsip 3 kolom §3.2 + tiap baris menunjuk atlas Bedah Total |
 | L4 | Log login-server | **DIBATALKAN OWNER (Bagian 67)** — arahan owner kata-kata persis: "tanpa log !! log global jdi 1" → login-server/logs/ TIDAK ADA; SEMUA jejak login (ACK penuh / no-ack / WARN reseed / WARN persist) masuk NDJSON GLOBAL `<serverRoot>/logs/` yang sudah ada (DiskWriter sejak v3) — nol file log baru pernah dibuat. Disiplin v17 tetap: URL penuh, frame penuh, nol pangkas |
 | L5 | File dokumentasi di device (README.txt/notes.md/captures/)? | **TIDAK, PERMANEN** — server asli tak punya padanannya; v16 sudah menghukum index.txt ("berasa jadi sampah", SdkConfig.java:28); dokumentasi = REPO saja (docs/, readme.md, verify-artifacts/) |
-| OPEN | K1–K7 (implementasi ACK, loginGame, historyMode, LoginAnnounce, bahasa, loginToken, saklar-enabled) | **DITUTUP Bagian 67 — owner oke "implementasi dengan ini"** (semua K terlaksana di kode + seed; K2–K6 kini file event yang bisa owner balikkan via edit). Sisa: dex v20 + rebuild APK + smoke device §3.6 |
+| OPEN | K1–K7 (implementasi ACK, loginGame, historyMode, LoginAnnounce, bahasa, loginToken, saklar-enabled) | **DITUTUP Bagian 67 — owner oke "implementasi dengan ini"** (semua K terlaksana di kode + seed; K2–K6 kini file event yang bisa owner balikkan via edit). dex v20 + APK v20 SELESAI Bagian 68 (tanpa fase — lanjut natural; bukti verify-artifacts/login_server_v20_build_20261126.txt). Sisa: smoke device §3.6 |
 
 ## 6. YANG TETAP OPEN + TAHAP BERIKUTNYA (jujur, tak dikarangan)
 

@@ -1,0 +1,66 @@
+BUILD & VERIFIKASI APK v20 — LOGIN-SERVER AKTIF (Bagian 68, 26 Nov 2026)
+========================================================================
+Lanjut natural tanpa fase (oke owner: "yg nyuruh pake fase siapa!! kesepakatan
+dari awal!! natural!! CONFIG sendiri!! sempurna!!") — dex v20 + rebuild APK
+dikerjakan langsung menyambung Bagian 67.
+
+TOOLCHAIN (semua sama dgn v14–v19)
+  javac  21.0.13  — openjdk-21-jdk-headless + openjdk-21-jre-headless
+                    _21.0.13+9-1~deb13u2_amd64.deb, dpkg -x lokal (2 deb)
+  D8     8.3.37   — r8-8.3.37.jar (16.628.796 B) com.android.tools.r8.D8
+  sign   uber-apk-signer 1.3.0 + keystore release-mod/dblocal-mod.keystore
+                    (alias dblocalmod — SAMA semua versi, install-over aman)
+  base   APK v19 via Git LFS batch API (tools/fetch_lfs pola) — jaringan
+                    sandbox stall di ±20 MB/koneksi, solved: downloader
+                    chunked PARALEL 6 worker × 1,5 MB + Range + retry;
+                    hasil sha256 = oid LFS (verifikasi cocok)
+                    881d60ef3fa29541c772ae17ffec5d2b88e6b12ae4cdbb1b7aa2e74acc43ff15
+
+DEX classes2.dex v20 (login-server)
+  sumber   8 stubs + 24 javasrc com/db/local/server (termasuk 3 kelas BARU
+           Bagian 67: LoginServerConfig / LoginAck / LoginHistoryDb; edit
+           SocketIoHandler + LocalServerStarter + ServerCore) — TANPA SmokeMain
+  compile  javac -encoding UTF-8 -source 8 -target 8 → 39 class — PASS
+  dexing   D8 --release --min-api 21 → 147.952 B
+  marker   rebuild-src/scripts/patch_marker_v20.py — v19→v20 tepat 4 string
+           (judul dashboard, banner, BOOT LocalServerStarter, crash CrashHook),
+           ukuran identik, SHA1+adler32 header dihitung ulang
+  sha256   4143d307cd8640cb79b92af4819ce18e8f81cc4f7150603e3f4169b6faa5f0fb
+  kontrak  MOD-LOCALSERVER v20 · >v20< · handler.process · DragonBall Local
+           (seed sah Bagian 66/67) · login-server · history.sqlite ·
+           SaveUserEnterInfo · jawab/tolak103/whitelist/historyMode/
+           todayLoginCount/loginToken — semua ADA
+  terlarang (fabrikasi lama v18 TIDAK kembali)  serverListJson ·
+           enterGameResponse · routeEvent · "ACK: 43" · pangkas lama — NOL
+
+classes.dex = TETAP v19 (byte-identik)
+  6.697.176 B, sha256 62803bb1592b378da3ebf2664795f538193b6b84a302b44ee247d7e5c1fcc8b4
+  byte patch airplane v19 @0x5e8180 + @0x5d2438 = 28020000 — verifikasi OK
+  (v20 TIDAK menyentuh dex utama — login-server hidup di classes2.dex)
+
+REBUILD RAW-COPY (rebuild-src/scripts/rebuild_v20_raw.py)
+  base     APK v19 SIGNED (LFS) — 202.679.262 B
+  metode   copi byte-per-byte LFH+CD+EOCD (6.428 entri), signing block lama
+           hilang, zip dibangun ulang murni
+  hasil    /tmp/v20/v20_unsigned.apk — 202.678.329 B
+  verifikasi zipfile: 6.428 entri, beda HANYA ['classes2.dex'];
+           resources.arsc STORED; metode 3471 deflate + 2957 stored (identik);
+           QHinfo = http://127.0.0.1:9530 (proven)
+
+ZIPALIGN + SIGN (uber-apk-signer 1.3.0)
+  - zipalign success / zipalign verified
+  - signature verified [v1, v2, v3] — keystore dblocalmod (SAMA, exp 2056)
+  output  release-mod/db-local(MOD-LOCALSERVER-v20).apk
+  ukuran  202.683.358 B
+  sha256  efccaefb636e39405b72037b3c5d92f7e50bd35fd6b87a4501546fd3756481b7
+
+DIFF FINAL vs APK v19 (zipfile, entri-per-entri)
+  sama-set entri 6.428 / 6.428; beda isi HANYA:
+    classes2.dex (login-server v20)
+    META-INF/MANIFEST.MF + META-INF/DBLOCALM.SF + META-INF/DBLOCALM.RSA
+      (re-signature v1+v2+v3 oleh keystore yang sama)
+  — yaitu: SATU dex berubah + tanda tangan. NOL perubahan lain (arsc, assets,
+  bs/, sdk/, smali console, dashboard — semua byte-identik).
+
+SELESAI — siap pasang di device (smoke §3.6 kriteria 1–9, pesawat, offline
+penuh; install-over dari v19 aman, sertifikat sama).
