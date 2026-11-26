@@ -497,9 +497,11 @@ try:
         sid = ""
     check("v3-sockio-sid-9528", len(sid) == 20, opbd[:120])
 
-    # 4. GetServerList via 9528 → v19: TRANSPORT ONLY — POST "ok", NOL ACK
-    #    (loginServer scope — plan only; arahan owner: "SDK ya fokus di SDK
-    #    bukan mlah ngurusin loginserver"). Poll panjang habis 10 s tanpa data.
+    # 4. GetServerList via 9528 → Bagian 67 (oke owner "implementasi dgn ini"):
+    #    ACK PENUH dari GetServerList.json (seed = serverList 1 entri lokal
+    #    "DragonBall Local" + history [] + TANPA errorCode + TANPA historyMode
+    #    — aturan kunci-konsumen Bagian 65/66). Envelope = 43<ackId> [{"ret":0,
+    #    "data":"<JSON string>"}] TANPA compress (atlas §2/§11 baris 1).
     msg = json.dumps({"type": "User", "action": "GetServerList",
                       "userId": "1700000000001", "subChannel": "",
                       "channel": "quick"}, separators=(",", ":"))
@@ -516,8 +518,40 @@ try:
             sock_base + "/socket.io/?EIO=3&transport=polling&sid=" + sid,
             timeout=15) as r:
         plst, plbd = r.status, r.read().decode()
-    check("v19-sockio-noack-serverlist", plst == 200 and plbd == ""
-          and "serverList" not in plbd, repr(plbd[:80]))
+    # payload polling = <len>:<packet>... — packet ACK mulai "431" (echo ackId 1);
+    # isi data diverifikasi setelah di-unescape (data = JSON string di envelope)
+    ack_pkt = ""
+    _i = 0
+    while _i < len(plbd):
+        _c = plbd.find(":", _i)
+        if _c < 0:
+            break
+        try:
+            _n = int(plbd[_i:_c])
+        except ValueError:
+            break
+        _p = plbd[_c + 1:_c + 1 + _n]
+        if _p.startswith("43"):
+            ack_pkt = _p
+            break
+        _i = _c + 1 + _n
+    _gs_env, _gs_data = {}, ""
+    _m2 = re.match(r'^43\d+\[(.+)\]$', ack_pkt, re.S)
+    if _m2:
+        try:
+            _gs_env = json.loads(_m2.group(1))
+            _gs_data = _gs_env.get("data") or ""
+        except ValueError:
+            pass
+    check("v67-sockio-ack-serverlist", plst == 200 and ack_pkt.startswith("431[")
+          and _gs_env.get("ret") == 0 and "compress" not in _gs_env
+          and '"serverList":[' in _gs_data
+          and '"DragonBall Local"' in _gs_data
+          and '"history":[]' in _gs_data
+          and '"errorCode"' not in _gs_data
+          and '"historyMode"' not in _gs_data
+          and '"compress"' not in ack_pkt,
+          repr(ack_pkt[:220]))
 
     # 5. bind label 9528 baru (BIND tercatat di BOOT — ambil arsip awal)
     st, hd, bd = get400("/logs?limit=2000")
@@ -545,16 +579,18 @@ try:
         and (e.get("path") or "").startswith(
             "http://127.0.0.1:9528/socket.io/?EIO=3&transport=polling&sid=")
         for e in lg["entries"]), "")
-    # 3. v19: event GetServerList dicatat VERBATIM dgn penanda no-ack —
-    #    NOL ACK, NOL "DragonBall Local", NOL pangkas (nol "…")
+    # 3. Bagian 67: ACK GetServerList tercatat VERBATIM PENUH di extra
+    #    (URL penuh + frame penuh — nol pangkas; log GLOBAL 1 — tidak ada
+    #    logs/ di login-server)
     ack_ent = [e for e in lg["entries"]
                if "GetServerList" in (e.get("extra") or "")]
-    check("v19-noack-getserverlist", bool(ack_ent)
-          and all("ACK: " not in e["extra"] and "…" not in e["extra"] for e in ack_ent)
-          and all("EVENT (no ack)" in e["extra"] and "loginServer scope" in e["extra"]
+    check("v67-ack-getserverlist-extra", bool(ack_ent)
+          and any(("ACK 431 — GetServerList" in (e.get("extra") or "")
+                   and '"ret":0' in (e.get("extra") or "")
+                   and "frame: 431[" in (e.get("extra") or ""))
                   for e in ack_ent)
-          and all("DragonBall Local" not in e["extra"] for e in ack_ent),
-          (ack_ent[0].get("extra") or "")[:160] if ack_ent else "tidak ada")
+          and all("…" not in (e.get("extra") or "") for e in ack_ent),
+          (ack_ent[0].get("extra") or "")[:200] if ack_ent else "tidak ada")
     # 4. WS upgrade → frame WS membawa URL PENUH koneksi (bukan "sid=.." telanjang)
     import socket as _sock, base64 as _b64
     ws = _sock.create_connection(("127.0.0.1", 5050), timeout=10)
@@ -615,6 +651,229 @@ try:
              and not (e.get("path") or "").startswith("http://")]
     check("v17-nol-path-telanjang", len(naked) == 0,
           str(naked[0].get("path")[:80]) if naked else "semua URL penuh")
+
+    # ================= Bagian 67 — LOGIN-SERVER ACK-GATE (oke owner) =================
+    # Oke owner 26 Nov (kata-kata persis): "implementasi dengan ini tanpa
+    # log !! log global jdi 1" — struktur = tabel event atlas dibuat file
+    # (Bagian 66): 1 event = 1 file <action>.json di <serverRoot>/login-server/;
+    # file kosong {} = DIAM (NO ACK — atlas §11 baris 9); SaveUserEnterInfo
+    # SELALU dijawab TANPA file (konstanta — atlas §4.6/§11 baris 11); log
+    # GLOBAL 1 (logs/ NDJSON — TIDAK ADA logs/ di dalam login-server/).
+    LS = ROOT + "/login-server"
+
+    def _frames(payload):
+        out = []
+        _i = 0
+        while _i < len(payload):
+            _c = payload.find(":", _i)
+            if _c < 0:
+                break
+            try:
+                _n = int(payload[_i:_c])
+            except ValueError:
+                break
+            out.append(payload[_c + 1:_c + 1 + _n])
+            _i = _c + 1 + _n
+        return out
+
+    def _sockio(obj, ack_id, port=9528):
+        # sesi BARU per kasus — alur persis probe_live_login.py:
+        # GET open → POST event 42<ackId> → GET poll (terima 43<ackId>)
+        _base = "http://127.0.0.1:%d" % port
+        with urllib.request.urlopen(_base + "/socket.io/?EIO=3&transport=polling"
+                                    + "&t=v67%d%d" % (port, int(time.time() * 100000) % 100000000),
+                                    timeout=10) as r:
+            _op = r.read().decode()
+        _m = re.search(r'"sid":"([A-Za-z0-9]+)"', _op)
+        _s2 = _m.group(1) if _m else ""
+        _pkt = '42%d["handler.process",%s]' % (ack_id, json.dumps(obj, separators=(",", ":")))
+        _body = "%d:%s" % (len(_pkt), _pkt)
+        _req = urllib.request.Request(
+            _base + "/socket.io/?EIO=3&transport=polling&sid=" + _s2,
+            data=_body.encode(), method="POST")
+        _req.add_header("Content-Type", "text/plain; charset=UTF-8")
+        with urllib.request.urlopen(_req, timeout=10) as r:
+            r.read()
+        with urllib.request.urlopen(
+                _base + "/socket.io/?EIO=3&transport=polling&sid=" + _s2,
+                timeout=15) as r:
+            _pl = r.read().decode()
+        _acks = [p for p in _frames(_pl) if p.startswith("43")]
+        return _acks[0] if _acks else ""
+
+    def _data(ack_pkt):
+        # envelope 43<id>[{"ret":0,"data":"<JSON string>"}] → dict data
+        # (parse 2x: envelope JSON, lalu string data JSON di dalamnya)
+        _m = re.match(r'^43\d+\[(.+)\]$', ack_pkt, re.S)
+        if not _m:
+            return None
+        try:
+            _env = json.loads(_m.group(1))
+        except ValueError:
+            return None
+        if not isinstance(_env, dict) or _env.get("ret") != 0 or "compress" in _env:
+            return None
+        try:
+            return json.loads(_env.get("data") or "{}")
+        except ValueError:
+            return None
+
+    # 0. seed BOOT — 5 file event PERSIS; TANPA data/ & logs/; tanpa nama lama
+    #    yang DITOLAK owner (config.json/serverlist.json/announce.json)
+    _names = sorted(os.listdir(LS)) if os.path.isdir(LS) else []
+    check("v67-seed-5file", _names == ["GetServerList.json", "LoginAnnounce.json",
+          "SaveHistory.json", "SaveLanguage.json", "loginGame.json"], str(_names))
+    check("v67-tanpa-logs-dir", not os.path.isdir(LS + "/logs")
+          and not os.path.isdir(LS + "/data"), str(_names))
+    check("v67-tanpa-nama-lama", all(not os.path.exists(LS + "/" + _n) for _n in
+          ("config.json", "serverlist.json", "announce.json", "errors.json")), "")
+
+    # 1. loginGame sukses (seed) → ECHO userId+channelCode (atlas §4.2 — dua
+    #    kunci itu SATU-SATUNYA yang dibaca client; errorCode tidak dikirim)
+    _d = _data(_sockio({"type": "User", "action": "loginGame", "userId": "tester01",
+                        "password": "game_origin", "fromChannel": "game_origin",
+                        "channelName": "", "headImageUrl": "", "nickName": "",
+                        "subChannel": "", "version": "1.0"}, 0))
+    check("v67-logingame-echo", _d == {"userId": "tester01", "channelCode": "game_origin"},
+          json.dumps(_d) if _d else "no ack")
+
+    # 2. loginGame tolak103 (K2 dibalik OWNER via edit file) → identitas kosong
+    open(LS + "/loginGame.json", "w").write('{\n  "jawab": "tolak103"\n}\n')
+    _d = _data(_sockio({"type": "User", "action": "loginGame", "userId": "tester01",
+                        "fromChannel": "game_origin"}, 1))
+    check("v67-logingame-tolak103", _d == {"userId": "", "channelCode": ""},
+          json.dumps(_d) if _d else "no ack")
+    os.remove(LS + "/loginGame.json")   # hapus file = seed default kembali
+
+    # 3. SaveLanguage — whitelist seed ["en","fr","kr"] (K5): "in" → 111,
+    #    "en" → 0 (parser MEMBACA errorCode — atlas §4.5)
+    _d = _data(_sockio({"type": "User", "action": "SaveLanguage",
+                        "userid": "1700000000001", "sdk": "quick",
+                        "appid": "", "language": "in"}, 2))
+    check("v67-savelanguage-111", _d and _d.get("errorCode") == 111,
+          json.dumps(_d) if _d else "no ack")
+    _d = _data(_sockio({"type": "User", "action": "SaveLanguage",
+                        "userid": "1700000000001", "sdk": "quick",
+                        "appid": "", "language": "en"}, 3))
+    check("v67-savelanguage-0", _d and _d.get("errorCode") == 0,
+          json.dumps(_d) if _d else "no ack")
+
+    # 4. SaveUserEnterInfo — SELALU dijawab {} TANPA file (konstanta kode,
+    #    atlas §4.6/§11 baris 11) — frame EXACT + file tidak pernah dibuat
+    _ack = _sockio({"type": "User", "action": "SaveUserEnterInfo",
+                    "accountToken": "1700000000001", "channelCode": "quick",
+                    "subChannel": "", "createTime": 1795625000,
+                    "userLevel": 1, "version": "1.0"}, 4)
+    check("v67-saveuserenterinfo-frame", _ack.endswith('[{"ret":0,"data":"{}"}]')
+          and _ack.startswith("434["), repr(_ack[:80]))
+    check("v67-saveuserenterinfo-tanpa-file",
+          not os.path.exists(LS + "/SaveUserEnterInfo.json"), "")
+
+    # 5. SaveHistory (seed) → {"todayLoginCount":1} TANPA loginToken ("" = tak
+    #    dikirim — pintu injeksi §11.7 tetap tertutup); errorCode tidak dikirim
+    _d = _data(_sockio({"type": "User", "action": "SaveHistory",
+                        "accountToken": "1700000000001", "channelCode": "quick",
+                        "serverId": "1", "securityCode": "", "subChannel": "",
+                        "version": "1.0"}, 5))
+    check("v67-savehistory-ack", _d == {"todayLoginCount": 1},
+          json.dumps(_d) if _d else "no ack")
+
+    # 6. loginToken ISI → pintu injeksi TERBUKA (owner edit file — K6)
+    open(LS + "/SaveHistory.json", "w").write(
+        '{\n  "todayLoginCount": 1,\n  "loginToken": "TOKEN-COBA-V67"\n}\n')
+    _d = _data(_sockio({"type": "User", "action": "SaveHistory",
+                        "accountToken": "1700000000001", "channelCode": "quick",
+                        "serverId": "1"}, 6))
+    check("v67-savehistory-logintoken",
+          _d and _d.get("todayLoginCount") == 1
+          and _d.get("loginToken") == "TOKEN-COBA-V67",
+          json.dumps(_d) if _d else "no ack")
+    open(LS + "/SaveHistory.json", "w").write(
+        '{\n  "todayLoginCount": 1,\n  "loginToken": ""\n}\n')  # restore seed
+
+    # 7. LoginAnnounce seed {} → DIAM (NO ACK — atlas §11 baris 9; poll 10 dtk
+    #    tanpa data; visual = diam, kontrak getNotice §4.4)
+    _ack = _sockio({"type": "User", "action": "LoginAnnounce"}, 0)
+    check("v67-announce-diam", _ack == "", repr(_ack[:80]))
+
+    # 8. action di luar atlas → NO ACK (6 event TOTAL — atlas §11 baris 13)
+    _ack = _sockio({"type": "User", "action": "FooBar", "userId": "x"}, 0)
+    check("v67-unknown-action-noack", _ack == "", repr(_ack[:80]))
+
+    # 9. file event DIKOSONGKAN {} oleh owner → event DIAM; lalu file DIHAPUS
+    #    → seed default kembali (aturan folder Bagian 66)
+    open(LS + "/GetServerList.json", "w").write("{}")
+    _ack = _sockio({"type": "User", "action": "GetServerList",
+                    "userId": "1700000000001", "channel": "quick"}, 7)
+    check("v67-getserverlist-kosong-diam", _ack == "", repr(_ack[:80]))
+    os.remove(LS + "/GetServerList.json")
+    _d = _data(_sockio({"type": "User", "action": "GetServerList",
+                        "userId": "1700000000001", "channel": "quick"}, 8))
+    check("v67-hapus-file-reseed", bool(_d) and _d.get("serverList")
+          and _d["serverList"][0].get("name") == "DragonBall Local"
+          and _d.get("history") == []
+          and os.path.exists(LS + "/GetServerList.json"),
+          json.dumps(_d)[:160] if _d else "no ack")
+    # loginGame.json (dihapus di kasus 2) di-reseed lazy oleh event berikutnya
+    _d = _data(_sockio({"type": "User", "action": "loginGame", "userId": "tester01",
+                        "fromChannel": "game_origin"}, 12))
+    check("v67-hapus-logingame-reseed", bool(_d)
+          and _d.get("userId") == "tester01"
+          and os.path.exists(LS + "/loginGame.json"),
+          json.dumps(_d) if _d else "no ack")
+
+    # 10. file RUSAK → reseed + WARN (aturan folder 4); SaveLanguage kembali
+    #     seed → "en" diterima (errorCode 0)
+    open(LS + "/SaveLanguage.json", "w").write("SAMPAH{{{ bukan json")
+    _d = _data(_sockio({"type": "User", "action": "SaveLanguage",
+                        "userid": "1700000000001", "sdk": "quick",
+                        "appid": "", "language": "en"}, 9))
+    check("v67-corrupted-reseed", _d and _d.get("errorCode") == 0
+          and '"whitelist"' in open(LS + "/SaveLanguage.json").read(),
+          json.dumps(_d) if _d else "no ack")
+
+    # 11. historyMode persist (K3): SaveHistory → tulis history.sqlite;
+    #     GetServerList → history dari DB. Desktop JVM tanpa android sqlite =
+    #     no-op + WARN sekali (device = sqlite bawaan, kriteria §3.6 no. 5)
+    _gs = json.load(open(LS + "/GetServerList.json"))
+    _gs["historyMode"] = "persist"
+    json.dump(_gs, open(LS + "/GetServerList.json", "w"), indent=2)
+    _d = _data(_sockio({"type": "User", "action": "SaveHistory",
+                        "accountToken": "777000", "channelCode": "quick",
+                        "serverId": "1"}, 10))
+    check("v67-persist-savehistory", _d == {"todayLoginCount": 1},
+          json.dumps(_d) if _d else "no ack")
+    _d = _data(_sockio({"type": "User", "action": "GetServerList",
+                        "userId": "777000", "channel": "quick"}, 11))
+    check("v67-persist-getserverlist-desktop", bool(_d) and _d.get("history") == [],
+          json.dumps(_d)[:160] if _d else "no ack")
+    os.remove(LS + "/GetServerList.json")   # balik seed (auto)
+
+    # 12. listener GAME 5051 = TRANSPORT ONLY (file login ADA pun tetap NO ACK)
+    _ack = _sockio({"type": "user", "action": "enterGame", "userId": "1700000000001",
+                    "serverId": 1, "version": "1.0"}, 0, port=5051)
+    check("v67-game-5051-transport-only", _ack == "", repr(_ack[:80]))
+
+    # 13. LOG GLOBAL 1 — semua jejak login di logs/ GLOBAL, NOL file log baru
+    #     di login-server/; penanda di entri logger
+    st, hd, bd = get400("/logs?limit=4000")
+    lg = json.loads(bd)
+    _extras = [e.get("extra") or "" for e in lg["entries"]]
+    check("v67-log-ack-userenterinfo", any(
+        "ACK 434 — SaveUserEnterInfo" in x and "konstanta" in x for x in _extras), "")
+    check("v67-log-diam-kosong", any(
+        "kosong {} = DIAM" in x for x in _extras), "")
+    check("v67-log-corrupted-warn", any(
+        "LOGIN-SERVER corrupted: SaveLanguage.json" in (e.get("path") or "")
+        for e in lg["entries"]), "")
+    check("v67-log-history-warn-desktop", any(
+        "LOGIN-HISTORY tidak tersedia" in (e.get("path") or "")
+        for e in lg["entries"]), "")
+    check("v67-log-seed-boot", any(
+        "LOGIN-SERVER seed: GetServerList.json" in (e.get("path") or "")
+        and e.get("kind") == "SYS" for e in lg["entries"]), "")
+    check("v67-tanpa-log-baru-di-loginserver", not os.path.isdir(LS + "/logs"),
+          "logs/ di login-server tidak pernah dibuat (log global 1)")
 
     # ============ Bagian 50 — console RAW SERVER LOG (guard RAW) ==========
     # Arahan owner (kata-kata persis):

@@ -52,10 +52,11 @@ public final class ServerCore {
         final StaticHandler cdnHandler = new StaticHandler(docroot, assets, readyEarly, LoggerCore.PORT_CDN);
         final SdkHandler sdk = new SdkHandler();
         final SocketIoHandler login = new SocketIoHandler(false);
-        // v18: 5050/9528 socket.io = TRANSPORT ONLY (engine.io handshake/probe/
-        // poll/WS) — NOL ACK event bisnis. GetServerList dll = loginServer scope,
-        // belum dikerjakan (owner: "login server belum boleh di kerjakan!!").
-        // 5051 tetap hidup sebagai transport fallback; event terekam verbatim.
+        // v20 (Bagian 67, oke owner "implementasi dengan ini"): 5050/9528
+        // socket.io = ACK-GATE LOGIN-SERVER — event dijawab per file
+        // <action>.json (LoginAck; file kosong {} = NO ACK; SaveUserEnterInfo
+        // selalu dijawab tanpa file). Log = GLOBAL 1 (logs/ NDJSON).
+        // 5051 tetap TRANSPORT ONLY (fase gameServer berikutnya).
         final SocketIoHandler game = new SocketIoHandler(true);
 
         int loggerPort = LoggerCore.PORT_LOGGER;

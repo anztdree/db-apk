@@ -18,6 +18,17 @@
 > Arahan owner tetap berlaku: "login server belum boleh di kerjakan!!" → dokumen ini
 > RENCANA; nol implementasi sampai owner oke.
 >
+> **Bagian 67 (26 Nov 2026) — OWNER OKE + IMPLEMENTASI SELESAI (smoke desktop)**:
+> owner setuju struktur Bagian 66 + DUA PERUBAHAN: (a) "tanpa log !!" —
+> login-server/logs/ DIHAPUS dari struktur (L4 dinyatakan batal); (b) "log
+> global jdi 1" — semua jejak login masuk NDJSON GLOBAL <serverRoot>/logs/
+> yang sudah ada (DiskWriter), nol file log baru. Implementasi =
+> LoginServerConfig.java (seed 5 file) + LoginAck.java (ack-gate §4.3) +
+> LoginHistoryDb.java (persist) + gate 2 pintu di SocketIoHandler + seed boot
+> LocalServerStarter. Smoke desktop 204 PASS / 0 FAIL
+> (verify-artifacts/login_ack_smoke_20261126.txt). DEX/classes2.dex v20 +
+> rebuild APK = langkah berikutnya setelah oke owner.
+>
 > **Bagian 59 (26 Nov 2026)**: §3 DIGANTI TOTAL — struktur folder final + cara
 > kerja login-server di Android/data berseleban dengan SDK (peta device dari kode,
 > aturan self-seed, titik ACK gate, handoff identitas, keputusan L1–L3 §5.1).
@@ -350,26 +361,27 @@ tak dijawab — batas berbeda, keduanya normal.)
 - Perilaku TIDAK PERNAH berubah karena kode — hanya karena isi yang owner tulis.
 - Dasar tiap baris = ATLAS Bedah Total (offset verbatim, Bagian 64).
 
-**TREE (device):**
+**TREE (device) — SEBAGAIMANA DISETUJUI OWNER (oke implementasi 26 Nov):
+TANPA logs/ di dalam login-server — log global 1 (Bagian 67):**
 
 ```
 Android/data/com.db.local/server/
-├── bs/  sdk/  logs/  ← SUDAH ADA (v13–v19) — login TAK menyentuh
+├── bs/  sdk/  logs/  ← SUDAH ADA (v13–v19) — logs/ = NDJSON GLOBAL SATU-SATUNYA
 │                         (bs/ ditimpa ekstraksi; sdk/data/db.sqlite = akun
-│                          MILIK SDK — L1)
+│                          MILIK SDK — L1; jejak login masuk logs/ GLOBAL ini)
 └── login-server/              ← self-seed BOOT; dibaca ulang tiap event
     ├── GetServerList.json     ← event 1 (atlas §4.1, offset 793433)
     ├── loginGame.json         ← event 2 (atlas §4.2, offset 792556)
     ├── SaveHistory.json       ← event 3 (atlas §4.3, offset 1453497)
     ├── LoginAnnounce.json     ← event 4 (atlas §4.4, offset 1458983)
     ├── SaveLanguage.json      ← event 5 (atlas §4.5, offset 790564)
-    ├── data/
-    │   └── history.sqlite     ← state history per-akun — HANYA bila
-    │                             historyMode:"persist" (atlas §6/§12.7)
-    └── logs/                  ← NDJSON per event yang DIJAWAB
-    (event 6 SaveUserEnterInfo — TANPA FILE: konstanta kode `{}`; atlas §4.6/
-     §11 baris 11: isi TIDAK dibaca client; SELALU dijawab supaya socket
-     login di-destroy rapi — destroy itu SATU-SATUNYA, atlas §4.6)
+    └── data/
+        └── history.sqlite     ← state history per-akun — HANYA bila
+                                  historyMode:"persist" (atlas §6/§12.7);
+                                  dibuat LAZY — mode auto = tak pernah ada
+(event 6 SaveUserEnterInfo — TANPA FILE: konstanta kode `{}`; atlas §4.6/
+ §11 baris 11: isi TIDAK dibaca client; SELALU dijawab supaya socket
+ login di-destroy rapi — destroy itu SATU-SATUNYA, atlas §4.6)
 ```
 
 **TABEL EVENT → FILE — 1:1 dengan tabel atlas yang owner tempel (efek DIAM
@@ -415,11 +427,17 @@ SaveLanguage.json) · file utk bridge native `window.serverList`/
 `window.replaceServerName` (atlas §8+§11 baris 12: layer NATIVE — "di luar scope
 folder login") · file utk localStorage `last_game_server` (atlas §9: cache CLIENT).
 
-**STATUS (Bagian 66):** struktur = TABEL EVENT ATLAS dibuat file — 5 file
+**STATUS (Bagian 67 — IMPLEMENTASI SELESAI, smoke desktop 204 PASS / 0 FAIL):**
+struktur = TABEL EVENT ATLAS dibuat file — 5 file
 (GetServerList/loginGame/SaveHistory/LoginAnnounce/SaveLanguage.json) +
-data/history.sqlite (persist saja) + logs/; SaveUserEnterInfo = konstanta
-kode (tanpa file). Menunggu oke owner (K1–K7 §5) → `LoginServerConfig.java`
-seed 5 file → ack-gate §4.3 → smoke §3.6. Nol kode sampai owner oke.
+data/history.sqlite (persist saja, dibuat lazy) — TANPA logs/ di dalamnya
+(oke owner: "tanpa log !! log global jdi 1" — jejak login masuk NDJSON
+GLOBAL logs/); SaveUserEnterInfo = konstanta kode (tanpa file).
+Implementasi: LoginServerConfig.java (seed + parser) · LoginAck.java
+(ack-gate 2 pintu) · LoginHistoryDb.java (persist) · SocketIoHandler
+gate · LocalServerStarter seed boot. Bukti: verify-artifacts/
+login_ack_smoke_20261126.txt (28 cek v67). DEX v20 + rebuild APK =
+langkah berikutnya setelah oke owner.
 
 ### 3.1.1 PRINSIP KEPUTUSAN — 3 KOLOM, DILARANG "KARENA ASLI BEGITU" (Bagian 62)
 
@@ -544,9 +562,11 @@ historyMode:auto + offlineReason:"" + language:""), loginGame.json
 ({"jawab":"sukses"}), SaveHistory.json ({"todayLoginCount":1,
 "loginToken":""}), LoginAnnounce.json `{}` (diam — kosong = pemain tidak
 melihat apa pun, diisi = pengumuman tampil), SaveLanguage.json
-({"whitelist":["en","fr","kr"]}). Folder `data/` dibuat HANYA saat historyMode
-persist; `logs/` baru berisi NDJSON untuk event yang DIJAWAB — kosong = bukan
-sampah. Nol file dokumentasi pernah dibuat, di boot maupun di event. Nama
+({"whitelist":["en","fr","kr"]}). Folder `data/` dibuat LAZY oleh
+LoginHistoryDb HANYA saat historyMode persist; **TANPA logs/ di dalam
+login-server (Bagian 67 — oke owner: log global jadi 1; jejak login masuk
+NDJSON GLOBAL `<serverRoot>/logs/` yang sudah ada — nol file log baru pernah
+dibuat, di boot maupun di event)**. Nol file dokumentasi pernah dibuat. Nama
 kelas Java: **LoginServerConfig.java** (konsistensi dgn nama folder).
 
 ATURAN BARU Bagian 66: file event DIKOSONGKAN (`{}` / 0 byte) oleh owner =
@@ -602,9 +622,13 @@ event — edit tanpa restart):
 | `SaveUserEnterInfo` | KODE — TANPA file | data `{}` SELALU — isi ACK TIDAK dibaca client (atlas §11 baris 11); callback → destroy login socket [6] |
 | `loginGame` | **loginGame.json** (`jawab`: sukses / tolak103) + AccountStore read-only | data `{"userId":"<uid>","channelCode":"<channel>"}` — dua kunci ini SATU-SATUNYA yang dibaca client (atlas §4.2); sisanya tidak dibaca → tidak dikirim [1] |
 
-`login-server/logs/` menerima NDJSON untuk SETIAP event yang DIJAWAB (URL
-penuh, gaya v17); event yang DIAM (file kosong) = baris "EVENT (no ack)"
-verbatim — nol ACK = nol baris NDJSON.
+`login-server/` TIDAK punya folder log sendiri (Bagian 67 — oke owner "log
+global jdi 1"): SETIAP event yang DIJAWAB / DIAM tercatat di entri
+HTTP/WS listener login yang sama (extra membawa frame ACK penuh / penanda
+no-ack — URL penuh, NOL pangkas, disiplin v17) → NDJSON GLOBAL
+`<serverRoot>/logs/`. ACK SaveUserEnterInfo, WARN reseed, WARN persist
+— semuanya baris SYS/HTTP di arsip global itu. nol ACK = nol baris khusus
+(selain entri request verbatim).
 
 ### 3.5 Titik "berselebahan" SDK ↔ loginServer (rawan salah — dipetakan eksplisit)
 
@@ -623,18 +647,22 @@ verbatim — nol ACK = nol baris NDJSON.
 ### 3.6 Kriteria terima folder (smoke kelak, saat implementasi)
 
 1. Fresh install → skeleton sejak boot: 5 file event (GetServerList /
-   loginGame / SaveHistory / LoginAnnounce / SaveLanguage .json) — data/ dan
-   logs/ belum berisi (kondisional); seed = login AKTIF dgn isi default
+   loginGame / SaveHistory / LoginAnnounce / SaveLanguage .json) — data/
+   belum ada (lazy, persist saja) dan TIDAK ADA logs/ di login-server
+   (log global 1 — Bagian 67); seed = login AKTIF dgn isi default
    (server lokal 1 entri). AUDIT: nol file dokumentasi/pengelompokan lama
    pernah dibuat (tidak ada README.txt, notes.md, captures/, history.json,
    profile.json, errors.json, config.json, serverlist.json, announce.json).
+   [SMOKE: v67-seed-5file, v67-tanpa-logs-dir, v67-tanpa-nama-lama PASS]
 2. Edit owner (isi file event mana pun) → berlaku tanpa restart.
 3. Reboot → editan BERTAHAN (bs/ ditimpa ekstraksi; login-server/ TIDAK).
 4. JSON mana pun diubah jadi teks sampah → boot berikut reseed + WARN; SDK aman.
 5. historyMode persist → `login-server/data/history.sqlite` dibuat; mode auto →
    file tak pernah dibuat.
-6. File event dikosongkan `{}` → event itu NO ACK (log "EVENT (no ack)");
-   file berisi → NDJSON jawaban tercatat di `login-server/logs/`.
+6. File event dikosongkan `{}` → event itu NO ACK (entri log "…kosong {} =
+   DIAM"); file berisi → frame ACK penuh tercatat di logs/ GLOBAL.
+   [SMOKE: v67-announce-diam, v67-getserverlist-kosong-diam,
+   v67-log-diam-kosong PASS; ACK: v67-sockio-ack-serverlist PASS]
 7. LoginAnnounce.json diisi 1 entri `alwaysPopup:true` → popup pengumuman
    tampil setelah login; tombol pengumuman terlihat; teks bahasa yang dipilih
    client yang ada di file yang tampil (termasuk `in`).
@@ -647,7 +675,7 @@ verbatim — nol ACK = nol baris NDJSON.
 
 ## 4. DESAIN CONFIG LOGIN v3 (menggantikan skema v4.2 yang ngawur)
 
-### 4.1 File & lokasi — Bagian 66: `server/login-server/` = **5 file event** bernama action string PERSIS yang client kirim (atlas §4): `GetServerList.json` + `loginGame.json` + `SaveHistory.json` + `LoginAnnounce.json` (pengumuman — pilihan isi/diam milik owner, format kontrak getNotice §4.2b) + `SaveLanguage.json`; SEMUA dibaca ulang tiap event; file kosong `{}` = event DIAM (NO ACK). Plus `data/history.sqlite` (persist saja) + `logs/`. SaveUserEnterInfo = TANPA file (konstanta kode — atlas §4.6/§11 baris 11). Pesan error / bentuk envelope = kontrak parser → konstanta kode.
+### 4.1 File & lokasi — Bagian 66+67: `server/login-server/` = **5 file event** bernama action string PERSIS yang client kirim (atlas §4): `GetServerList.json` + `loginGame.json` + `SaveHistory.json` + `LoginAnnounce.json` (pengumuman — pilihan isi/diam milik owner, format kontrak getNotice §4.2b) + `SaveLanguage.json`; SEMUA dibaca ulang tiap event; file kosong `{}` = event DIAM (NO ACK). Plus `data/history.sqlite` (persist saja — dibuat lazy). **TANPA logs/ di dalam login-server (Bagian 67, oke owner "log global jdi 1") — jejak login masuk NDJSON GLOBAL `logs/`.** SaveUserEnterInfo = TANPA file (konstanta kode — atlas §4.6/§11 baris 11). Pesan error / bentuk envelope = kontrak parser → konstanta kode.
 
 ### 4.2 Skema per file (default seed — 1 file = 1 event, kunci = yang dibaca parser)
 
@@ -778,11 +806,19 @@ Server game asli pakai `https://sXXXX-bs.popoh5.com:8041` — pada device asli o
 halaman adalah HTTPS CDN sehingga bisa; device lokal origin halaman = 127.0.0.1:9528
 (XHR runtime hanya terbukti capai origin — pelajaran v3 stuck). JANGAN diganti.
 
-### 4.6 Implementasi kelak (urutan, saat owner oke)
-1. `LoginServerConfig.java` (pola SdkConfig) + seed 5 file event.
-2. Ack-gate `SocketIoHandler` per tabel §4.3 (file `<action>.json`; kosong = NO ACK) + history persist (SQLite, bila dipilih).
-3. Smoke baru: string ACK persis §4.3 (bukan lagi bentuk v17); semua file kosong = v19.
+### 4.6 Implementasi (Bagian 67 — SELESAI, oke owner "implementasi dengan ini")
+1. ✅ `LoginServerConfig.java` (pola SdkConfig) + seed 5 file event — SELESAI.
+2. ✅ Ack-gate `SocketIoHandler` per tabel §4.3 (file `<action>.json`; kosong =
+   NO ACK; SaveUserEnterInfo selalu dijawab) — SELESAI (LoginAck.java,
+   2 pintu: POST-polling + WS) + history persist (LoginHistoryDb.java,
+   sqlite bawaan Android, lazy, desktop no-op + WARN).
+3. ✅ Smoke desktop: string ACK persis §4.3 + semua file kosong = v19 — SELESAI
+   (204 PASS / 0 FAIL — verify-artifacts/login_ack_smoke_20261126.txt;
+   26 cek v67 termasuk echo loginGame, tolak103, 111/0, userenterinfo-exact,
+   DIAM kosong, hapus→reseed, rusak→reseed, persist-desktop, 5051-only).
 4. Dashboard tak berubah (disiplin v17: URL penuh, nol pangkas).
+5. ⏳ BERIKUTNYA (menunggu oke owner): dex classes2.dex v20 (javac→D8) +
+   rebuild RAW-COPY APK + smoke device §3.6 (kriteria 1–9, offline penuh).
 
 ### 4.7 Kriteria terima (pesawat, offline penuh) — diperbarui
 1. SEMUA file event kosong `{}` → v19 persis (nol dialog network; berhenti sebelum serverlist — atlas §11 baris 9).
@@ -824,10 +860,10 @@ KEPUTUSAN OWNER — sudah FIX, tidak ditanya lagi:
 |---|---|---|
 | L1 | DB history: file TERPISAH `login-server/data/history.sqlite` atau gabung `sdk/data/db.sqlite`? | **Terpisah** — scope SDK (tabel accounts) tidak tersentuh eksperimen login; Db.open masih hardcoded sdk/data (Bagian 30), memisah = nol risiko migrasi; DbSqlite dipakai ulang dgn dataDir berbeda |
 | L2 | Waktu seed `login-server/`: BOOT atau lazy (event pertama)? | **Boot** — satu panggilan `LoginServerConfig.ensure()` tepat setelah `Db.open`; 5 file event (GetServerList/loginGame/SaveHistory/LoginAnnounce/SaveLanguage .json) terlihat sejak detik pertama; event pertama dijamin punya file jawabannya |
-| L3 | Isi folder | **Bagian 66 — DITURUNKAN DARI TABEL EVENT ATLAS** (koreksi kedua owner): 5 file event bernama action string verbatim (1 event = 1 file jawaban) + data/history.sqlite (persist saja) + logs/ (event yang dijawab saja); config.json/serverlist.json/announce.json DIHAPUS sebagai nama; SaveUserEnterInfo = tanpa file (konstanta kode) — SEMUA lolos prinsip 3 kolom §3.2 + tiap baris menunjuk atlas Bedah Total |
-| L4 | `logs/` per-scope login-server (pisah dari logs/ global), menulis untuk event yang DIJAWAB? | **Ya** — debug login tidak tercampur trafik SDK/CDN; event yang DIAM = baris no-ack verbatim; nol ACK = nol NDJSON |
+| L3 | Isi folder | **Bagian 66+67 FINAL (IMPLEMENTASI)** — 5 file event bernama action string verbatim (1 event = 1 file jawaban) + data/history.sqlite (persist saja, lazy) — TANPA logs/ (dibatalkan owner, lihat L4); config.json/serverlist.json/announce.json DIHAPUS sebagai nama; SaveUserEnterInfo = tanpa file (konstanta kode) — SEMUA lolos prinsip 3 kolom §3.2 + tiap baris menunjuk atlas Bedah Total |
+| L4 | Log login-server | **DIBATALKAN OWNER (Bagian 67)** — arahan owner kata-kata persis: "tanpa log !! log global jdi 1" → login-server/logs/ TIDAK ADA; SEMUA jejak login (ACK penuh / no-ack / WARN reseed / WARN persist) masuk NDJSON GLOBAL `<serverRoot>/logs/` yang sudah ada (DiskWriter sejak v3) — nol file log baru pernah dibuat. Disiplin v17 tetap: URL penuh, frame penuh, nol pangkas |
 | L5 | File dokumentasi di device (README.txt/notes.md/captures/)? | **TIDAK, PERMANEN** — server asli tak punya padanannya; v16 sudah menghukum index.txt ("berasa jadi sampah", SdkConfig.java:28); dokumentasi = REPO saja (docs/, readme.md, verify-artifacts/) |
-| OPEN | K1–K7 (implementasi ACK, loginGame, historyMode, LoginAnnounce, bahasa, loginToken, saklar-enabled) | Menunggu keputusan owner — struktur kini = tabel event atlas dibuat file (Bagian 66), tinggal persetujuan K1 |
+| OPEN | K1–K7 (implementasi ACK, loginGame, historyMode, LoginAnnounce, bahasa, loginToken, saklar-enabled) | **DITUTUP Bagian 67 — owner oke "implementasi dengan ini"** (semua K terlaksana di kode + seed; K2–K6 kini file event yang bisa owner balikkan via edit). Sisa: dex v20 + rebuild APK + smoke device §3.6 |
 
 ## 6. YANG TETAP OPEN + TAHAP BERIKUTNYA (jujur, tak dikarangan)
 

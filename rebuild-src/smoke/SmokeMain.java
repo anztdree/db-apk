@@ -18,6 +18,9 @@ public class SmokeMain {
         ExitInfo.logPrevious(null);
         new File(root, "sdk").mkdirs();
         Db.open(root);   // Bagian 30 — migrasi lokasi lama di boot (persis APK)
+        // Bagian 67 — mirror APK boot: self-seed login-server 5 file event
+        // (L2 — tepat setelah Db.open, persis LocalServerStarter)
+        com.db.local.server.LoginServerConfig.ensure();
         ServerCore.start(new File(doc), null, new CountDownLatch(0));
         // v17 — uji CrashHook: arg ke-3 "synthcrash" = buat laporan crash
         // sintetis 1,5 detik setelah start (hanya smoke desktop, bukan APK).

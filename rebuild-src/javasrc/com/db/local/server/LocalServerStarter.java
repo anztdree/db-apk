@@ -82,6 +82,21 @@ public final class LocalServerStarter {
                 logBoot("BOOT", "DB open failed: " + t);
             }
 
+            // Bagian 67 — login-server SELF-SEED 5 file event (oke owner:
+            // "implementasi dengan ini") — L2: tepat setelah Db.open supaya
+            // tree lengkap terlihat sejak detik pertama dan event pertama
+            // dijamin punya file jawabannya. File ada (termasuk kosong {} =
+            // DIAM) dihormati — seed TIDAK menimpa. Tanpa logs/ di dalamnya
+            // (oke owner: log global jadi 1 — NDJSON <serverRoot>/logs/ yang
+            // sudah ada).
+            try {
+                LoginServerConfig.ensure();
+                logBoot("BOOT", "LOGIN-SERVER seed ready (5 file event): "
+                        + LoginServerConfig.dir());
+            } catch (Throwable t) {
+                logBoot("BOOT", "LOGIN-SERVER seed failed: " + t);
+            }
+
             final CountDownLatch readyEarly = new CountDownLatch(1);
             final Thread extractor = new Thread(() -> {
                 try {

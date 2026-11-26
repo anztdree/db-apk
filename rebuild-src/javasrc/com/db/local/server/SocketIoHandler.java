@@ -49,6 +49,14 @@ import java.util.concurrent.locks.ReentrantLock;
  *   - /loginchecknative (GET): body raw = thirdParams JS;
  *     divalidasi getInt("code")==0 → WebView lanjut.
  *
+ * v20 (Bagian 67) — ACK-GATE LOGIN-SERVER AKTIF di listener login (oke owner
+ *   "implementasi dengan ini — tanpa log !! log global jdi 1"): event
+ *   handler.process dijawab per file <action>.json (1 event atlas = 1 file,
+ *   LoginAck + LoginServerConfig); file kosong {} = NO ACK; SaveUserEnterInfo
+ *   selalu dijawab tanpa file (konstanta). Listener GAME (5051, gameMode=true)
+ *   tetap TRANSPORT ONLY sampai fase gameServer. Log tetap GLOBAL 1 (NDJSON
+ *   logs/ — TIDAK ada logs/ di login-server/).
+ *
  * v17 — LOG URL PENUH, NOL PANGKAS (arahan owner: "kalau log nampilin url
  *   socket misal http://127.0.0.1:<port>/socket.io/?EIO=3&transport=polling&t=…
  *   yaaa jangan anda pangkas" + "masih ada yg di sembunyikan"):
@@ -341,13 +349,23 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 else if ("5".equals(pkt)) { /* upgrade ack — tidak perlu balasan */ }
                 else if ("40".equals(pkt)) { /* connect namespace — open sudah mengirim 40 */ }
                 else if (pkt.startsWith("42")) {
-                    // v18: TRANSPORT ONLY — event handler.process TIDAK dijawab.
-                    // loginServer = scope terpisah, belum dikerjakan (owner:
-                    // "login server belum boleh di kerjakan!!"). Packet dicatat
-                    // VERBATIM PENUH — nol ACK, nol pangkas, nol disembunyikan.
-                    if (e.extra == null) e.extra = "EVENT (no ack): " + pkt
-                            + " | loginServer scope — not implemented (plan only,"
-                            + " docs/LOGIN-SERVER-PLAN.md)";
+                    // Bagian 67 — ACK-GATE login-server (oke owner "implementasi
+                    // dengan ini"): listener login (gameMode=false) menjawab
+                    // event per file <action>.json (1 event atlas = 1 file,
+                    // struktur Bagian 66; file kosong {} = DIAM — atlas §11
+                    // baris 9; SaveUserEnterInfo selalu dijawab tanpa file).
+                    // Listener game (gameMode=true) TETAP TRANSPORT ONLY.
+                    // Log = GLOBAL (NDJSON logs/ — oke owner "log global jdi 1"):
+                    // ACK penuh / no-ack dicatat di extra entri ini (v17: nol
+                    // pangkas).
+                    if (gameMode) {
+                        if (e.extra == null) e.extra = "EVENT (no ack): " + pkt
+                                + " | gameServer transport-only (fase gameServer"
+                                + " — docs/LOGIN-SERVER-PLAN.md §6)";
+                    } else {
+                        String ack = LoginAck.build(pkt, e);
+                        if (ack != null) s.deliver(ack);
+                    }
                 } else if (pkt.startsWith("2")) {
                     s.offer("3");
                 }
@@ -548,12 +566,21 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     if ("2probe".equals(text)) { wsSendText(out, "3probe"); le.respPreview = "3probe"; le.respLen = 6; le.status = 200; }
                     else if ("2".equals(text)) { wsSendText(out, "3"); le.respPreview = "3"; le.respLen = 1; le.status = 200; }
                     else if (text.startsWith("42")) {
-                        // v18: TRANSPORT ONLY — event handler.process TIDAK dijawab
-                        // (loginServer scope — plan only). Packet verbatim di
-                        // reqPreview; penanda no-ack di extra; NOL balasan WS.
+                        // Bagian 67 — ACK-GATE login-server (pintu WS yang sama
+                        // dgn POST-polling): file <action>.json per event;
+                        // gameMode tetap TRANSPORT ONLY.
                         le.status = 200;
-                        le.extra = "EVENT (no ack) — loginServer scope — not"
-                                + " implemented (plan only, docs/LOGIN-SERVER-PLAN.md)";
+                        if (gameMode) {
+                            le.extra = "EVENT (no ack) — gameServer transport-only"
+                                    + " (fase gameServer — docs/LOGIN-SERVER-PLAN.md §6)";
+                        } else {
+                            String ack = LoginAck.build(text, le);
+                            if (ack != null) {
+                                s.deliver(ack);
+                                le.respPreview = ack;
+                                le.respLen = ack.getBytes(StandardCharsets.UTF_8).length;
+                            }
+                        }
                     }
                     else if ("41".equals(text)) {
                         le.status = 200; le.extra = "client disconnect (41)";

@@ -5583,3 +5583,96 @@ NO ACK" dan "SaveUserEnterInfo selalu dijawab tanpa file").
   data/history.sqlite (persist saja) + logs/. docs §3.0/§3.2/§3.3/§3.4/§3.6/
   §4.1–§4.7 + §5 (K1–K7, L1–L5) sudah sinkron semua; bagian historis tak disentuh.
 - Menunggu oke owner. NOL baris kode di APK — PLAN ONLY.
+
+---
+
+## Bagian 67 — OWNER OKE "IMPLEMENTASI DENGAN INI": LOGIN-SERVER AKTIF (tanpa log — log global jadi 1) — SELESAI + SMOKE DESKTOP 204 PASS / 0 FAIL
+
+Jawaban owner (kata-kata persis): struktur tree 5 file + data/history.sqlite
+(persis Bagian 66) + **"implementasi dengan ini tanpa log !! log global jdi 1"**.
+Makna: (a) struktur Bagian 66 DISETUJUI — rencana berakhir, implementasi
+dimulai; (b) `logs/` DIHAPUS dari struktur — L4 (log terpisah login-server)
+DIBATALKAN; (c) SEMUA jejak login masuk NDJSON GLOBAL `<serverRoot>/logs/`
+yang sudah ada sejak v3 — log = GLOBAL 1, nol file log baru pernah dibuat.
+
+### 67.1 APA YANG DIIMPLEMENTASI (4 kelas + 3 titik sambung — pola lama dipakai ulang)
+
+| Berkas | Isi | Pola yang diikuti |
+|---|---|---|
+| `LoginServerConfig.java` (BARU) | dir `<serverRoot>/login-server/`; `ensure()` seed BOOT 5 file (hanya bila belum ada — file kosong `{}` dihormati, tidak pernah ditimpa); `eventRaw(action)` baca ulang TIAP event: kosong→"" (DIAM), rusak→reseed+WARN, hilang→seed; parser JSON mini (nested VERBATIM — spasi di `name` dihormati, berbeda dr scanFlat yang menghapus whitespace); whitelist file (anti path-traversal) | SdkConfig Bagian 29 (contract/readFile/writeFile atomik .tmp+fsync+rename) |
+| `LoginAck.java` (BARU) | ack-gate: parse `42<ackId>["handler.process",{payload}]` → jawab per §4.3 → frame `43<ackId>[{"ret":0,"data":"<JSON string>"}]` TANPA compress; TIDAK PERNAH throw (semua error = NO ACK + penanda log); SaveUserEnterInfo = konstanta `{}` TANPA file; event di luar atlas = NO ACK | atlas §2 envelope + aturan kunci-konsumen Bagian 65/66 |
+| `LoginHistoryDb.java` (BARU) | persist history per-akun → `login-server/data/history.sqlite` (tabel history: token PK/server_id/updated); HANYA dipanggil bila `historyMode:"persist"`; dibuat LAZY (mode auto = folder data/ tak pernah ada); desktop JVM = no-op + WARN sekali | DbSqlite Bagian 29 (android.database.sqlite, API 1+) |
+| `SocketIoHandler.java` (edit 2 titik) | gate POST-polling + gate WS frame: `gameMode=false` (5050/9528) → `LoginAck.build` + `Session.deliver` (infra v6 — WS langsung / antre polling); `gameMode=true` (5051) TETAP transport-only | infra Session.deliver yang sudah ada sejak v6 |
+| `LocalServerStarter.java` (edit 1 titik) | `LoginServerConfig.ensure()` tepat setelah `Db.open` (L2) — tree lengkap sejak detik pertama + log BOOT | urutan boot yang ada |
+| `ServerCore.java` (komentar) | komentar v18 "belum dikerjakan" → v20 status; nol perubahan perilaku | — |
+| `SmokeMain.java` (edit 1 titik) | mirror boot APK di smoke: `ensure()` setelah `Db.open` | — |
+
+### 67.2 WIRE PER EVENT SEBAGAIMANA TERBANGUN (semua dari tabel atlas — nol karangan)
+
+| Event | Sumber jawaban | ACK terbangun (smoke-verified) |
+|---|---|---|
+| GetServerList | GetServerList.json | data `{"serverList":[…12 field…],"history":[…],"offlineReason"?,"language"?}` — errorCode TIDAK dikirim (§4.1/§12.5); historyMode TIDAK dikirim; persist → history dari data/history.sqlite (token=userId, paling baru dulu — §11.4) |
+| loginGame | loginGame.json `{"jawab":…}` | sukses → echo `{"userId":"<req>","channelCode":"<req.channelCode||fromChannel>"}`; `tolak103` → `{"userId":"","channelCode":""}` (identitas kosong — parser tidak baca errorCode, §4.2) |
+| SaveHistory | SaveHistory.json | `{"todayLoginCount":N}` + `"loginToken":"<isi>"` HANYA bila diisi (pintu §11.7/K6); persist → tulis (accountToken→serverId); onErr=onOk tetap aman (§11.10) |
+| LoginAnnounce | LoginAnnounce.json | isi file apa adanya ({kunci:entri} — kontrak getNotice §4.4); `{}` = DIAM |
+| SaveLanguage | SaveLanguage.json whitelist | dalam daftar → `{"errorCode":0}`; di luar → `{"errorCode":111,"errorMessage":…}` (parser MEMBACA errorCode — §4.5); `[]` = terima semua |
+| SaveUserEnterInfo | KODE — tanpa file | `43<id>[{"ret":0,"data":"{}"}]` EXACT — selalu dijawab → callback → destroy() login socket (§4.6) |
+| event lain / 5051 game | — | NO ACK + log verbatim (§11 baris 13) |
+
+Log global (disiplin v17 dipertahankan): setiap ACK/no-ack dicatat di entri
+HTTP/WS yang sama — frame penuh, URL penuh, NOL pangkas → NDJSON GLOBAL logs/.
+WARN reseed ("LOGIN-SERVER corrupted") & WARN persist ("LOGIN-HISTORY tidak
+tersedia" — desktop saja; di device sqlite bawaan selalu ada) = baris SYS di
+arsip global itu.
+
+### 67.3 SMOKE DESKTOP — 204 PASS / 0 FAIL (bukti: verify-artifacts/login_ack_smoke_20261126.txt)
+
+Toolchain: javac 21.0.13 (deb openjdk-21-jdk-headless diekstraksi — sama dgn
+v14–v19) → build-smoke (stubs + javasrc + SmokeMain). 178 kasus lama tetap
+PASS + 26 kasus v67 BARU:
+
+seed boot 5 file PERSIS + tanpa data/ & logs/ + tanpa nama lama (config.json/
+serverlist.json/announce.json) · GetServerList ACK utuh (serverList +
+history[] + DragonBall Local + TANPA errorCode/historyMode/compress) ·
+loginGame echo · tolak103 via edit file · SaveLanguage 111 (`in`) & 0 (`en`) ·
+SaveUserEnterInfo frame EXACT + tanpa file · SaveHistory todayLoginCount &
+pintu loginToken (isi→terbang, ""→tidak) · announce `{}` = DIAM (poll 10 dtk
+kosong) · action asing = NO ACK · file dikosongkan `{}` = DIAM · file
+dihapus = seed kembali (GetServerList + loginGame) · file rusak = reseed +
+WARN · historyMode persist di desktop = no-op + WARN (di device = sqlite
+batal: kriteria §3.6 no.5 dijalankan owner) · 5051 game tetap transport-only ·
+semua jejak = NDJSON GLOBAL (nol logs/ di login-server).
+
+Catatan jujur proses: run pertama 14 FAIL — SEMUA di harness PYTHON (parser
+_data salah kaprah list-vs-dict + substring check pada frame ter-escape),
+bukan di kode server; diperbaiki di run_smoke.py saja, NOL perubahan Java
+untuk lulus. Regresi perilaku v19 lainnya nol (semua cek lama tetap PASS).
+
+### 67.4 YANG SENGAJA TIDAK ADA (tetap — dgn dasar)
+
+`logs/` di login-server (dibatalkan owner — log global 1) · config.json /
+enabled / serverlist.json / announce.json / errors.json / history.json /
+profile.json / README.txt / notes.md / captures/ (semua dasarnya tetap seperti
+§3.0 "YANG SENGAJA TIDAK ADA") · file fallback JSON utk history di desktop
+(persist = sqlite bawaan Android saja; desktop no-op — tree device tetap
+persis struktur oke owner).
+
+### 67.5 TAHAP BERIKUTNYA (menunggu oke owner — tidak dikerjakan dulu)
+
+1. dex `classes2.dex` v20: javac → D8 `--release --min-api 21` → marker v20.
+2. Rebuild RAW-COPY APK v20 (pola rebuild_v19_raw.py: base v13, ganti dex,
+   zipalign + sign keystore dblocalmod).
+3. Smoke DEVICE §3.6 kriteria 1–9 (pesawat, offline penuh): fresh install →
+   tree sejak boot; edit owner berlaku tanpa restart; reboot bertahan; rusak →
+   reseed+WARN; persist → history.sqlite; kosong {} = DIAM; announce popup +
+   tombol; SaveUserEnterInfo → socket login destroy.
+
+### 67.6 STATUS
+
+- **IMPLEMENTASI LOGIN-SERVER SELESAI** (4 kelas + 3 titik sambung), wire =
+  tabel atlas §4 + aturan kunci-konsumen, log = GLOBAL 1 (arahan owner penuh
+  ditaati), smoke desktop 204 PASS / 0 FAIL.
+- Nama kelas + lokasi = janji Bagian 61–66 yang kini tertagih:
+  LoginServerConfig.java seed 5 file → ack-gate → smoke §3.6 (desktop).
+- Menunggu oke owner untuk dex v20 + rebuild APK. NOL perubahan di bs/, sdk/,
+  dashboard, smali — classes2.dex lama masih terpakai sampai rebuild.
