@@ -7885,3 +7885,100 @@ dilepas, tidak ada yang ditambah.
 NOL kode diubah. Owner jawab OKE format v5 (81.2–81.3) → langsung
 implementasi 81.4 satu ronde. Tunjuk nomor baris yang kurang pas →
 diperbaiki SEBELUM implementasi.
+
+## Bagian 82 — ARAHAN OWNER: "SUDAH DI BILANG IMPROVE !!! KALAU ADA MISSING FIELD, BUG, YG BEKERJA SERVER APA — GIAMANA KALAU DIA SUKSES PANGGIL PORT LAIN TAPI PORT LAIN BELUM KITA SIAPKAN? EMANG TOLOL KAMU INI" + "SURUH ROMBAK VISUAL DAN FUNGSI MAKIN GOBLOK" — KOREKSI KE-5 → FORMAT v5.1: VISUAL v5 TETAP (81.2–81.3) + LAPISAN FUNGSI BARU — N3 PORT TIDAK DISIAPKAN · N4 MISSING FIELD · N5 SERVER PELAKU — PLAN ONLY, NOL KODE
+
+### 82.1 KESALAHAN v5 YANG DIKOREKSI OWNER (jujur)
+
+- KESALAHAN 6 — HANYA VISUAL: v5 (Bagian 81) hanya merapikan TAMPILAN.
+  Log masih cuma MENCATAT kejadian, tidak MENDETEKSI masalah. Owner
+  minta rombak VISUAL + FUNGSI. Tiga hal yang harus dideteksi (kata
+  owner): (a) MISSING FIELD — response yang tidak punya field yang
+  dibaca client; (b) BUG + SERVER PELAKU — kalau ada masalah, kelihatan
+  server mana yang bekerja/bersalah; (c) PORT LAIN BELUM DISIAPKAN —
+  server sukses mengirim target port lain ke client, padahal port itu
+  tidak kita siapkan (client akan dipanggil ke port mati).
+
+### 82.2 LAPISAN FUNGSI BARU (dex v28) — setiap temuan keluar SATU baris ⚠️ DI ALUR pada posisi fakta terdeteksi; TIDAK ADA MASALAH = TIDAK ADA BARIS
+
+- N3 — PORT TIDAK DISIAPKAN: setiap kali server MENGIRIM data berisi
+  target host/port ke client (DECODED-XOR config, ACK serverList,
+  serversetting.json, init) → setiap target dibandingkan dengan daftar
+  port BIND saat boot (9527/9528/5050/5051/9530/4000). Target bukan
+  port kita atau host luar → ⚠️: field apa, target apa, siapa yang
+  mengirim, status "tidak disiapkan". Bukti dari dump sendiri: config
+  9527 membawa tsUrl http://dragon.sjmobilegame.com:82 dan
+  tsLoginServer http://118.24.68.91:7003 → KELUAR 1 baris ⚠️. Target
+  yang milik kita (url/update 9528, loginServer+loginPort 9528,
+  loginWebPort 5050, serverList.url 9528, serversetting 9528) → TIDAK
+  ada baris.
+- N4 — MISSING FIELD: daftar field yang dibaca client per endpoint
+  HANYA dari bukti bedah APK (atlas), mulai dengan yang sudah
+  terbukti: setting bin → url · update · loginServer · loginPort ·
+  loginWebPort; ACK GetServerList → ret · serverList[].serverId ·
+  serverList[].url · serverList[].name · serverList[].online;
+  serversetting.json → loginserver · requireSDK; clientversion.json →
+  clientVersion; loginchecknative → code · userid · loginToken.
+  Payload yang dilayani tidak punya field itu → ⚠️: field apa yang
+  hilang, di response apa, dari server mana + arti langsung satu
+  frasa. Endpoint yang belum ada bukti RE = TIDAK dicek (jujur,
+  whitelist hanya tumbuh dari bukti, bukan karangan).
+- N5 — SERVER PELAKU: setiap baris ⚠️/ERROR/⏳ menyebut server
+  pelakunya DI BARIS ITU — nama diambil dari kalimat BIND server
+  sendiri (9527 "config bin" · 9528 "CDN game + socket.io login" ·
+  5050 "login" · 5051 "server game" · 9530 "API SDK t4game" · 4000
+  logger) — bukan nama karangan. Satu alur tetap (81.2): pelaku ada
+  DI BARIS KEJADIANNYA, tidak dipindah ke tempat lain.
+- R19 BARU — EMOJI ⚠️: satu-satunya emoji baru, HANYA untuk baris
+  hasil cek fungsi (kind=ANALYSIS level=WARN dari dex). Peta lain
+  tetap: ⏳ menunggu · 🛑 mati · 🐞 crash · ERROR merah tetap HANYA
+  dari field `level` LoggerCore.
+- Cek yang lolos tidak mencetak apa pun (dump: loginchecknative punya
+  code/userid/loginToken ✓, serversetting punya loginserver/requireSDK
+  ✓, ACK serverList punya ret/serverId/url/name/online ✓ → N4 bisu).
+  Dump menghasilkan PERSIS 1 baris ⚠️ (N3).
+
+### 82.3 CONTOH — dump 66 entri + PERSIS 1 baris ⚠️ baru (N3) di posisi kejadiannya + baris N1 (81.3 tetap utuh, hanya ini yang berubah)
+
+```
+21:47:37.445 🧾 9527 GET /bs/db/android/setting_BS_Android.bin?rnd=0.784774 → 200 · 3 ms · 687 B
+    ↳ src=assets | respCT=application/octet-stream
+    ↳ DECODED-XOR: {…penuh seperti 81.3…}
+21:47:37.446 ⚠️ 9527 config bin menunjuk 2 target bukan port kita — tsUrl http://dragon.sjmobilegame.com:82 · tsLoginServer http://118.24.68.91:7003 — tidak disiapkan
+```
+Semua baris lain 81.3 TIDAK berubah (66 entri + N1 di akhir). Baris
+⚠️ BUKAN isi dump — itu hasil cek fungsi N3, keluar di detik kejadian
+config disajikan (37.446).
+
+VARIAN (bukan isi dump — apa yang keluar bila kejadian itu terjadi):
+```
+21:47:48.203 ⚠️ 9528 ACK GetServerList menunjuk serverList[0].url http://127.0.0.1:9535 — port 9535 tidak di-BIND — tidak disiapkan
+21:47:48.203 ⚠️ 9528 ACK GetServerList tidak punya field serverList[].url — client membaca field itu untuk pindah server
+21:47:46.972 ⚠️ 9528 serversetting.json tidak punya field loginserver — client membaca field itu untuk cari login server
+21:47:42.393 ⚠️ 9528 loginchecknative tidak punya field loginToken — client membaca field itu untuk verify (XXTEA)
+21:47:40.810 ⚠️ 9530 API SDK t4game POST /v1/user/login → 502 fallback {"code":103} — SDK MENOLAK, bukan login-server
+```
+Baris terakhir = contoh N5: pelaku disebut langsung (SDK 9530 menolak),
+login-server 5050 tidak ikut dituduh — satu baris, satu pelaku.
+
+### 82.4 IMPLEMENTASI BILA OKE (satu ronde — menggantikan 81.4)
+
+- dex v28: N1 (sesi diam 10 dtk — sudah ada) + N2 (batch terakhir per
+  sid — sudah ada) + N3 BARU (bandingkan setiap target host/port yang
+  dikirim ke client dengan daftar BIND boot; host luar = tidak
+  disiapkan) + N4 BARU (whitelist field per endpoint dari atlas —
+  hanya endpoint berbukti) + N5 BARU (nama pelaku dari kalimat BIND)
+  + bersihkan teks kode (81.2).
+- Dashboard v19 formatter v5 SATU panel (81.4) + render baris ⚠️
+  kuning DI ALUR pada posisinya; tidak ada tab, tidak ada panel
+  kedua.
+- Smoke: render dump asli → sama teks-per-teks 81.3 + PERSIS 1 baris
+  ⚠️ N3 di 37.446 (perbandingan otomatis, bukan mata).
+- APK v28 raw-copy (beda hanya classes2.dex); NOL file log baru;
+  1 file di-tumpuk tetap.
+
+### 82.5 STATUS — PLAN ONLY
+
+NOL kode diubah. Owner jawab OKE format v5.1 (82.2–82.3) → langsung
+implementasi 82.4 satu ronde. Tunjuk nomor baris yang kurang pas →
+diperbaiki SEBELUM implementasi.
