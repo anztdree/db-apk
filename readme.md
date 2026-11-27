@@ -6787,3 +6787,265 @@ dihapus) + 16 kasus v70 baru:
   tetap satu-satunya yang membuat loading LANJUT setelah titik native startGame.
 - NOL perubahan bs/, sdk/, arsc, assets, smali, classes.dex — hanya
   classes2.dex (capture v3 + badge v27) + tanda tangan.
+
+## Bagian 76 — ARAHAN OWNER: "APLIKASI SUDAH SAYA BENERIN. MOHON CLONE ULANG !!" + "PROBLEM SEKARANG ADALAH MEMPERBAIKI LOG !!!" + "LOG YG BENAR PERLU PERENCANAAN MATANG" — OWNER TEMPEL CONTOH LOG 35 BARIS (16:38:15.473 🚀 s.d. 16:38:38.332 🛑) + "MASIH PERLU DISKUSI LANJUTAN" — BEDAH TOTAL CONTOH → LAPISAN STORY (RENDER DARI NDJSON YANG SAMA — NOL FILE BARU) + 2 INSTRUMENTASI BARU (WATCHDOG DIAM SESI + PELACAK BATCH CLIENT) — PLAN ONLY, NOL KODE, MENUNGGU OKE OWNER D1–D8
+
+### 76.1 CLONE ULANG SELESAI — STATE REPO PER HEAD e674f51
+
+- Fresh clone github.com/anztdree/db-apk → HEAD = e674f51 (hapus APK v26
+  via GitPush); Bagian tertinggi = 75 (dex v27 + APK v27, capture v3:
+  watchdog worker + script-start + ExternalInterface hook; smoke desktop
+  294 PASS / 0 FAIL + E2E browser 27/27 + 24/24).
+- release-mod/ kini berisi: APK v27 (pointer LFS), keystore, dan
+  server.ndjson 36 KB = dump log DEVICE asli owner (66 baris,
+  2026-11-26 21:47:35–21:47:58, boot mengaku v22) — DIPAKAI SEBAGAI
+  BUKTI KONTRAST di 76.3, bukan karangan.
+- Grep repo: format beremoji contoh owner (🚀🧾🌐📥📲🧩🔑📄🔗📱📜🐞🖼️📡🕹️💤⏳🧠🎯🛑)
+  HANYA ada di readme — belum ada satu baris pun di kode. Jadi contoh
+  owner = TARGET format bacaan log, bukan hasil run yang sudah ada.
+
+### 76.2 BEDAH CONTOH LOG OWNER BARIS-PER-BARIS → SUMBER FAKTA → STATUS
+
+Legenda status: [ADA]  = fakta sudah terekam di NDJSON hari ini;
+[RENDER] = fakta ada tapi mentah/terpisah → cukup lapisan render;
+[KODE]   = faktanya belum ada di mana pun → butuh kode baru.
+
+1.  `🚀 com.db.local — MOD-LOCALSERVER v27 — 4000 9527 9528 5050 5051 9530 up`
+    → 16 baris boot hari ini (BOOT + BIND + seed). [RENDER] — kompresi
+    blok boot → 1 baris: versi + 6 port "up" (nilai dari BIND).
+2.  `🧾 setting_BS_Android.bin 687B XOR → testMode=1 loginServer=127.0.0.1
+    loginPort=9528 loginWebPort=5050 url=…9528/bs/index-native.html?v=…`
+    → StaticHandler 9527 sudah menulis DECODED-XOR JSON di extra (v14).
+    [RENDER] — parse JSON → HANYA kunci yang dibaca game (testMode/
+    loginServer/loginPort/loginWebPort/url — sumber smali LaunchActivity),
+    bukan dump JSON utuh.
+3.  `🧾 com_db_local.bin 2B XOR → {}` — sama. [RENDER]
+4.  `🌐 base.version=110 resource.version=11390 upgrade.json{all:all.zip}
+    size.json{base:31015076 all:19385098}`
+    → 4 entri HTTP 9528 /bs/upgrade/* terpisah, body ada di respPreview.
+    [RENDER] — agregasi jendela (~2 dtk) + parse body → 1 baris.
+5.  `📥 all.zip?v=11011390 18.5MB 171ms` — entri HTTP penuh (respLen+durMs).
+    [RENDER] — format MB + ms.
+6.  `📲 t4game /v1/system/init 200 loginTypes=[1] first_install=1
+    countryCode=HK` — entri 9530 + respPreview JSON. [RENDER] — parse
+    kunci yang ADA di body (loginTypes/first_install/countryCode).
+7.  `📲 t4game registerVisitor uid=1795772300555 Guest6017 isGuest=1
+    openType=12` — entri POST registerVisitor + SYS "new account".
+    [RENDER]
+8.  `🧩 server_root/bs — 2759 file` — entri EXTRACT (angka asli device
+    owner: 2759). [RENDER]
+9.  `🔑 loginchecknative code=0 uid=… usermode=1 sdk=quick
+    loginToken=76fdaa…eb7f` — entri 5050: query + respPreview JSON.
+    [RENDER] — token di-mask 6 awal + … + 4 akhir (mengikuti contoh).
+10. `📄 index-native.html 28KB — <title>DragonBall</title> — capture
+    18141B terinjeksi` — entri html: respLen + extra "capture client
+    terinjeksi (script N B)" sudah ada. [RENDER] — tambah <title> dari
+    body.
+11. `🔗 sid=s-… lang=zh-CN egret=true` — baris CLIENT meta (buildMeta:
+    ua/layar/dpr/memori/koneksi/lang/egret) sudah ada sejak v24. [RENDER]
+12. `📱 onHtmlLoaded → DOMContentLoaded → load` — event lifecycle capture
+    ("lifecycle DOMContentLoaded", "lifecycle load — total N ms") ada.
+    [RENDER] — rantai lifecycle apa adanya; "onHtmlLoaded" hanya
+    ditulis BILA event ei-nya benar-benar tercatat (tanpa karangan).
+13. `📜 manifest.json — initial 7 + game 8` — manifest.json kita yang
+    dilayani, body utuh di respPreview. [RENDER] — parse initial[]/game[].
+14. `📜 initial 7/7 — egret.min …` + `📜 game 6/8 — … — default.thm main.min
+    belum` — korelasi 3 sumber: nama manifest + event capture "script
+    mulai"/"script load: … selesai/GAGAL" (v72+v27, teks persis
+    terverifikasi di ClientCapture.java) + HTTP 200 .js di 9528.
+    [RENDER] — agregator nama → sudah/belum; file shell EgretNative yang
+    tak lewat HTTP tetap terhitung lewat event capture (justru ini
+    alasannya event client wajib ada).
+15. `🐞 default uncaught handler diganti crash reporter pihak ketiga —
+    re-wrap, crash tetap tertangkap` — entri SYS CRASHHOOK ada (teks
+    device: "default uncaught handler replaced by third party … re-").
+    [RENDER]
+16. `🖼️ resource/properties/clientversion.json 37B — clientVersion=…`
+    + `🧠 hanya main.min… yang meminta file ini → eval main.min hidup`
+    — body 37 B di respPreview. [RENDER]; 🧠 = RULE R1 (bukti 75.1
+    grep APK — HANYA main.min.js yang meminta file ini).
+17. `🖼️ resource/properties/serversetting.json 66B — loginserver=…
+    requireSDK=false` — sama. [RENDER]
+18. `🖼️ denglujiemianxuanzhejiemiannew21_png 404 Instagram_png 404 …`
+    (1 baris gabungan) + `🧠 denglujiemianxuanzhejiemian =
+    登录界面选择界面 — game sedang menggambar layar login/pilih server;
+    aset ini memang tidak ada → game tetap jalan`
+    — 404 MISSING level ERROR ada sejak v70 (tanpa placeholder). [RENDER]
+    — kelompokkan 404 berurutan → 1 baris; 🧠 = RULE R2.
+19. `📡 io 127.0.0.1:9528 open 96:0{sid:… upgrades:[websocket]
+    pingInterval=25000 pingTimeout=5000}` — entri open: respPreview =
+    frame `96:0{…}` PERSIS (v17 tanpa pangkas). [RENDER] — parse frame.
+20. `📡 websocket upgrade — 2probe → 3probe` — POST "2probe" (seen paket
+    penuh) + state probeDone + balasan 3probe. [RENDER]
+21. `📡 420["handler.process",{…GetServerList…}]` — reqPreview POST =
+    paket PENUH (v17). [RENDER]
+22. `📡 430 ACK ret=0 — serverList[0] serverId=1 url=… name="DragonBall
+    Local" online=true history=[]` — LoginAck.build menulis isi ACK ke
+    extra entri POST + frame ACK utuh ada di respPreview entri GET
+    polling yang mengantrekannya. [RENDER] — parse frame ACK → ret +
+    serverList[0] + history.
+23. `🧠 selectNewServer → onLoginSuccess → history kosong → startBtnTap
+    otomatis` — RULE R3 (bukti atlas §6 rantai verbatim).
+24. `📡 420[{action:"SaveHistory",…}]` + `📡 431 ACK ret=0 —
+    todayLoginCount=1` — sama seperti 21/22. [RENDER]
+25. `🕹️ io open sid=xRBLP… — sesi ke-2 = clientStartGame(serverItem.url)`
+    — entri open ke-2 sudah membawa "koneksi ke-2 setelah login dijawab
+    = pola socket GAME…" (v23/v72). [RENDER] — pendekkan ke format contoh.
+26. `📡 420[{action:"LoginAnnounce"}] — no-ACK — LoginAnnounce.json {} =
+    diam (normal)` — LoginAck: file {} = NO ACK, penanda di extra.
+    [RENDER] + RULE R5.
+27. `🕹️ websocket upgrade` + `💤 2probe → 3probe` — sama seperti 20.
+    [RENDER]
+28. `⏳ xRBLP… — 10 dtk tanpa data — client tak pernah kirim "5"`
+    — [KODE] LUBANG TERBESAR: hari ini keterangan diam HANYA keluar bila
+    client re-poll (long-poll timeout). Sesi game yang sudah naik WS lalu
+    diam = NOL BARIS PERNAH (bukti device v22: baris [64] WS upgrade
+    YfXronzl lalu log berakhir TANPA satu baris pun soal sesi itu; [65]
+    hanya poll sesi login). Butuh N1 (76.5).
+29. `🧠 socket GAME menunggu event "verify" dari server (等待验证) —
+    loading macet di sini` — teks gamePattern ada (v72). [RENDER/RULE R6]
+30. `🎯 harusnya: socketOnVerify → verify(XXTEA "verification") → ret=0 →
+    clientEnterGame action:"enterGame" → SaveUserEnterInfo →
+    loginClient.destroy() — NOL dari rantai ini terjadi`
+    — RULE R7 [RENDER]: ditulis HANYA bila sesi pola game diam ≥10 dtk
+    DAN tidak ada satu pun event rantai di log; "NOL … terjadi" = hasil
+    HITUNG dari absennya event (verify/enterGame/SaveUserEnterInfo) —
+    bukan kalimat permanen.
+31. `🛑 /log/client batch terakhir 16:38:23.846 — client bisu 14.5 dtk —
+    worker beat mati` — [KODE] pelacak batch per sid belum ada → N2
+    (76.5); "client bisu Ns" = hitung dari CLIENT terakhir; "worker beat
+    mati" hanya ditulis bila N dtk TANPA batch DAN TANPA watchdog WARN
+    (fakta absennya dua-duanya — diberi label apa adanya).
+
+REKAP: 31 baris contoh → 28 baris cukup LAPISAN RENDER atas fakta yang
+SUDAH terekam; HANYA 2 titik butuh KODE BARU (baris 28 ⏳ dan baris 31 🛑).
+Tidak ada satu pun baris contoh yang butuh fakta baru dari game/SDK.
+
+### 76.3 AKAR "LOG ANDA ISINYA APA" — KONTRAS DUMP DEVICE ASLI (66 baris) VS CONTOH OWNER
+
+Dump release-mod/server.ndjson (device owner, 66 baris, 21:47:35–58):
+- 4 baris .bin dengan JSON mentah utuh (bukan kunci yang dibaca game);
+- 4 baris upgrade terpisah (base.version / resource.version /
+  upgrade.json / size.json) — owner membacanya sebagai 4 kejadian tanpa
+  makna; contoh owner = 1 baris 🌐 berisi SEMUA nilainya;
+- 2 baris t4game body mentah; 5 baris 404 berurutan tanpa kelompok/tanpa
+  terjemahan; open/probe/POST/GET socket.io mentah ("PACKET: …");
+- FATTA PALING PENTING: sesi game YfXronzl naik WS di baris [64]
+  (21:47:48.502) lalu DIAM TOTAL — sampai baris [65] (21:47:58.530,
+  poll sesi login saja) TIDAK ADA SATU BARIS pun yang menerangkan sesi
+  game itu sedang menunggu apa → PERSIS keluhan owner "di game itu
+  sedang loading, artinya ada log yg jelas gk tertangkap".
+- AKAR JUJUR: NDJSON adalah ARSIP MESIN (kompak, grep-able, seq = urutan
+  tulis). Owner membaca log sebagai NARASI. Yang hilang BUKAN sumber
+  faktanya (76.2: 28/31 sudah terekam) — yang hilang adalah LAPISAN BACA
+  yang mengubah fakta mentah → kalimat beremoji + analisis 🧠 + diagnosis
+  🎯/🛑. Karena itu jawabannya BUKAN mengganti NDJSON (dashboard, unduhan,
+  grep level ERROR tetap hidup) — melainkan SATU LAPISAN RENDER DI ATAS
+  FAKTA YANG SAMA.
+
+### 76.4 USULAN ARSITEKTUR — STORY: LAPISAN RENDER TUNGGAL (NOL FILE BARU)
+
+- NDJSON server.ndjson TETAP satu file di-tumpuk (aturan v70 tidak
+  disentuh — "LOG ITU 1 FILE DI TUMPUK" tetap berlaku).
+- STORY = fungsi render di listener 4000 (LoggerHandler, tanpa listener
+  baru): GET /log/story → text/plain — membaca ring buffer global
+  (LoggerCore.latestGlobal) + state sesi socket.io + pelacak batch (N2),
+  lalu MENGHASILKAN persis format contoh owner: `HH:mm:ss.SSS <emoji>
+  <kalimat>` satu baris per kejadian + baris 🧠/🎯/🛑.
+- Unduh: /log/story?download=1 (attachment story.txt) — owner bisa
+  salin-tempel langsung ke chat, persis seperti contoh yang ia tempel.
+- Dashboard v18 → v19: SATU tab baru "STORY" + tab ALL tetap (JSON) —
+  tetap 4 tombol lama, NOL tombol baru (aturan v27).
+- Peta emoji = PERSIS contoh owner: 🚀 boot · 🧾 konfig .bin · 🌐 versi ·
+  📥 unduhan besar · 📲 SDK t4game · 🧩 ekstraksi · 🔑 loginchecknative ·
+  📄 html · 🔗 sesi capture · 📱 lifecycle · 📜 manifest/script ·
+  🐞 crashhook · 🖼️ resource/404 · 📡 socket.io login · 🕹️ socket.io
+  game · 💤 probe game · ⏳ diam · 🧠 analisis · 🎯 diagnosis ·
+  🛑 kemacetan client. (Log boot/konfig internal: seed/BIND/overlay/DB
+  TIDAK muncul di story kecuali gagal — gagal tetap keluar sebagai
+  error; kejadian sistem sukses bukan bagian cerita loading.)
+- AGREGASI (jadinya 1 makna = 1 baris): blok upgrade → 1 baris; 404
+  berurutan ≤2 dtk → 1 baris; blok boot → 1 baris; progress script →
+  baris terakhir per grup (initial/game) setiap kali jumlah berubah.
+- PARSING: parser JSON mini yang sudah ada (JsonUtil) dipakai untuk body;
+  kunci yang diambil HANYA kunci yang DIBACA penerima aslinya (smali/
+  atlas) — kunci lain TIDAK ditulis (anti karangan).
+- MASKING: loginToken 6 awal + … + 4 akhir (mengikuti contoh owner
+  76fdaa…eb7f) — keputusan final menunggu D3.
+- NATURAL: nilai tak ada/tak ter-parse → ditulis "—" + catatan jujur
+  ("body tidak ter-parse"); NOL placeholder, NOL pelengkap, NOL kalimat
+  yang mengaku sukses tanpa fakta (aturan owner sejak Bagian 70).
+
+### 76.5 INSTRUMENTASI BARU — HANYA 2 TITIK, TIDAK ADA YANG LAIN
+
+- N1 — WATCHDOG DIAM SESI (SocketIoHandler): SATU thread daemon scanning
+  SESSIONS tiap 1 dtk. Sesi tanpa data >10 dtk → entri kind=WS extra
+  `sid=… N dtk tanpa data — <sessionFacts>` (framesIn/packetsOut/
+  probeDone/upgraded/gamePattern — semua sudah ada di Session); selama
+  masih diam ulang tiap 10 dtk; data masuk → selesai (tanpa baris ribut).
+  MENUTUP lubang baris 28: sesi WS yang diam TETAP BERSUARA dari sisi
+  server TANPA menunggu client re-poll.
+- N2 — PELACAK BATCH CLIENT (ClientLogHandler): static volatile long
+  lastBatchMs + map kecil sid→lastMs (cap 8, LRU); diisi tiap batch
+  sukses. Dipakai story untuk baris 🛑 (batch terakhir + client bisu Ns).
+  Alternatif tanpa kode: hitung dari entri CLIENT terakhir di ring —
+  tapi waktu "batch terakhir" jadi perkiraan → N2 lebih jujur (D5).
+
+### 76.6 DAFTAR 🧠/🎯 RULE — WHITELIST DENGAN SUMBER BUKTI (tanpa bukti = tidak ditulis)
+
+- R1  clientversion.json 37 B → "hanya main.min_NNN.js yang meminta file
+      ini → eval main.min hidup" (bukti: Bagian 75.1 grep APK).
+- R2  404 denglujiemianxuanzhejiemiannew21_png = 登录界面选择界面 (layar
+      pilih login/server) + Instagram/Telegram/Discord/Logo18+Full = ikon
+      sosial yang memang tidak ada di bs/ asli → game tetap jalan
+      (bukti: dump device — game lanjut sampai socket.io; bukan error
+      fatal). DITULIS SEBAGAI SATU 🧠 untuk grup 404, bukan per-file.
+- R3  GetServerList ACK 0 + history[] → selectNewServer → onLoginSuccess
+      → startBtnTap otomatis (bukti: atlas §6 rantai verbatim).
+- R4  open ke-2 setelah login dijawab = clientStartGame(serverItem.url)
+      (bukti: atlas §4.3 + sudah tertanam v23).
+- R5  LoginAnnounce {} = diam = normal (bukti: atlas §11 baris 9).
+- R6  socket game diam setelah probe → client menunggu event "verify"
+      dari server (等待验证) — loading macet di sini (bukti: atlas §1 +
+      main.min socketOnVerify; sudah tertanam v72).
+- R7  🎯 rantai harusnya socketOnVerify → verify(XXTEA "verification") →
+      ret=0 → enterGame → SaveUserEnterInfo → destroy — "NOL dari rantai
+      ini terjadi" dihitung dari absennya event (bukti: atlas §4.3/§7.5
+      + main.min) — hanya muncul bila kondisi R6 + diam ≥10 dtk.
+- R8  "client tak pernah kirim '5' — upgrade WS tidak selesai" (bukti:
+      v21 — probe tidak menandai upgrade).
+- R9  "script mulai: X" tanpa "script load" → loader hang tanpa onerror
+      (bukti: Bagian 75.1 loadSingleScript).
+- R10 watchdog WARN/pulih = main thread beku/pulih (bukti: Bagian 75).
+
+### 76.7 PERTANYAAN DISKUSI D1–D8 (jawab nomor saja — implementasi satu ronde setelah oke)
+
+- D1 Story = RENDER on-demand dari NDJSON + ring (NOL file baru di disk)
+  — setuju? ATAU owner mau story ditulis juga ke file (berarti file
+  kedua — melanggar "1 file di tumpuk", tidak saya sarankan)?
+- D2 Dashboard: tab pertama/default = STORY, tab ALL (JSON) tetap ada?
+- D3 Token di-mask 6+4 seperti contoh (76fdaa…eb7f) atau penuh?
+- D4 ⏳ ambang diam: lapor PERTAMA di 10 dtk lalu ulang tiap 10 dtk selama
+  masih diam — angka ok?
+- D5 🧠/🎯/🛑 HANYA di story, atau juga ditulis sebagai baris NDJSON
+  (kind=ANALYSIS) supaya masuk arsip server.ndjson juga?
+- D6 Contoh owner berawalan "com.db.local —" = bentuk logcat. Mau story
+  juga dicetak ke android.util.Log (tag com.db.local, Log.i per baris)
+  supaya `adb logcat -s com.db.local` menampilkan cerita yang SAMA?
+  (NOL file, NOL perubahan NDJSON — hanya print.) Bila tidak pakai adb,
+  lewati.
+- D7 Bahasa baris story = persis gaya contoh owner (Indonesia + pinyin/
+  mandarin di 🧠 seperti "登录界面选择界面")?
+- D8 Script progress 7/7/6/8: sumber kebenaran = event capture; bila
+  worker capture mati → progress ditulis "— (worker capture mati — NOL
+  event script)" JUJUR, bukan angka karangan — setuju?
+
+### 76.8 STATUS — PLAN ONLY
+
+- NOL baris kode diubah di Bagian ini. Clone ulang selesai (76.1).
+- Setelah oke D1–D8: implementasi SATU RONDE = N1 + N2 (Java) +
+  /log/story (LoggerHandler) + tab STORY dashboard + smoke desktop
+  (kasus baru: setiap baris contoh owner dihasilkan dari rule-nya —
+  golden story) + dex v28 + APK v28 (raw-copy, beda hanya classes2.dex)
+  + E2E browser. TANPA menyentuh bs/, sdk/, arsc, assets, smali,
+  classes.dex, NDJSON format, dan aturan 1 file di-tumpuk.
