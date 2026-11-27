@@ -7982,3 +7982,111 @@ login-server 5050 tidak ikut dituduh — satu baris, satu pelaku.
 NOL kode diubah. Owner jawab OKE format v5.1 (82.2–82.3) → langsung
 implementasi 82.4 satu ronde. Tunjuk nomor baris yang kurang pas →
 diperbaiki SEBELUM implementasi.
+
+---
+
+## Bagian 83 — ARAHAN OWNER: "MAKANYA LOG YG NATURAL. ITU LOG ANDA CUMA BANYAK TAPI ISI NYA SAMPAH !" + "KALAU MISSING FIELD.. KITA ITU KIRIM RESPON ASLI LAH, ITU SERVER PASTI AKAN JAWAB NATURAL DARI MAIN.MIN.JS .. GITU AJA KOK GOBLOK" — KOREKSI KE-6 → FORMAT v6: LAPISAN ANALYSIS (82.2 N3·N4·N5·R19) DICABUT SELURUHNYA — LOG 100% NATURAL — MISSING FIELD = KIRIM RESPON ASLI DI SERVER, MAIN.MIN.JS YANG MENJAWAB NATURAL = BUKTINYA — PLAN ONLY, NOL KODE
+
+### 83.1 KESALAHAN 7 (jujur)
+
+- N3/N4/N5 + R19 (82.2) = baris ⚠️ KARANGAN. Dump device owner tidak
+  punya SATU baris ⚠️ pun — saya menambah baris yang server TIDAK
+  PERNAH bilang = log "cuma banyak tapi isinya sampah". DICABUT
+  SELURUHNYA: contoh N3 di 37.446 + 5 varian 82.3 ikut dihapus.
+- Owner benar: missing field BUKAN pekerjaan log. Respon yang field-nya
+  kurang = respon kita BUKAN ASLI. Obatnya SATU: kirim RESPON ASLI.
+  main.min.js sendiri yang menjawab natural (atlas §10: ACK lengkap →
+  selectNewServer → tombol start → SaveHistory → clientStartGame —
+  frame-frame BERIKUTNYA itu jawaban naturalnya). Tidak perlu hakim
+  kedua di log.
+
+### 83.2 ATURAN v6
+
+- R20 — NOL BARIS BUATAN: N3/N4/N5/R19 dicabut. Log = entri NDJSON apa
+  adanya; visual v5 tetap (R13 grup terbuka · R14 nol referensi
+  internal · R15 satu alur · R16 kata server · R17 pendek · R18 boot
+  1 baris) + N1/N2 tetap (watchdog server sendiri — bukan analis;
+  satu baris pendek gaya server; lulus koreksi 76–81 tanpa dicat).
+- R21 — RESPON ASLI WAJIB: yang dilayani = isi asli + field lengkap
+  sesuai kontrak main.min.js hasil bedah (atlas §4/§10/§11 — bukan
+  karangan): setting bin → url·update·loginServer·loginPort·
+  loginWebPort; ACK GetServerList → ret=0·data string·serverList[]
+  serverId·url·name·online (+language opsional §11-2); serversetting →
+  loginserver·requireSDK; clientversion → clientVersion;
+  loginchecknative → code·userid·loginToken; getNotice/LoginAnnounce →
+  text[lang]·title[lang]·version·orderNo·alwaysPopup atau DIAM (=
+  perilaku asli, atlas §10-6); SaveHistory → errorCode·todayLoginCount
+  (+pintu loginToken opsional §11-7); SaveLanguage → errorCode 0/111;
+  SaveUserEnterInfo → {errorCode:0} (§11-11). SUMBER ISI ASLI = capture
+  live lawan server asli (live-capture-login-20261125-174027.txt: ACK
+  431 serverList popoh5.com apa adanya) + all.zip/asset APK — bukan
+  rekayasa.
+- R22 — MISSING FIELD = DIPERBAIKI DI SERVER, NOL BARIS DI LOG: field
+  yang dibaca client tapi tidak ada di respon → dilengkapi ISI ASLI
+  (sumber ditulis di readme, bukan di log) → main.min.js lanjut →
+  frame berikutnya di log = BUKTI perbaikan.
+- R23 — PORT/ASET DIPANGGIL TAPI BELUM DISIAPKAN = DISIAPKAN ISI ASLI:
+  6 baris 404 dump (seq 47 denglujiemianxuanzhejiemiannew21_png · 48
+  Instagram_png · 49 Telegram_png · 50 Discord_png · 53 Logo18+Full_png
+  · 58 sound_click.mp3 — semua "tidak ada di server/ dan tidak ada di
+  APK (assets)") → tarik file ASLI dari CDN asli yang config bawa
+  (tsUrl dragon.sjmobilegame.com:82, path /bs/... persis) → taruh di
+  server/ 9528 → client memuat → 404 berubah 200 natural. CDN mati →
+  jujur dicatat di readme (bukan di log); 404 kita saat itu = cermin
+  keadaan asli, BUKAN placeholder (aturan 404 tetap).
+- R24 — MAIN.MIN.JS = HAKIM: bukti respon asli = client LANJUT (rantai
+  atlas §10); bukti respon tidak asli = client DIAM tanpa crash (atlas
+  §11-9: login path TANPA timeout) → ⏳ N1 satu baris = satu-satunya
+  sinyal; titik diam = petunjuk respon MANA di atasnya yang diaudit,
+  bukan bahan baris baru di log.
+
+### 83.3 BUKTI — rantai natural SUDAH terjadi di dump 66 entri, NOL ⚠️ dibutuhkan
+
+- config bin asli (37.445 · 687 B · field lengkap) → client LANJUT:
+  clientversion → serversetting → loginchecknative.
+- loginchecknative asli (code/userid/loginToken) → client LANJUT: open
+  socket.io login 9528 → upgrade 2probe/3probe/'5' → GetServerList +
+  LoginAnnounce paralel (atlas §10-3/4).
+- ACK GetServerList asli (ret=0 · serverId/url/name/online) → client
+  LANJUT: selectNewServer → open ke-2 socket game = clientStartGame
+  (serverItem.url 9528).
+- Itulah "main.min.js menjawab natural": frame berikutnya muncul
+  sendiri. Nol baris karangan perlu.
+- Yang BELUM asli (diperbaiki dgn RESPON ASLI, bukan ⚠️):
+  1. 6 aset 404 (R23) — termasuk denglujiemianxuanzhejiemiannew21_png
+     (= 登录界面选择界面new21, gambar layar login) — dipulihkan dari
+     CDN asli.
+  2. Sesi game YfXronzl7TC64pR4bX5x diam 10 dtk (tidak kirim '5') —
+     client berhenti = sinyal ada respon di ATASNYA yang belum asli →
+     rantai §10 diaudit ke belakang dari titik diam; log tetap natural
+     (N1 satu baris).
+  3. LoginAnnounce tanpa ACK (live capture baris 9: C-> 422["handler.
+     process",{"type":"User","action":"LoginAnnounce"}] lalu tidak ada
+     43<2>) = PERILAKU ASLI — server asli juga DIAM 6 dtk (atlas §4.4,
+     §10-6 "tak apa-apa — tidak ada timeout") — BUKAN missing field,
+     TIDAK diubah; kalau owner mau pengumuman tampil → isi
+     LoginAnnounce.json format §4.2b → main.min.js memunculkan
+     tombol/popup sendiri (jawab natural).
+  4. tsUrl/tsLoginServer host luar = ISI ASLI config asli — client
+     memanggil seperti asli; gagal terhubung = kegagalan client sendiri
+     yang natural di log, tanpa anotasi.
+
+### 83.4 IMPLEMENTASI BILA OKE (satu ronde — menggantikan 82.4)
+
+- dex v28: N1+N2 tetap; N3/N4/N5 TIDAK pernah dibangun; bersih teks
+  (81.2) tetap.
+- Dashboard v19 formatter v5 satu alur — NOL baris ⚠️/ANALYSIS.
+- Pemulihan respon asli (satu ronde): (a) tarik 6 aset dari tsUrl CDN
+  (bukti fetch disimpan verify-artifacts; dapat → server/ 9528; mati →
+  jujur readme); (b) audit tiap respon dilayani vs daftar field atlas
+  R21 dengan capture live sebagai pembanding — yang kurang dilengkapi
+  isi asli.
+- Smoke: render dump → PERSIS teks-per-teks 81.3 (66 entri + N1) TANPA
+  baris ⚠️ (kembali ke 81.3 utuh).
+- APK v28 raw-copy; NOL file log baru; 1 file di-tumpuk tetap.
+
+### 83.5 STATUS — PLAN ONLY
+
+NOL kode diubah. Owner jawab OKE format v6 (83.2–83.4) → implementasi
+satu ronde. Tunjuk nomor baris yang kurang pas → diperbaiki SEBELUM
+implementasi.
