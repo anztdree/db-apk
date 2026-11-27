@@ -1827,7 +1827,7 @@ try:
     check("v73-dash-fix-kutip-check", "icon:'check'}}" in dash26
           and "icon:'check}}\n" not in dash26.replace("\r", ""), "")
     check("v73-dash-badge-v26", "m=='longtask'" in dash26
-          and "if(m=='resource'||m=='perf'||m=='lifecycle')" in dash26
+          and "if(m=='resource'||m=='perf'||m=='lifecycle'||m=='script-start'||m=='media-start')" in dash26
           and "if(m=='meta')" in dash26, "")
     check("v73-dash-subrows-client", "if(k=='CLIENT')" in dash26
           and "subRow('s-err','corner','stack:',e.stack)" in dash26
@@ -1948,6 +1948,93 @@ try:
     print((node73.stdout or "")[-2200:])
     check("v73-browser-e2e-v26", node73.returncode == 0,
           (node73.stderr or "")[-400:])
+
+    # ========== Bagian 75 — CAPTURE v3: WORKER WATCHDOG + SCRIPT-START + EI ==========
+    # Arahan owner (27 Nov 2026): lanjutkan port log debug 4000 — JANGAN bikin baru.
+    # AKAR (dump device v26): main thread WebView beku mengeksekusi main.min.js
+    # 4,9 MB → setTimeout flush 500 ms tidak jalan → buffer capture tak terkirim
+    # → dashboard mandik persis saat game loading ("log ngeyel cuma itu doang").
+    # v3 = lanjutan v2: buffer+flush pindah ke Web Worker (thread terpisah) +
+    # watchdog beat 1 dtk (beat berhenti >4 dtk = WARN dari worker SAAT beku) +
+    # script-start (MutationObserver — loader tanpa onerror tidak lagi hang
+    # senyap) + ExternalInterface hook (saksi jembatan native startGame).
+    check("v75-dash-badge-v27", "m=='watchdog'" in dash26
+          and "m=='script-start'||m=='media-start'" in dash26
+          and "CLIENT v3" in dash26, "")
+    check("v75-capture-v3-di-halaman", "__dbWorkerReady" in bd_inj
+          and "workerMain" in bd_inj
+          and "watchdog main thread tidak merespons ~" in bd_inj
+          and "watchdog main thread pulih setelah beku ~" in bd_inj
+          and "watchdog main thread belum pernah merespons ~" in bd_inj
+          and "beat 1 dtk berhenti" in bd_inj
+          and "kejadian terakhir: " in bd_inj
+          and "script mulai: " in bd_inj
+          and "media mulai: " in bd_inj
+          and "MutationObserver" in bd_inj
+          and "ExternalInterface call " in bd_inj
+          and "ExternalInterface addCallback " in bd_inj
+          and "ExternalInterface hook terpasang" in bd_inj
+          and "'('+workerMain.toString()+')()'" in bd_inj,
+          "permukaan hook v3 tidak lengkap di script terinjeksi")
+    # fallback v2 tetap utuh di script yang sama (worker gagal = jalur lama jalan)
+    check("v75-fallback-v2-tetap-ada", "setTimeout(tick,400)" in bd_inj
+          and "navigator.sendBeacon" in bd_inj
+          and "getEntriesByType" in bd_inj, "")
+
+    #  B3. POST event format v3 — watchdog/script-start/ei dipetakan server apa adanya
+    _ts75 = int(time.time() * 1000)
+    _sid75 = "s-v75desktop-abc123"
+    batch75 = json.dumps({"v": 2, "sid": _sid75, "events": [
+        {"ts": _ts75, "type": "watchdog", "level": "WARN",
+         "text": "watchdog main thread tidak merespons ~6 dtk — beat 1 dtk berhenti — kejadian terakhir: xhr"},
+        {"ts": _ts75, "type": "watchdog",
+         "text": "watchdog main thread pulih setelah beku ~6 dtk"},
+        {"ts": _ts75, "type": "script-start",
+         "text": "script mulai: /bs/js/default.thm_4d02a3c6.js"},
+        {"ts": _ts75, "type": "media-start",
+         "text": "media mulai: /bs/resource/assets/uji-v27.png"},
+        {"ts": _ts75, "type": "ei",
+         "text": "ExternalInterface call startGame — get Sdk Channel"},
+    ]}, ensure_ascii=False).encode()
+    req75 = urllib.request.Request("http://127.0.0.1:9528/log/client",
+                                   data=batch75, method="POST")
+    req75.add_header("Content-Type", "application/json")
+    with urllib.request.urlopen(req75, timeout=10) as r:
+        check("v75-logclient-v3-post-200", r.read().decode().strip() == "ok", "")
+
+    row_wd75 = _wait_client(lambda r: r.get("method") == "watchdog"
+                            and "tidak merespons" in (r.get("path") or ""))
+    check("v75-watchdog-warn-row", row_wd75 is not None
+          and "kejadian terakhir: xhr" in (row_wd75.get("path") or "")
+          and "error" not in row_wd75,   # WARN — bukan ERROR, log natural
+          str(row_wd75)[:240] if row_wd75 else "baris watchdog tidak ada")
+    row_wp75 = _wait_client(lambda r: r.get("method") == "watchdog"
+                            and "pulih setelah beku" in (r.get("path") or ""))
+    check("v75-watchdog-pulih-row", row_wp75 is not None
+          and "~6 dtk" in (row_wp75.get("path") or "")
+          and "error" not in row_wp75,
+          str(row_wp75)[:200] if row_wp75 else "baris pulih tidak ada")
+    row_ss75 = _wait_client(lambda r: r.get("method") == "script-start"
+                            and "default.thm" in (r.get("path") or ""))
+    check("v75-script-start-row", row_ss75 is not None
+          and "script mulai: " in (row_ss75.get("path") or ""), "")
+    row_ms75 = _wait_client(lambda r: r.get("method") == "media-start"
+                            and "uji-v27.png" in (r.get("path") or ""))
+    check("v75-media-start-row", row_ms75 is not None
+          and "media mulai: " in (row_ms75.get("path") or ""), "")
+    row_ei75 = _wait_client(lambda r: r.get("method") == "ei"
+                            and "call startGame" in (r.get("path") or ""))
+    check("v75-ei-call-startgame-row", row_ei75 is not None
+          and "get Sdk Channel" in (row_ei75.get("path") or ""), "")
+
+    #  E2. E2E BROWSER v27 — worker watchdog nyata: main thread dibekukan 7 dtk,
+    #      baris watchdog HARUS sampai server SELAGI beku (thread worker), lalu
+    #      baris pulih; dashboard 4000 render badge WARN/DEBUG baru.
+    node75 = subprocess.run(["node", WS + "/verify_capture_v27.js"], timeout=300,
+                            capture_output=True, text=True)
+    print((node75.stdout or "")[-2400:])
+    check("v75-browser-e2e-v27", node75.returncode == 0,
+          (node75.stderr or "")[-400:])
 
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)

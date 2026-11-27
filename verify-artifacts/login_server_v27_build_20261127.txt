@@ -1,0 +1,137 @@
+# BUILD v27 — LANJUTAN LOG DEBUG PORT 4000 (capture v3: worker watchdog + script-start + ei)
+# Tanggal: 27 Nov 2026 — arahan owner: "port log debug sudah jelas ada di 4000,
+# lanjutkan lah, jangan bikin [baru]" (pola rebuild docs/REBUILD-PATTERN.md)
+
+HASIL AKHIR
+===========
+APK      : release-mod/db-local(MOD-LOCALSERVER-v27).apk — 202.699.742 B
+sha256   : 874232d18a5b194bc41bb2c39852afd2f70e2a77f67cdd71e0ac30334ce0a59b
+classes2.dex v27 : 182.186 B — sha256 c87e647bf65a55d966b69895faf143d186956c8e0ac68b914e1bb4a0aaa5408f
+           checksum 0x713f2832 | sha1 0f371a23… | map 17 entri berakhir TEPAT di EOF
+Sign     : uber-apk-signer 1.3.0 — keystore dblocalmod SAMA (CN=DB Local Mod,
+           O=Owner, C=ID, SHA256 f58a5b9a…, exp 2056)
+           → zipalign verified + signature verified [v1, v2, v3]
+           → install-over v26 AMAN (sertifikat sama)
+diff vs base v23 (entri-per-entri): classes2.dex + META-INF (re-sign) SAJA —
+           arsc/assets/bs/sdk byte-identik; metode 3471 deflate + 2957 stored identik
+
+AKAR YANG DITEMUKAN v27 (bukti DUMP DEVICE v26 owner, 27 Nov 2026 — bukan karangan)
+====================================================================================
+Dump device owner (12:57:41–12:57:53) menunjukkan log MANDIK persis saat game
+loading — pertanyaan owner: "apanya yg lebih canggih???? … kok bisa bisanya log
+ngeyel cuma itu doang !!!"
+  #48-60  13 script manifest tercatat sampai ThinkingAnalyticsSDK — LALU HILANG.
+  #62     clientversion.json 200 37 B sampai ke SERVER 3 dtk kemudian — padahal
+          file itu HANYA dipanggil kode main.min.js (dibuktikan grep APK:
+          RES.getResByUrl("resource/properties/clientversion.json") hanya ada di
+          main.min_243021c9/777039fc.js).
+  → default.thm + main.min.js (4,9 MB) TER-LOAD dan JALAN, tapi event capture-nya
+    (script load, xhr) TIDAK PERNAH sampai server.
+  → Tidak ada fps/heartbeat/resource sweep setelahnya = main thread WebView BEKU:
+    eksekusi 4,9 MB JS minified di device lemah memblokir setTimeout tick 500 ms
+    → buffer capture tak pernah ter-flush → dashboard mandik.
+  → ERUDA JUGA BEKU di situasi yang sama (satu main thread) — inilah celah
+    untuk lebih canggih.
+FAKTA PENDUKUNG DARI BEDAH KODE GAME (APK v26, assets/server_root/bs/):
+  - index-native.html: loader memuat 15 script BERURUTAN, lalu memanggil
+    egret.ExternalInterface.call("startGame","get Sdk Channel") — egret.runEgret
+    HANYA jalan SETELAH shell native menjawab callback "startGame" (loginServer
+    + config). Tidak ada jawaban = game diam di loading selamanya.
+  - main.min.js ToLogin: TSBrowser.executeFunction("getLoginServer") +
+    console.log("serverurl:"+n) → loginClient.connectToServer(...) — baris
+    console ini TIDAK ADA di dump = game belum sampai ToLogin.
+  - clientversion.json seed = ASLI (clientVersion 202109150935) — BUKAN penyebab.
+  - Loader loadSingleScript TIDAK PUNYA onerror → script gagal = loader hang
+    senyap tanpa jejak (celah yang kini ditutup script-start).
+
+CAPTURE v3 (lanjutan capture v2 — JANGAN bikin baru)
+====================================================
+1. WORKER WATCHDOG (Web Worker = thread TERPISAH, tetap hidup saat main thread
+   beku): buffer event + flush 500 ms + backoff PINDAH ke worker. Main thread
+   hanya postMessage per event — pengiriman log TIDAK lagi tergantung main
+   thread. Beat 1 dtk dari main thread; beat berhenti >4 dtk (atau belum pernah
+   ada beat >10 dtk) → worker melapor SENDIRI tiap 5 dtk:
+     WARN "watchdog main thread tidak merespons ~Ns — beat 1 dtk berhenti —
+           kejadian terakhir: <type>"
+     INFO pemulihan: "watchdog main thread pulih setelah beku ~Ns"
+   KEKOSONGAN kini TERLIHAT + BERLABEL — bukan lagi "log ngeyel cuma itu doang".
+   FIX KRITIS saat pengembangan: EP dikirim ABSOLUT (location.origin+EP) — URL
+   relatif di dalam Blob Worker TIDAK resolving ke origin halaman (base URL
+   worker = blob:…) → semua flush worker gagal senyap (tertangkap oleh E2E
+   browser nyata, bukan di device owner — jaring pengaman bekerja).
+   Fallback: worker gagal/tak didukung = jalur v2 utuh (tick 500 ms) — nol hilang.
+2. SCRIPT-START (MutationObserver): pemuatan script/media tercatat saat ELEMEN
+   dibuat+diberi src — loader tanpa onerror kini meninggalkan jejak "script
+   mulai: <src>" TANPA baris load = bukti hang yang dulu tidak ketahuan.
+3. EXTERNALINTERFACE HOOK: polling 300 ms sampai egret ada → call/addCallback
+   dibungkus (lewatkan apa adanya) → baris "ei": "ExternalInterface addCallback
+   startGame terdaftar — menunggu jawaban native", "ExternalInterface call
+   startGame — get Sdk Channel" → titik tunggu native TERLIHAT di dashboard.
+4. DASHBOARD console v18 → badge baru: watchdog (WARN, bila teks "tidak
+   merespons") = WARN; script-start/media-start = DEBUG; ei = INFO. NOL tombol
+   baru (tetap 4 — arahan v15..v17). Komentar CLIENT v2 → CLIENT v3.
+   NOL perubahan server (ClientLogHandler generik — tipe baru mengalir apa adanya).
+
+DEX v27 + APK v27
+=================
+- toolchain reproduksi dari nol (dok REBUILD-PATTERN.md §7): javac 21.0.13
+  (openjdk-21-jdk-headless_21.0.13+9-1~deb13u2_amd64.deb, dpkg -x,
+  LD_LIBRARY_PATH=/usr/lib/jvm/java-21-openjdk-amd64/lib) + D8 8.3.37
+  (r8-releases raw) — SAMA v25/v26.
+- 8 stubs + 26 javasrc → 52 class (identik jumlah v26) → D8 --release
+  --min-api 21 → 182.186 B → patch_marker_v27.py (rotasi v19→v27 tepat 4
+  string; kontrak warisan v20..v26 UTUH + kontrak v27 BARU: __dbWorkerReady,
+  workerMain, "watchdog main thread tidak merespons ~", "watchdog main thread
+  pulih setelah beku ~", "watchdog main thread belum pernah merespons ~",
+  "beat 1 dtk berhenti", "kejadian terakhir: ", m=='watchdog',
+  m=='script-start', "script mulai: ", "media mulai: ", MutationObserver,
+  "ExternalInterface call ", "ExternalInterface addCallback ",
+  "ExternalInterface hook terpasang", "m=='script-start'||m=='media-start'",
+  CLIENT v3, "'('+workerMain.toString()+')()'"; verifikasi struktur dex PENUH
+  warisan v25: checksum+signature self-check, map_list 17 entri berakhir tepat
+  di EOF, section dalam batas).
+- Base = APK v23 dari LFS (batch API, sha256 722eee78… cocok). rebuild
+  RAW-COPY v27 (rebuild_v27_raw.py): 6.428 entri byte-per-byte, beda HANYA
+  classes2.dex; classes.dex airplane v19 byte-identik (6.697.176 B,
+  sha 62803bb1…, byte patch @0x5e8180/@0x5d2438); arsc STORED aligned-4;
+  QHinfo proven.
+- dexcheck di APK FINAL bertanda tangan: checksum 0x713f2832 sah, signature
+  sah, map 17 entri berakhir tepat di EOF, marker v27 x4 (v19=0), kontrak
+  capture v3 lengkap.
+
+SMOKE DESKTOP + E2E BROWSER (dua lapis — keduanya hijau)
+========================================================
+- Run FINAL: 294 PASS / 0 FAIL = 284 lama tetap + 10 kasus v75 desktop
+  (badge v27 di dashboard, permukaan hook v3 di script terinjeksi, fallback v2
+  tetap ada, POST event v3 (watchdog WARN/pulih, script-start, media-start, ei)
+  dipetakan server apa adanya) + E2E BROWSER NYATA: capture v2 & console v18
+  27/27 (regresi utuh) + capture v3 & watchdog 24/24 → verify-artifacts/
+  login_server_v27_smoke_20261127.txt (output penuh).
+- E2E v27 (verify_capture_v27.js) membuktikan DI BROWSER SUNGGUHAN:
+  worker siap, event mengalir VIA WORKER (console.error/xhr+resp/meta),
+  script-start "script mulai: <src>", hook ExternalInterface
+  (addCallback + call startGame), resource timing sweep,
+  LALU FREEZE NYATA: main thread dibekukan 7.002 ms → baris
+  "watchdog main thread tidak merespons" SAMPAI SERVER SELAGI BEKU
+  (thread worker), urutan WARN → "pulih setelah beku ~N dtk" benar,
+  dashboard 4000 render badge WARN watchdog + DEBUG script-start + baris ei,
+  sintaks dashboard SAH (new Function), NOL pageerror.
+- Run-1 jujur sebelum final (dua masalah ditangkap uji, diperbaiki di sumber):
+  (1) EP relatif di worker → flush worker gagal senyap → abs ke absolut;
+  (2) precedence ternary teks script-start (src tidak ikut) → tanda kurung;
+  (3) badge watchdog membaca field level yang tidak ada di NDJSON → dari teks;
+  (4) jarum uji v73-dash-badge-v26 mengunci baris badge lama → needle di-update
+  mengikuti fitur (intent sama).
+
+YANG SISA (fakta)
+=================
+- smoke DEVICE v27: install-over v26 AMAN (sertifikat sama) — konfirmasi
+  akhir tetap di device owner. Saat loading macet nanti, dashboard akan
+  menunjukkan SALAH SATU dari: "script mulai: …" tanpa selesai (hang loader),
+  "ExternalInterface call startGame" tanpa kelanjutan (menunggu native),
+  "watchdog main thread tidak merespons ~Ns" (main thread beku) — tiga kandidat
+  akar yang dulu tidak bisa dibedakan sama sekali.
+- FASE GAMESERVER (§7.5 — challenge verify + ack {ret:0} + enterGame + Notify)
+  tetap satu-satunya yang membuat loading LANJUT setelah titik native startGame.
+- NOL perubahan bs/, sdk/, arsc, assets, smali, classes.dex — hanya
+  classes2.dex (capture v3 + badge v27) + tanda tangan.

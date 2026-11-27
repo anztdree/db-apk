@@ -47,6 +47,37 @@ package com.db.local.server;
  * APK/assets byte-identik (injeksi serve-time di memori saja); transport
  * POST /log/client origin sama; /socket.io/* tidak dicapture client
  * (sudah utuh di sisi server — jangan dobel); anti-loop EP.
+ *
+ * YANG BARU di capture v3 (Bagian 75 — AKAR DUMP DEVICE 27 Nov 2026):
+ * dump device v26 membuktikan log MANDIK tepat saat game loading: 13 script
+ * manifest tercatat, lalu HILANG — padahal clientversion.json (yang HANYA
+ * dipanggil main.min.js 4,9 MB) sampai ke server 3 dtk kemudian. Artinya
+ * main.min.js jalan, TAPI event capture (load default.thm/main.min, xhr
+ * clientversion) TERJEBAK di buffer dan tak pernah terkirim — karena flush
+ * memakai setTimeout di MAIN THREAD, dan main thread BEKU mengeksekusi
+ * 4,9 MB JS di device lemah. Eruda juga beku persis sama — inilah celah
+ * untuk lebih canggih:
+ *  1. WEB WORKER WATCHDOG (thread terpisah — jalan SAAT main thread beku):
+ *     buffer event + flush 500 ms pindah ke worker; main thread cuma
+ *     postMessage (kirim tetap jalan sekalipun game macet sesudahnya).
+ *     Beat 1 dtk dari main thread; kalau beat berhenti >4 dtk worker
+ *     melapor sendiri tiap 5 dtk: "watchdog main thread tidak merespons
+ *     ~Ns — kejadian terakhir: <type>" — KEKOSONGAN jadi TERLIHAT dan
+ *     BERLABEL, bukan lagi "log ngeyel cuma itu doang". Pulih = baris
+ *     "watchdog main thread pulih setelah beku ~Ns".
+ *  2. SCRIPT-START (MutationObserver): pemuatan script/media dicatat saat
+ *     ELEMEN DIBUAT+src — bukan hanya saat load/error. Loader asli
+ *     (loadSingleScript) tidak punya onerror: kalau script gagal, loader
+ *     HANG SENYAP — kini langkah loader berikutnya TETAP TERLIHAT
+ *     ("script mulai: js/default.thm_….js" tanpa baris load = bukti hang).
+ *  3. EXTERNALINTERFACE HOOK (egret.addCallback/call): saksi jembatan
+ *     native — index-native.html memanggil ExternalInterface.call
+ *     "startGame" SETELAH 15 script selesai, dan egret.runEgret HANYA
+ *     jalan SETELAH native menjawab. Baris "ExternalInterface call
+ *     startGame" tanpa kelanjutan = game menunggu jawaban native —
+ *     titik tunggu yang dulu tidak ketahuan sama sekali.
+ *  Worker mati/tak didukung = fallback PENUH ke jalur v2 (tick 500 ms) —
+ *  TIDAK ADA yang hilang dari v26. Format batch tetap v2 — server nolubah.
  */
 public final class ClientCapture {
 
@@ -83,7 +114,89 @@ public final class ClientCapture {
         "try{sid=sessionStorage.getItem('__dbSid');\n" +
         " if(!sid){sid='s-'+(new Date).getTime().toString(36)+'-'+Math.random().toString(36).substring(2,8);\n" +
         "  sessionStorage.setItem('__dbSid',sid);}}catch(e){sid='s-anon-'+(new Date).getTime().toString(36)}\n" +
+        "/* ---- v3 WORKER WATCHDOG: buffer+flush pindah ke thread terpisah.\n" +
+        "   Main thread beku (eksekusi JS besar / sync panjang) TIDAK lagi\n" +
+        "   menggagalkan pengiriman log; beat 1 dtk yang berhenti = sinyal\n" +
+        "   beku, dilaporkan worker sendiri (thread worker tetap hidup). ---- */\n" +
+        "var WORKER=null;var WORKER_READY=false;\n" +
+        "window.__dbWorkerReady=false;\n" +
+        "function workerMain(){var sid='',ep='/log/client',meta=null,metaSent=false;\n" +
+        " var buf=[],fails=0,delay=500,inflight=false,nextFlush=0;var MAXBUF=400;\n" +
+        " var lastBeat=0,beats=0,frozen=false,frozeAt=0,warnT0=0,lastType='',started=(new Date).getTime();\n" +
+        " function now(){return (new Date).getTime()}\n" +
+        " function drop(){if(buf.length>MAXBUF){var d=-1;\n" +
+        "  for(var i=0;i<buf.length;i++){if(buf[i].level!=='ERROR'){d=i;break}}\n" +
+        "  buf.splice(d>=0?d:0,1)}}\n" +
+        " function push(type,level,text,dur){try{\n" +
+        "  var e={ts:now(),type:type,text:String(text).substring(0,1200)};\n" +
+        "  if(level)e.level=level;\n" +
+        "  if(typeof dur==='number'&&isFinite(dur))e.dur=Math.round(dur);\n" +
+        "  buf.push(e);drop();}catch(e2){}}\n" +
+        " function flush(){\n" +
+        "  if(inflight||!buf.length)return;\n" +
+        "  var payload;var withMeta=(!metaSent&&meta)?true:false;\n" +
+        "  try{payload={v:2,sid:sid,events:buf};\n" +
+        "   if(withMeta)payload.meta=meta;\n" +
+        "   payload=JSON.stringify(payload);}catch(e){return;}\n" +
+        "  var sent=buf;buf=[];inflight=true;\n" +
+        "  try{var x=new XMLHttpRequest();\n" +
+        "   x.open('POST',ep,true);\n" +
+        "   x.setRequestHeader('Content-Type','application/json');\n" +
+        "   x.onload=function(){inflight=false;\n" +
+        "    if(x.status===0||x.status>=400){fails++;delay=Math.min(delay*2,5000);\n" +
+        "     buf=sent.concat(buf);drop();}\n" +
+        "    else{fails=0;delay=500;if(withMeta)metaSent=true;}};\n" +
+        "   x.onerror=function(){inflight=false;fails++;delay=Math.min(delay*2,5000);\n" +
+        "    buf=sent.concat(buf);drop();};\n" +
+        "   x.send(payload);}catch(e){inflight=false;fails++;delay=Math.min(delay*2,5000);\n" +
+        "    buf=sent.concat(buf);drop();}}\n" +
+        " self.onmessage=function(ev){var d=ev.data||{};\n" +
+        "  try{\n" +
+        "   if(d.m==='cfg'){sid=d.sid||'';ep=d.ep||ep;postMessage({r:'ready'});}\n" +
+        "   else if(d.m==='meta'){meta=d.meta;}\n" +
+        "   else if(d.m==='ev'){if(d.e){buf.push(d.e);lastType=String(d.e.type||'');drop();}}\n" +
+        "   else if(d.m==='nometa'){metaSent=true;}\n" +
+        "   else if(d.m==='beat'){beats++;var t=now();\n" +
+        "    if(frozen){frozen=false;\n" +
+        "     push('watchdog',null,'watchdog main thread pulih setelah beku ~'+Math.round((t-frozeAt)/1000)+' dtk');}\n" +
+        "    lastBeat=t;}\n" +
+        "   else if(d.m==='f'){flush();}\n" +
+        "  }catch(e){}};\n" +
+        " setInterval(function(){try{\n" +
+        "  var t=now();\n" +
+        "  var gap=(beats>0)?(t-lastBeat):(t-started);\n" +
+        "  var over=(beats>0)?4000:10000;\n" +
+        "  if(gap>over){\n" +
+        "   if(!frozen){frozen=true;frozeAt=(beats>0)?lastBeat:started;warnT0=0;}\n" +
+        "   if(t-warnT0>=5000){warnT0=t;\n" +
+        "    push('watchdog','WARN',(beats>0?\n" +
+        "     'watchdog main thread tidak merespons ~'+Math.round(gap/1000)+' dtk — beat 1 dtk berhenti — kejadian terakhir: ':\n" +
+        "     'watchdog main thread belum pernah merespons ~'+Math.round(gap/1000)+' dtk sejak halaman mulai — kejadian terakhir: ')\n" +
+        "     +(lastType||'(belum ada)'));}}\n" +
+        "  if(t>=nextFlush){flush();nextFlush=t+delay;}\n" +
+        " }catch(e){}},500);\n" +
+        "}\n" +
+        "function initWorker(){try{\n" +
+        " if(typeof Worker==='undefined'||typeof URL==='undefined'||!URL.createObjectURL||typeof Blob==='undefined')return;\n" +
+        " WORKER=new Worker(URL.createObjectURL(new Blob(['('+workerMain.toString()+')()'],{type:'application/javascript'})));\n" +
+        " WORKER.onmessage=function(ev){try{\n" +
+        "  if(ev.data&&ev.data.r==='ready'){WORKER_READY=true;window.__dbWorkerReady=true;\n" +
+        "   try{WORKER.postMessage({m:'meta',meta:buildMeta()});}catch(e2){}}}catch(e){}};\n" +
+        " WORKER.onerror=function(){try{WORKER_READY=false;}catch(e){}};\n" +
+        " try{WORKER.postMessage({m:'cfg',sid:sid,ep:location.origin+EP});}catch(e3){}\n" +
+        " window.__dbWorker=true;\n" +
+        "}catch(e){WORKER=null;}}\n" +
+        "initWorker();\n" +
+        "setInterval(function(){try{if(WORKER&&WORKER_READY)WORKER.postMessage({m:'beat',n:buf.length});}catch(e){}},1000);\n" +
         "function cap(type,level,text,dur,stack,body,resp){try{\n" +
+        " if(WORKER&&WORKER_READY){var ev={ts:(new Date).getTime(),type:type,\n" +
+        "  text:String(text).substring(0,MAXTEXT)};\n" +
+        "  if(level)ev.level=level;\n" +
+        "  if(typeof dur==='number'&&isFinite(dur))ev.dur=Math.round(dur);\n" +
+        "  if(stack)ev.stack=String(stack).substring(0,1000);\n" +
+        "  if(body)ev.body=String(body).substring(0,300);\n" +
+        "  if(resp)ev.resp=String(resp).substring(0,300);\n" +
+        "  WORKER.postMessage({m:'ev',e:ev});return;}\n" +
         " if(buf.length>=MAXBUF){var drop=-1;\n" +
         "  for(var i=0;i<buf.length;i++){var lv=buf[i].level;\n" +
         "   if(lv!=='ERROR'){drop=i;break;}}\n" +
@@ -212,6 +325,45 @@ public final class ClientCapture {
         "   throw err;});\n" +
         "  }catch(e){return origFetch.apply(window,arguments);}};\n" +
         "}\n" +
+        "/* ---- v3 SCRIPT-START (MutationObserver): catat pemuatan saat ELEMEN\n" +
+        "   dibuat+diberi src — bukan hanya saat load/error. Loader asli halaman\n" +
+        "   tidak punya onerror: script gagal = loader HANG SENYAP; kini langkah\n" +
+        "   loader berikutnya tetap terlihat (mulai tanpa selesai = bukti hang). ---- */\n" +
+        "try{if(typeof MutationObserver!=='undefined'){\n" +
+        " var mo=new MutationObserver(function(muts){try{\n" +
+        "  for(var i=0;i<muts.length;i++){var ns=muts[i].addedNodes;\n" +
+        "   for(var j=0;j<ns.length;j++){var el=ns[j];\n" +
+        "    if(!el||el.nodeType!==1)continue;\n" +
+        "    var t=el.tagName;\n" +
+        "    if(t==='SCRIPT'||t==='IMG'||t==='AUDIO'||t==='VIDEO'){\n" +
+        "     var s='';try{s=(el.getAttribute&&el.getAttribute('src'))||el.src||'';}catch(e5){}\n" +
+        "     if(s)cap((t==='SCRIPT')?'script-start':'media-start',null,\n" +
+        "      ((t==='SCRIPT')?'script mulai: ':'media mulai: ')+String(s).substring(0,300));}}}\n" +
+        " }catch(e4){}});\n" +
+        " mo.observe(document.documentElement||document,{childList:true,subtree:true});\n" +
+        "}}catch(e){}\n" +
+        "/* ---- v3 EXTERNALINTERFACE HOOK: saksi jembatan native. Halaman memanggil\n" +
+        "   ExternalInterface.call('startGame') setelah SEMUA script manifest, dan\n" +
+        "   egret.runEgret HANYA jalan setelah native menjawab callback startGame.\n" +
+        "   'call startGame' tanpa kelanjutan = game menunggu jawaban native. ---- */\n" +
+        "var eiHooked=false;\n" +
+        "setInterval(function(){try{\n" +
+        " if(eiHooked)return;\n" +
+        " if(typeof egret==='undefined'||!egret||!egret.ExternalInterface)return;\n" +
+        " eiHooked=true;\n" +
+        " var EI=egret.ExternalInterface;\n" +
+        " var oc=EI.call;\n" +
+        " if(typeof oc==='function'){EI.call=function(cmd,msg){\n" +
+        "  try{cap('ei',null,'ExternalInterface call '+String(cmd).substring(0,60)\n" +
+        "   +' — '+String(msg).substring(0,200));}catch(e){}\n" +
+        "  return oc.apply(this,arguments);};}\n" +
+        " var oa=EI.addCallback;\n" +
+        " if(typeof oa==='function'){EI.addCallback=function(name,fn){\n" +
+        "  try{cap('ei',null,'ExternalInterface addCallback '+String(name).substring(0,60)\n" +
+        "   +' terdaftar — menunggu jawaban native');}catch(e){}\n" +
+        "  return oa.apply(this,arguments);};}\n" +
+        " cap('ei',null,'ExternalInterface hook terpasang (egret ada)');\n" +
+        "}catch(e){}},300);\n" +
         "/* ---- RESOURCE TIMING SWEEP — file yang dilayani shell EgretNative\n" +
         "   dari lokal tidak pernah lewat server, tapi timeline performance\n" +
         "   WebView TETAP MENCATATNYA. Satu baris per file baru. ---- */\n" +
@@ -265,7 +417,7 @@ public final class ClientCapture {
         "/* ---- flush: backoff, TIDAK PERNAH berhenti (dulu mati setelah 8 gagal) ---- */\n" +
         "function flush(){\n" +
         " if(inflight||!buf.length)return;\n" +
-        " var payload;var withMeta=!metaSent;\n" +
+        " var payload;var withMeta=(!metaSent&&!WORKER_READY)?true:false;\n" +
         " try{payload={v:2,sid:sid,events:buf};\n" +
         "  if(withMeta)payload.meta=buildMeta();\n" +
         "  payload=JSON.stringify(payload);}catch(e){return;}\n" +
@@ -277,7 +429,8 @@ public final class ClientCapture {
         "   inflight=false;\n" +
         "   if(x.status===0||x.status>=400){fails++;delay=Math.min(delay*2,5000);\n" +
         "    buf=sent.concat(buf);if(buf.length>MAXBUF)buf.splice(0,buf.length-MAXBUF);}\n" +
-        "   else{fails=0;delay=500;if(withMeta)metaSent=true;}});\n" +
+        "   else{fails=0;delay=500;if(withMeta){metaSent=true;\n" +
+        "    try{if(WORKER&&WORKER_READY)WORKER.postMessage({m:'nometa'});}catch(e9){}}}});\n" +
         "  x.send(payload);}catch(e){inflight=false;fails++;\n" +
         "  buf=sent.concat(buf);if(buf.length>MAXBUF)buf.splice(0,buf.length-MAXBUF);\n" +
         "  delay=Math.min(delay*2,5000);}}\n" +
@@ -293,6 +446,7 @@ public final class ClientCapture {
         " setTimeout(tick,500);}\n" +
         "setTimeout(tick,400);\n" +
         "window.addEventListener('pagehide',function(){\n" +
+        " try{if(WORKER&&WORKER_READY)WORKER.postMessage({m:'f'});}catch(e0){}\n" +
         " try{if(buf.length&&navigator.sendBeacon){\n" +
         "  var b=JSON.stringify({v:2,sid:sid,events:buf.splice(0,buf.length)});\n" +
         "  navigator.sendBeacon(EP,new Blob([b],{type:'application/json'}));}\n" +

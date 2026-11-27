@@ -373,9 +373,11 @@ public final class LoggerHandler implements HttpWorker.Handler {
      *     stack: (stack JS penuh dari jserror/unhandledrejection/trace) ·
      *     sid: (identitas sesi halaman — ikut di NDJSON & salinan).
      *  2. BADGE LEVEL CLIENT lebih tepat: console.debug/dir/trace/table/count/
-     *     time/timeEnd/group/groupEnd/clear + resource/perf/lifecycle = DEBUG;
-     *     longtask = WARN (UI macet di atas 50 ms); meta = INFO (fakta device
-     *     sesi baru).
+     *     time/timeEnd/group/groupEnd/clear + resource/perf/lifecycle/
+     *     script-start/media-start = DEBUG;
+     *     longtask + watchdog WARN = WARN (UI macet / main thread tak merespons);
+     *     meta = INFO (fakta device sesi baru); ei = INFO (jembatan native).
+     *     v75: script-start/media-start = DEBUG, watchdog WARN = WARN.
      *  3. Baris CLIENT meta (sekali per sesi): UA/layar/dpr/memori/koneksi/
      *     egret — dari halaman apa adanya.
      *  4. NOL tombol baru (tetap 4: cari, filter error, salin, jeda) —
@@ -600,7 +602,7 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  if(e.reqPreview)parts.push(subRow('s-req','up','recv:','('+fmtB(e.reqLen||0)+') '+e.reqPreview,e.reqLen));\n")
          .append("  else if((e.reqLen||0)>0)parts.push(subRow('s-req','up','recv:','('+fmtB(e.reqLen)+' binary)',e.reqLen));\n")
          .append("  if(e.respPreview)parts.push(subRow('s-res','down','send:','('+fmtB(e.respLen||0)+') '+e.respPreview,e.respLen))}\n")
-         .append("/* CLIENT v2 — rincian capture langsung tampil: body/response/stack/sid */\n")
+         .append("/* CLIENT v3 — rincian capture langsung tampil: body/response/stack/sid; worker watchdog/script-start/ei — Bagian 75 */\n")
          .append(" if(k=='CLIENT'){\n")
          .append("  if(e.reqPreview)parts.push(subRow('s-req','up','request:',e.reqPreview));\n")
          .append("  if(e.respPreview)parts.push(subRow('s-res','down','response:',e.respPreview));\n")
@@ -626,9 +628,9 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" if(k=='CLIENT'){\n")
          .append("  if((e.level||'')=='ERROR')return {word:'ERROR',cls:'r',icon:'x'};\n")
          .append("  if((e.error||'').length)return {word:'ERROR',cls:'r',icon:'x'};\n")
-         .append("  if(m.indexOf('warn')>=0||m=='longtask')return {word:'WARN',cls:'w',icon:'warn'};\n")
+         .append("  if(m.indexOf('warn')>=0||m=='longtask'||(m=='watchdog'&&p.indexOf('tidak merespons')>=0))return {word:'WARN',cls:'w',icon:'warn'};\n")
          .append("  if(m=='meta')return {word:'INFO',cls:'g',icon:'info'};\n")
-         .append("  if(m=='resource'||m=='perf'||m=='lifecycle')return {word:'DEBUG',cls:'d',icon:'search'};\n")
+         .append("  if(m=='resource'||m=='perf'||m=='lifecycle'||m=='script-start'||m=='media-start')return {word:'DEBUG',cls:'d',icon:'search'};\n")
          .append("  if(m.indexOf('console.debug')>=0||m=='console.dir'||m=='console.trace'||m=='console.table'||m=='console.count'||m.indexOf('console.time')>=0||m.indexOf('console.group')>=0||m=='console.clear')return {word:'DEBUG',cls:'d',icon:'search'};\n")
          .append("  return {word:'INFO',cls:'g',icon:'check'}}\n")
          .append(" if((e.level||'')=='ERROR')return {word:'ERROR',cls:'r',icon:'x'};\n")
