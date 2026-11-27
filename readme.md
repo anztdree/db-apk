@@ -7328,3 +7328,137 @@ server asli) · 4000 dashboard→anti-pollution (tidak jadi baris, hanya
 NOL kode diubah. Owner cukup jawab: OKE format v2 (78.2–78.6) → langsung
 implementasi 78.7 satu ronde. Kalau masih ada baris yang kurang pas —
 tunjuk nomor barisnya, diperbaiki SEBELUM implementasi.
+
+## Bagian 79 — ARAHAN OWNER: "DASARR BUDEEEG TANPA KLIK !!! DROPDOWN ITU ADA !!" + "REFERENSI ANDA KEK TAII SEMUAAAAA GAK JELAS GAK EFEKTIF GK BISA DI PAKAI!!!" — KOREKSI KEDUA FORMAT v2 (78) → FORMAT v3: (1) NOL KLIK UNTUK MEMBACA — DROPDOWN TERBUKA SEJAK AWAL, ISI KELIHATAN SEMUA TANPA INTERAKSI; (2) NOL REFERENSI INTERNAL DI BARIS LOG — LOG BICARA SENDIRI, ARTINYA DITULIS LANGSUNG — PLAN ONLY, NOL KODE
+
+### 79.1 DUA KESALAHAN v2 YANG DIKOREKSI OWNER (jujur, diterima penuh)
+
+- SALAH 1 — model KLIK-UNTUK-BACA: v2 membuat ▶ tertutup dan menulis
+  "KLIK ▶ (hanya bukti mentah…)" — berarti owner HARUS klik untuk melihat
+  isi. Owner: TANPA KLIK!!! DROPDOWN ITU ADA = isi dropdown harus
+  KELIHATAN SEJAK AWAL tanpa interaksi. Panah bukan pintu yang harus
+  dibuka — panah hanya penanda grup yang memang TERBUKA. Klik satu-satunya
+  guna: MELIPAT (merapikan) — kebalikan dari v2 — dan melipat itu pilihan,
+  tidak melipat pun cerita tetap utuh.
+- SALAH 2 — log penuh referensi internal yang cuma repo yang paham:
+  "(bukti grep APK Bagian 75.1)", "(bukti atlas §6)", "(aturan owner 70)",
+  "(mask 6+4 — D3)", "(decode extras v14)", "(75.1)", "§7.5",
+  "bukti dump device", "NDJSON baris [23] · LoginAck.java extra",
+  "SDK tolak103 (K2)" — saat owner MEMBACA dashboard ini semua TIDAK BISA
+  DIPAKAI: gak jelas, gak efektif. Log harus BICARA SENDIRI: yang ingin
+  diketahui ditulis sebagai kata-kata langsung di baris itu. Referensi
+  nomor Bagian/atlas/tempatnya di README (dokumentasi), NOL di log.
+
+### 79.2 FORMAT BARIS FINAL v3
+
+```
+HH:mm:ss.SSS EMOJI LEVEL CHIP Pesan inti — fakta · fakta
+    ▼ ↳ detail pelengkap — TERBUKA sejak awal, TANPA KLIK
+    ↳ …
+```
+
+- R13 — NOL KLIK UNTUK MEMBACA: default dropdown = TERBUKA. Semua makna
+  dan semua detail penting kelihatan begitu dashboard dibuka. Klik panah
+  hanya untuk MELIPAT (pilihan, opsional). Tidak ada informasi yang
+  butuh interaksi untuk terbaca. Baris tanpa detail = tanpa panah.
+- R14 — NOL REFERENSI INTERNAL DI LOG: dilarang menulis penunjuk repo
+  (Bagian N, atlas §N, aturan owner N, K2, D3, v27/v14, dump device,
+  nama file .java, nomor baris NDJSON) di baris story. Semua arti
+  ditulis LANGSUNG. Data mentah (body asli, hex) tetap ada — di tab ALL,
+  bukan di cerita.
+- EMOJI penuh tetap (R11), LEVEL jujur tetap (P3), CHIP port tetap (P6),
+  angka nyata tetap (P4/P10).
+
+### 79.3 SEBELUM (v2, salah) → SESUDAH (v3, benar) — referensi dibunuh, arti ditulis langsung
+
+```
+v2:  …eval main.min hidup (bukti grep APK Bagian 75.1)
+v3:  …artinya main.min SUDAH HIDUP dan dieksekusi
+
+v2:  — MISSING (server/ + APK assets) — TANPA placeholder (aturan owner 70)
+v3:  — tidak ada di server DAN tidak ada di APK — dibiarkan 404 nyata, TIDAK dibuatkan file bohong
+
+v2:  …startBtnTap otomatis (bukti atlas §6)
+v3:  …login sukses → tombol START ditekan otomatis
+
+v2:  — resp {"code":103} SDK tolak103 (K2)
+v3:  — isi jawaban {"code":103} = SDK MENOLAK (103 = kode tolak)
+
+v2:  fase gameserver §7.5 belum dibangun
+v3:  server belum punya jawaban verify — INILAH titik loading macet
+
+v2:  ↳ sumber: NDJSON baris [23] · LoginAck.java extra · handler 5050
+v3:  (dihapus dari story — data mentah tetap ada di tab ALL, bukan di cerita)
+
+v2:  loginToken=76fdaa…eb7f (mask 6+4 — D3)
+v3:  loginToken=76fdaa…eb7f (disembunyikan 6 awal + 4 akhir)
+```
+
+### 79.4 CONTOH 26 BARIS v3 — NOL REFERENSI, SEMUA GRUP TERBUKA TANPA KLIK (nilai run asli owner, sama dengan 77/78)
+
+```
+ 1  16:38:15.473 🚀 INFO  4000   Server v27 up — 9527 config · 9528 cdn+socket.io · 5050 login · 5051 game · 9530 sdk · 4000 dashboard — log tetap 1 file di-tumpuk, tidak ada file baru
+ 2  16:38:16.920 🧾 INFO  9527   GET setting_BS_Android.bin → 200 · 687 B · XOR DragonBall · 6 ms — testMode=1 · loginPort=9528 · loginWebPort=5050
+      ▼ ↳ loginServer=127.0.0.1 · url game: http://127.0.0.1:9528/bs/index-native.html?v=202109150935
+ 3  16:38:16.984 🧾 INFO  9527   GET com_db_local.bin → 200 · 2 B · XOR → isi kosong {} — normal, memang kosong
+ 4  16:38:18.017 🌐 INFO  9528   Upgrade check → 200 · 4 file · 17 ms — base.version=110 · resource.version=11390 · all.zip 19.4 MB
+      ▼ ↳ ukuran base 31.0 MB · upgrade hanya butuh 1 file: all.zip
+ 5  16:38:18.208 📥 INFO  9528   GET all.zip?v=11011390 → 200 · 18.5 MB · 171 ms · 108 MB/s
+ 6  16:38:19.527 📲 INFO  9530   POST /v1/system/init → 200 · 34 ms — loginTypes=[1] · first_install=1 · countryCode=HK
+ 7  16:38:20.556 📲 INFO  9530   POST /v1/user/registerVisitor → 200 · 22 ms — uid=1795772300555 Guest6017 · isGuest=1 · openType=12
+ 8  16:38:21.764 🧩 INFO  4000   Ekstraksi selesai — server_root/bs · 2759 file · 6.3 s
+ 9  16:38:22.056 🔑 INFO  5050   GET /loginchecknative → 200 · 16 ms — uid=1795772300555 · usermode=1 · sdk=quick · code=0 · loginToken=76fdaa…eb7f (disembunyikan 6 awal + 4 akhir)
+      ▼ ↳ body asli: {"code":0,"usermode":1,"sdk":"quick","loginToken":"<penuh>"}
+10  16:38:22.321 📄 INFO  9528   GET /bs/index-native.html?v=202109150935 → 200 · 28 KB · 11 ms — capture client terinjeksi +18.1 KB · judul halaman: DragonBall
+11  16:38:23.843 🔗 INFO  CLIENT Sesi capture s-mwysgoj6-aw93dk — lang=zh-CN · egret=true · EgretNative Chrome/61 · Android 12
+12  16:38:23.846 📜 DEBUG CLIENT Script initial 7/7 selesai — game 6/8 — sisa 2: default.thm_4d02a3c6.js · main.min_777039fc.js
+13  16:38:25.390 🐞 WARN  CLIENT Crash reporter pihak ketiga mengganti penangkap error bawaan — capture memasang ulang penjepitnya — crash tetap tertangkap
+14  16:38:26.616 🖼️ INFO  9528   GET clientversion.json → 200 · 37 B · 4 ms — clientVersion=202109150935
+15  16:38:26.620 🧠 INFO  CLIENT File ini hanya diminta oleh main.min_NNN.js — artinya main.min SUDAH HIDUP dan dieksekusi
+16  16:38:27.846 📥 ERROR 9528   5 file tidak ada (404) · 46 ms — denglujiemianxuanzhejiemiannew21_png · Instagram_png · Telegram_png · Discord_png · Logo18+Full_png — tidak ada di server DAN tidak ada di APK — dibiarkan 404 nyata, TIDAK dibuatkan file bohong
+      ▼ ↳ 5 request berurutan saat game menggambar layar pilih login (total 46 ms)
+17  16:38:27.852 🧠 INFO  CLIENT 5 file itu = 登录界面选择界面 (layar pilih login/server) + ikon sosmed — file memang tidak disediakan → game lanjut normal, BUKAN error fatal
+18  16:38:27.870 🔑 INFO  9528   socket.io login · open — sid=tcMYiYqh8ehNdt1VbBaI · upgrade tersedia: websocket · ping 25 s / timeout 5 s
+19  16:38:27.899 🌐 INFO  9528   socket.io login · pindah ke websocket SELESAI — jabat tangan 2probe → 3probe berhasil · sinyal '5' diterima · jalur polling ditutup
+20  16:38:27.900 🔑 INFO  9528   event GetServerList dijawab ack#0 — uid=1795772300555 · channel=quick · 2 ms — isi jawaban: ret=0 · serverList[0]: serverId=1 "DragonBall Local" · url=http://127.0.0.1:9528 · online=true · riwayat server kosong
+21  16:38:27.905 🧠 INFO  CLIENT Riwayat kosong → otomatis pilih server pertama → login sukses → tombol START ditekan otomatis
+22  16:38:28.210 🕹️ INFO  9528   socket.io game · open — sid=xRBLP14oJNbIZmtHOp9d — koneksi kedua = client mulai masuk game (clientStartGame ke url server)
+23  16:38:38.330 ⏳ ERROR 9528   socket.io game · sid=xRBLP14oJNbIZmtHOp9d DIAM 10 dtk — client tak pernah mengirim sinyal '5' — pindah websocket tidak selesai
+      ▼ ↳ kejadian terakhir sebelum diam: 16:38:28.210 open — sesudah itu NOL paket masuk/keluar
+24  16:38:38.331 🧠 ERROR CLIENT Socket game menunggu event "verify" (等待验证) dari server — server belum punya jawaban verify — INILAH titik loading macet
+25  16:38:38.331 🎯 ERROR CLIENT Yang harusnya terjadi: server kirim verify → client jawab verify(XXTEA "verification") → ret=0 → enterGame → simpan info user → tutup sesi login — yang terjadi: NOL dari rantai itu (dihitung dari event yang tidak muncul)
+26  16:38:38.332 🛑 ERROR CLIENT Data terakhir dari client: 16:38:23.846 — client bisu 14.5 dtk — watchdog capture tidak pernah berbunyi → client benar-benar berhenti (bukan main thread beku)
+```
+
+### 79.5 VARIAN ERROR v3 — sama, kini bersih referensi dan terbuka
+
+```
+E1  16:38:48.348 📥 ERROR 9528   GET sound_click_mp3 → 404 · 8 ms — file tidak ada di server dan tidak ada di APK — diminta game saat menggambar tombol (suara klik) — game tetap jalan
+E2  16:38:47.102 🐞 ERROR CLIENT Error JS: TypeError: Cannot read property 'name' of undefined — main.min_777039fc.js baris 1 kolom 104553
+      ▼ ↳ jejak 8 fungsi ditampilkan PENUH di sini sejak awal — TANPA KLIK (diawali main.min_777039fc.js:1:104553)
+E3  16:38:29.001 ⏳ WARN  CLIENT Watchdog: main thread tidak merespons ~4.0 dtk — detak 1 dtk berhenti — kejadian terakhir sebelum beku: script load
+E4  16:38:34.001 💤 INFO  CLIENT Watchdog: main thread pulih setelah beku ~9.0 dtk — log kembali mengalir normal
+E5  16:38:41.003 🐞 ERROR CLIENT Script mulai: js/default.thm_4d02a3c6.js — tapi TIDAK PERNAH selesai dimuat 12 dtk → loader menggantung TANPA pesan error
+E6  16:38:39.204 📡 ERROR 9530   POST /v1/user/login → 502 · 9 ms — endpoint tidak ada di daftar SDK → jawaban fallback.json dipakai — isi jawaban {"code":103} = SDK MENOLAK (103 = kode tolak)
+```
+
+### 79.6 IMPLEMENTASI BILA OKE (satu ronde — update 78.7)
+
+- Dashboard v19 rombak TOTAL — formatter v3: semua grup TERBUKA default
+  (render langsung semua sub-line, TANPA klik untuk membaca); klik panah
+  HANYA melipat (opsional); filter chip & level tetap; DEBUG toggle tetap;
+  NOL referensi internal di story (data mentah tetap di tab ALL).
+  NDJSON tetap sumber; arsip tidak disentuh; 1 file di-tumpuk tetap.
+- Server (dex v28): N1 watchdog diam sesi + N2 pelacak batch + kind=
+  ANALYSIS masuk arsip (unduhan ndjson ikut membawa 🧠/🎯/🛑).
+- Smoke golden v3: fixture NDJSON device owner → formatter menghasilkan
+  PERSIS 26 baris 79.4 + 6 varian 79.5, TIAP baris diperiksa NOL kata
+  "Bagian/§/K2/D3/v14/java"; E2E browser: begitu halaman dibuka SEMUA
+  detail kelihatan tanpa klik; klik panah hanya melipat.
+- dex v28 + APK v28 raw-copy (beda hanya classes2.dex). NOL file log baru.
+
+### 79.7 STATUS — PLAN ONLY
+
+NOL kode diubah. Owner jawab OKE format v3 (79.2–79.5) → langsung
+implementasi 79.6 satu ronde. Kalau masih ada baris kurang pas — tunjuk
+nomornya, diperbaiki SEBELUM implementasi.
