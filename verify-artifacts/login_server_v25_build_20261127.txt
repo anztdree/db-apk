@@ -1,0 +1,141 @@
+BUILD & VERIFIKASI APK v25 — FIX FORCE CLOSE v24 (Bagian 73, 27 Nov 2026)
+================================================================================
+LAPORAN OWNER (kata-kata persis):
+  "versi 23 belum force close, namun versi 24 saat apk di buka langsung
+   force CLOSE tanpa log"
+
+AKAR MASALAH — FORENSIK classes2.dex v24 YANG TERKIRIM (164.748 B,
+diekstrak dari release-mod/db-local(MOD-LOCALSERVER-v24).apk
+sha256 137e3e9a4f24c24be6e2d2fe73df283cd4b0ba8e81521ad8b5fbf3472afd3f80):
+  patch_marker_v24.py MENGHITUNG ULANG HEADER DEX DENGAN SALAH:
+    1. d[size-20:size] = sha1(...)  — MENIMPA 20 BYTE TERAKHIR FILE
+       dgn SHA1 atas rentang salah (d[12:size-8], benar d[32:]);
+    2. adler32 atas d[12:size-8] (benar d[12:]);
+    3. signature SHA1 di offset 12..32 dibiarkan BASI.
+  PADAHAL map_list dex = EKOR FILE: map_off 164540, 4 + 17x12 = 208 B,
+  berakhir TEPAT di EOF (164.748). Hasil pemindaian map v24 (layout
+  map_item benar: type@0 unused@2 size@4 offset@8):
+    entri 0-14  : sah (0x0000@0 … 0x1003@162656)
+    entri 15    : 0x2006 size 1.205.860.973 offset 3.324.727.021  ← RUSAK
+    entri 16    : 0xf8bf (TIPE TIDAK SAH) size 1.289.697.428 ← RUSAK
+  + checksum header tersimpan 0x49561284, dihitung benar 0xee901673 → SALAH
+  + signature @12..32 basi
+  → ART (DexFileVerifier) menolak dex saat kelas com.db.local.server.*
+    PERTAMA disentuh di open → SELURUH classes2.dex gagal termuat →
+    force close INSTAN; LoggerCore/CrashHook ada di dex yang sama →
+    NOL baris log = persis "force CLOSE tanpa log".
+
+MENGAPA LOLOS SMOKE/REBUILD (catatan jujur):
+  - smoke desktop menjalankan CLASS JVM (bukan dex) → tidak melihat dex;
+  - rebuild_v24_raw.py hanya memverifikasi struktur ZIP (beda entri),
+    bukan struktur dex;
+  - v23 AMAN karena patch_marker_v23.py memakai rumus benar
+    (d[12:32]=sha1(d[32:]); d[8:12]=adler32(d[12:])); v24 MENULIS ULANG
+    rumus itu → cacat. Pelajaran: header dex TIDAK BOLEH ditulis sembarangan.
+
+FIX v25 — patch_marker_v25.py (KODE JAVA TIDAK DIUBAH SATU BARIS PUN):
+  1. rumus spec DEX (sama v23): SHA1 @12..32 atas d[32:] s/d EOF;
+     adler32 @8..12 atas d[12:] s/d EOF.
+  2. VERIFIKASI STRUKTUR PENUH setelah patch (cermin DexFileVerifier):
+     checksum+signature dihitung ulang & dibandingkan; header
+     (magic/file_size/header_size/endian_tag); map_list di-parse PENUH
+     (17 entri, berakhir TEPAT di EOF, header@0, offset naik ketat,
+     ukuran elemen tetap diverifikasi, map_list 0x1000 = penutup yang
+     menunjuk dirinya); section header (string/type/proto/field/method/
+     class_def) dalam batas file. Gagal APAPUN = sys.exit(1) — dex cacat
+     TIDAK PERNAH sampai ke APK. Rantai rebuild_v25_raw.py mengecek
+     ulang checksum+signature+map sekali lagi sebelum zip dibangun.
+
+BUKTI KONTEN SETARA (v25 = kode v24, hanya header dex dipulihkan):
+  - D8 OUTPUT v25 == D8 OUTPUT v24: menirukan patch rusak v24 atas
+    D8 fresh (v19→v24 + sha ke ekor + adler rentang salah) menghasilkan
+    classes2.dex v24 TERKIRIM BYTE-PER-BYTE → toolchain identik,
+    satu-satunya cacat = langkah patch.
+  - v25 = fresh D8 + 4x2 byte marker (v19→v25; byte 'v' sama) + 24 byte
+    header (checksum+signature) = 32 byte beda; ekor map IDENTIK dgn D8.
+  - v25 vs dex rusak v24: beda TEPAT 48 byte = 4 byte marker ke-3
+    ('4'→'5') + 24 header + 20 ekor map yang DIPULIHKAN.
+  - dexcheck classes2.dex dalam APK FINAL bertanda tangan: checksum
+    0xae5e0cf4 sah, signature sah, map 17 entri berakhir tepat di EOF,
+    marker v25 x4 + kontrak capture client (/log/client, __dbClientCapture).
+
+TOOLCHAIN (direproduksi dari nol, SAMA dokumen v24):
+  javac  21.0.13  — openjdk-21-jdk-headless_21.0.13+9-1~deb13u2_amd64.deb
+                    (83.187.032 B, deb.debian.org) + openjdk-21-jre-headless
+                    (41.993.808 B) dpkg -x; javac -version = 21.0.13
+  D8     8.3.37   — storage.googleapis.com/r8-releases/raw/8.3.37/r8.jar
+                    (49.959.183 B; D8 --version = 8.3.37 build 3ccc501316)
+  sign   uber-apk-signer 1.3.0 + keystore release-mod/dblocal-mod.keystore
+                    (alias dblocalmod, storepass/keypass dblocalmod123 —
+                    SAMA semua versi, install-over aman)
+  lfs    git-lfs 3.6.1 (GitHub release, linux amd64)
+  base   APK v23 dari LFS HISTORY (batch API github + tools/
+                    download_chunked2.py, 136 chunk x 1,5 MB) — sha256
+                    722eee785b22797c00da97eef527147ea9d0c7e54d17cb9f7998a49
+                    c5e37a617 = pointer LFS v23, DICEK ULANG cocok.
+                    (Bukan base v24: base v23 + dex v25 + re-sign
+                    menghasilkan rantai v23 yang terbukti jalan di device.)
+
+DEX classes2.dex v25 (login-server)
+  sumber   8 stubs + 26 javasrc com/db/local/server (IDENTIK v24 — tanpa
+           perubahan; TANPA SmokeMain) → 51 class
+  compile  javac -encoding UTF-8 -source 8 -target 8 → PASS (warning
+           -source 8 obsolete = standar rantai)
+  dexing   D8 --release --min-api 21 (input jar) → 164.748 B — PERSIS
+           ukuran v24 (konten identik)
+  marker   rebuild-src/scripts/patch_marker_v25.py — v19→v25 tepat 4
+           string (judul dashboard, banner, BOOT LocalServerStarter, crash
+           CrashHook; ukuran sama, header dihitung ulang dgn rumus BENAR
+           + verifikasi struktur penuh) — sha256
+           6195152e3f7ec058780f8e1014829d769e2b404c7941401d1d8f4fe409ceb392
+  kontrak warisan v20..v24 utuh (handler.process/DragonBall Local/
+           server.ndjson/level ERROR/404 MISSING/EXITINFO/pola socket
+           GAME/gameserver belum dibangun/menunggu event 'verify'/long-poll
+           timeout 10 dtk/tidak pernah mengirim '5'/berisi:/serverlist
+           SAMPAI ke client/WS berakhir/WS close dari client + kontrak
+           v24: /log/client, __dbClientCapture, CLIENT, console.error
+           dari halaman game, window.onerror, unhandledrejection, capture
+           client terinjeksi (script, loading macet di sini, batch log
+           client tidak valid, script/XHR halaman game gagal) — semua ADA
+  terlarang (fabrikasi lama v18 NOL): serverListJson/enterGameResponse/
+           routeEvent/"ACK: 43"/exit-history.ndjson/pangkas URL — NOL
+
+REBUILD RAW-COPY v25 (scripts/rebuild_v25_raw.py — pola 46..56..67..72)
+  base   = APK v23 (sha256 722eee78… cocok)
+  6.428 entri byte-per-byte LFH+CD+EOCD; verifikasi zipfile: beda HANYA
+  classes2.dex; classes.dex = airplane v19 byte-identik (6.697.176 B, sha
+  62803bb1…, byte patch @0x5e8180/@0x5d2438 dicek ulang); arsc STORED
+  aligned-4; metode 3471 deflate + 2957 stored identik; QHinfo proven
+  (http://127.0.0.1:9530)
+
+ZIPALIGN + SIGN
+  uber-apk-signer 1.3.0: zipalign success + sign success — zipalign
+  verified + signature verified [v1, v2, v3]; sertifikat CN=DB Local Mod,
+  O=Owner, C=ID — SHA256
+  f58a5b9a097656440b5cb21f5ed2e70b879c3879d6a0926ff951aa181fa91170
+  (SHA384withRSA, berlaku s.d. Tue Nov 14 11:15:27 UTC 2056 — SAMA
+  v14..v24 → install-over v24 aman)
+
+APK v25 FINAL
+  release-mod/db-local(MOD-LOCALSERVER-v25).apk
+  = 202.691.550 B (PERSIS ukuran v24 — dex ukuran identik)
+  sha256 32fbf0d9b5bcfe4144d4a78f69f62689fc8aa13872da5e69a5fbb121479c07fe
+  diff entri-per-entri vs v23 base = classes2.dex + META-INF (re-sign)
+  SAJA; vs v24 rusak = classes2.dex + META-INF (re-sign) SAJA;
+  arsc/assets/bs/sdk/console/dashboard byte-identik
+  rotasi pointer LFS v24→v25 (git-lfs 3.6.1)
+
+SMOKE DESKTOP (ulang PENUH — kode Java tak berubah, wajib tetap hijau)
+  263 PASS / 0 FAIL = 242 lama tetap + 21 kasus v72 (injeksi capture +
+  /log/client + jujur di error + timeout ber-alasan) + E2E BROWSER NYATA
+  10/10 (verify_capture_v24.js, Playwright/Chromium) → verify-artifacts/
+  login_server_v25_smoke_20261127.txt (output penuh, 273 baris PASS)
+
+CATATAN JUJUR
+  - verifikasi struktur dex PERTAMA KALI ada di rantai ini (v20..v24 tidak
+    pernah memverifikasi dex hasil patch — cacat v24 lolos 4 build lama
+    hanya karena v20..v23 memakai rumus benar secara kebetulan pola; v24
+    menulis ulang rumusnya dan TIDAK ada jaring pengaman);
+  - v24 yang rusak tetap ada di LFS history sebagai bukti (pointer
+    diputar v24→v25); v25 HANYA memperbaiki header dex — perilaku server
+    sama dgn v24 yang dirancang Bagian 72.

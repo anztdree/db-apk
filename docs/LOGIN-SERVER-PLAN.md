@@ -94,6 +94,33 @@
 > login_server_v23_build_20261126.txt. Sisa = smoke DEVICE + fase
 > GAMESERVER (§7.5).
 >
+> **Bagian 73 (27 Nov 2026) — FIX FORCE CLOSE v24 (laporan owner:
+> "versi 23 belum force close, namun versi 24 saat apk di buka langsung
+> force CLOSE tanpa log" — dex v25 + APK v25 SELESAI, beda HANYA
+> classes2.dex + re-sign, sha256 32fbf0d9…)**: forensik classes2.dex v24
+> terkirim = patch_marker_v24.py MENGHITUNG ULANG HEADER DEX SALAH:
+> menimpa 20 BYTE TERAKHIR file (ekor map_list — entri 15-16 jadi sampah,
+> tipe 0xf8bf tidak sah) dgn SHA1 atas rentang salah + adler32 rentang
+> salah + signature basi → ART DexFileVerifier MENOLAK dex di open →
+> SELURUH classes2.dex gagal termuat → force close instan; LoggerCore/
+> CrashHook di dex yang sama → NOL log (persis laporan owner). Lolos
+> uji karena smoke desktop menjalankan CLASS JVM (bukan dex) dan rebuild
+> hanya memverifikasi struktur ZIP. FIX patch_marker_v25.py: rumus spec
+> DEX (sama v23: SHA1 @12 atas d[32:], adler32 @8 atas d[12:]) + VERIFIKASI
+> STRUKTUR PENUH (checksum/signature self-check, header, map_list 17
+> entri berakhir TEPAT di EOF, offset naik, map_list 0x1000 penutup,
+> section header dalam batas) — dex cacat TIDAK PERNAH sampai ke APK;
+> rebuild_v25_raw.py mengecek ulang. BUKTI KONTEN SETARA: D8 output v25 ==
+> D8 output v24 (simulasi patch rusak v24 atas D8 fresh = dex v24
+> terkirim BYTE-PER-BYTE); v25 vs dex rusak = beda TEPAT 48 byte (4
+> marker + 24 header + 20 ekor map pulih). KODE JAVA TIDAK DIUBAH —
+> smoke desktop 263 PASS / 0 FAIL ULANG + E2E 10/10 ULANG. APK v25 =
+> 202.691.550 B (persis ukuran v24). Pelajaran: output patch dex wajib
+> diverifikasi strukturnya (v20..v24 tidak pernah memverifikasi).
+> Bukti: verify-artifacts/login_server_v25_build_20261127.txt +
+> login_server_v25_smoke_20261127.txt. Sisa = smoke DEVICE + fase
+> GAMESERVER (§7.5).
+>
 > **Bagian 72 (26 Nov 2026) — CAPTURE CLIENT: cara kerja eruda → log global
 > (dex v24 + APK v24 SELESAI, beda HANYA classes2.dex + re-sign, sha256
 > 137e3e9a…)**: jawaban laporan owner: "sudah di bilang di game itu sedang

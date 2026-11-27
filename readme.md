@@ -6440,3 +6440,112 @@ dihapus) + 16 kasus v70 baru:
   usulan berikutnya wajib merujuk baris atlas (§13).
 - NOL perubahan bs/, sdk/, dashboard, arsc, assets, smali — hanya
   classes2.dex + tanda tangan.
+
+## Bagian 73 — LAPORAN OWNER: "VERSI 23 BELUM FORCE CLOSE, NAMUN VERSI 24 SAAT APK DI BUKA LANGSUNG FORCE CLOSE TANPA LOG" — AKAR: PATCH HEADER DEX v24 RUSAK (MENIMPA 20 BYTE EKOR map_list + CHECKSUM/SIGNATURE SALAH) → ART MENOLAK classes2.dex → FORCE CLOSE INSTAN NOL LOG — FIX + VERIFIKASI STRUKTUR DEX PENUH — KODE JAVA TIDAK DIUBAH SATU BARIS — dex v25 + APK v25 SELESAI (beda hanya classes2.dex + re-sign; smoke desktop 263 PASS / 0 FAIL ULANG + E2E BROWSER 10/10 ULANG)
+
+### 73.1 FORENSIK classes2.dex v24 TERKIRIM (bukti, bukan analisis)
+
+- classes2.dex v24 (164.748 B) diekstrak dari APK v24 terkirim
+  (sha256 137e3e9a…) lalu di-bedah:
+  - checksum header tersimpan `0x49561284`; dihitung benar
+    `adler32(d[12:])` = `0xee901673` → SALAH;
+  - signature SHA1 di offset 12..32 BASI (tidak pernah dihitung ulang);
+  - 20 BYTE TERAKHIR file = dump SHA1 asing
+    `6dfadf47ed4e2bc6bff815319438df4c0c9fe26b` — padahal map_list dex =
+    EKOR FILE (map_off 164540, 4 + 17x12 = 208 B, berakhir TEPAT di EOF):
+    entri 0-14 sah, entri 15 `0x2006 size 1.205.860.973 offset
+    3.324.727.021` RUSAK, entri 16 tipe `0xf8bf` (TIDAK SAH di dex spec)
+    RUSAK.
+- MEKANISME force close: ART (DexFileVerifier) memverifikasi header +
+  map saat memuat dex → dex v24 DITOLAK di open ketika kelas
+  `com.db.local.server.*` pertama disentuh → SELURUH classes2.dex gagal
+  termuat → crash; LoggerCore/CrashHook ada di dex yang sama → NOL baris
+  log tertulis = persis laporan owner "force CLOSE tanpa log".
+- ASAL cacat: `patch_marker_v23.py` (yang benar) menutup dengan
+  `d[12:32]=sha1(d[32:]); d[8:12]=adler32(d[12:])`. `patch_marker_v24.py`
+  MENULIS ULANG bagian itu jadi `d[size-20:size]=sha1(d[12:size-8]);
+  adler32(d[12:size-8])` — dua rentang salah + menimpa ekor map_list.
+- MENGAPA LOLOS SEMUA PENGUJIAN (jujur): smoke desktop menjalankan CLASS
+  di JVM (bukan dex) — tidak pernah melihat dex; rebuild RAW-COPY hanya
+  memverifikasi struktur ZIP (beda entri). v20..v23 selamat KARENA
+  polanya masih rumus benar; v24 menulis ulang rumus tanpa jaring
+  pengaman. PELAJARAN: output patch dex wajib diverifikasi strukturnya.
+
+### 73.2 FIX — patch_marker_v25.py (kode Java v24 TIDAK DIUBAH)
+
+- Rumus DIPULIHKAN ke spec DEX (sama v23): SHA1 @12..32 atas `d[32:]`
+  s/d EOF; adler32 @8..12 atas `d[12:]` s/d EOF.
+- BARU — VERIFIKASI STRUKTUR PENUH setelah patch (cermin
+  DexFileVerifier): checksum+signature dihitung ulang lalu dibandingkan;
+  header (magic 035/file_size/header_size 0x70/endian_tag); map_list
+  di-parse PENUH dgn layout map_item BENAR (type@0 unused@2 size@4
+  offset@8): 17 entri, berakhir TEPAT di EOF, header@0, offset naik
+  ketat, ukuran elemen tetap dicek (string_id 4 B/type_id 4/proto 12/
+  field 8/method 8/class_def 32), map_list 0x1000 = penutup yang
+  menunjuk dirinya; section header (string/type/proto/field/method/
+  class_def) dalam batas file. Gagal APAPUN = exit — dex cacat TIDAK
+  PERNAH sampai ke APK. `rebuild_v25_raw.py` mengecek ulang
+  checksum+signature+map sekali lagi sebelum zip dibangun.
+
+### 73.3 BUKTI KONTEN SETARA (v25 = kode v24, hanya header dex dipulihkan)
+
+- D8 OUTPUT v25 == D8 OUTPUT v24 — dibuktikan, bukan dianggap: menirukan
+  patch rusak v24 (v19→v24 + sha ke ekor + adler rentang salah) atas D8
+  fresh menghasilkan classes2.dex v24 TERKIRIM BYTE-PER-BYTE → toolchain
+  identik (javac 21.0.13 + D8 8.3.37), satu-satunya cacat = langkah
+  patch header.
+- v25 = fresh D8 + 4x2 byte marker (`v19`→`v25`; byte 'v' sama) + 24
+  byte header = 32 byte beda; ekor map v25 IDENTIK dgn output D8.
+- v25 vs dex rusak v24: beda TEPAT 48 byte = 4 byte marker ke-3
+  (`4`→`5`) + 24 header + 20 ekor map yang DIPULIHKAN — tidak ada byte
+  lain yang berubah.
+- dexcheck classes2.dex di dalam APK FINAL bertanda tangan: checksum
+  `0xae5e0cf4` sah, signature sah, map 17 entri berakhir tepat di EOF,
+  marker v25 x4, kontrak capture client (`/log/client`,
+  `__dbClientCapture`) ada.
+
+### 73.4 BUILD + BUKTI
+
+- Toolchain direproduksi dari nol sesuai dokumen v24: javac 21.0.13
+  (openjdk-21-jdk-headless_21.0.13+9-1~deb13u2_amd64.deb 83.187.032 B +
+  jre-headless 41.993.808 B, dpkg -x); D8 8.3.37
+  (storage.googleapis.com/r8-releases/raw/8.3.37/r8.jar, 49.959.183 B,
+  `D8 --version` = 8.3.37 build 3ccc501316); git-lfs 3.6.1.
+- Base = APK v23 dari LFS HISTORY (batch API github +
+  tools/download_chunked2.py, 136 chunk) — sha256 `722eee78…` cocok
+  pointer LFS v23. (Bukan base v24 — base v23 + dex v25 + re-sign =
+  rantai v23 yang terbukti jalan di device.)
+- dex v25: 8 stubs + 26 javasrc (IDENTIK v24) → 51 class → D8
+  --release --min-api 21 → 164.748 B — PERSIS ukuran v24 → patch
+  marker v19→v25 (4 string) sha256
+  `6195152e3f7ec058780f8e1014829d769e2b404c7941401d1d8f4fe409ceb392`.
+- rebuild RAW-COPY v25: 6.428 entri byte-per-byte, verifikasi zipfile
+  beda HANYA classes2.dex, classes.dex = airplane v19 byte-identik
+  (6.697.176 B, sha 62803bb1…, byte patch @0x5e8180/@0x5d2438 dicek
+  ulang), arsc STORED aligned-4, metode 3471+2957 identik, QHinfo
+  proven; zipalign + sign uber-apk-signer 1.3.0 keystore dblocalmod SAMA
+  (zipalign verified + signature verified [v1,v2,v3], CN=DB Local Mod
+  s.d. 2056 → install-over v24 aman).
+- APK v25 final release-mod/db-local(MOD-LOCALSERVER-v25).apk =
+  202.691.550 B (PERSIS ukuran v24) sha256
+  `32fbf0d9b5bcfe4144d4a78f69f62689fc8aa13872da5e69a5fbb121479c07fe`;
+  diff entri-per-entri vs v23 = classes2.dex + META-INF SAJA; vs v24
+  rusak = classes2.dex + META-INF SAJA; rotasi pointer LFS v24→v25.
+
+### 73.5 SMOKE DESKTOP (ulang PENUH — kode Java tak berubah)
+
+- 263 PASS / 0 FAIL = 242 lama tetap + 21 kasus v72 (injeksi capture,
+  /log/client, jujur di error, timeout ber-alasan) + E2E BROWSER NYATA
+  10/10 → verify-artifacts/login_server_v25_smoke_20261127.txt (output
+  penuh); build log lengkap + forensik: verify-artifacts/
+  login_server_v25_build_20261127.txt.
+
+### 73.6 YANG SISA (fakta, bukan fase)
+
+- smoke DEVICE v25 (install-over v24 aman — sertifikat sama): buka APK
+  v25 → tidak force close; server hidup + capture client Bagian 72
+  berjalan seperti dirancang. Konfirmasi akhir tetap di device owner.
+- FASE GAMESERVER (§7.5 — challenge verify + ack {ret:0} + enterGame +
+  Notify) tetap satu-satunya yang membuat loading LANJUT setelah ini.
+- NOL perubahan bs/, sdk/, dashboard, arsc, assets, smali, kode Java —
+  hanya classes2.dex (header dex dipulihkan) + tanda tangan.
