@@ -59,7 +59,8 @@ public final class LoggerCore {
         public String headers;   // header request, kompakt "k=v; k2=v2" (cap HEADERS_MAX)
         public String reqPreview;
         public String respPreview;
-        public String extra;     // mis. JSON config ter-decode (9527) / event socket.io / respCT
+        public String extra;     // mis. JSON config ter-decode (9527) / event socket.io / respCT / sid=… (CLIENT v74)
+        public String stack;     // BARU v74 — stack JS dari capture client (jserror/unhandledrejection/console.trace)
         public String error;
 
         String esc(String s) { return s == null ? "" : JsonUtil.esc(s); }
@@ -84,6 +85,7 @@ public final class LoggerCore {
             if (headers != null)     b.append(",\"headers\":\"").append(esc(headers)).append('"');
             if (reqPreview != null)  b.append(",\"reqPreview\":\"").append(esc(reqPreview)).append('"');
             if (respPreview != null) b.append(",\"respPreview\":\"").append(esc(respPreview)).append('"');
+            if (stack != null)       b.append(",\"stack\":\"").append(esc(stack)).append('"');
             if (extra != null)       b.append(",\"extra\":\"").append(esc(extra)).append('"');
             if (error != null)       b.append(",\"error\":\"").append(esc(error)).append('"');
             b.append('}');

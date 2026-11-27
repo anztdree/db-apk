@@ -6549,3 +6549,136 @@ dihapus) + 16 kasus v70 baru:
   Notify) tetap satu-satunya yang membuat loading LANJUT setelah ini.
 - NOL perubahan bs/, sdk/, dashboard, arsc, assets, smali, kode Java —
   hanya classes2.dex (header dex dipulihkan) + tanda tangan.
+
+## Bagian 74 — ARAHAN OWNER: "ITU KAN ANA TINGGAL BELAJAR POLA REBUILD LALU TINGGAL LANJUTKAN PORT LOG DEBUG SUDAH JELAS ADA DI 4000 LANJUTKAN LAH JANGAN BIKIN BARU" — LANJUTAN LOG 4000: FIX FATAL CONSOLE (SATU KUTIP HILANG SEJAK v24 → SELURUH DASHBOARD MATI = AKAR "LOG TIDAK BISA MENCETAK DENGAN SEMPURNA") + CAPTURE CLIENT v2 DARI SEGALA SISI (console 18 metode · stack penuh · resource timing · longtask · lifecycle · FPS · body/resp · buffer prioritas · backoff tak berhenti · sid+meta) — dex v26 + APK v26 SELESAI (beda hanya classes2.dex + re-sign; smoke desktop 284 PASS / 0 FAIL + E2E BROWSER 10/10 + 27/27)
+
+### 74.1 AKAR FATAL YANG DITEMUKAN (bukti dump, bukan analisis)
+
+- console dashboard port 4000 MATI TOTAL sejak v24 (ikut terkirim v24+v25):
+  baris terakhir blok `levelOf(k=='CLIENT')` di LoggerHandler ditulis
+  `return {word:'INFO',cls:'g',icon:'check}}` — string `'check}` TIDAK
+  DITUTUP kutip (yang benar `icon:'check'}}` — tutup objek + tutup blok if).
+  Raw newline di dalam string literal = SyntaxError → SELURUH `<script>`
+  dashboard gagal di-parse → `poll()` TIDAK PERNAH berjalan → dashboard
+  menampilkan banner statis SAJA, NOL baris log hidup, NOL banner crash.
+  PERSIS keluhan owner "log tidak bisa mencetak dengan sempurna".
+- Kenapa lolos 2 build (jujur): E2E console v19 (terakhir yang menguji
+  RENDER dashboard) berlari di era v19 — SEBELUM blok CLIENT ditambahkan
+  di v24; E2E capture v24 hanya menguji halaman game + /log/client; smoke
+  desktop menguji JSON /logs (server-side), bukan JS browser. Verifikasi
+  browser + smoke tidak pernah memeriksa sintaks JS hasil generate.
+- FIX: kutip ditutup `icon:'check'}}` + JARING PENGAMAN BARU (v26): E2E
+  mengeksekusi isi `<script>` dashboard dengan `new Function()` di browser
+  nyata — sintaks rusak = FAIL. Tidak akan lolos lagi.
+
+### 74.2 CAPTURE CLIENT v2 — dari segala sisi (prinsip eruda, lebih jauh)
+
+- console LENGKAP 18 panggilan: log/info/warn/error/debug + dir, trace
+  (dengan stack), table (JSON), clear, count (hitungan per label),
+  time/timeEnd (durasi per label), group/groupEnd (kedalaman).
+- jserror: STACK PENUH (`ev.error.stack` — dulu hanya message + filename);
+  unhandledrejection juga membawa `reason.stack`.
+- RESOURCE TIMING sweep (`performance.getEntriesByType('resource')`): file
+  js/media yang dilayani shell EgretNative dari penyimpanan lokal tidak
+  pernah lewat listener HTTP (Bagian 72) — tapi timeline performance
+  WebView TETAP MERECAMNYA. Satu baris per file BARU (nama + initiatorType
+  + durasi + ukuran) = bukti "loading apa" per file yang dulu buta total.
+- LONGTASK (`PerformanceObserver`, bila didukung): UI macet >50 ms =
+  baris WARN berdurasi.
+- LIFECYCLE + NAVIGATION TIMING: `lifecycle load — total X ms (responseEnd
+  A, domInteractive B, DCL C)` satu baris fakta + DOMContentLoaded +
+  visibilitychange.
+- HEARTBEAT FPS tiap 5 dtk (rAF, hanya saat halaman terlihat): bukti
+  halaman HIDUP atau MACET saat loading.
+- XHR/FETCH + BODY: request body (string ≤300 char) + preview response
+  (≤300 char) terkirim apa adanya (field `body`/`resp`) — dulu hanya
+  status + durasi.
+- RESILIEN: TIDAK PERNAH berhenti (v72 mati TOTAL setelah 8 POST gagal —
+  log hilang senyap); backoff 500ms→5 dtk; buffer PRIORITAS (dibuang
+  duluan = non-ERROR terlama; ERROR dipertahankan); sendBeacon saat
+  pagehide; flush ulang saat kembali visible.
+- SESI: `sid` per halaman (sessionStorage — reload = sid sama) + meta
+  device (UA/layar/dpr/memori/koneksi/egret/lang) SEKALI pada batch sukses
+  pertama → SATU baris `CLIENT meta` di log. Format batch naik ke v2:
+  `{v:2, sid, meta?, events:[{ts,type,level?,text,dur?,stack?,body?,resp?}]}`.
+
+### 74.3 SERVER + DASHBOARD (penerimaan field v2, nol karangan)
+
+- ClientLogHandler: field baru dipetakan apa adanya — `sid` → `extra
+  "sid=…"`, `dur` → `durMs`, `body` → `reqPreview`, `resp` →
+  `respPreview`, `stack` → field NDJSON BARU `stack` (Entry + toJson),
+  `meta` → SATU baris `CLIENT meta` (`device halaman game: ua=… | screen=…
+  | mem=… | conn=… | egret=… | lang=…`). Format v1 lama TETAP diterima.
+- LoggerHandler console v18: baris CLIENT kini menampilkan SUB-BARIS
+  langsung `request:` / `response:` / `stack:` / `sid:`; badge level lebih
+  tepat — console.debug/dir/trace/table/count/time/group/clear +
+  resource/perf/lifecycle = DEBUG; longtask = WARN; meta = INFO. NOL tombol
+  baru (tetap 4: cari · filter error · salin · jeda — arahan v15..v17).
+
+### 74.4 DEX v26 + APK v26
+
+- toolchain reproduksi dari nol: javac 21.0.13 (openjdk-21-jdk-headless
+  deb13u2 + jre-headless, dpkg -x) + D8 8.3.37 (r8-releases raw) — SAMA v25.
+- 8 stubs + 26 javasrc → 52 class (51 v25 + 1 baru `ClientLogHandler$Batch`)
+  → D8 → 175.804 B → patch_marker_v26.py (rotasi v19→v26 tepat 4 string;
+  kontrak warisan v20..v25 UTUH + kontrak v26 BARU: `icon:'check'}}`,
+  `__dbSid`, `device halaman game: ua=`, `resource sweep dibatasi 3000`,
+  `longtask`, `CLIENT v2`, `setTimeout(tick,400)`, `sessionStorage`,
+  `navigator.sendBeacon`, `"stack":"`, `m=='longtask'`,
+  `lifecycle DOMContentLoaded`, `console.timeEnd `, `console.group`,
+  `PerformanceObserver`; verifikasi struktur dex PENUH warisan v25; TOLAK
+  eksplisit bentuk rusak `icon:'check}}`+newline) sha256
+  `70a5ea7fd4756bcc3787e4fb9e957d43471edebe2b53cb9b8a5ad224baf8deb3`.
+- Base = APK v23 dari LFS history (batch API + download_chunked2.py,
+  sha256 `722eee78…` cocok). rebuild RAW-COPY v26: 6.428 entri
+  byte-per-byte, beda HANYA classes2.dex; classes.dex airplane v19
+  byte-identik (6.697.176 B, sha 62803bb1…, byte patch @0x5e8180/@0x5d2438);
+  arsc STORED aligned-4; metode 3471+2957 identik; QHinfo proven.
+- zipalign + sign uber-apk-signer 1.3.0 keystore dblocalmod SAMA (zipalign
+  verified + signature verified [v1,v2,v3]; CN=DB Local Mod, SHA256
+  f58a5b9a…, exp 2056 → install-over v25 AMAN).
+- dexcheck di APK FINAL bertanda tangan: checksum `0xb304f650` sah,
+  signature sah, map 17 entri berakhir tepat di EOF, marker v26 x4
+  (v19=0), fix kutip x3, kontrak capture v2 lengkap.
+- APK v26 final `release-mod/db-local(MOD-LOCALSERVER-v26).apk` =
+  202.695.646 B, sha256
+  `726277b26d31722ad3dd3ffa3dd165a8aecd3c86aecf3528b2c5a58f0160f673`;
+  diff entri-per-entri vs v23 = classes2.dex + META-INF (re-sign) SAJA;
+  rotasi pointer LFS v25→v26.
+
+### 74.5 SMOKE DESKTOP + E2E BROWSER (jujur — run-1 3 FAIL semuanya jarum uji)
+
+- Run-1: 281 PASS / 3 FAIL — NOL perubahan Java diperlukan: (1)
+  `node --check /dev/stdin` gagal membaca pipe FD di environment ini
+  PADAHAL browser mengeksekusi JS dengan `new Function()` SUKSES di run
+  yang sama → harness tulis ke file temp; (2) predicate mencari penanda
+  di PATH padahal penanda hanya di BODY/RESP → teks uji diberi penanda;
+  (3) E2E mengharapkan 404, nyata 405 (POST ke path statis = method not
+  allowed) → terima 4xx apa adanya.
+- Run-2 FINAL: **284 PASS / 0 FAIL** = 242 lama tetap + 21 kasus v72 +
+  21 kasus v73 (desktop) + E2E BROWSER NYATA: capture v72 10/10 +
+  capture v2 & console v18 **27/27** → verify-artifacts/
+  login_server_v26_smoke_20261127.txt (331 baris PASS); build log
+  lengkap: verify-artifacts/login_server_v26_build_20261127.txt.
+- E2E v26 (verify_capture_v26.js) membuktikan SATU RANTAI UTUH di browser:
+  halaman game → hook v2 → POST /log/client → baris NDJSON; dashboard 4000
+  → JS SAH → poll berjalan (S.since naik) → BARIS TER-CETAK di DOM →
+  sub-baris stack:/sid: tampil → badge DEBUG resource. NOL pageerror.
+- BUKTI VISUAL: verify-artifacts/dashboard_v26_device_width.png (480px) +
+  dashboard_v26_desktop.png — badge level tepat (ERROR merah, DEBUG cyan),
+  request:/response:/stack:/sid:/error: SEMUA langsung tampil tanpa klik.
+  (badge ver "v19" di screenshot = class desktop SEBELUM patch marker; di
+  dex device = v26 — dexcheck di atas.)
+
+### 74.6 DOK POLA REBUILD UNTUK OWNER + YANG SISA
+
+- docs/REBUILD-PATTERN.md (BARU): peta folder, rantai build 7 langkah,
+  3 aturan penyelamat (header dex = spec · dex wajib diverifikasi · JS
+  hasil generate wajib di-check sintaks), mekanisme marker versi, kontrak
+  string, dua lapis uji, checklist "bikin versi baru", reproduksi toolchain.
+- YANG SISA (fakta, bukan fase): smoke DEVICE v26 (install-over v25 aman
+  sertifikat sama) + FASE GAMESERVER (§7.5 — challenge verify + ack
+  {ret:0} + enterGame + Notify) tetap satu-satunya yang membuat loading
+  LANJUT setelah ini.
+- NOL perubahan bs/, sdk/, arsc, assets, smali, classes.dex — hanya
+  classes2.dex (capture v2 + console v18 + fix fatal) + tanda tangan.

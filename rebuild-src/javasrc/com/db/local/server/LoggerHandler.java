@@ -364,6 +364,24 @@ public final class LoggerHandler implements HttpWorker.Handler {
      *     v16 tetap: cari · filter error · salin · jeda).
      */
 
+    /* ================= console v18 — CLIENT CAPTURE v2 DARI SEGALA SISI ================
+     * Arahan owner (27 Nov 2026): log debug port 4000 DILANJUTKAN — JANGAN bikin
+     * sistem baru (pola rebuild tetap). Keluhan lama: "log tidak bisa mencetak
+     * dengan sempurna". PERUBAHAN v18 (server tetap raw — NOL karangan):
+     *  1. BARIS CLIENT kini membawa rincian capture v2 SUB-BARIS LANGSUNG:
+     *     request: (body yang dikirim halaman) · response: (preview respons) ·
+     *     stack: (stack JS penuh dari jserror/unhandledrejection/trace) ·
+     *     sid: (identitas sesi halaman — ikut di NDJSON & salinan).
+     *  2. BADGE LEVEL CLIENT lebih tepat: console.debug/dir/trace/table/count/
+     *     time/timeEnd/group/groupEnd/clear + resource/perf/lifecycle = DEBUG;
+     *     longtask = WARN (UI macet di atas 50 ms); meta = INFO (fakta device
+     *     sesi baru).
+     *  3. Baris CLIENT meta (sekali per sesi): UA/layar/dpr/memori/koneksi/
+     *     egret — dari halaman apa adanya.
+     *  4. NOL tombol baru (tetap 4: cari, filter error, salin, jeda) —
+     *     semua arahan v15..v17 tetap.
+     */
+
     private String dashboardHtml() {
         StringBuilder b = new StringBuilder(36000);
         b.append("<!DOCTYPE html><html><head><meta charset='utf-8'>\n")
@@ -582,8 +600,14 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  if(e.reqPreview)parts.push(subRow('s-req','up','recv:','('+fmtB(e.reqLen||0)+') '+e.reqPreview,e.reqLen));\n")
          .append("  else if((e.reqLen||0)>0)parts.push(subRow('s-req','up','recv:','('+fmtB(e.reqLen)+' binary)',e.reqLen));\n")
          .append("  if(e.respPreview)parts.push(subRow('s-res','down','send:','('+fmtB(e.respLen||0)+') '+e.respPreview,e.respLen))}\n")
+         .append("/* CLIENT v2 — rincian capture langsung tampil: body/response/stack/sid */\n")
+         .append(" if(k=='CLIENT'){\n")
+         .append("  if(e.reqPreview)parts.push(subRow('s-req','up','request:',e.reqPreview));\n")
+         .append("  if(e.respPreview)parts.push(subRow('s-res','down','response:',e.respPreview));\n")
+         .append("  if(e.stack)parts.push(subRow('s-err','corner','stack:',e.stack));\n")
+         .append("  if(e.extra)parts.push(subRow('s-ext','tag','sid:',e.extra))}\n")
          .append(" if(e.error)parts.push(subRow('s-err','x','error:',e.error));\n")
-         .append(" if(e.extra)parts.push(subRow('s-ext','tag','data:',e.extra));\n")
+         .append(" if(e.extra&&k!='CLIENT')parts.push(subRow('s-ext','tag','data:',e.extra));\n")
          .append(" if(parts.length==0)return '';\n")
          .append(" return '<div class=dtl>'+parts.join('')+'</div>'}\n")
          .append("/* ---- level ala server: INFO/DEBUG/WARN/ERROR ---- */\n")
@@ -602,8 +626,11 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append(" if(k=='CLIENT'){\n")
          .append("  if((e.level||'')=='ERROR')return {word:'ERROR',cls:'r',icon:'x'};\n")
          .append("  if((e.error||'').length)return {word:'ERROR',cls:'r',icon:'x'};\n")
-         .append("  if(m.indexOf('warn')>=0)return {word:'WARN',cls:'w',icon:'warn'};\n")
-         .append("  return {word:'INFO',cls:'g',icon:'check}}\n")
+         .append("  if(m.indexOf('warn')>=0||m=='longtask')return {word:'WARN',cls:'w',icon:'warn'};\n")
+         .append("  if(m=='meta')return {word:'INFO',cls:'g',icon:'info'};\n")
+         .append("  if(m=='resource'||m=='perf'||m=='lifecycle')return {word:'DEBUG',cls:'d',icon:'search'};\n")
+         .append("  if(m.indexOf('console.debug')>=0||m=='console.dir'||m=='console.trace'||m=='console.table'||m=='console.count'||m.indexOf('console.time')>=0||m.indexOf('console.group')>=0||m=='console.clear')return {word:'DEBUG',cls:'d',icon:'search'};\n")
+         .append("  return {word:'INFO',cls:'g',icon:'check'}}\n")
          .append(" if((e.level||'')=='ERROR')return {word:'ERROR',cls:'r',icon:'x'};\n")
          .append(" if(k=='CRASH')return {word:'ERROR',cls:'r',icon:'x'};\n")
          .append(" if(k=='LOGCAT')return {word:'DEBUG',cls:'d',icon:'search'};\n")
@@ -689,8 +716,13 @@ public final class LoggerHandler implements HttpWorker.Handler {
          .append("  if(e.reqPreview)subs.push('  recv: ('+fmtB(e.reqLen||0)+') '+e.reqPreview);\n")
          .append("  else if((e.reqLen||0)>0)subs.push('  recv: ('+fmtB(e.reqLen)+' binary)');\n")
          .append("  if(e.respPreview)subs.push('  send: ('+fmtB(e.respLen||0)+') '+e.respPreview)}\n")
+         .append(" if(k=='CLIENT'){\n")
+         .append("  if(e.reqPreview)subs.push('  request: '+e.reqPreview);\n")
+         .append("  if(e.respPreview)subs.push('  response: '+e.respPreview);\n")
+         .append("  if(e.stack)subs.push('  stack: '+e.stack);\n")
+         .append("  if(e.extra)subs.push('  sid: '+e.extra)}\n")
          .append(" if(e.error)subs.push('  error: '+e.error);\n")
-         .append(" if(e.extra)subs.push('  data: '+e.extra);\n")
+         .append(" if(e.extra&&k!='CLIENT')subs.push('  data: '+e.extra);\n")
          .append(" return L+(subs.length?'\\n'+subs.join('\\n'):'')}\n")
          .append("function flashSum(msg){$('sum').innerHTML='<b>'+esc(msg)+'</b>';\n")
          .append(" setTimeout(function(){if(LASTSUM)$('sum').innerHTML='<b>terakhir penting:</b> '+esc(LASTSUM)},4000)}\n")

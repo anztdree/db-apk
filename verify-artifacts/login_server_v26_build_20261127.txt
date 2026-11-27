@@ -1,0 +1,134 @@
+# BUILD v26 — LANJUTAN LOG DEBUG PORT 4000 (capture v2 dari segala sisi + fix fatal console)
+# Tanggal: 27 Nov 2026 — arahan owner: "port log debug sudah jelas ada di 4000,
+# lanjutkan lah, jangan bikin [baru]" + "ana tinggal belajar pola rebuild"
+
+HASIL AKHIR
+===========
+APK      : release-mod/db-local(MOD-LOCALSERVER-v26).apk — 202.695.646 B
+sha256   : 726277b26d31722ad3dd3ffa3dd165a8aecd3c86aecf3528b2c5a58f0160f673
+classes2.dex v26 : 175.804 B — sha256 70a5ea7fd4756bcc3787e4fb9e957d43471edebe2b53cb9b8a5ad224baf8deb3
+           checksum 0xb304f650 | sha1 9d5254bf… | map 17 entri berakhir TEPAT di EOF
+Sign     : uber-apk-signer 1.3.0 — keystore dblocalmod SAMA (CN=DB Local Mod,
+           O=Owner, C=ID, SHA256 f58a5b9a…, SHA384withRSA, exp 2056)
+           → zipalign verified + signature verified [v1, v2, v3]
+           → install-over v25 AMAN (sertifikat sama)
+diff vs base v23 (entri-per-entri): classes2.dex + META-INF (re-sign) SAJA —
+           arsc/assets/bs/sdk/console/dashboard byte-identik
+
+DUA AKAR YANG DIBERESKAN v26 (fakta, bukan karangan)
+====================================================
+1. FIX FATAL — console dashboard 4000 MATI TOTAL sejak v24 (ikut terkirim di v25):
+   baris terakhir blok levelOf(k=='CLIENT') di LoggerHandler ditulis
+       return {word:'INFO',cls:'g',icon:'check}}
+   — string 'check} TIDAK DITUTUP kutip (yang benar icon:'check'')}} — tutup
+   objek + tutup blok if). Raw newline di dalam string literal = SyntaxError
+   → SELURUH <script> dashboard gagal di-parse → poll() TIDAK PERNAH jalan
+   → dashboard menampilkan banner statis SAJA, NOL baris log hidup.
+   PERSIS keluhan owner "log tidak bisa mencetak dengan sempurna".
+   Kenapa lolos 2 build (v24, v25):
+   - E2E console v19 (terakhir yang menguji RENDER dashboard) berlari di era
+     v19 — SEBELUM blok CLIENT ditambahkan di v24;
+   - E2E capture v24 hanya menguji halaman game + /log/client (bukan render
+     dashboard);
+   - smoke desktop menguji JSON /logs (server-side) — bukan JS browser.
+   BUKTI: dump dashboard v25-era → node --check = SyntaxError "Invalid or
+   unexpected token" di baris tersebut; setelah fix = valid (dieksekusi dengan
+   new Function di browser nyata).
+
+2. CAPTURE v2 — blind spot yang tersisa ditutup (prinsip eruda, lebih jauh):
+   - console LENGKAP 18 panggilan: log/info/warn/error/debug + dir, trace
+     (dengan stack), table (JSON), clear, count (hitungan per label),
+     time/timeEnd (durasi per label), group/groupEnd (kedalaman)
+   - jserror: STACK PENUH (ev.error.stack — dulu hanya message + filename)
+   - RESOURCE TIMING sweep (performance.getEntriesByType('resource')):
+     file js/media yang dilayani shell EgretNative dari penyimpanan lokal
+     tidak pernah lewat listener HTTP — tapi timeline performance WebView
+     TETAP MERECAMNYA; kini SATU baris per file baru (nama + initiatorType
+     + durasi + ukuran) = bukti "loading apa" per file yang dulu buta total
+   - LONGTASK (PerformanceObserver): UI macet >50 ms = peringatan berdurasi
+   - LIFECYCLE + NAVIGATION TIMING: domInteractive/DCL/load + total dalam
+     SATU baris fakta; DOMContentLoaded + visibilitychange tercatat
+   - HEARTBEAT FPS tiap 5 dtk (rAF — hanya saat halaman terlihat): bukti
+     halaman HIDUP atau MACET saat loading
+   - XHR/FETCH + BODY: request body (string ≤300 char) + preview response
+     (≤300 char) ikut terkirim — dulu hanya status + durasi
+   - RESILIEN: TIDAK PERNAH berhenti (dulu mati total setelah 8 POST gagal
+     — log hilang senyap); backoff 500ms→5 dtk; buffer PRIORITAS (yang
+     dibuang duluan = non-ERROR terlama; ERROR dipertahankan selagi
+     mungkin); sendBeacon saat pagehide; flush ulang saat visible lagi
+   - SESI: sid per halaman (sessionStorage — reload = sid sama) + meta
+     device (UA/layar/dpr/memori/koneksi/egret/lang) dikirim SEKALI pada
+     batch sukses pertama → SATU baris CLIENT meta di log
+
+RANTAI BUILD (pola terdokumentasi docs/REBUILD-PATTERN.md)
+==========================================================
+toolchain : javac 21.0.13 (openjdk-21-jdk-headless deb13u2, dpkg -x) +
+            D8 8.3.37 (r8-releases raw) — SAMA v25
+compile   : 8 stubs + 26 javasrc → 52 class (51 v25 + 1 baru: Batch)
+dex       : D8 --release --min-api 21 → 175.804 B fresh →
+            patch_marker_v26.py: rotasi v19→v26 tepat 4 string (judul/
+            banner/BOOT/crash) + kontrak (warisan v20..v25 UTUH + kontrak
+            v26 BARU: icon:'check'}} / __dbSid / device halaman game: ua= /
+            resource sweep dibatasi 3000 / longtask / CLIENT v2 /
+            setTimeout(tick,400) / sessionStorage / navigator.sendBeacon /
+            "stack":" NDJSON / m=='longtask' / lifecycle DOMContentLoaded /
+            console.timeEnd+group / PerformanceObserver) + VERIFIKASI
+            STRUKTUR DEX PENUH (checksum+signature self-check, header,
+            map_list 17 entri berakhir tepat di EOF, section dalam batas)
+            + TOLAK eksplisit bentuk rusak icon:'check'}}+newline
+rebuild   : RAW-COPY v26 (base v23 sha256 722eee78… dicek ulang): 6.428
+            entri byte-per-byte LFH+CD+EOCD; verifikasi zipfile beda HANYA
+            classes2.dex; classes.dex airplane v19 byte-identik
+            (6.697.176 B, sha 62803bb1…, byte patch @0x5e8180/@0x5d2438);
+            arsc STORED aligned-4; metode 3471+2957 identik; QHinfo proven
+dexcheck  : di APK FINAL bertanda tangan — checksum sah, signature sah,
+            map 17 entri EOF, marker v26 x4 (v19=0), fix kutip x3,
+            kontrak capture v2 lengkap
+rotasi LFS: v25 → v26 (pending commit)
+
+SMOKE DESKTOP (gaya v22: jujur — 1 run pertama 3 FAIL, semuanya jarum uji)
+==========================================================================
+Run-1: 281 PASS / 3 FAIL — TIGA-tiganya kesalahan harness uji (NOL perubahan
+       Java diperlukan):
+   1) v73-dash-js-sintaks-sah — node --check /dev/stdin gagal membaca pipe
+      FD di environment ini (ENOENT /proc/N/fd/pipe) PADAHAL browser
+      mengeksekusi JS dengan new Function() SUKSES (e2e26-dash-js-sintaks-sah
+      PASS di run yang sama) → fix harness: tulis ke file temp
+   2) v73-xhr-body-resp-dur — predicate test mencari "uji-v73" di PATH,
+      padahal substring itu hanya ada di BODY/RESP (baris xhr ditemukan
+      dengan body utuh di run yang sama via E2E) → fix: teks uji memuat
+      penanda
+   3) v73-browser-e2e-v26 — ikut FAIL karena anak-nya (e2e26-xhr-body-error)
+      mengharapkan 404, nyata 405 (POST ke path statis = method not allowed)
+      → fix: terima 4xx apa adanya
+Run-2 (FINAL): 284 PASS / 0 FAIL
+   = 242 lama tetap + 21 kasus v72 + 21 kasus v73 (desktop) + E2E BROWSER
+     NYATA: capture v72 10/10 + capture v2 & console v18 27/27
+   → verify-artifacts/login_server_v26_smoke_20261127.txt (331 baris PASS)
+
+E2E BROWSER v26 (verify_capture_v26.js — Playwright/Chromium) — 27 PASS:
+   halaman game (injeksi v2): capture terpasang, sid dibuat (sessionStorage),
+   meta device sampai, console.debug/dir/table/count(2x)/timeEnd(durasi)/
+   group+groupEnd sampai, jserror DENGAN STACK (innerB di stack), xhr 4xx
+   DENGAN BODY, resource sweep melaporkan file dinamis, fetch row, lifecycle
+   + navigation timing, TANPA loop, heartbeat FPS hidup;
+   dashboard 4000 (JARING PENGAMAN): <script> SAH via new Function (sintaks
+   rusak = FAIL — tidak akan lolos lagi), fix kutip terpasang, script HIDUP
+   (window.S ada), poll BERJALAN (S.since naik), BARIS TER-CETAK di DOM
+   (#tb>0), marker versi dasar ada, NOL pageerror, baris CLIENT ter-render
+   dengan sub-baris stack + sid + badge DEBUG resource.
+
+BUKTI VISUAL: verify-artifacts/dashboard_v26_device_width.png (480px) +
+dashboard_v26_desktop.png — baris CLIENT dengan badge level tepat (ERROR
+merah, DEBUG cyan utk resource/perf), sub-baris request:/response:/stack:/
+sid:/error: SEMUA langsung tampil tanpa klik, footer "terakhir penting".
+(catatan: badge ver "v19" pada screenshot = class desktop SEBELUM patch
+marker — di dex device = v26, dibuktikan dexcheck di atas)
+
+YANG SISA (fakta)
+=================
+- smoke DEVICE v26: install-over v25 AMAN (sertifikat sama) — konfirmasi
+  akhir tetap di device owner
+- FASE GAMESERVER (§7.5 — challenge verify + ack {ret:0} + enterGame +
+  Notify) tetap satu-satunya yang membuat loading LANJUT setelah ini
+- dok pola rebuild untuk owner: docs/REBUILD-PATTERN.md (baru)

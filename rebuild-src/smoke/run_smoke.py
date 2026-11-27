@@ -1793,6 +1793,162 @@ try:
     check("v72-browser-e2e-capture", node72.returncode == 0,
           (node72.stderr or "")[-400:])
 
+    # ========== Bagian 74 — CAPTURE v2 DARI SEGALA SISI + FIX FATAL CONSOLE ==========
+    # Arahan owner (27 Nov 2026): "port log debug sudah jelas ada di 4000 —
+    # lanjutkan, jangan bikin baru". DUA akar ditemukan & dibereskan:
+    #  A. FIX FATAL: console dashboard 4000 MATI sejak v24 — baris terakhir
+    #     blok levelOf(k=='CLIENT') ditulis `icon:'check}}` (kutip tak
+    #     ditutup) → SyntaxError → SELURUH <script> dashboard gagal →
+    #     poll() tak pernah jalan → log tak pernah tercetak (persis keluhan
+    #     "tidak bisa mencetak dengan sempurna").
+    #  B. CAPTURE v2: console 18 metode, stack penuh, resource timing
+    #     (file EgretNative-lokal yang tak pernah sampai server), longtask,
+    #     lifecycle + navigation timing, heartbeat FPS, body/resp XHR+fetch,
+    #     buffer prioritas + backoff tak berhenti, sid + meta device.
+    #  A. DASHBOARD: JS console harus SAH (jaring pengaman — dieksekusi
+    #     dengan new Function), fix `icon:'check'}}` ada, badge baru ada
+    with urllib.request.urlopen("http://127.0.0.1:4000/", timeout=10) as r:
+        dash26 = r.read().decode("utf-8", "replace")
+    m_js26 = re.search(r"<script>(.*)</script>", dash26, re.S)
+    check("v73-dash-script-ada", m_js26 is not None, "blok script tidak ketemu")
+    js26 = m_js26.group(1) if m_js26 else ""
+    try:
+        # jaring pengaman FATAL v24: sintaks rusak harus GAGAL DI SINI
+        # (tulis ke file temp — node --check /dev/stdin gagal di pipe FD)
+        with open("/tmp/v73-dash.js", "w", encoding="utf-8") as fjs:
+            fjs.write(js26)
+        node_chk = subprocess.run(["node", "--check", "/tmp/v73-dash.js"],
+                                  capture_output=True, timeout=30)
+        js_ok26 = node_chk.returncode == 0
+    except Exception:
+        js_ok26 = False
+    check("v73-dash-js-sintaks-sah", js_ok26,
+          "SyntaxError console dashboard (akar log tidak tercetak) — JARING PENGAMAN v26")
+    check("v73-dash-fix-kutip-check", "icon:'check'}}" in dash26
+          and "icon:'check}}\n" not in dash26.replace("\r", ""), "")
+    check("v73-dash-badge-v26", "m=='longtask'" in dash26
+          and "if(m=='resource'||m=='perf'||m=='lifecycle')" in dash26
+          and "if(m=='meta')" in dash26, "")
+    check("v73-dash-subrows-client", "if(k=='CLIENT')" in dash26
+          and "subRow('s-err','corner','stack:',e.stack)" in dash26
+          and "subRow('s-ext','tag','sid:',e.extra)" in dash26, "")
+    # catatan: desktop = class JVM SEBELUM patch marker — ver masih v19;
+    # rotasi v19→v26 dibuktikan oleh patch_marker_v26.py + rebuild_v26_raw.py
+    check("v73-dash-ver-marker-base", ">v19<" in dash26, "marker versi dasar tidak ada")
+
+    #  B1. POST /log/client format v2 — field baru dipetakan apa adanya
+    _ts73 = int(time.time() * 1000)
+    _sid73 = "s-v73desktop-abc123"
+    batch73a = json.dumps({"v": 2, "sid": _sid73,
+        "meta": {"ua": "uji-v73-ua/1.0 (desktop-smoke)", "sw": 720, "sh": 1600,
+                 "dpr": 2.5, "mem": 214, "conn": "4g", "egret": True, "lang": "id-ID"},
+        "events": [
+            {"ts": _ts73, "type": "console.error", "level": "ERROR",
+             "text": "uji-v73-error-dengan-stack",
+             "stack": "Error: uji-v73\n    at uji (main.js:1:1)\n    at load (main.js:2:2)"},
+            {"ts": _ts73, "type": "xhr", "level": "ERROR",
+             "text": "xhr POST http://127.0.0.1:9528/api/uji-v73 → 500 (12 ms)", "dur": 12,
+             "body": "{\"q\":\"uji-v73-body\"}", "resp": "{\"ret\":0,\"uji\":\"v73\"}"},
+            {"ts": _ts73, "type": "resource",
+             "text": "resource script http://127.0.0.1:9528/bs/js/main.min.js — 340 ms (11.3 MB)",
+             "dur": 340},
+            {"ts": _ts73, "type": "longtask", "level": "WARN",
+             "text": "longtask 320 ms — UI macet (main thread terblokir)", "dur": 320},
+            {"ts": _ts73, "type": "perf",
+             "text": "fps 58 — halaman hidup"},
+            {"ts": _ts73, "type": "lifecycle",
+             "text": "lifecycle load — total 1830 ms (responseEnd 210, domInteractive 900, DCL 1500)"},
+            {"ts": _ts73, "type": "console.timeEnd",
+             "text": "console.timeEnd boot — selesai 412 ms", "dur": 412},
+    ]}, ensure_ascii=False).encode()
+    req73a = urllib.request.Request("http://127.0.0.1:9528/log/client",
+                                    data=batch73a, method="POST")
+    req73a.add_header("Content-Type", "application/json")
+    with urllib.request.urlopen(req73a, timeout=10) as r:
+        check("v73-logclient-v2-post-200", r.read().decode().strip() == "ok", "")
+
+    row_mt73 = _wait_client(lambda r: r.get("method") == "meta"
+                            and "uji-v73-ua" in (r.get("path") or ""))
+    check("v73-meta-row-device", row_mt73 is not None
+          and "screen=720x1600@2" in (row_mt73.get("path") or "")
+          and "egret=true" in (row_mt73.get("path") or "")
+          and (row_mt73.get("extra") or "") == "sid=" + _sid73,
+          str(row_mt73)[:240] if row_mt73 else "baris meta tidak ada")
+
+    row_st73 = _wait_client(lambda r: r.get("method") == "console.error"
+                            and "uji-v73-error-dengan-stack" in (r.get("path") or ""))
+    check("v73-stack-field-penuh", row_st73 is not None
+          and "at uji (main.js:1:1)" in (row_st73.get("stack") or ""),
+          str(row_st73)[:240] if row_st73 else "stack tidak terbawa")
+
+    row_xr73 = _wait_client(lambda r: r.get("method") == "xhr"
+                            and "uji-v73" in (r.get("path") or ""))
+    check("v73-xhr-body-resp-dur", row_xr73 is not None
+          and (row_xr73.get("reqPreview") or "") == '{"q":"uji-v73-body"}'
+          and '"ret":0' in (row_xr73.get("respPreview") or "")
+          and row_xr73.get("durMs") == 12,
+          str(row_xr73)[:260] if row_xr73 else "row xhr v2 tidak ada")
+
+    row_rs73 = _wait_client(lambda r: r.get("method") == "resource"
+                            and "main.min.js" in (r.get("path") or ""))
+    check("v73-resource-timing-row", row_rs73 is not None
+          and "340 ms" in (row_rs73.get("path") or "")
+          and "level" not in row_rs73,
+          str(row_rs73)[:200] if row_rs73 else "row resource tidak ada")
+
+    row_lt73 = _wait_client(lambda r: r.get("method") == "longtask")
+    check("v73-longtask-row", row_lt73 is not None
+          and "320 ms" in (row_lt73.get("path") or "")
+          and "level" not in row_lt73,   # WARN bukan ERROR — log natural
+          str(row_lt73)[:200] if row_lt73 else "row longtask tidak ada")
+
+    row_pf73 = _wait_client(lambda r: r.get("method") == "perf" and "fps 58" in (r.get("path") or ""))
+    check("v73-fps-row", row_pf73 is not None, str(row_pf73)[:160] if row_pf73 else "fps tidak ada")
+
+    row_lc73 = _wait_client(lambda r: r.get("method") == "lifecycle"
+                            and "lifecycle load" in (r.get("path") or ""))
+    check("v73-lifecycle-navtiming", row_lc73 is not None
+          and "domInteractive 900" in (row_lc73.get("path") or ""), "")
+
+    row_te73 = _wait_client(lambda r: r.get("method") == "console.timeEnd")
+    check("v73-timeend-dur", row_te73 is not None and row_te73.get("durMs") == 412, "")
+
+    #  B2. format v1 LAMA tetap diterima (tanpa sid/meta → tanpa extra)
+    batch73b = json.dumps({"v": 1, "events": [
+        {"ts": _ts73, "type": "console.log", "level": "INFO",
+         "text": "uji-v73-format-lama-v1"}]}, ensure_ascii=False).encode()
+    req73b = urllib.request.Request("http://127.0.0.1:9528/log/client",
+                                    data=batch73b, method="POST")
+    req73b.add_header("Content-Type", "application/json")
+    with urllib.request.urlopen(req73b, timeout=10) as r:
+        check("v73-format-v1-masih-lulus", r.read().decode().strip() == "ok", "")
+    row_v1x73 = _wait_client(lambda r: r.get("method") == "console.log"
+                             and "uji-v73-format-lama-v1" in (r.get("path") or ""))
+    check("v73-format-v1-tanpa-extra", row_v1x73 is not None
+          and "extra" not in row_v1x73, str(row_v1x73)[:160] if row_v1x73 else "tidak ada")
+
+    #  C. CAPTURE SCRIPT v2 di halaman: console lengkap + sid + meta + sweep
+    check("v73-capture-v2-di-halaman", "__dbSid" in bd_inj
+          and "getEntriesByType" in bd_inj
+          and "PerformanceObserver" in bd_inj
+          and "sendBeacon" in bd_inj
+          and "console.timeEnd" in bd_inj
+          and "buildMeta" in bd_inj
+          and "setTimeout(tick,400)" in bd_inj,
+          "permukaan hook v2 tidak lengkap di script terinjeksi")
+    check("v73-capture-tak-berhenti", "fails>=8" not in bd_inj
+          and "delay=Math.min(delay*2,5000)" in bd_inj.replace(" ", ""),
+          "backoff tak-berhenti tidak ditemukan")
+    check("v73-capture-buffer-prioritas", "lv!=='ERROR'" in bd_inj.replace('"', "'") or "lv!=='ERROR'" in bd_inj,
+          "ring buffer prioritas (ERROR dipertahankan) tidak ditemukan")
+
+    #  D. E2E BROWSER v26 — dashboard port 4000 RENDER + capture v2 nyata
+    node73 = subprocess.run(["node", WS + "/verify_capture_v26.js"], timeout=240,
+                            capture_output=True, text=True)
+    print((node73.stdout or "")[-2200:])
+    check("v73-browser-e2e-v26", node73.returncode == 0,
+          (node73.stderr or "")[-400:])
+
 finally:
     os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
 

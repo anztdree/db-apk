@@ -1,5 +1,9 @@
 # LOGIN SERVER — RENCANA v3: SEMUA KONTRAK WIRE TERVERIFIKASI LANGSUNG KE SERVER ASLI (PLAN ONLY, BELUM DIKERJAKAN)
 
+> Update Bagian 74 (27 Nov 2026): log debug port 4000 dilanjutkan (capture client v2
+> dari segala sisi + FIX FATAL console dashboard — lihat readme Bagian 74).
+> Fase gameserver di bawah TETAP satu-satunya langkah yang membuat loading LANJUT.
+>
 > Status: **DOKUMEN RENCANA** — bukan implementasi. Nol baris ACK ditulis di APK.
 > v3 menggantikan v2 (commit 31d054e). **v2 ternyata masih banyak ngawur** karena
 > skema ACK-nya dibangun dari ACK sintetis v17 (jawaban server LOCAL kita sendiri),
