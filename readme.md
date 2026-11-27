@@ -7462,3 +7462,198 @@ E6  16:38:39.204 📡 ERROR 9530   POST /v1/user/login → 502 · 9 ms — endpo
 NOL kode diubah. Owner jawab OKE format v3 (79.2–79.5) → langsung
 implementasi 79.6 satu ronde. Kalau masih ada baris kurang pas — tunjuk
 nomornya, diperbaiki SEBELUM implementasi.
+
+## Bagian 80 — ARAHAN OWNER: "ANDA ITU KEBANYAKAN BERKHAYAL TEKS GK PENTING DI MASUKIN, GAK SESUAI SAMA APA KATA SERVER" + "SDK, LOGIN-SERVER DAN SERVER LAINNYA KAN DI PISAHKAN, TO ITU LOG AMBURADUL SEMUA GAK JELAS" + "WAKTU DI LOG ITU LAGI NGAPAIN PANJANG BANGETTTT !!" + "SERVER START YA START !! TEKS SAMPAH APA ITU … TEKS LOG ITU NATURAL!!! SESUAI SAMA TEKS DAN BAHASA SERVER LAH YG AKAN TAMPIL" — KOREKSI KE-3 → FORMAT v4: (1) LOG DIPISAH PER SERVER (TAB DEFAULT); (2) TEKS = KATA-KATA ASLI SERVER APA ADANYA, NOL PARAFRASE; (3) PENDEK — PLAN ONLY, NOL KODE
+
+### 80.1 TIGA KESALAHAN v3 YANG DIKOREKSI OWNER (jujur — dibuktikan dengan dump device sendiri)
+
+- KESALAHAN 1 — KHAYALAN: contoh v3 saya MENULIS ULANG kejadian dengan
+  kalimat karangan: "Server v27 up — 9527 config · 9528 cdn+socket.io · …
+  — log tetap 1 file di-tumpuk", "pindah ke websocket SELESAI — jabat
+  tangan 2probe → 3probe berhasil", "isi jawaban: ret=0 · serverList[0]: …".
+  SERVER TIDAK PERNAH BILANG BEGITU. Bukti: dump device asli owner 66 baris
+  (release-mod/server.ndjson, 21:47:35.626–21:47:58.530) — boot server
+  bilang PERSIS: "mini-server up; logger port 4000; NDJSON archive:
+  /storage/…/server/logs". Renderer hanya boleh MENAMPILKAN entri,
+  TIDAK boleh menulis cerita di atasnya.
+- KESALAHAN 2 — AMBURADUL: satu tumpukan campur semua server. Padahal
+  server MEMANG sudah terpisah — 9527 config · 9528 CDN+socket.io login ·
+  5050 login · 5051 game · 9530 SDK t4game · 4000 system — dan field
+  `port` SUDAH ADA di setiap baris NDJSON + LoggerCore SUDAH punya buffer
+  per port (latestPort). Dashboard cuma belum menampilkannya terpisah.
+  v4: DEFAULT = TAB PER SERVER.
+- KESALAHAN 3 — KEPANJANGAN: baris ratusan karakter "— fakta · fakta ·
+  fakta". Server sendiri pendek: "GET /bs/upgrade/all.zip → 200 · 185 ms".
+  v4: 1 kejadian = 1 baris pendek; detail (extra/preview/stack) di baris
+  bawah APA ADANYA, terbuka, tanpa klik.
+
+### 80.2 FORMAT v4
+
+```
+TAB PER SERVER (dari field `port` yang sudah ada):
+  SYSTEM 4000 | CONFIG 9527 | CDN+SOCKET 9528 | LOGIN 5050 | GAME 5051 | SDK 9530 | CLIENT
+
+21:47:38.717 📥 GET /bs/upgrade/all.zip?v=11011390 → 200 · 185 ms · 19.4 MB
+    ↳ (extra/preview server APA ADANYA — terbuka, tanpa klik)
+```
+
+- R15 — DIPISAH PER SERVER: tab default per port. Baris hanya berisi
+  server itu sendiri — tidak ada campuran. Tab ALL kronologis tetap ada
+  sebagai OPSIONAL, bukan default.
+- R16 — TEKS = KATA SERVER (NOL PARAFRASE): renderer hanya memformat —
+  waktu (HH:mm:ss.SSS dari field time), emoji kategori, host URL dibuang
+  (tab sudah menunjukkan servernya), `METHOD /path → status · N ms ·
+  out N B` untuk HTTP; untuk BOOT/BIND/SYS/EXTRACT/WS = teks `path` dan
+  `extra` server apa adanya. Tag merah "ERROR" HANYA seperti LoggerCore
+  sendiri menaruhnya (status >= 400 / field error) — baris normal TANPA
+  tag level (access log alami, desain v22 LOG NATURAL).
+- R17 — PENDEK: 1 baris pendek. Detail di bawah = potongan NOL dari
+  extra/respPreview/stack server. Renderer dilarang menambah kata sendiri.
+- EMOJI tetap memimpin (R11) — emoji kategori kejadian, TIDAK mengganti
+  kata server. Peta mekanis per port+kind: BOOT→🚀 · BIND→🌐 · EXTRACT→🧩 ·
+  CRASHHOOK→🐞 · OVERLAY→📱 · 9527 HTTP→🧾 · 9528 asset→📥 · html/manifest→📄 ·
+  clientversion/serversetting→🖼️ · socket open/ACK→🔑 · WS/probe→🌐 ·
+  long-poll timeout→⏳ · 5050 loginchecknative→🔑 · 5051 socket→🕹️ ·
+  9530 semua→📲 · CLIENT script→📜 · crash→🐞 · EI→🔗 · meta→📱 ·
+  watchdog→⏳ · diam→⏳ · mati→🛑.
+- BERSIHKAN TEKS KODE (dex v28): kalimat server yang mengutip readme
+  dihapus dari kode — BIND 5051 "serverItem.url — Bagian 21" →
+  "serverItem.url"; open ke-2 "(atlas §4.3 … LOGIN-SERVER-PLAN §7.5 …)"
+  → bahasa polos tanpa rujukan (aturan R14 juga berlaku untuk kata-kata
+  yang keluar dari server).
+
+### 80.3 CONTOH — SEMUA BARIS ASLI DARI DUMP DEVICE OWNER (66 entri, 21:47:35.626–21:47:58.530) — TIDAK ADA SATU KATA KARANGAN, HANYA DIFORMAT
+
+TAB SYSTEM 4000 (16 entri):
+```
+21:47:35.626 🚀 BOOT  LocalServerStarter.start (Application.onCreate) — MOD-LOCALSERVER v22 — serverRoot=/storage/…/server
+21:47:35.629 🚀 BOOT  no exit history (normal for a fresh install)
+21:47:35.630 🐞 BOOT  CrashHook installed — java crashes captured to logs/crash-*.txt
+21:47:35.633 📱 SYS   overlay permission OFF — game does not use overlay
+21:47:35.671 🚀 BOOT  DB ready: backend=sqlite dir=sdk/data
+21:47:35.683 🚀 BOOT  LOGIN-SERVER seed ready (5 file event): /storage/…/server/login-server
+21:47:35.686 🌐 BIND  port 9527 — config bin (mirror configus…:443) — OK
+21:47:35.687 🌐 BIND  port 9528 — CDN game + socket.io login (mirror dragonh5cdn…:443) — OK
+21:47:35.687 🌐 BIND  port 5050 — login socket.io v2.1.2 EIO=3 + loginchecknative (mirror login…:610) — OK
+21:47:35.687 🌐 BIND  port 5051 — server game socket.io v2.1.2 EIO=3 (serverItem.url) — OK
+21:47:35.687 🌐 BIND  port 9530 — API SDK t4game (mirror qsdk.t4game.com:80) — OK
+21:47:35.687 🌐 BIND  port 4000 — logger 2-mode — OK
+21:47:35.687 🚀 BOOT  mini-server up; logger port 4000; NDJSON archive: /storage/…/server/logs
+21:47:42.020 🧩 EXTRACT extract server_root/bs done (2759 files)
+21:47:42.020 🧩 EXTRACT extract done: 2759 files -> /storage/…/server
+21:47:45.633 🐞 CRASHHOOK default uncaught handler replaced by third party (crash reporter) — re-wrapped, crashes still captured
+```
+
+TAB CONFIG 9527 (4 entri):
+```
+21:47:37.445 🧾 GET /bs/db/android/setting_BS_Android.bin?rnd=0.784774 → 200 · 3 ms · 687 B
+    ↳ src=assets · respCT=application/octet-stream
+    ↳ DECODED-XOR: {"testMode":1,"url":"…"} (isi penuh, apa adanya)
+21:47:37.508 🧾 GET /bs/db/android/com_db_local.bin?rnd=0.870879 → 200 · 0 ms · 2 B
+    ↳ DECODED-XOR: {}
+21:47:37.516 🧾 GET /bs/db/android/setting_BS_Android.bin?rnd=0.954050 → 200 · 3 ms · 687 B
+21:47:37.523 🧾 GET /bs/db/android/com_db_local.bin?rnd=0.506791 → 200 · 1 ms · 2 B
+```
+
+TAB SDK 9530 (16 entri):
+```
+21:47:35.671 📲 SYS  DB-BACKEND sqlite dir=/storage/…/server/sdk/data
+21:47:35.676 📲 SYS  LOGIN-SERVER seed: GetServerList.json (436 B)
+21:47:35.679 📲 SYS  LOGIN-SERVER seed: loginGame.json (23 B)
+21:47:35.680 📲 SYS  LOGIN-SERVER seed: SaveHistory.json (46 B)
+21:47:35.681 📲 SYS  LOGIN-SERVER seed: LoginAnnounce.json (2 B)
+21:47:35.683 📲 SYS  LOGIN-SERVER seed: SaveLanguage.json (37 B)
+21:47:39.959 📲 SYS  SDK-CONFIG seed: errors.json
+21:47:39.960 📲 SYS  SDK-CONFIG seed: QHinfo (21 B)
+21:47:39.966 📲 SYS  SDK-CONFIG seed: v1/system/init.json (595 B)
+21:47:39.971 📲 SYS  SDK-CONFIG seed: v1/user/ckRegVistor.json (66 B)
+21:47:39.973 📲 SYS  SDK-CONFIG seed: fallback.json (72 B)
+21:47:39.975 📲 SYS  SDK-CONFIG seed: profile.json (513 B)
+21:47:39.978 📲 POST /v1/system/init → 200 · 29 ms · 594 B
+    ↳ src=sdk/v1/system/init.json · respCT=text/json
+21:47:39.987 📲 POST /v1/system/getNotice → 200 · 4 ms · 25 B
+21:47:40.808 📲 SYS  new account uid=1795704460785 username=Guest4796
+21:47:40.809 📲 POST /v1/user/registerVisitor → 200 · 27 ms · 317 B
+```
+
+TAB CDN+SOCKET 9528 (29 entri — urutan dump persis, TIDAK ada yang dilepas):
+```
+21:47:38.510 🌐 GET /bs/upgrade/base.version?rnd=0.820978 → 200 · 1 ms · 4 B
+21:47:38.517 🌐 GET /bs/upgrade/resource.version?rnd=0.695534 → 200 · 2 ms · 5 B
+21:47:38.521 🌐 GET /bs/upgrade/upgrade.json?rnd=0.494507 → 200 · 1 ms · 130 B
+21:47:38.527 🌐 GET /bs/upgrade/size.json?rnd=0.353795 → 200 · 0 ms · 105 B
+21:47:38.717 📥 GET /bs/upgrade/all.zip?v=11011390 → 200 · 185 ms · 19.4 MB
+21:47:42.654 📄 GET /bs/index-native.html?v=202109150935 → 200 · 3 ms · 10.8 KB
+21:47:42.720 📄 GET /bs/manifest.json?v=0.0065566001245453975 → 200 · 1 ms · 533 B
+21:47:46.967 🖼️ GET /bs/resource/properties/clientversion.json → 200 · 1 ms · 37 B
+21:47:46.972 🖼️ GET /bs/resource/properties/serversetting.json → 200 · 2 ms · 66 B
+21:47:48.145 📥 ERROR GET /bs/denglujiemianxuanzhejiemiannew21_png → 404 · 1 ms · 55 B
+21:47:48.150 📥 ERROR GET /bs/Instagram_png → 404 · 1 ms · 32 B
+21:47:48.153 📥 ERROR GET /bs/Telegram_png → 404 · 1 ms · 31 B
+21:47:48.155 📥 ERROR GET /bs/Discord_png → 404 · 1 ms · 30 B
+21:47:48.160 🖼️ GET /bs/resource/properties/clientversion.json?v=0.3170666716089785 → 200 · 2 ms · 37 B
+21:47:48.170 🔑 GET /socket.io/?EIO=3&transport=polling&t=Q8OKxB6 → 200 · 1 ms
+    ↳ open sid=N1QHulHfMKFnmKfjp70T
+21:47:48.176 📥 ERROR GET /bs/Logo18+Full_png → 404 · 1 ms · 34 B
+21:47:48.196 🌐 GET /socket.io/?EIO=3&transport=websocket&sid=N1QHulHfMKFnmKfjp70T → 101 · 1 ms
+    ↳ ws upgrade sid=N1QHulHfMKFnmKfjp70T
+21:47:48.202 🔑 GET /socket.io/?EIO=3&transport=polling&t=Q8OKxBb&sid=N1QHulHfMKFnmKfjp70T → 200 · 0 ms · 448 B
+21:47:48.203 🔑 POST /socket.io/?EIO=3&transport=polling&t=Q8OKxBa&sid=N1QHulHfMKFnmKfjp70T → 200 · 6 ms · 2 B
+    ↳ ACK 430 — GetServerList (file GetServerList.json dibaca ulang) · frame: 430[{"ret":0,"data…
+21:47:48.334 🌐 WS /socket.io/?EIO=3&transport=websocket&sid=N1QHulHfMKFnmKfjp70T → 200 · 6 B
+21:47:48.348 📥 ERROR GET /bs/resource/assets/image/public/sound/sound_click.mp3?v=2296163726 → 404 · 1 ms · 69 B
+21:47:48.359 🔑 GET /socket.io/?EIO=3&transport=polling&t=Q8OKxE2.0&sid=N1QHulHfMKFnmKfjp70T → 200 · 1 ms · 50 B
+21:47:48.359 🔑 POST /socket.io/?EIO=3&transport=polling&t=Q8OKxE2&sid=N1QHulHfMKFnmKfjp70T → 200 · 4 ms · 2 B
+    ↳ ACK 431 — SaveHistory (file SaveHistory.json dibaca ulang) · frame: 431[{"ret":0,"data…
+21:47:48.467 🌐 WS /socket.io/?EIO=3&transport=websocket&sid=N1QHulHfMKFnmKfjp70T
+    ↳ upgrade selesai — 0 antre pindah ke WS + noop 6 sid=N1QHulHfMKFnmKfjp70T
+21:47:48.468 🔑 GET /socket.io/?EIO=3&transport=polling&t=Q8OKxFm → 200 · 2 ms · 103 B
+    ↳ open sid=YfXronzl7TC64pR4bX5x
+21:47:48.476 🌐 WS /socket.io/?EIO=3&transport=websocket&sid=N1QHulHfMKFnmKfjp70T
+    ↳ EVENT (no ack): 422["handler.process",{"type":"User","action":"LoginAnnounce"}] · login-se…
+21:47:48.484 🌐 GET /socket.io/?EIO=3&transport=websocket&sid=YfXronzl7TC64pR4bX5x → 101 · 0 ms
+    ↳ ws upgrade sid=YfXronzl7TC64pR4bX5x
+21:47:48.502 🌐 WS /socket.io/?EIO=3&transport=websocket&sid=YfXronzl7TC64pR4bX5x → 200 · 6 B
+21:47:58.530 ⏳ GET /socket.io/?EIO=3&transport=polling&sid=YfXronzl7TC64pR4bX5x → 200 · 10046 ms · 0 B
+    ↳ long-poll timeout, no data
+```
+Dump BERAKHIR di sini (seq 66 = baris terakhir). Sesudah itu tidak ada
+entri apa pun — sesi YfXronzl7TC64pR4bX5x tidak pernah mengirim apa pun
+lagi. Inilah lubang yang N1 harus isi (80.4).
+
+CEK JUMLAH: 16 + 4 + 16 + 29 + 1 = 66 = seluruh isi dump. Tidak ada
+entri yang dilepas, tidak ada yang ditambah.
+
+TAB LOGIN 5050 (1 entri):
+```
+21:47:42.393 🔑 GET /loginchecknative?uid=1795704460785&usermode=1&username=Guest4796&token=04a6a6b3… → 200 · 1 ms · 313 B
+    ↳ loginchecknative uid=1795704460785 username=Guest4796 usermode=1 · respCT=application/json
+```
+
+### 80.4 SATU-SATUNYA BARIS BARU YANG DITAMBAHKAN SERVER (N1, dex v28) — gaya sama pendeknya
+
+```
+21:47:58.531 ⏳ sesi YfXronzl7TC64pR4bX5x diam 10 dtk — client tidak mengirim '5' — upgrade websocket tidak selesai
+```
+
+Itu saja. Tidak ada narasi tambahan. N2 (batch terakhir per sid) jika
+client capture diam: satu baris pendek serupa.
+
+### 80.5 IMPLEMENTASI BILA OKE (satu ronde)
+
+- Dashboard v19 rombak TOTAL — formatter v4: tab per server (field port
+  sudah ada; latestPort sudah ada); baris pendek teks-asli-server;
+  extra/preview/stack terbuka tanpa klik; ERROR merah dari field level
+  LoggerCore; emoji mekanis per peta 80.2; tab ALL kronologis opsional.
+  NDJSON tetap sumber; 1 file di-tumpuk tetap; NOL file baru.
+- dex v28: N1 (1 baris pendek saat sesi diam) + N2 + bersihkan teks kode
+  (80.2: "— Bagian 21" dan rujukan atlas/§ dihapus dari kata-kata server).
+- Smoke: render dump device asli → hasil tab per server harus SAMA
+  teks-per-teks dengan 80.3 (perbandingan otomatis, bukan mata).
+- APK v28 raw-copy (beda hanya classes2.dex).
+
+### 80.6 STATUS — PLAN ONLY
+
+NOL kode diubah. Owner jawab OKE format v4 (80.2–80.4) → langsung
+implementasi 80.5 satu ronde. Tunjuk nomor baris yang kurang pas →
+diperbaiki SEBELUM implementasi.
