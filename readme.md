@@ -7049,3 +7049,131 @@ Dump release-mod/server.ndjson (device owner, 66 baris, 21:47:35–58):
   golden story) + dex v28 + APK v28 (raw-copy, beda hanya classes2.dex)
   + E2E browser. TANPA menyentuh bs/, sdk/, arsc, assets, smali,
   classes.dex, NDJSON format, dan aturan 1 file di-tumpuk.
+
+## Bagian 77 — ARAHAN OWNER: "ROMBAK TOTALITAS LOG DASHBOARD. CONTOH ERUDA ITU LOG PROFESIONAL. BUKAN JIPLAK TAPI TIRU !! LIHAT BAIK-BAIK SEHARUSNYA LOG YG SEMPURNA TU GIMANA !! GA CUMA NANGKEP MISSING RESOURCE TAPI YG LAINNYA DARI SEGALA SISI" + "BERIKAN CONTOH 20 BARIS NYATA LOG INI SEHARUSNYA GIMANA YG BENAR !! GIMANA JIKA ERROR. JIKA PANGGIL PORT LAIN !" — FORMAT BARIS PROFESIONAL v1 + 10 PRINSIP (TIRU PRINSIP ERUDA) + 20 BARIS NYATA (NILAI DARI RUN ASLI OWNER) + 6 VARIAN ERROR + 6 VARIAN PORT LAIN — PLAN ONLY, NOL KODE, MENUNGGU OKE OWNER
+
+### 77.1 APA YANG DITIRU DARI ERUDA (PRINSIP, BUKAN TAMPILAN)
+
+Eruda profesional bukan karena emoji/warna — tapi karena TIAP ENTRI
+menjawab: APA kejadiannya · DI-MANA (sumber) · BERAPA (angka kunci) ·
+SEBERPENTING (level). Diterima sebagai 10 prinsip:
+
+- P1  SATU KEJADIAN = SATU BARIS INTI — kalimat aktif (GET/open/upgrade/
+  mati/pulih), bukan nama file mentah doang.
+- P2  SEMUA BARIS = waktu ms + LEVEL + CHIP sumber + pesan inti + fakta
+  kunci dipisah " · ".
+- P3  LEVEL JUJUR 4 TINGKAT: DEBUG (bising: script mulai/poll/meta —
+  COLLAPSED by default), INFO (normal), WARN (menunggu/beku/diganti),
+  ERROR (404/5xx/macet/jserror) — eruda: debug abu pudar, warn kuning,
+  error merah; dashboard kini hanya punya badge teks — v19 memberi warna
+  + collapse nyata.
+- P4  ANGKA DIHUMANISASI — 31015076 → 31.0 MB; durasi selalu ada (ms).
+- P5  DETAIL BERLAPIS (↳) — baris inti pendek; body ter-parse / stack /
+  header / analisis jadi sub-line yang bisa di-expand (eruda: expandable).
+  Analisis 🧠/🎯/🛑 SELALU tampil (tidak pernah tersembunyi).
+- P6  CHIP = PORT — 9527 config · 9528 cdn+socket.io · 5050 login ·
+  5051 game · 9530 sdk · CLIENT capture · 4000 system. Baris ke port mana
+  pun terlihat SEKILAS dari chip; klik chip = filter port itu. (Eruda
+  tidak punya ini — ini kebutuhan kita: 6 port + client = 7 sumber.)
+- P7  ERROR TIDAK PERNAH DISEMBUNYIKAN — 404 tetap 404 + MISSING di mana
+  (aturan owner sejak 70); stack JS penuh; fallback diberi alasannya.
+- P8  SEBAB-AKIBAT BERURUTAN KETAT — open → probe → '5' → event → ACK;
+  ACK menunjukkan ISI (ret + kunci data), bukan cuma "ACK ok".
+- P9  KEKOSONGAN DILAPORKAN — sesi diam = barisnya sendiri dengan durasi
+  + apa yang ditunggu + 🎯 apa yang harusnya terjadi (N1).
+- P10 NOL KARANGAN — nilai dari paket/body asli; yang tidak tahu → "—"
+  + catatan jujur.
+
+### 77.2 FORMAT BARIS FINAL
+
+```
+HH:mm:ss.SSS  LEVEL  CHIP  Pesan inti — fakta · fakta · fakta
+   ↳ sub-detail (ter-parse / stack / 🧠 analisis / 🎯 diagnosis / 🛑)
+```
+
+LEVEL: DEBUG | INFO | WARN | ERROR. CHIP: 9527 | 9528 | 9530 | 5050 |
+5051 | CLIENT | 4000. Sub-line ↳ bisa di-expand di dashboard; baris
+🧠/🎯/🛑 selalu tampil. DEBUG default tersembunyi (tombol "tampilkan
+debug" — pola eruda).
+
+### 77.3 CONTOH 20 BARIS NYATA — NILAI DARI RUN ASLI OWNER (timeline contoh owner Bagian 76: 16:38:15.473 — 16:38:38.332; nilai uid/sid/token/ukuran = nilai asli dari contoh owner + dump device)
+
+```
+ 1  16:38:15.473  INFO   4000    Server v27 up — 9527 config · 9528 cdn+socket.io · 5050 login · 5051 game · 9530 sdk · 4000 dashboard
+ 2  16:38:16.920  INFO   9527    GET /bs/db/android/setting_BS_Android.bin → 200 · 687 B · XOR DragonBall · 6 ms
+    ↳ testMode=1 · loginServer=127.0.0.1 · loginPort=9528 · loginWebPort=5050 · url=http://127.0.0.1:9528/bs/index-native.html?v=202109150935
+ 3  16:38:16.984  INFO   9527    GET /bs/db/android/com_db_local.bin → 200 · 2 B · XOR → {} (kosong — normal)
+ 4  16:38:18.017  INFO   9528    Upgrade check → 200 · 4 file · 17 ms — base.version=110 · resource.version=11390 · upgrade{all: all.zip} · size{base 31.0 MB · all 19.4 MB}
+ 5  16:38:18.208  INFO   9528    GET /bs/upgrade/all.zip?v=11011390 → 200 · 18.5 MB · 171 ms · 108 MB/s
+ 6  16:38:19.527  INFO   9530    POST /v1/system/init → 200 · 34 ms — loginTypes=[1] · first_install=1 · countryCode=HK
+ 7  16:38:20.556  INFO   9530    POST /v1/user/registerVisitor → 200 · 22 ms — uid=1795772300555 Guest6017 · isGuest=1 · openType=12
+ 8  16:38:21.764  INFO   4000    Ekstraksi selesai — server_root/bs · 2759 file · 6.3 s
+ 9  16:38:22.056  INFO   5050    GET /loginchecknative → 200 · 16 ms — uid=1795772300555 · usermode=1 · sdk=quick
+    ↳ code=0 · loginToken=76fdaa…eb7f (mask 6+4 — D3)
+10  16:38:22.321  INFO   9528    GET /bs/index-native.html?v=202109150935 → 200 · 28 KB · 11 ms — capture client terinjeksi +18.1 KB
+    ↳ <title>DragonBall</title> — onHtmlLoaded menunggu dipanggil native
+11  16:38:23.843  INFO   CLIENT  Sesi capture s-mwysgoj6-aw93dk — lang=zh-CN · egret=true · EgretNative Chrome/61 · Android 12
+12  16:38:23.846  DEBUG  CLIENT  Script initial 7/7 — egret.min egret.web.min game.min tween.min assetsmanager.min eui.min dragonBones.min — game 6/8, sisa: default.thm_4d02a3c6.js · main.min_777039fc.js
+13  16:38:25.390  WARN   CLIENT  Uncaught handler diganti crash reporter pihak ketiga — capture re-wrap — crash tetap tertangkap
+14  16:38:26.616  INFO   9528    GET /bs/resource/properties/clientversion.json → 200 · 37 B · 4 ms — clientVersion=202109150935
+    ↳ 🧠 hanya main.min_777039fc.js yang meminta file ini → eval main.min hidup (grep APK, Bagian 75.1)
+15  16:38:27.846  ERROR  9528    5 file 404 · 46 ms — denglujiemianxuanzhejiemiannew21_png · Instagram_png · Telegram_png · Discord_png · Logo18+Full_png
+    ↳ MISSING — tidak ada di server/ DAN tidak ada di APK assets — TANPA placeholder (aturan owner 70)
+    ↳ 🧠 登录界面选择界面 = layar pilih login/server — game sedang menggambar layar login; aset memang tidak ada → game lanjut (bukan fatal)
+16  16:38:27.870  INFO   9528    socket.io login · open — sid=tcMYiYqh8ehNdt1VbBaI · upgrades=[websocket] · ping 25 s / timeout 5 s
+17  16:38:27.899  INFO   9528    socket.io login · WS upgrade SELESAI — 2probe → 3probe · '5' diterima · polling mati
+18  16:38:27.900  INFO   9528    socket.io login · event GetServerList ack#0 — uid=1795772300555 · channel=quick · 2 ms
+    ↳ ACK 430 ret=0 — serverList[0]: serverId=1 · url=http://127.0.0.1:9528 · name="DragonBall Local" · online=true · history=[]
+    ↳ 🧠 selectNewServer → history kosong → serverList[0] → onLoginSuccess → startBtnTap otomatis (atlas §6)
+19  16:38:28.210  INFO   9528    socket.io game · open — sid=xRBLP14oJNbIZmtHOp9d · koneksi ke-2 = clientStartGame(serverItem.url)
+20  16:38:38.330  ERROR  9528    socket.io game · sid=xRBLP14oJNbIZmtHOp9d DIAM 10 dtk — client tak pernah kirim '5' — upgrade macet
+    ↳ 🧠 socket game menunggu event "verify" dari server (等待验证) — fase gameserver §7.5 belum dibangun
+    ↳ 🎯 harusnya: socketOnVerify → verify(XXTEA "verification") → ret=0 → enterGame → SaveUserEnterInfo → destroy — NOL rantai terjadi (dihitung dari absennya event)
+    ↳ 🛑 batch capture terakhir 16:38:23.846 — client bisu 14.5 dtk — worker beat mati (nol watchdog WARN)
+```
+
+### 77.4 VARIAN JIKA ERROR (jawaban "gimana jika error") — 6 contoh
+
+```
+E1  16:38:48.348  ERROR  9528    GET /bs/resource/assets/image/public/sound/sound_click_mp3 → 404 · 8 ms — MISSING (server/ + APK assets)
+    ↳ diminta game saat menggambar tombol UI (audio click) — game tetap jalan
+E2  16:38:47.102  ERROR  CLIENT  jserror: TypeError: Cannot read property 'name' of undefined — main.min_777039fc.js:1:104553
+    ↳ stack 8 frame — tampil PENUH tanpa pangkas (klik expand)
+E3  16:38:29.001  WARN   CLIENT  watchdog main thread tidak merespons ~4.0 dtk — beat 1 dtk berhenti — kejadian terakhir: script load
+E4  16:38:34.001  INFO   CLIENT  watchdog main thread pulih setelah beku ~9.0 dtk
+E5  16:38:41.003  ERROR  CLIENT  script mulai: js/default.thm_4d02a3c6.js — TANPA "script load" 12 dtk → loader hang tanpa onerror (75.1)
+E6  16:38:39.204  ERROR  9530    POST /v1/user/login → 502 · 9 ms — fallback.json dipakai — endpoint tidak ada di seed SDK-CONFIG
+    ↳ resp {"code":103} — SDK tolak103 (aturan K2) — ALASAN ditulis, bukan cuma status
+```
+
+### 77.5 VARIAN PANGGIL PORT LAIN (jawaban "jika panggil port lain") — CHIP berubah = port terlihat sekilas
+
+```
+P-9527  baris 2-3 di atas  — config .bin (chip 9527)
+P-9528  baris 4-5,10,14-20 — cdn + socket.io login + socket.io game (chip 9528)
+P-9530  baris 6-7            — SDK t4game (chip 9530)
+P-5050  baris 9              — loginchecknative (chip 5050)
+P-5051  JIKA serverList url menunjuk 5051:
+        16:38:28.210  INFO  5051  socket.io game-port · open — sid=… · 5051 = listener game (serverItem.url port ini) — transport-only, fase gameserver §7.5 belum dibangun
+P-4000  traffic dashboard TIDAK jadi baris (anti-pollution sejak 18) — hanya counter /stats
+```
+
+### 77.6 IMPLEMENTASI BILA OKE (satu ronde)
+
+- Dashboard v19 — ROMBAK TOTAL view log: formatter BARU di JS dashboard
+  (NDJSON → baris profesional: level warna + chip port + humanize +
+  sub-line expand/collapse + DEBUG tersembunyi + filter chip & level).
+  NDJSON tetap sumber; arsip tidak disentuh; aturan 1 file tetap.
+- Server (dex v28): N1 watchdog diam sesi + N2 pelacak batch (sama 76.5)
+  + entri kind=ANALYSIS untuk 🧠/🎯/🛑 (jawaban D5 lama: MASUK arsip
+  supaya unduhan server.ndjson juga membawa analisis).
+- Smoke: golden formatter — fixture NDJSON device owner → formatter
+  menghasilkan PERSIS 20 baris 77.3 + 6 varian 77.4/77.5; E2E browser:
+  render expand/collapse + filter chip.
+- dex v28 + APK v28 raw-copy (beda hanya classes2.dex).
+
+### 77.7 STATUS — PLAN ONLY
+
+NOL kode diubah. Owner cukup jawab: OKE format (77.2-77.5) → langsung
+implementasi 77.6 satu ronde. Kalau ada baris contoh yang formatnya
+kurang pas — tunjuk nomor barisnya, diperbaiki SEBELUM implementasi.
