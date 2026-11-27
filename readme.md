@@ -7657,3 +7657,231 @@ client capture diam: satu baris pendek serupa.
 NOL kode diubah. Owner jawab OKE format v4 (80.2–80.4) → langsung
 implementasi 80.5 satu ronde. Tunjuk nomor baris yang kurang pas →
 diperbaiki SEBELUM implementasi.
+
+## Bagian 81 — ARAHAN OWNER: "KALAU DI LOGIKA GAK MGKIN LAH DI PISAHKAN PER TAB NGAWUR AJA ANDA !! GAME INI HANYA TAU RUNNING KALAU ERROR YA DIA PASTI TERIAK LAHHH .. GK MGKIN ERROR KOK PISAH PISAH KE TAB LAIN . LOGIKA NYA JANGAN NGAWUR LAAAH" + "BOOT AJA 3X TEKS DASAR GK EFEKTIF" — KOREKSI KE-4 → FORMAT v5: R15 "TAB PER SERVER" (80.2) DICABUT — KEMBALI SATU ALUR KRONOLOGIS, IDENTITAS SERVER ADA DI TIAP BARIS (CHIP PORT + EMOJI), BOOT = 1 BARIS KATA SERVER SENDIRI — PLAN ONLY, NOL KODE
+
+### 81.1 DUA KESALAHAN v4 YANG DIKOREKSI OWNER (jujur)
+
+- KESALAHAN 4 — NGAWUR LOGIKA (R15 tab per server): kata owner verbatim
+  di atas. Logika yang benar: game ini SATU proses yang hanya tahu
+  RUNNING — kalau error, dia pasti teriak DI ALUR KEJADIANNYA; tidak
+  mungkin sebuah error pindah ke tab lain. Bukti dari dump device
+  sendiri bahwa tab memecah logika yang sebenarnya satu: rantai
+  sebab-akibat nyata SATU alur, di 80.3 terbelah dua tab —
+  all.zip 19.4 MB diunduh 21:47:38.717 (TAB CDN+SOCKET 9528) →
+  diekstrak 2759 file 21:47:42.020 (TAB SYSTEM 4000) → html dilayani
+  21:47:42.654 (kembali ke TAB 9528). Membaca satu tab = separuh
+  cerita; sebabnya ada di tab lain. R15 v4 DICABUT SELURUHNYA.
+- KESALAHAN 5 — BOOT = DINDING TEKS DASAR: 80.3 menampilkan boot
+  sebagai 13 baris berjejer (BOOT ×6 + BIND ×6 + SYS ×1) — "Boot aja
+  3x teks dasar gk efektif". Padahal server sendiri menutup boot dengan
+  SATU kalimat: "mini-server up; logger port 4000; NDJSON archive: …".
+  ITU baris boot-nya. Entri boot lain = detail, bukan baris utama.
+
+### 81.2 FORMAT v5 (v4 dipakai kecuali yang dicabut/ditambah di bawah)
+
+- R15 BARU (menggantikan R15 lama) — SATU ALUR, NOL TAB: semua entri
+  SATU tumpukan urutan waktu nyata = urutan NDJSON persis (termasuk
+  pasangan seq 60 yang di dump tersimpan SEBELUM seq 59 — ikut urutan
+  aslinya). TIDAK ada tab per server, TIDAK ada tampilan kedua —
+  tampilan hanya satu. Identitas server (SDK / login-server / config /
+  game / system) ada DI BARIS KEJADIANNYA: chip PORT + emoji peta 80.2
+  di setiap baris (9527 → 🧾 · 9528 → 📥/📄/🖼️/🔑/🌐/⏳ · 5050 → 🔑 ·
+  9530 → 📲 · 4000 → 🚀/🌐/🧩/🐞/📱). Error tampil DI POSISI
+  KEJADIANNYA — 404 teriak di tengah alur (di antara clientversion dan
+  polling), persis seperti dump; tidak pernah pindah tempat.
+- R13 tetap (dropdown terbuka tanpa klik) · R14 tetap (nol referensi
+  internal) · R16 tetap (TEKS = KATA SERVER, NOL PARAFRASE) · R17
+  tetap (PENDEK). Tag ERROR merah HANYA dari field `level` LoggerCore
+  sendiri — dump membuktikan field `level` hanya ada di baris 47/48/
+  49/50/53/58 (kelima 404 + sound_click.mp3); baris lain TIDAK punya
+  field level dan TIDAK diberi tag (access log alami, desain v22).
+- R18 BARU — BOOT = 1 BARIS: baris utama boot = kalimat "up" milik
+  server sendiri ("mini-server up; logger port 4000; NDJSON archive:
+  /storage/…/server/logs"). 18 entri boot lain (starter, no exit
+  history, CrashHook, overlay, DB-BACKEND 9530, DB ready, seed ×5 +
+  seed ready, BIND ×6) = ↳ detail APA ADANYA di bawahnya, terbuka,
+  dengan waktu + port masing-masing — tidak hilang, tidak diparafrase,
+  tidak lagi jadi dinding baris berjejer di atas.
+- DETAIL APA ADANYA, POTONGAN NOL: extra selalu ↳ (separator "|" milik
+  server dipertahankan); preview/decode/frame yang membawa FAKTA BARU
+  tampil PENUH terbuka — DECODED-XOR penuh (baris 20), ACK 430 dan
+  ACK 431 frame penuh (baris 56/59), preview registerVisitor dengan
+  authToken (baris 38, token dimask 6+4), "110"/"11390"/upgrade.json/
+  size.json (baris 24–27), clientversion/serversetting (baris 45/46),
+  3probe (baris 57/65). Body besar yang TIDAK membawa fakta baru
+  (html 10.8 KB, manifest 533 B, all.zip 19.4 MB) TIDAK dicetak —
+  bukan dipotong "…" — ukurannya sudah ada di baris. Preview 404
+  ("404 not found: /bs/…") tidak diulang karena persis sama dengan
+  barisnya. Detail payload yang berulang identik (baris 22/23) tidak
+  dicetak ulang.
+- BERSIHKAN TEKS KODE (dex v28, tetap): "serverItem.url — Bagian 21"
+  → "serverItem.url"; "(owner edit — seed tidak menimpa; atlas §11
+  baris 9)" → dihapus dari kata server (81.3 memakai teks SUDAH
+  bersih). Token dimask 6+4.
+
+### 81.3 CONTOH — SEMUA 66 entri dump device owner (release-mod/server.ndjson, 21:47:35.626–21:47:58.530) dirender SATU ALUR, urutan NDJSON persis, TANPA SATU KATA KARANGAN + 1 baris N1 (satu-satunya baris baru, dex v28)
+
+```
+21:47:35.687 🚀 4000 mini-server up; logger port 4000; NDJSON archive: /storage/emulated/0/Android/data/com.db.local/server/logs
+    ↳ 21:47:35.626 🚀 4000 LocalServerStarter.start (Application.onCreate) — MOD-LOCALSERVER v22 — serverRoot=/storage/emulated/0/Android/data/com.db.local/server
+    ↳ 21:47:35.629 🚀 4000 no exit history (normal for a fresh install)
+    ↳ 21:47:35.630 🐞 4000 CrashHook installed — java crashes captured to logs/crash-*.txt
+    ↳ 21:47:35.633 📱 4000 overlay permission OFF — game does not use overlay
+    ↳ 21:47:35.671 📲 9530 DB-BACKEND sqlite dir=/storage/emulated/0/Android/data/com.db.local/server/sdk/data
+    ↳ 21:47:35.671 🚀 4000 DB ready: backend=sqlite dir=sdk/data
+    ↳ 21:47:35.676 📲 9530 LOGIN-SERVER seed: GetServerList.json (436 B)
+    ↳ 21:47:35.679 📲 9530 LOGIN-SERVER seed: loginGame.json (23 B)
+    ↳ 21:47:35.680 📲 9530 LOGIN-SERVER seed: SaveHistory.json (46 B)
+    ↳ 21:47:35.681 📲 9530 LOGIN-SERVER seed: LoginAnnounce.json (2 B)
+    ↳ 21:47:35.683 📲 9530 LOGIN-SERVER seed: SaveLanguage.json (37 B)
+    ↳ 21:47:35.683 🚀 4000 LOGIN-SERVER seed ready (5 file event): /storage/emulated/0/Android/data/com.db.local/server/login-server
+    ↳ 21:47:35.686 🌐 4000 BIND port 9527 — config bin (mirror configus…:443) — OK
+    ↳ 21:47:35.687 🌐 4000 BIND port 9528 — CDN game + socket.io login (mirror dragonh5cdn…:443) — OK
+    ↳ 21:47:35.687 🌐 4000 BIND port 5050 — login socket.io v2.1.2 EIO=3 + loginchecknative (mirror login…:610) — OK
+    ↳ 21:47:35.687 🌐 4000 BIND port 5051 — server game socket.io v2.1.2 EIO=3 (serverItem.url) — OK
+    ↳ 21:47:35.687 🌐 4000 BIND port 9530 — API SDK t4game (mirror qsdk.t4game.com:80) — OK
+    ↳ 21:47:35.687 🌐 4000 BIND port 4000 — logger 2-mode — OK
+21:47:37.445 🧾 9527 GET /bs/db/android/setting_BS_Android.bin?rnd=0.784774 → 200 · 3 ms · 687 B
+    ↳ src=assets | respCT=application/octet-stream
+    ↳ DECODED-XOR:
+      {
+        "testMode":  1,
+        "url":  "http://127.0.0.1:9528/bs/index-native.html?v=202109150935",
+        "tsUrl":  "http://dragon.sjmobilegame.com:82/bs103/index-native.html",
+        "update":  "http://127.0.0.1:9528/bs/upgrade",
+        "checkTime":  300,
+        "loginServer":  "http://127.0.0.1",
+        "tsLoginServer":  "http://118.24.68.91:7003",
+        "loginPort":  9528,
+        "loginWebPort":  5050,
+        "clientParams":  {
+          "hideList":  [
+            "1.99",
+            "2.99",
+            "14.99",
+            "59.99",
+            "89.99"
+          ],
+          "supportLang":  [
+            {
+              "languageName":  "English",
+              "lang":  "en"
+            },
+            {
+              "languageName":  "Français",
+              "lang":  "fr"
+            },
+            {
+              "languageName":  "한국인",
+              "lang":  "kr"
+            }
+          ],
+          "showCurChannel":  "toFacebook"
+        }
+      }
+21:47:37.508 🧾 9527 GET /bs/db/android/com_db_local.bin?rnd=0.870879 → 200 · 0 ms · 2 B
+    ↳ src=assets | respCT=application/octet-stream | DECODED-XOR: {}
+21:47:37.516 🧾 9527 GET /bs/db/android/setting_BS_Android.bin?rnd=0.954050 → 200 · 3 ms · 687 B
+21:47:37.523 🧾 9527 GET /bs/db/android/com_db_local.bin?rnd=0.506791 → 200 · 1 ms · 2 B
+21:47:38.510 🌐 9528 GET /bs/upgrade/base.version?rnd=0.820978 → 200 · 1 ms · 4 B
+    ↳ respCT=text/plain; charset=utf-8 · 110
+21:47:38.517 🌐 9528 GET /bs/upgrade/resource.version?rnd=0.695534 → 200 · 2 ms · 5 B
+    ↳ respCT=text/plain; charset=utf-8 · 11390
+21:47:38.521 🌐 9528 GET /bs/upgrade/upgrade.json?rnd=0.494507 → 200 · 1 ms · 130 B
+    ↳ respCT=application/json; charset=utf-8 · {"11389": "11389_11390.zip", "11388": "11388_11390.zip", "11387": "11387_11390.zip", "11386": "11386_11390.zip", "all": "all.zip"}
+21:47:38.527 🌐 9528 GET /bs/upgrade/size.json?rnd=0.353795 → 200 · 0 ms · 105 B
+    ↳ respCT=application/json; charset=utf-8 · {"base": "31015076", "11389": 252562, "11388": 252562, "11387": 252562, "11386": 252562, "all": 19385098}
+21:47:38.717 📥 9528 GET /bs/upgrade/all.zip?v=11011390 → 200 · 185 ms · 19.4 MB
+    ↳ respCT=application/zip
+21:47:39.959 📲 9530 SDK-CONFIG seed: errors.json
+21:47:39.960 📲 9530 SDK-CONFIG seed: QHinfo (21 B)
+21:47:39.966 📲 9530 SDK-CONFIG seed: v1/system/init.json (595 B)
+21:47:39.971 📲 9530 SDK-CONFIG seed: v1/user/ckRegVistor.json (66 B)
+21:47:39.973 📲 9530 SDK-CONFIG seed: fallback.json (72 B)
+21:47:39.975 📲 9530 SDK-CONFIG seed: profile.json (513 B)
+21:47:39.978 📲 9530 POST /v1/system/init → 200 · 29 ms · 594 B
+    ↳ src=sdk/v1/system/init.json | respCT=text/json
+21:47:39.987 📲 9530 POST /v1/system/getNotice → 200 · 4 ms · 25 B
+    ↳ respCT=text/json · {"result":true,"data":""}
+21:47:40.808 📲 9530 new account uid=1795704460785 username=Guest4796
+21:47:40.809 📲 9530 POST /v1/user/registerVisitor → 200 · 27 ms · 317 B
+    ↳ respCT=text/json · {"result":true,"data":"{\"authToken\":\"04a6a6…8faa\",\"checkRealName\":\"0\",\"userData\":{\"uid\":\"1795704460785\",\"username\":\"Guest4796\",\"displayUid\":\"1795704460785\",\"token\":\"04a6a6…8faa\",\"isGuest\":\"1\",\"openType\":\"12\",\"isNewUser\":1,\"isTrash\":0}}"}
+21:47:42.020 🧩 4000 extract server_root/bs done (2759 files)
+21:47:42.020 🧩 4000 extract done: 2759 files -> /storage/emulated/0/Android/data/com.db.local/server
+21:47:42.393 🔑 5050 GET /loginchecknative?uid=1795704460785&usermode=1&username=Guest4796&token=04a6a6…8faa&appVersion=1&osVersion=31&sourceVersion=20200418&model=itel+S665L&packageName=com.db.local&brand=Itel&os=Android&sdk=BS → 200 · 1 ms · 313 B
+    ↳ loginchecknative uid=1795704460785 username=Guest4796 usermode=1 respCT=application/json
+21:47:42.654 📄 9528 GET /bs/index-native.html?v=202109150935 → 200 · 3 ms · 10.8 KB
+    ↳ respCT=text/html; charset=utf-8
+21:47:42.720 📄 9528 GET /bs/manifest.json?v=0.0065566001245453975 → 200 · 1 ms · 533 B
+    ↳ respCT=application/json; charset=utf-8
+21:47:45.633 🐞 4000 default uncaught handler replaced by third party (crash reporter) — re-wrapped, crashes still captured
+21:47:46.967 🖼️ 9528 GET /bs/resource/properties/clientversion.json → 200 · 1 ms · 37 B
+    ↳ {"clientVersion": "202109150935"}
+21:47:46.972 🖼️ 9528 GET /bs/resource/properties/serversetting.json → 200 · 2 ms · 66 B
+    ↳ {"loginserver": "http://127.0.0.1:9528", "requireSDK": false}
+21:47:48.145 📥 ERROR 9528 GET /bs/denglujiemianxuanzhejiemiannew21_png → 404 · 1 ms · 55 B
+21:47:48.150 📥 ERROR 9528 GET /bs/Instagram_png → 404 · 1 ms · 32 B
+21:47:48.153 📥 ERROR 9528 GET /bs/Telegram_png → 404 · 1 ms · 31 B
+21:47:48.155 📥 ERROR 9528 GET /bs/Discord_png → 404 · 1 ms · 30 B
+21:47:48.160 🖼️ 9528 GET /bs/resource/properties/clientversion.json?v=0.3170666716089785 → 200 · 2 ms · 37 B
+21:47:48.170 🔑 9528 GET /socket.io/?EIO=3&transport=polling&t=Q8OKxB6 → 200 · 1 ms · 103 B
+    ↳ open sid=N1QHulHfMKFnmKfjp70T
+21:47:48.176 📥 ERROR 9528 GET /bs/Logo18+Full_png → 404 · 1 ms · 34 B
+21:47:48.196 🌐 9528 GET /socket.io/?EIO=3&transport=websocket&sid=N1QHulHfMKFnmKfjp70T → 101 · 1 ms
+    ↳ ws upgrade sid=N1QHulHfMKFnmKfjp70T
+21:47:48.202 🔑 9528 GET /socket.io/?EIO=3&transport=polling&t=Q8OKxBb&sid=N1QHulHfMKFnmKfjp70T → 200 · 0 ms · 448 B
+21:47:48.203 🔑 9528 POST /socket.io/?EIO=3&transport=polling&t=Q8OKxBa&sid=N1QHulHfMKFnmKfjp70T → 200 · 6 ms · 2 B
+    ↳ ACK 430 — GetServerList (file GetServerList.json dibaca ulang) | frame: 430[{"ret":0,"data":"{\"serverList\":[\n    {\n      \"serverId\": \"1\",\n      \"url\": \"http://127.0.0.1:9528\",\n      \"new\": true,\n      \"hot\": false,\n      \"name\": \"DragonBall Local\",\n      \"online\": true,\n      \"openDate\": \"2026-11-26T00:00:00.000Z\",\n      \"offlineReason\": \"\",\n      \"merge\": false,\n      \"mergeTo\": \"\",\n      \"urlInner\": \"\",\n      \"chatInner\": \"\"\n    }\n  ],\"history\":[]}"}] → dikirim: antre polling
+21:47:48.334 🌐 9528 WS /socket.io/?EIO=3&transport=websocket&sid=N1QHulHfMKFnmKfjp70T → 200 · 0 ms · 6 B
+    ↳ 3probe
+21:47:48.348 📥 ERROR 9528 GET /bs/resource/assets/image/public/sound/sound_click.mp3?v=2296163726 → 404 · 1 ms · 69 B
+21:47:48.359 🔑 9528 GET /socket.io/?EIO=3&transport=polling&t=Q8OKxE2.0&sid=N1QHulHfMKFnmKfjp70T → 200 · 1 ms · 50 B
+21:47:48.359 🔑 9528 POST /socket.io/?EIO=3&transport=polling&t=Q8OKxE2&sid=N1QHulHfMKFnmKfjp70T → 200 · 4 ms · 2 B
+    ↳ ACK 431 — SaveHistory (file SaveHistory.json dibaca ulang) | frame: 431[{"ret":0,"data":"{\"todayLoginCount\":1}"}] → dikirim: antre polling
+21:47:48.467 🌐 9528 WS /socket.io/?EIO=3&transport=websocket&sid=N1QHulHfMKFnmKfjp70T → 200 · 0 ms
+    ↳ upgrade selesai — 0 antre pindah ke WS + noop 6 sid=N1QHulHfMKFnmKfjp70T
+21:47:48.468 🔑 9528 GET /socket.io/?EIO=3&transport=polling&t=Q8OKxFm → 200 · 2 ms · 103 B
+    ↳ open sid=YfXronzl7TC64pR4bX5x
+21:47:48.476 🌐 9528 WS /socket.io/?EIO=3&transport=websocket&sid=N1QHulHfMKFnmKfjp70T → 200 · 0 ms
+    ↳ EVENT (no ack): 422["handler.process",{"type":"User","action":"LoginAnnounce"}] | login-server: LoginAnnounce.json kosong {} = DIAM
+21:47:48.484 🌐 9528 GET /socket.io/?EIO=3&transport=websocket&sid=YfXronzl7TC64pR4bX5x → 101 · 0 ms
+    ↳ ws upgrade sid=YfXronzl7TC64pR4bX5x
+21:47:48.502 🌐 9528 WS /socket.io/?EIO=3&transport=websocket&sid=YfXronzl7TC64pR4bX5x → 200 · 0 ms · 6 B
+    ↳ 3probe
+21:47:58.530 ⏳ 9528 GET /socket.io/?EIO=3&transport=polling&t=Q8OKxG1&sid=YfXronzl7TC64pR4bX5x → 200 · 10046 ms · 0 B
+    ↳ long-poll timeout, no data
+21:47:58.531 ⏳ 9528 sesi YfXronzl7TC64pR4bX5x diam 10 dtk — client tidak mengirim '5' — upgrade websocket tidak selesai
+```
+
+Dump BERAKHIR di baris polling timeout (seq 66). Sesudah itu tidak ada
+entri apa pun — sesi YfXronzl7TC64pR4bX5x tidak pernah mengirim apa pun
+lagi. Baris terakhir (21:47:58.531 ⏳) = N1, satu-satunya baris yang
+DITAMBAHKAN server (dex v28), bukan isi dump.
+
+CEK JUMLAH: boot 19 + config 9527 4 + upgrade 5 + SDK-CONFIG seed 6 +
+init/getNotice/account 4 + EXTRACT 2 + loginchecknative 1 + html+manifest
+2 + CRASHHOOK 1 + clientversion/serversetting 2 + burst 404/polling/ws 12
++ pasangan 60/59 2 + tail 6 = 66 = seluruh isi dump. Tidak ada entri yang
+dilepas, tidak ada yang ditambah.
+
+### 81.4 IMPLEMENTASI BILA OKE (satu ronde — menggantikan 80.5)
+
+- Dashboard v19 rombak TOTAL — formatter v5: SATU panel log (TIDAK ada
+  tab, TIDAK ada tampilan kedua); chip port + emoji per baris; boot =
+  1 baris "up" + ↳ detail; extra/DECODED-XOR/ACK frame terbuka tanpa
+  klik, potongan NOL; ERROR merah HANYA dari field `level` LoggerCore;
+  NDJSON tetap sumber; 1 file di-tumpuk tetap; NOL file log baru.
+- dex v28: N1 (baris ⏳ sesi diam — 81.3 baris terakhir) + N2 (batch
+  terakhir per sid, satu baris pendek serupa bila client capture diam)
+  + bersihkan teks kode (81.2: "— Bagian 21" dan rujukan atlas/§
+  dihapus dari kata-kata server).
+- Smoke: render dump device asli → hasil SATU alur harus SAMA
+  teks-per-teks dengan 81.3 (perbandingan otomatis, bukan mata).
+- APK v28 raw-copy (beda hanya classes2.dex).
+
+### 81.5 STATUS — PLAN ONLY
+
+NOL kode diubah. Owner jawab OKE format v5 (81.2–81.3) → langsung
+implementasi 81.4 satu ronde. Tunjuk nomor baris yang kurang pas →
+diperbaiki SEBELUM implementasi.
