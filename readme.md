@@ -7177,3 +7177,154 @@ P-4000  traffic dashboard TIDAK jadi baris (anti-pollution sejak 18) — hanya c
 NOL kode diubah. Owner cukup jawab: OKE format (77.2-77.5) → langsung
 implementasi 77.6 satu ronde. Kalau ada baris contoh yang formatnya
 kurang pas — tunjuk nomor barisnya, diperbaiki SEBELUM implementasi.
+
+## Bagian 78 — ARAHAN OWNER: "SAYA MAU EMOJI STYLE PENUH YG JELAS" + "DROPDOWN ANAK PANAH TANPA KLIK JUGA JELAS" — KOREKSI FORMAT v1 (77.2) → FORMAT v2: EMOJI MEMIMPIN SETIAP BARIS, ANALISIS 🧠/🎯/🛑 KELUAR DARI DROPDOWN JADI BARIS FLAT, ▶ HANYA MENYIMPAN BUKTI MENTAH — PLAN ONLY, NOL KODE
+
+### 78.1 DUA KESALAHAN FORMAT v1 YANG DIKOREKSI OWNER (jujur, diterima)
+
+- KESALAHAN 1 — emoji kurang: v1 menulis LEVEL+CHIP teks dan baru pakai
+  emoji di baris analisis (🧠/🎯/🛑). Owner mau EMOJI STYLE PENUH: SETIAP
+  baris diawali emoji tetap (pola contoh golden owner Bagian 76.2:
+  🚀 boot → … → 🎯 harusnya → 🛑 bisu, semuanya beremoji).
+- KESALAHAN 2 — dropdown menyembunyikan: v1 P5 bilang "analisis selalu
+  tampil" tapi contoh 77.3 menulis 🧠/🎯/🛑 sebagai sub-line ↳ — di
+  dashboard itu berarti ada DI DALAM dropdown = tersembunyi tanpa klik =
+  kontradiksi. Owner: TANPA KLIK JUGA JELAS → analisis KELUAR dari
+  dropdown, jadi baris utuh sendiri yang SELALU tampil.
+
+### 78.2 FORMAT BARIS FINAL v2
+
+```
+HH:mm:ss.SSS EMOJI LEVEL CHIP Pesan inti — fakta · fakta · fakta
+   ▶ (klik = HANYA bukti mentah: stack penuh, body/header asli, baris NDJSON sumber, hex)
+```
+
+- EMOJI MEMIMPIN — peta tetap 20, satu emoji = satu kategori kejadian:
+  🚀 boot server · 🌐 jaringan/upgrade/WS · 🧾 config decode XOR ·
+  📥 asset dilayani + 404 gabungan · 📲 API SDK/halaman t4game ·
+  🧩 ekstraksi/paket besar · 🔑 login/socket.io/ACK · 📄 html/file
+  dilayani-ditulis · 🔗 sesi capture meta · 📱 device meta ·
+  📜 script progress/lifecycle · 🐞 crash/uncaught/loader hang ·
+  🖼️ clientversion/resource render · 🕹️ sesi game aktif ·
+  💤 idle normal/pulih · ⏳ diam abnormal · 📡 panggilan port lain/
+  port asing · 🧠 analisis · 🎯 diagnosis "harusnya" · 🛑 gagal/mati/bisu.
+- LEVEL tetap DEBUG|INFO|WARN|ERROR (P3 — jujur seberapa penting).
+  Emoji = APA kejadiannya; LEVEL = SEBERPENTING — dua hal berbeda,
+  tidak saling menggantikan.
+- CHIP tetap (P6 — di port mana: 9527/9528/9530/5050/5051/CLIENT/4000).
+- Fakta tetap " · " (P2), angka dihumanisasi (P4), nol karangan (P10).
+
+### 78.3 DUA RULE BARU — R11 + R12 (kunci owner, masuk daftar rule)
+
+- R11 — EMOJI STYLE PENUH: NOL baris tanpa emoji. Emoji HANYA dari peta
+  78.2 (dilarang emoji liar/tambah-tambah tanpa alasan tertulis). Baris
+  tak ter-parse → "— " + catatan jujur, tetap beremoji kategori terdekat.
+- R12 — TANPA KLIK JUGA JELAS:
+  (a) anak panah ▶ SELALU kelihatan di ujung baris yang memang punya
+      detail (bukan hover-only); baris tanpa detail = TANPA panah
+      (tidak ada panah kosong = tidak ada janji kosong);
+  (b) baris tutup SUDAH lengkap: SEMUA fakta wajib (angka, nama file
+      404 PENUH, ret+isi ACK, durasi, kunci decode, verdict) tertulis DI
+      BARIS TUTUP — klik hanya menambah bukti mentah, BUKAN makna;
+  (c) 🧠/🎯/🛑 TIDAK PERNAH di dalam dropdown — baris flat tersendiri,
+      selalu tampil (pola contoh owner);
+  (d) DEBUG tetap collapse by default (P3/eruda), tapi saat tampil tetap
+      emoji penuh dan tetap jelas.
+
+### 78.4 CONTOH 20 BARIS v1 (77.3) DI-RENDER ULANG v2 — NILAI SAMA (run asli owner), BENTUK BARU
+
+20 baris inti v1 + 6 analisis keluar dari dropdown = 26 baris flat
+(pola contoh owner 35 baris — semuanya flat, semuanya beremoji):
+
+```
+ 1  16:38:15.473 🚀 INFO  4000   Server v27 up — 9527 config · 9528 cdn+socket.io · 5050 login · 5051 game · 9530 sdk · 4000 dashboard · ndjson 1 file di-tumpuk
+ 2  16:38:16.920 🧾 INFO  9527   GET setting_BS_Android.bin → 200 · 687 B · XOR DragonBall · 6 ms — testMode=1 · loginPort=9528 · loginWebPort=5050
+ 3  16:38:16.984 🧾 INFO  9527   GET com_db_local.bin → 200 · 2 B · XOR → {} kosong — normal
+ 4  16:38:18.017 🌐 INFO  9528   Upgrade check → 200 · 4 file · 17 ms — base.version=110 · resource.version=11390 · all.zip 19.4 MB
+ 5  16:38:18.208 📥 INFO  9528   GET all.zip?v=11011390 → 200 · 18.5 MB · 171 ms · 108 MB/s
+ 6  16:38:19.527 📲 INFO  9530   POST /v1/system/init → 200 · 34 ms — loginTypes=[1] · first_install=1 · countryCode=HK
+ 7  16:38:20.556 📲 INFO  9530   POST /v1/user/registerVisitor → 200 · 22 ms — uid=1795772300555 Guest6017 · isGuest=1 · openType=12
+ 8  16:38:21.764 🧩 INFO  4000   Ekstraksi selesai — server_root/bs · 2759 file · 6.3 s
+ 9  16:38:22.056 🔑 INFO  5050   GET /loginchecknative → 200 · 16 ms — uid=1795772300555 · usermode=1 · code=0 · loginToken=76fdaa…eb7f (mask 6+4 — D3)
+10  16:38:22.321 📄 INFO  9528   GET /bs/index-native.html?v=202109150935 → 200 · 28 KB · 11 ms — capture terinjeksi +18.1 KB · <title>DragonBall</title>
+11  16:38:23.843 🔗 INFO  CLIENT Sesi capture s-mwysgoj6-aw93dk — lang=zh-CN · egret=true · EgretNative Chrome/61 · Android 12
+12  16:38:23.846 📜 DEBUG CLIENT Script initial 7/7 — game 6/8 · sisa: default.thm_4d02a3c6.js · main.min_777039fc.js
+13  16:38:25.390 🐞 WARN  CLIENT Uncaught handler diganti crash reporter pihak ketiga — capture re-wrap — crash tetap tertangkap
+14  16:38:26.616 🖼️ INFO  9528   GET clientversion.json → 200 · 37 B · 4 ms — clientVersion=202109150935
+15  16:38:26.620 🧠 INFO  CLIENT Hanya main.min_777039fc.js yang meminta file ini → eval main.min hidup (bukti grep APK Bagian 75.1)
+16  16:38:27.846 📥 ERROR 9528   5 file 404 · 46 ms — denglujiemianxuanzhejiemiannew21_png · Instagram_png · Telegram_png · Discord_png · Logo18+Full_png — MISSING (server/ + APK assets) — TANPA placeholder (aturan owner 70)
+17  16:38:27.852 🧠 INFO  CLIENT 登录界面选择界面 = layar pilih login/server — game sedang menggambar layar login; aset memang tidak ada → game lanjut, BUKAN fatal (bukti dump device)
+18  16:38:27.870 🔑 INFO  9528   socket.io login · open — sid=tcMYiYqh8ehNdt1VbBaI · upgrades=[websocket] · ping 25 s / timeout 5 s
+19  16:38:27.899 🌐 INFO  9528   socket.io login · WS upgrade SELESAI — 2probe → 3probe · '5' diterima · polling mati
+20  16:38:27.900 🔑 INFO  9528   event GetServerList ack#0 — uid=1795772300555 · channel=quick · 2 ms — ACK 430 ret=0 · serverList[0]: serverId=1 "DragonBall Local" · url=http://127.0.0.1:9528 · online=true · history=[]
+21  16:38:27.905 🧠 INFO  CLIENT History kosong → selectNewServer → serverList[0] → onLoginSuccess → startBtnTap otomatis (bukti atlas §6)
+22  16:38:28.210 🕹️ INFO  9528   socket.io game · open — sid=xRBLP14oJNbIZmtHOp9d · koneksi ke-2 = clientStartGame(serverItem.url)
+23  16:38:38.330 ⏳ ERROR 9528   socket.io game · sid=xRBLP14oJNbIZmtHOp9d DIAM 10 dtk — client tak pernah kirim '5' — upgrade macet
+24  16:38:38.331 🧠 ERROR CLIENT Socket game menunggu event "verify" dari server (等待验证) — fase gameserver §7.5 belum dibangun
+25  16:38:38.331 🎯 ERROR CLIENT Harusnya: socketOnVerify → verify(XXTEA "verification") → ret=0 → enterGame → SaveUserEnterInfo → destroy — NOL rantai terjadi (dihitung dari absennya event)
+26  16:38:38.332 🛑 ERROR CLIENT Batch capture terakhir 16:38:23.846 — client bisu 14.5 dtk — worker beat mati (nol watchdog WARN)
+```
+
+Perubahan inti vs v1 (77.3): fakta yang dulu di ↳ kini NAIK ke baris tutup
+(kunci decode baris 2, code+token baris 9, title baris 10, isi ACK baris
+20, nama 405 PENUH + MISSING baris 16) dan 🧠/🎯/🛑 jadi baris flat 15,
+17, 21, 24, 25, 26 — TANPA KLIK SEMUA SUDAH TERBACA.
+
+### 78.5 DEMO DROPDOWN ▶ — APA YANG BERUBAH SAAT KLIK
+
+```
+TUTUP (tanpa klik — SUDAH JELAS, R12b):
+ 9  16:38:22.056 🔑 INFO  5050   GET /loginchecknative → 200 · 16 ms — uid=1795772300555 · usermode=1 · code=0 · loginToken=76fdaa…eb7f (mask 6+4)
+
+KLIK ▶ (hanya bukti mentah, makna TIDAK berpindah ke sini):
+    ↳ body asli: {"code":0,"usermode":1,"sdk":"quick","loginToken":"<penuh>"}
+    ↳ sumber: NDJSON baris [23] · LoginAck.java extra · handler 5050
+    ↳ tidak ada file baru dibuat — dibaca dari arsip yang ada
+```
+
+```
+ 2  16:38:16.920 🧾 INFO  9527   GET setting_BS_Android.bin → 200 · 687 B · XOR DragonBall · 6 ms — testMode=1 · loginPort=9528 · loginWebPort=5050   ▶
+    ↳ (klik) decode PENUH 12 kunci · hex kepala/ekor · sumber StaticHandler.java (decode extras v14)
+```
+
+Baris tanpa bukti mentah = TANPA ▶ (mis. baris 3, 7, 8, 15, 21, 26).
+Panah tidak pernah jadi hiasan.
+
+### 78.6 VARIAN ERROR (77.4) + PORT LAIN (77.5) DI-RENDER v2 — isi sama, kini beremoji
+
+```
+E1  16:38:48.348 📥 ERROR 9528   GET sound_click_mp3 → 404 · 8 ms — MISSING (server/ + APK assets) — diminta game saat menggambar tombol UI — game tetap jalan
+E2  16:38:47.102 🐞 ERROR CLIENT jserror: TypeError: Cannot read property 'name' of undefined — main.min_777039fc.js:1:104553   ▶ (klik → stack 8 frame PENUH, tanpa pangkas)
+E3  16:38:29.001 ⏳ WARN  CLIENT watchdog main thread tidak merespons ~4.0 dtk — beat 1 dtk berhenti — kejadian terakhir: script load
+E4  16:38:34.001 💤 INFO  CLIENT watchdog main thread pulih setelah beku ~9.0 dtk
+E5  16:38:41.003 🐞 ERROR CLIENT script mulai: js/default.thm_4d02a3c6.js — TANPA "script load" 12 dtk → loader hang tanpa onerror (75.1)
+E6  16:38:39.204 📡 ERROR 9530   POST /v1/user/login → 502 · 9 ms — fallback.json dipakai — endpoint tidak ada di seed SDK-CONFIG — resp {"code":103} SDK tolak103 (K2)
+```
+
+Peta emoji per chip (77.5, kini eksplisit): 9527→🧾 · 9528→🔑/🌐/📥 ·
+9530→📲 · 5050→🔑 · 5051→🕹️ (jika serverList url menunjuk 5051) ·
+port asing/luar→📡 (connection refused = bukan port kita, sisa konfig
+server asli) · 4000 dashboard→anti-pollution (tidak jadi baris, hanya
+/stats).
+
+### 78.7 IMPLEMENTASI BILA OKE (satu ronde — update 77.6)
+
+- Dashboard v19 rombak TOTAL — formatter v2 di JS dashboard: emoji map +
+  LEVEL warna (merah/kuning/abu pola eruda) + chip port + humanize +
+  baris flat + ▶ selalu-terlihat yang expand-nya HANYA bukti mentah +
+  DEBUG tersembunyi default + filter chip & level. NDJSON tetap sumber;
+  arsip tidak disentuh; aturan 1 file di-tumpuk tetap.
+- Server (dex v28): N1 watchdog diam sesi + N2 pelacak batch + kind=
+  ANALYSIS masuk arsip (D5: unduhan ndjson ikut membawa 🧠/🎯/🛑).
+- Smoke golden v2: fixture NDJSON device owner → formatter menghasilkan
+  PERSIS 26 baris 78.4 + 6 varian 78.6; E2E browser: ▶ terlihat TANPA
+  hover, klik hanya buka bukti mentah, 🧠/🎯/🛑 tampil flat tanpa klik.
+- dex v28 + APK v28 raw-copy (beda hanya classes2.dex).
+- NOL file log baru: story/formatter dibaca on-demand dari server.ndjson
+  yang ada.
+
+### 78.8 STATUS — PLAN ONLY
+
+NOL kode diubah. Owner cukup jawab: OKE format v2 (78.2–78.6) → langsung
+implementasi 78.7 satu ronde. Kalau masih ada baris yang kurang pas —
+tunjuk nomor barisnya, diperbaiki SEBELUM implementasi.
