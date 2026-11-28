@@ -8191,3 +8191,193 @@ implementasi.
   device owner). Saat loading macet nanti, dashboard v28 akan
   menunjukkan kata server apa adanya + baris ⏳ N1 bila sesi game bisu.
 
+
+---
+
+## Bagian 85 — ARAHAN OWNER 'KAN GAK JELASSS!!! CONTOHLAH ITU ERUDA KALAU DIA ITU GIMANA LOG NYA!! XHR-POLL ATAU APALAH LOG BANYAK TAPI SAMPAH GAK JELAS!! MASAK IYA SAYA HARUS DEKTE SATU SATU TAII!! INI LOG HARUS NATURAL BUKAN DI DIKTE!!' — KOREKSI KE-7, FORMAT v7 ERUDA-TIRU (contoh penuh: 67 entri dump device 23:48:40.616–23:49:14.249 → 37 baris + 3 ↳, PLAN ONLY nol kode)
+
+### 85.1 KESALAHAN 8 (jujur) — dump v28 device owner masih "banyak tapi sampah", harus dibaca satu-satu
+
+Owner paste dump device v28 run baru (23:48:40.616–23:49:14.249, uid=
+1795884526002 Guest2271, capture sid s-mx0na26w-cf569j, socket
+STIGlLwji3ZBIMnDmSZA + 3fe8iI4xd5DbBnPcoo4s): 77 baris (67 entri + 10 ↳)
+dan owner HARUS BACA SATU-SATU untuk mencari yang penting. Bedah noise —
+semua dari dump owner sendiri:
+
+1. HOST SAMA DICETAK ±36 KALI — tiap baris network menulis
+   `http://127.0.0.1:PORT` penuh; host-nya 127.0.0.1 semua dan port sudah
+   ada di chip emoji — nol informasi, cuma memanjangkan baris.
+2. QUERY ACAK DICETAK ±10 KALI — `?rnd=0.759363`, `?v=0.1209…`,
+   `?v=0.745…` = anti-cache acak, nol makna.
+3. CHATTER CAPTURE SENDIRI 25 BARIS (1/3 log) — script load 13 baris +
+   seed SDK 6 baris + lifecycle 3 + console.log 1 + meta 1 + ei 1; satu
+   pola yang sama dicetak satu-satu.
+4. FRAME ENGINE.IO 11 BARIS untuk fakta yang sebenarnya cuma: 2 jabat
+   tangan + 1 paket 47 B + 1 gantung (open/probe/POST/GET/noop/upgrade
+   selesai dicetak per frame).
+5. EXTRACT 2 BARIS = satu fakta yang sama.
+6. DITKTE DI ↳ LONG-POLL — kalimat analisis karangan: "pola socket GAME:
+   client menunggu event 'verify' dari server (fase gameserver belum
+   dibangun) — loading macet di sini". SUMBER PERSIS: dex
+   SocketIoHandler.java baris 481–483 (long-poll) + ekor analisis di
+   baris 419–422 (open). Ini karangan R20 (Bagian 83) yang LOLOS ke v28 —
+   falsafah lama "tiap timeout harus menjawab loading apa" (Bagian 72)
+   SUDAH DIGANTIKAN Bagian 83: missing/unserved = kirim respon asli, log
+   = fakta, bukan cerita. N1 lalu mengulang fakta yang sama 1 dtk
+   kemudian. Owner benar: itu DIKTE, bukan log natural.
+
+### 85.2 APA YANG ERUDA LAKUKAN (owner sudah menetapkan eruda = acuan sejak Bagian 77: "bukan jiplak tapi tiru") — prinsip yang ditiru:
+
+1. SATU REQUEST = SATU BARIS PENDEK: nama FILE saja (bukan URL penuh) +
+   status + ukuran + durasi. Host yang sama tidak pernah dicetak berulang.
+2. KOLOM SEJAJAR — waktu · emoji · port · nama · status · size · ms rata
+   satu kolom; mata scan vertikal 1 detik, tanpa baca satu-satu.
+3. STATUS BERWARNA: 200 diam, 101 upgrade beda, 404 MERAH — 6 merah di
+   dump owner langsung terlihat tanpa dibaca.
+4. PENGULANGAN = PENGALI: request identik tidak dicetak ulang penuh —
+   satu baris dengan ×N (pola console browser "repeated").
+5. DETAIL DI BAWAH TERBUKA (↳) — payload/param/preview, bukan baris
+   sepanjang baris utama.
+6. NOL NARASI: eruda tidak pernah menulis kalimat analisis — yang tampil
+   cuma fakta. Persis "log harus natural bukan di dikte".
+
+### 85.3 ATURAN v7 (R25–R30; R13/R14/R15/R16/R17/R18/R20–R24 tetap berlaku)
+
+- R25 BARIS NETWORK = NAMA FILE SAJA: `GET bs/upgrade/base.version → 200 ·
+  1 ms · 4 B` — TANPA `http://127.0.0.1:PORT` (port sudah di chip emoji),
+  TANPA `?rnd=…` / `?v=<acak>` (normPath naik ke TAMPILAN, bukan cuma
+  dedup). Yang DITINGGAL karena bermakna: host LUAR ditulis penuh
+  (dragon.sjmobilegame.com:82 — beda dunia = fakta penting), `?v=11011390`
+  (nomor versi nyata), `sid=…` (identitas sesi), param loginchecknative
+  (uid/username/token mask 6+4) — param sisanya turun ke ↳.
+- R26 PENGULANGAN IDENTIK = ×N: path+status+size sama → SATU baris
+  `… ×2 → 200 · 687 B · 1 ms` (ms beda digabung rentang `2–3 ms`).
+  Menggantikan isDup v28 yang hanya menyembunyikan baris kedua.
+- R27 CHATTER SEJENIS BERURUTAN = SATU BARIS: 13 script load → 1 baris;
+  6 seed → 1 baris; console.log+lifecycle 3 → 1 baris; extract 2 → 1
+  baris. ISI APA ADANYA (nama·angka dari entri asli), NOL kata baru —
+  MENGGABUNG, bukan mengarang.
+- R28 FRAME ENGINE.IO = BUKAN CERITA: open/probe/noop/upgrade per sesi
+  digabung SATU baris di detik SELESAI: `socket.io sid=STIGl… — open
+  103 B · upgrade WS 101 · POST 2 B · GET 448 B · noop 6 B — upgrade
+  selesai`. Paket bermakna tetap baris sendiri (WS 47 B; EVENT 422).
+- R29 DITKTE DIHAPUS DARI DEX (dex v29): SocketIoHandler.java baris
+  481–483 (` — pola socket GAME: … loading macet di sini`) dan ekor
+  baris 419–422 (` — fase gameserver belum dibangun, client menunggu
+  event 'verify' dari server — loading game tidak lanjut sampai fase itu
+  ada`) DIHAPUS. Yang tersisa di ↳ long-poll = fakta ukuran server
+  sendiri: umur sesi · diterima · dikirim · client tidak pernah
+  mengirim '5' — upgrade WS tidak selesai (kalimat N1 yang sudah
+  disetujui Bagian 76–81). N1/N2 TIDAK disentuh.
+- R30 TAMPILAN ERUDA: kolom rata monospace; badge status (200 abu · 101
+  biru · 404 MERAH + nama file merah); SATU ALUR TETAP (R15 — BUKAN tab);
+  ↳ terbuka (R13); SALIN = PERSIS teks contoh 85.4; tombol tetap 4;
+  ERROR merah HANYA dari field level LoggerCore.
+
+### 85.4 CONTOH PENUH v7 — SEMUA 67 entri dump device owner → 37 baris + 3 ↳ (nol entri hilang; peta sumber per baris di bawah blok; 77 baris → 40 baris)
+
+```
+23:48:40.616 🚀 4000 mini-server up; logger port 4000; NDJSON archive: /storage/emulated/0/Android/data/com.db.local/server/logs
+23:48:42.191 🧾 9527 GET bs/db/android/setting_BS_Android.bin ×2 → 200 · 687 B · 1 ms
+23:48:42.254 🧾 9527 GET bs/db/android/com_db_local.bin ×2 → 200 · 2 B · 2–3 ms
+23:48:43.276 🌐 9528 GET bs/upgrade/base.version → 200 · 1 ms · 4 B
+23:48:43.283 🌐 9528 GET bs/upgrade/resource.version → 200 · 2 ms · 5 B
+23:48:43.289 🌐 9528 GET bs/upgrade/upgrade.json → 200 · 1 ms · 130 B
+23:48:43.296 🌐 9528 GET bs/upgrade/size.json → 200 · 0 ms · 105 B
+23:48:43.483 📥 9528 GET bs/upgrade/all.zip?v=11011390 → 200 · 183 ms · 19.4 MB
+23:48:44.697 📲 9530 SDK-CONFIG seed 6 file — errors.json · QHinfo 21 B · v1/system/init.json 595 B · v1/user/ckRegVistor.json 66 B · fallback.json 72 B · profile.json 513 B
+23:48:44.717 📲 9530 POST v1/system/init → 200 · 27 ms · 594 B
+23:48:44.726 📲 9530 POST v1/system/getNotice → 200 · 4 ms · 25 B
+23:48:46.024 📲 9530 new account uid=1795884526002 username=Guest2271
+23:48:46.025 📲 9530 POST v1/user/registerVisitor → 200 · 26 ms · 317 B
+23:48:47.201 🧩 4000 extract server_root/bs selesai — 2759 file → /storage/emulated/0/Android/data/com.db.local/server
+23:48:47.390 🔑 5050 GET loginchecknative?uid=1795884526002&username=Guest2271&token=4595b9…46b8 → 200 · 1 ms · 313 B
+↳ usermode=1&appVersion=1&osVersion=31&sourceVersion=20200418&model=itel+S665L&packageName=com.db.local&brand=Itel&os=Android&sdk=BS
+23:48:47.692 📄 9528 GET bs/index-native.html?v=202109150935 → 200 · 7 ms · 28.9 KB
+23:48:47.785 📄 9528 GET bs/manifest.json → 200 · 5 ms · 533 B
+23:48:49.244 📜 9528 CLIENT meta — ua Chrome/61.0.2883.95 Mobile EgretNative · Android 12 itel S665L · screen=63x63@1 · egret=true · lang=zh-CN · sid=s-mx0na26w-cf569j
+23:48:49.244 📜 9528 CLIENT onHtmlLoaded · DOMContentLoaded · load
+23:48:49.245 📜 9528 CLIENT script 13 js — js/egret.min_d9413192.js 64 ms · js/egret.web.min_b66ab113.js 75 ms · js/game.min_16249d0f.js 18 ms · js/tween.min_6c5a88f9.js 5 ms · js/assetsmanager.min_2ef412b7.js 10 ms · js/eui.min_493403ce.js 62 ms · js/dragonBones.min_6252b9c4.js 54 ms · js/md5.min_97e969ef.js 5 ms · js/lz-string.min_896bee8b.js 3 ms · js/socket.io.min_57ea9db7.js 44 ms · js/blockmessage.min_7dc7bcec.js 21 ms · js/battlelogic.min_d446437e.js 60 ms · js/ThinkingAnalyticsSDK.min_72d3fad5.js 23 ms
+23:48:49.246 📜 9528 CLIENT ei — ExternalInterface hook terpasang (egret ada)
+23:48:50.565 🐞 4000 default uncaught handler replaced by third party (crash reporter) — re-wrapped, crashes still captured
+23:48:52.068 🖼️ 9528 GET bs/resource/properties/clientversion.json ×2 → 200 · 37 B · 1 ms
+23:48:52.072 🖼️ 9528 GET bs/resource/properties/serversetting.json → 200 · 1 ms · 66 B
+23:48:53.071 📥 ERROR 9528 GET bs/denglujiemianxuanzhejiemiannew21_png → 404 · 2 ms · 55 B
+23:48:53.081 📥 ERROR 9528 GET bs/Instagram_png → 404 · 1 ms · 32 B
+23:48:53.085 📥 ERROR 9528 GET bs/Discord_png → 404 · 1 ms · 30 B
+23:48:53.086 📥 ERROR 9528 GET bs/Telegram_png → 404 · 1 ms · 31 B
+23:48:53.127 📥 ERROR 9528 GET bs/Logo18+Full_png → 404 · 2 ms · 34 B
+23:48:53.533 📥 ERROR 9528 GET bs/resource/assets/image/public/sound/sound_click.mp3 → 404 · 2 ms · 69 B
+23:48:53.533 🔑 9528 socket.io sid=STIGlLwji3ZBIMnDmSZA — open 103 B · upgrade WS 101 · POST 2 B · GET 448 B · noop 6 B — upgrade selesai
+23:48:53.641 🌐 9528 WS sid=STIGlLwji3ZBIMnDmSZA → 200 · 47 B
+23:48:53.643 🌐 9528 WS EVENT (no ack): 422["handler.process",{"type":"User","action":"LoginAnnounce"}]
+↳ login-server: LoginAnnounce.json kosong {} = DIAM
+23:48:53.684 🔑 9528 socket.io sid=3fe8iI4xd5DbBnPcoo4s — open 103 B · upgrade WS 101 · WS 6 B
+23:49:03.690 ⏳ 9528 GET socket.io polling sid=3fe8iI4xd5DbBnPcoo4s → 200 · 10025 ms · 0 B — long-poll timeout 10 dtk
+↳ sesi 3fe8iI4xd5DbBnPcoo4s: umur 10 dtk · diterima 1 paket (probe WS) · dikirim 0 · client tidak pernah mengirim '5' — upgrade WS tidak selesai
+23:49:03.902 ⏳ 9528 sesi 3fe8iI4xd5DbBnPcoo4s diam 10 dtk — client tidak mengirim '5' — upgrade websocket tidak selesai
+23:49:14.249 ⏳ 9528 sesi 3fe8iI4xd5DbBnPcoo4s diam 20 dtk — client tidak mengirim '5' — upgrade websocket tidak selesai
+```
+
+Peta sumber per baris (bukti nol entri hilang):
+
+- baris 1 ← 40.616 boot
+- baris 2 ← 42.191 + 42.261 (setting ×2, keduanya 1 ms)
+- baris 3 ← 42.254 + 42.270 (com_db ×2, 2–3 ms)
+- baris 4–7 ← 43.276 / 43.283 / 43.289 / 43.296 (upgrade 4 file)
+- baris 8 ← 43.483 all.zip (?v=11011390 DITINGGAL — versi nyata)
+- baris 9 ← 44.697 / 44.699 / 44.704 / 44.709 / 44.711 / 44.713 (6 seed)
+- baris 10–13 ← 44.717 / 44.726 / 46.024 / 46.025
+- baris 14 ← 47.201 + 47.202 (extract 2 → 1, satu fakta)
+- baris 15 + ↳ ← 47.390 loginchecknative (token mask 6+4; param penuh ke ↳)
+- baris 16–17 ← 47.692 / 47.785 (manifest ?v= acak dibuang)
+- baris 18 ← 49.244 meta (mem=? conn=? dibuang — kosong, nol makna)
+- baris 19 ← 49.244 console.log + 49.244 + 49.245 lifecycle (3 → 1)
+- baris 20 ← 13 script load 49.245–49.247 (nama file apa adanya)
+- baris 21 ← 49.246 ei
+- baris 22 ← 50.565 crashhook
+- baris 23 ← 52.068 + 53.093 (clientversion ×2 — ulangan identik)
+- baris 24 ← 52.072 serversetting
+- baris 25–30 ← 53.071 / 53.081 / 53.085 / 53.086 / 53.127 / 53.533 (6×404
+  MERAH — langsung terlihat, inilah yang 85.1 maksud "teriak di alur")
+- baris 31 ← 53.113 + 53.154 + 53.161 + 53.163 + 53.507 + 53.533 (6 frame
+  engine.io sesi login → 1 baris di detik selesai)
+- baris 32 ← 53.641 (WS 47 B — paket bermakna, tetap sendiri)
+- baris 33 + ↳ ← 53.643 EVENT LoginAnnounce (kata dex dipertahankan)
+- baris 34 ← 53.648 + 53.667 + 53.684 (3 frame sesi game → 1)
+- baris 35 + ↳ ← 49:03.690 long-poll (DITKTE "pola socket GAME… loading
+  macet di sini" DIBUANG — R29; fakta sesi tetap)
+- baris 36–37 ← 49:03.902 + 49:14.249 (N1 ×2 — teks disetujui tetap)
+
+CEK JUMLAH entri: 1+4+4+1+6+4+2+1+2+1+3+13+1+1+2+1+6+6+1+1+3+1+2 = 67 —
+nol entri dilepas, nol ditambah. 77 baris → 40 baris (37 + 3 ↳). Yang
+hilang cuma tiga jenis: host yang sama ±36×, query acak ±10×, dan kalimat
+dikte. Scan mata: 6 baris MERAH = 404 aset; 1 baris ⏳ panjang = socket
+game gantung; sisanya hijau-abu = normal.
+
+### 85.5 IMPLEMENTASI BILA OKE (satu ronde)
+
+1. Formatter v20 di LoggerHandler.java (dashboard 4000): mainText network
+   = nama file tanpa host & tanpa query acak (normPath naik ke TAMPILAN);
+   pengali ×N + rentang ms; penggabung chatter (script/seed/lifecycle/
+   extract); penggabung frame engine.io per sesi di detik selesai; CSS
+   badge status + kolom rata; SALIN = PERSIS teks contoh 85.4; banner
+   v19 → v20; tombol tetap 4.
+2. Dex v29: SocketIoHandler.java — hapus 2 potongan dikte (481–483 dan
+   ekor 419–422); fakta sesi + N1/N2 tidak disentuh; patch_marker_v29
+   (kontrak v20–v28 utuh + penanda eruda) + rebuild_v29_raw raw-copy
+   classes2.dex saja.
+3. Bukti: verify_formatter_v29.js — fixture = dump owner 67 entri ini →
+   PERSIS 37 baris + 3 ↳ contoh 85.4 teks-per-teks (nol beda); smoke
+   desktop penuh; jarum lama yang menyebut teks dikte di-update ikut
+   fitur intent sama (pola 84.4); NOL file log baru; NDJSON 1 file
+   di-tumpuk tetap.
+4. APK v29 raw-copy: base v28 dari LFS (sha diverifikasi), META-INF
+   re-sign, keystore SAMA → install-over v28 aman; upload LFS + PUSH
+   GITHUB langsung tiap commit (arahan owner: file harus ada di GitHub).
+
+### 85.6 STATUS — PLAN ONLY
+
+- Owner jawab OKE v7 (85.3–85.5) → implementasi satu ronde.
+- Tunjuk nomor baris contoh 85.4 yang kurang pas → diperbaiki dulu TANPA
+  kode, sebelum eksekusi.
