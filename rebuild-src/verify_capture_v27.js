@@ -202,8 +202,8 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
     let wd = 0, ssr = 0, ei = 0;
     for (let i = 0; i < rows.length; i++) {
       const t = rows[i].textContent || '';
-      if (t.indexOf('watchdog') >= 0 && t.indexOf('WARN') >= 0) wd++;
-      if (t.indexOf('script mulai:') >= 0 && t.indexOf('DEBUG') >= 0) ssr++;
+      if (t.indexOf('watchdog') >= 0 && t.indexOf('tidak merespons') >= 0) wd++;
+      if (t.indexOf('script mulai:') >= 0) ssr++;
       if (t.indexOf('ExternalInterface') >= 0) ei++;
     }
     return { wd, ssr, ei };

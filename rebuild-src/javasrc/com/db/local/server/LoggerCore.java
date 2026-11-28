@@ -199,6 +199,33 @@ public final class LoggerCore {
         }
     }
 
+    /* ================= v28 — watchdog N1/N2 (SATU thread daemon) =================
+     * N1: sesi socket.io diam (probe jalan, client tidak pernah mengirim '5')
+     *     — pindai SocketIoHandler tiap 1 dtk, lapor 10 dtk lalu tiap 10 dtk.
+     * N2: batch capture client per sid bisu — pindai ClientLogHandler
+     *     (batch terakhir per sid, cap 8 — sesi terbaru saja).
+     * Keduanya FAKTA server sendiri yang ditulis satu baris pendek gaya
+     * server — bukan baris karangan analis di log. */
+    private static volatile Thread watchdog;
+
+    public static void startWatchdog() {
+        if (watchdog != null) return;
+        Thread t = new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ie) {
+                    return;
+                }
+                try { SocketIoHandler.watchdogScan(); } catch (Throwable ignore) {}
+                try { ClientLogHandler.watchdogScan(); } catch (Throwable ignore) {}
+            }
+        }, "watchdog-n1-n2");
+        t.setDaemon(true);
+        watchdog = t;
+        t.start();
+    }
+
     private static ArrayList<Entry> tail(ArrayDeque<Entry> src, int limit, long since) {
         ArrayList<Entry> all = new ArrayList<>(src);
         int from = 0;

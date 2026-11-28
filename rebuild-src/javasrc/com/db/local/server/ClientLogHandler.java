@@ -89,6 +89,7 @@ public final class ClientLogHandler implements HttpWorker.Handler {
 
         // transport capture sendiri: hitung, JANGAN jadi baris access log
         LoggerCore.countSelf(LoggerCore.PORT_CDN, req.body.length, 4, false);
+        boolean batchOk = false;
 
         Batch batch;
         try {
@@ -133,11 +134,62 @@ public final class ClientLogHandler implements HttpWorker.Handler {
             if ("ERROR".equals(ev.level)) le.error = causeOf(ev.type);
             LoggerCore.log(le);
         }
+        batchOk = true;   // v28 N2: batch valid tercatat — mulai hitung diamnya
 
         byte[] b = HttpWorker.text("ok\n");
         Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=utf-8");
         HttpWorker.writeResponse(out, 200, "OK", h, b);
+        if (batchOk) noteBatch(batch.sid);   // v28 N2: batch terakhir per sid
         return true;
+    }
+
+    /* ================= v28 N2 — pelacak batch per sid =================
+     * Batch capture client dipantau per sid (cap 8 — sesi terbaru saja).
+     * Sid yang pernah hidup (>= 3 batch) lalu bisu >= 10 dtk dilaporkan
+     * watchdog SATU baris pendek gaya server, lalu tiap 10 dtk — fakta
+     * server sendiri (watchdog), bukan karangan analis di log. */
+    static final int N2_TRACK_CAP = 8;
+    static final int N2_MIN_BATCH = 3;
+    static final long N2_SILENT_MS = 10000;
+    /** sid → {lastBatchMs, count, lastReportMs} — urutan masuk = urutan terpakai */
+    static final java.util.LinkedHashMap<String, long[]> N2_TRACK =
+            new java.util.LinkedHashMap<String, long[]>();
+
+    static synchronized void noteBatch(String sid) {
+        if (sid == null || sid.isEmpty()) return;
+        long now = System.currentTimeMillis();
+        long[] t = N2_TRACK.get(sid);
+        if (t == null) {
+            N2_TRACK.put(sid, new long[]{now, 1, 0});
+            while (N2_TRACK.size() > N2_TRACK_CAP) {
+                String oldest = N2_TRACK.keySet().iterator().next();
+                N2_TRACK.remove(oldest);
+            }
+        } else {
+            t[0] = now;
+            t[1]++;
+        }
+    }
+
+    static synchronized void watchdogScan() {
+        long now = System.currentTimeMillis();
+        for (Map.Entry<String, long[]> en : N2_TRACK.entrySet()) {
+            long[] t = en.getValue();
+            if (t[1] < N2_MIN_BATCH) continue;
+            long silentMs = now - t[0];
+            if (silentMs < N2_SILENT_MS) continue;
+            if (t[2] != 0 && now - t[2] < N2_SILENT_MS) continue;
+            t[2] = now;
+            LoggerCore.Entry we = new LoggerCore.Entry();
+            we.port = LoggerCore.PORT_CDN;
+            we.kind = "WATCH";
+            we.method = "N2";
+            we.path = "client bisu " + (silentMs / 1000) + " dtk — batch terakhir sid "
+                    + en.getKey() + " — worker beat mati";
+            we.status = 200;
+            we.durMs = 0;
+            LoggerCore.log(we);
+        }
     }
 
     private static LoggerCore.Entry base(HttpWorker.Request req, long t0) {

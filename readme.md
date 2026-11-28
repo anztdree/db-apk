@@ -8090,3 +8090,104 @@ diperbaiki SEBELUM implementasi.
 NOL kode diubah. Owner jawab OKE format v6 (83.2–83.4) → implementasi
 satu ronde. Tunjuk nomor baris yang kurang pas → diperbaiki SEBELUM
 implementasi.
+
+---
+
+## Bagian 84 — ARAHAN OWNER: "REBUILD YG BENER" — IMPLEMENTASI SATU RONDE Bagian 83.4 SELESAI: dex v28 (N1+N2 + formatter v5 + bersih teks) + APK v28 (raw-copy base v27 dari LFS, beda HANYA classes2.dex + re-sign) + BUKTI: formatter = teks-per-teks 81.3 (129 baris) · smoke 294 PASS/0 FAIL + E2E Chromium · N1 live · probe CDN asli — LFS v28 TERUNGGAH
+
+### 84.1 dex v28 — NOL baris ⚠️ ANALYSIS (Bagian 83 dipatuhi penuh)
+
+- N1 watchdog sesi diam (SocketIoHandler): thread daemon "watchdog-n1-n2"
+  1 dtk (LoggerCore.startWatchdog, dijalankan ServerCore.start) memindai
+  SESSIONS; probe WS jalan TAPI client tidak pernah mengirim '5' + diam
+  >= 10 dtk → SATU baris pendek gaya server, lalu tiap 10 dtk:
+  "sesi <sid> diam N dtk — client tidak mengirim '5' — upgrade websocket
+  tidak selesai" (kind WATCH, method N1, port = port listener sesi).
+- N2 pelacak batch per sid (ClientLogHandler): map sid → {batch terakhir,
+  count, laporan terakhir} cap 8; sid yang pernah hidup (>= 3 batch) lalu
+  bisu >= 10 dtk → "client bisu N dtk — batch terakhir sid <sid> — worker
+  beat mati" (kind WATCH, method N2, port 9528). N3/N4/N5/R19 TIDAK
+  PERNAH dibangun (83.1) — log = entri NDJSON apa adanya.
+- Bersih teks (81.2 — rujukan internal DIHAPUS dari kata server):
+  ServerCore " — Bagian 21"; SocketIoHandler "(atlas §4.3: …)"
+  "(LOGIN-SERVER-PLAN §7.5)" "(atlas §1)" "— atlas §4"
+  "docs/LOGIN-SERVER-PLAN.md §6" ×2; LoginAck "(atlas §4 — 6 event)"
+  "atlas §4.6/§11.11" "atlas §4" "(owner edit — seed tidak menimpa;
+  atlas §11 baris 9)". patch_marker_v28 MELARANG semuanya di dex.
+
+### 84.2 Dashboard formatter v5 (LoggerHandler) — SATU ALUR, KATA SERVER
+
+- R15 satu tumpukan urutan NDJSON persis (nol tab, nol tampilan kedua) ·
+  identitas di baris kejadian: emoji peta + port (4000 🚀/🌐/🧩/🐞/📱/📜 ·
+  9527 🧾 · 9528 📥 aset/📄 html+manifest/🖼️ properties/🔑 socket.io
+  polling/🌐 WS+upgrade/⏳ timeout · 5050 🔑 · 5051 🕹️ · 9530 📲 · WATCH
+  N1 ⏳ · N2 🛑) · R16 teks = kata server ("GET URL → 200 · 3 ms · 687 B",
+  ukuran desimal 19385098 B → "19.4 MB") · R17 ↳ detail terbuka tanpa
+  klik: extra verbatim (separator "|" server dipertahankan), DECODED-XOR
+  penuh sebagai blok, ACK 43x frame penuh, preview yang membawa fakta
+  baru tampil (upgrade *.version/*.json, resource properties, getNotice,
+  registerVisitor token mask 6+4), body besar tanpa fakta baru (html/
+  manifest/all.zip/init.json) tidak dicetak, preview 404 tidak diulang,
+  payload ulangan identik tidak dicetak ulang (dedup normPath+rnd/v) ·
+  R18 boot = 1 baris "mini-server up; …" + 18 entri boot jadi ↳ detail
+  berwaktu · tag ERROR merah HANYA dari field `level` LoggerCore · tombol
+  tetap 4 (cari, filter error, salin, jeda) · SALIN = teks yang sama
+  dengan golden (entryLines).
+- BUKTI UTAMA (rebuild-src/verify_formatter_v28.js): dump device owner
+  66 entri + 1 baris N1 dirender fungsi textLines PERSIS yang live →
+  SAMA TEKS-PER-TEKS dengan pola 81.3 — 129 baris render vs 129 baris
+  golden, NOL beda. Dua substitusi terdokumentasi 81.2 diterapkan ke
+  dump lama (teks yang dex v28 tidak lagi kirim).
+
+### 84.3 APK v28 — raw-copy, rantai invariant terjaga
+
+- Base = APK v27 dari LFS (fetch_lfs.py — oid 874232d1…, sha verifikasi
+  cocok; file di working tree hanyalah pointer). rebuild_v28_raw.py:
+  6.428 entri byte-per-byte, beda HANYA classes2.dex (META-INF diganti
+  re-sign); classes.dex airplane v19 byte-identik (6.697.176 B, sha
+  62803bb1…, byte patch @0x5e8180/@0x5d2438); QHinfo proven;
+  resources.arsc STORED aligned-4.
+- dex v28: 52 class → D8 8.3.37 → 180.396 B → patch_marker_v28 (rotasi
+  v19→v28 tepat 4 string; kontrak warisan v20..v27 UTUH — pengecualian
+  tercatat: "icon:'check'}}"/"m=='script-start'" milik formatter v18
+  diganti penanda formatter v5; guard varian rusak tetap) → classes2.dex
+  180.508 B sha256 3a9ad305…, checksum+signature sah, map 17 entri tepat
+  di EOF.
+- Sign: uber-apk-signer 1.3.0 (zipalign success + sign success +
+  zipalign verified + signature verified [v1, v2, v3]) — keystore
+  dblocalmod SAMA (CN=DB Local Mod, O=Owner, C=ID, SHA256 f58a5b9a…,
+  exp 2056) → install-over v27 AMAN.
+- APK v28: release-mod/db-local(MOD-LOCALSERVER-v28).apk — 202.699.742 B,
+  sha256 6e34d765455a72e376b60b51c138f9dffa41809f2ad2f905638c6fb47ffd3bfc.
+  Objek LFS DIUNGGAH (batch API — PUT HTTP 200 + verify HTTP 200,
+  tools/upload_lfs.py) → pointer sah, NOL pointer menggantung.
+
+### 84.4 BUKTI (verify-artifacts/login_server_v28_{build,smoke}_20261128.txt)
+
+- Smoke desktop PENUH: 294 PASS / 0 FAIL — termasuk E2E BROWSER NYATA
+  (Playwright/Chromium): capture v2 27/27 (regresi utuh) + capture v3
+  watchdog 24/24 + dashboard render + sintaks JS sah (new Function) +
+  NOL pageerror. Jarum uji yang menguji badge kata era v18 (WARN/DEBUG/
+  levelOf/subRow/compOf/rmeta) di-update mengikuti fitur (intent sama —
+  pola yang sama dengan v26/v27); daftar perubahan ada di diff.
+- N1 LIVE end-to-end (desktop): sesi 9528 di-open → POST 2probe → tidak
+  pernah kirim '5' → watchdog melaporkan di 10 dtk, entri persis:
+  {"seq":20,"port":9528,"kind":"WATCH","method":"N1","path":"sesi
+  yNcip5LNRLhVG2058F0L diam 10 dtk — client tidak mengirim '5' —
+  upgrade websocket tidak selesai",…}.
+- Probe CDN asli (R23): 6 aset 404 di dump diuji ke tsUrl config bawa
+  (dragon.sjmobilegame.com:82) — jaringan sandbox flaky (3/6 terjangkau):
+  Instagram_png / Logo18+Full_png / sound_click.mp3 = **404 DI CDN ASLI
+  JUGA** → file itu tidak pernah ada di mana pun (server/ kita, APK
+  assets, CDN asli) → 404 server kita = CERMIN KEADAAN ASLI, BUKAN
+  placeholder; TIDAK ada isi asli yang bisa dipulihkan — jujur dicatat,
+  NOL file dikarang.
+
+### 84.5 STATUS — SELESAI (implementasi satu ronde)
+
+- NOL file log baru; NDJSON 1 file di-tumpuk tetap; bs/sdk/arsc/assets/
+  smali/classes.dex tidak disentuh.
+- Sisa: smoke DEVICE v28 (install-over v27 aman — konfirmasi akhir di
+  device owner). Saat loading macet nanti, dashboard v28 akan
+  menunjukkan kata server apa adanya + baris ⏳ N1 bila sesi game bisu.
+

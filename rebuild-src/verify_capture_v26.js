@@ -166,8 +166,8 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
   });
   check('e2e26-dash-js-sintaks-sah', jsSyntax.ok, jsSyntax.why);
   check('e2e26-dash-fix-kutip', await dash.evaluate(() =>
-    document.documentElement.innerHTML.indexOf("icon:'check'}}") >= 0
-    && document.documentElement.innerHTML.indexOf("icon:'check}}\n") < 0), 'marker fix tidak ada');
+    document.documentElement.innerHTML.indexOf("function textLines") >= 0
+    && document.documentElement.innerHTML.indexOf("icon:'check}}\n") < 0), 'formatter v5 tidak ada / varian rusak masih ada');
 
   // 2. poll() benar-benar berjalan: script hidup + baris ter-render di DOM
   await sleep(3000);
@@ -197,7 +197,7 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
         if (t.indexOf('stack:') >= 0) stackSub++;
         if (t.indexOf('sid:') >= 0) sidSub++;
       }
-      if (t.indexOf('resource') >= 0 && t.indexOf('DEBUG') >= 0) dbg++;
+      if (t.indexOf('resource') >= 0 && t.indexOf('CLIENT') >= 0) dbg++;
     }
     return { client, stackSub, sidSub, dbg };
   });

@@ -129,6 +129,15 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         /** v21: true HANYA setelah client mengirim '5' (upgrade engine.io
          *  selesai) — bukan lagi saat handshake 101. */
         public volatile boolean upgraded = false;
+        /** v28 N1: waktu frame TERAKHIR dari client — dibaca watchdog sesi
+         *  diam (lapor 10 dtk, ulang tiap 10 dtk — fakta server sendiri). */
+        public volatile long lastFrameMs = System.currentTimeMillis();
+        /** v28 N1: port listener tempat sesi ini dibuka — identitas baris
+         *  watchdog (kata kalimat BIND sendiri, bukan nama karangan). */
+        public volatile int listenerPort = -1;
+        /** v28 N1: waktu laporan terakhir sesi ini (anti banjir — 1 baris
+         *  per 10 dtk per sesi). */
+        public volatile long n1ReportMs = 0;
         /** Bagian 72: sesi ini terbuka sebagai pola socket GAME (ada sesi lain
          *  yang sudah menjawab login saat open). Setiap long-poll timeout sesi
          *  ini membawa ALASAN loading macet, bukan hanya "no data". */
@@ -393,6 +402,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     }
                 }
                 s = createSession();
+                s.listenerPort = e.port;   // v28 N1: identitas port sesi
                 String body = frame("0" + openJson(s.sid)) + frame("40");
                 Map<String, String> h = HttpWorker.baseHeaders("text/plain; charset=UTF-8");
                 h.put("Access-Control-Allow-Origin", "*");
@@ -407,10 +417,8 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     if (loginTerjawab) {
                         s.gamePattern = true;   // Bagian 72: tiap timeout sesi ini membawa alasannya
                         e.extra += "; koneksi ke-2 setelah login dijawab = pola socket GAME"
-                                + " (atlas §4.3: clientStartGame → socket game ke serverItem.url"
-                                + " = port ini dari serverList) — listener game TRANSPORT ONLY:"
-                                + " fase gameserver belum dibangun (LOGIN-SERVER-PLAN §7.5),"
-                                + " client menunggu event 'verify' dari server (atlas §1) —"
+                                + " — fase gameserver belum dibangun,"
+                                + " client menunggu event 'verify' dari server —"
                                 + " loading game tidak lanjut sampai fase itu ada";
                     }
                 }
@@ -480,7 +488,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 e.extra = "berisi: " + (d == null ? "paket engine.io/socket.io" : d);
                 if (d != null && d.contains("GetServerList")) {
                     e.extra += " — serverlist SAMPAI ke client (client lanjut: "
-                            + "LoginAnnounce/SaveHistory/clientStartGame — atlas §4)";
+                            + "LoginAnnounce/SaveHistory/clientStartGame)";
                 }
             }
             e.durMs = System.currentTimeMillis() - t0;
@@ -504,6 +512,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             StringBuilder seen = new StringBuilder();
             for (String pkt : parseFramed(new String(req.body, StandardCharsets.UTF_8))) {
                 s.framesIn++;   // v23: fakta — paket dari client dihitung
+                s.lastFrameMs = System.currentTimeMillis();   // v28 N1
                 if (seen.length() > 0) seen.append(" | ");
                 seen.append(pkt);   // v17: PAKET PENUH — nol pangkas (1800 dihapus)
                 if ("41".equals(pkt)) { s.closed = true; dead = true; }
@@ -528,8 +537,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                     if (gameMode) {
                         noteEvent(s, actionOf(pkt));   // v23: fakta event client
                         if (e.extra == null) e.extra = "EVENT (no ack): " + pkt
-                                + " | gameServer transport-only (fase gameServer"
-                                + " — docs/LOGIN-SERVER-PLAN.md §6)";
+                                + " | gameServer transport-only (fase gameServer)";
                     } else {
                         noteEvent(s, actionOf(pkt));   // v23: fakta event client
                         String ack = LoginAck.build(pkt, e);
@@ -618,6 +626,32 @@ public final class SocketIoHandler implements HttpWorker.Handler {
         return b.toString();
     }
 
+    /* ================= v28 N1 — watchdog sesi diam =================
+     * Fakta server sendiri (bukan karangan analis): thread daemon 1 dtk
+     * memindai sesi; probe WS sudah jalan TAPI client tidak pernah mengirim
+     * '5' dan diam mencapai 10 dtk → SATU baris pendek gaya server, lalu
+     * tiap 10 dtk (angka diam ikut bertambah — apa adanya). */
+
+    static void watchdogScan() {
+        long now = System.currentTimeMillis();
+        for (Session s : SESSIONS.values()) {
+            if (s.closed || s.upgraded || !s.probeDone) continue;
+            long silentMs = now - s.lastFrameMs;
+            if (silentMs < 10000) continue;
+            if (s.n1ReportMs != 0 && now - s.n1ReportMs < 10000) continue;
+            s.n1ReportMs = now;
+            LoggerCore.Entry we = new LoggerCore.Entry();
+            we.port = s.listenerPort > 0 ? s.listenerPort : LoggerCore.PORT_CDN;
+            we.kind = "WATCH";
+            we.method = "N1";
+            we.path = "sesi " + s.sid + " diam " + (silentMs / 1000)
+                    + " dtk — client tidak mengirim '5' — upgrade websocket tidak selesai";
+            we.status = 200;
+            we.durMs = 0;
+            LoggerCore.log(we);
+        }
+    }
+
     /** v23 — potong deskripsi ACK dari extra (bagian sebelum " | frame:") */
     static String shortAckDesc(String extra) {
         if (extra == null) return null;
@@ -697,6 +731,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
             // v21: koneksi WS-FIRST (tanpa polling sebelumnya) — sesi baru,
             // memang langsung WS murni → upgraded=true benar utk kasus ini.
             s = createSession();
+            s.listenerPort = e.port;   // v28 N1: identitas port sesi
             s.upgraded = true;
         }
         // v21 FIX BUG SERVERLIST: sesi polling yang membuka WS untuk probe
@@ -772,6 +807,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                 }
                 String text = new String(payload, StandardCharsets.UTF_8);
                 s.framesIn++;   // v23: fakta — setiap frame dari client dihitung
+                s.lastFrameMs = System.currentTimeMillis();   // v28 N1
 
                 if (opcode == 0x8) { // close
                     LoggerCore.Entry ce = new LoggerCore.Entry();
@@ -835,7 +871,7 @@ public final class SocketIoHandler implements HttpWorker.Handler {
                         noteEvent(s, actionOf(text));   // v23: fakta event client
                         if (gameMode) {
                             le.extra = "EVENT (no ack) — gameServer transport-only"
-                                    + " (fase gameServer — docs/LOGIN-SERVER-PLAN.md §6)";
+                                    + " (fase gameServer)";
                         } else {
                             String ack = LoginAck.build(text, le);
                             if (ack != null) {

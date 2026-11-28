@@ -1,0 +1,49 @@
+# BUILD v28 — REBUILD YG BENER (implementasi satu ronde Bagian 83.4, FORMAT v6)
+# Tanggal: 28 Nov 2026 — arahan owner: 'REBUILD YG BENER'
+
+== TOOLCHAIN ==
+javac 21.0.13 (openjdk-21 deb, dpkg -x, LD_LIBRARY_PATH) — resep REBUILD-PATTERN §7
+D8 8.3.37 (/home/z/my-project/r8-8.3.37.jar)
+uber-apk-signer 1.3.0 (--ksPass dblocalmod123, alias dblocalmod — cert SAMA: CN=DB Local Mod, O=Owner, C=ID, SHA256 f58a5b9a…, exp 2056 → install-over v27 AMAN)
+
+== COMPILE ==
+javasrc 26 file + stubs 8 → 52 class (identik jumlah v25/v26/v27) — javac EXIT 0 tanpa warning
+
+== DEX ==
+D8 --release --min-api 21 → classes.dex 180.396 B → patch_marker_v28.py:
+PATCH OK (v28 — rumus spec + verifikasi struktur penuh): /tmp/v28/dexout/classes.dex -> /tmp/v28/dexout/classes2.dex (180508 B)
+  checksum 0x62070f82 | sha1 b9dbaaa99aeea5dd… | map 17 entri berakhir tepat di EOF
+sha256 classes2.dex v28: 3a9ad3055555ccace57e32634e5bf21c69a0f8f54d9ee16080e36619f42da321
+
+== REBUILD RAW-COPY ==
+base = APK v27 dari LFS (oid 874232d1… — fetch_lfs.py, sha verifikasi cocok)
+sanity: base APK v27 OK — 202699742 B
+dex2 180508 B (login-server v28 — N1/N2 watchdog + formatter v5 + bersih teks)
+verifikasi dex terpasang: checksum+signature sah, map 17 entri < EOF
+EOCD: 6428 entri, CD @ 201961472 (738248 B)
+entri terbaca: 6428 (deflate=3471 stored=2957)
+sanity: QHinfo proven — classes.dex airplane v19 dipertahankan byte-identik (6697176 B)
+tulis: /tmp/v28/v28_unsigned.apk — 202692169 B
+verifikasi: 6428 entri, beda HANYA ['classes2.dex'] (META-INF ikut base — diganti re-sign)
+resources.arsc: STORED, data_off=15919924 (aligned-4 OK — final oleh zipalign)
+metode: 3471 deflate + 2957 stored
+REBUILD RAW-COPY v28 OK — /tmp/v28/v28_unsigned.apk (202692169 B)
+sha256 classes2.dex v28: 3a9ad3055555ccace57e32634e5bf21c69a0f8f54d9ee16080e36619f42da321
+
+== SIGN ==
+zipalign location: BUILT_IN 
+	/tmp/uapksigner-7992792000744576985/linux-zipalign-33_0_23158994753669002738.tmp
+	- zipalign success
+	- sign success
+	- zipalign verified
+	- signature verified [v1, v2, v3]
+		SHA256: f58a5b9a097656440b5cb21f5ed2e70b879c3879d6a0926ff951aa181fa91170 / SHA384withRSA
+		Expires: Tue Nov 14 11:15:27 UTC 2056
+
+== APK FINAL ==
+-rw-rw-r-- 1 z z 202699742 Nov 28 01:31 /home/z/my-project/db-apk/release-mod/db-local(MOD-LOCALSERVER-v28).apk
+sha256 : 6e34d765455a72e376b60b51c138f9dffa41809f2ad2f905638c6fb47ffd3bfc
+dex checksum sah: True
+entri: 6428 | beda vs base v27: ['classes2.dex', 'META-INF/DBLOCALM.SF', 'META-INF/DBLOCALM.RSA', 'META-INF/MANIFEST.MF']
+QHinfo proven: b'http://127.0.0.1:9530'
+arsc STORED: True

@@ -63,28 +63,27 @@ final class LoginAck {
             if (p == null) {
                 note(e, "EVENT (no ack): " + pkt
                         + " | login-server: bukan ack-request handler.process"
-                        + " (atlas §4 — 6 event)");
+                        + " (6 event)");
                 return null;
             }
             // event 6 — SaveUserEnterInfo: TANPA FILE, SELALU dijawab {}
             if ("SaveUserEnterInfo".equals(p.action)) {
                 String frame = frameOf(p.ackId, "{}");
                 note(e, "ACK 43" + p.ackId + " — SaveUserEnterInfo (konstanta"
-                        + " kode — atlas §4.6/§11.11: isi tak dibaca client;"
+                        + " kode — isi tak dibaca client;"
                         + " callback -> destroy login socket) | frame: " + frame);
                 return frame;
             }
             if (!LoginServerConfig.isEventFile(p.action)) {
                 note(e, "EVENT (no ack): " + pkt
-                        + " | login-server: action di luar inventaris atlas §4"
+                        + " | login-server: action di luar inventaris"
                         + " (6 event total — tidak ada ke-7)");
                 return null;
             }
             String raw = LoginServerConfig.eventRaw(p.action);
             if (raw == null || raw.isEmpty()) {
                 note(e, "EVENT (no ack): " + pkt + " | login-server: "
-                        + p.action + ".json kosong {} = DIAM (owner edit —"
-                        + " seed tidak menimpa; atlas §11 baris 9)");
+                        + p.action + ".json kosong {} = DIAM");
                 return null;
             }
             String data = buildData(p.action, raw, p.map);

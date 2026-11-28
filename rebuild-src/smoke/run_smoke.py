@@ -417,7 +417,7 @@ try:
           and "MOD-LOCALSERVER v19" in bd, bd[:120])  # console v19
     check("v43-stream-markup", "id=stream" in bd and "id=tb" in bd
           and "id=tail" in bd, bd[:80])
-    check("v17-salin-tabel", "function doCopy" in bd and "plainLine(e)" in bd)  # v16: salin teks mentah
+    check("v17-salin-tabel", "function doCopy" in bd and "function copyLines(e)" in bd)  # v16: salin teks mentah (v28: entryLines = teks 81.3)
     check("v17-banner-crash-js", "renderCrash" in bd and "fetch('/crash')" in bd
           and "id=crashbn" in bd)  # v16: banner crash via #crashbn (nol tombol)
     # Bagian 39 — overlay tetap INFO netral ("overlay OFF (normal)")
@@ -1319,17 +1319,17 @@ try:
     # 1. identitas console raw + judul lama hilang (v3 & v7)
     check("v44-console-title", "DB LOCAL SERVER" in bd and "DB MONITOR" not in bd
           and "com.db.local — server console" not in bd, bd[:80])
-    # 2. level ala log server: INFO/DEBUG/WARN/ERROR + overlay = INFO
-    check("v60-level-of", "word:'INFO',cls:'g',icon:'check'" in bd
-          and "word:'DEBUG',cls:'d',icon:'search'" in bd
-          and "word:'WARN',cls:'w',icon:'warn'" in bd
-          and "word:'ERROR',cls:'r',icon:'x'" in bd, "")
-    check("v44-fmtB-detail", "function fmtB(n)" in bd and "function mainLine(e)" in bd, "")
-    # 3. komponen server berwarna: [CORE][CONFIG][CDN][SDK][LOGIN][GAME][MONITOR]
-    check("v44-comp-of", "function compOf(e)" in bd, "")
-    check("v44-comp-tags", "c-CORE" in bd and "c-CONFIG" in bd and "c-CDN" in bd
-          and "c-SDK" in bd and "c-LOGIN" in bd and "c-GAME" in bd
-          and "c-MONITOR" in bd, "")
+    # 2. v28 FORMAT v5 — identitas server di baris (emoji peta + port), ERROR
+    #    merah HANYA dari field level LoggerCore (Bagian 81 R-rule)
+    check("v60-level-of", "function emojiOf(e)" in bd
+          and "function mainText(e)" in bd
+          and "(e.level||'')=='ERROR'" in bd, "")
+    check("v44-fmtB-detail", "function fmtB(n)" in bd and "function mainText(e)" in bd, "")
+    # 3. identitas server berwarna di baris: emoji peta + nomor port (chip v28)
+    check("v44-comp-of", "function emojiOf(e)" in bd and "function lineHead(e)" in bd, "")
+    check("v44-comp-tags", ".ev .pt{color:#4fc3dd" in bd
+          and "\\uD83E\\uDDFE" in bd and "\\uD83C\\uDF10" in bd
+          and "\\uD83D\\uDE80" in bd and "\\uD83D\\uDCF2" in bd, "")
     # 4. banner boot = teks RAW persis protokol
     check("v44-banner-boot", "id=banner" in bd and "class=b1" in bd
           and "DB LOCAL SERVER · com.db.local · MOD-LOCALSERVER v19" in bd, "")
@@ -1339,10 +1339,12 @@ try:
     # 5. header premium: titik status bercahaya + badge versi
     check("v44-hdr-premium", "id=dot" in bd and "id=ver" in bd
           and "@keyframes pl" in bd, "")
-    # 6. overlay tetap INFO (Bagian 39 — tidak berubah)
+    # 6. overlay tetap bukan error (Bagian 39): emoji 📱, isBad TIDAK menyentuh
     check("v39-overlay-info-verdict",
-          "m=='OVERLAY'" in bd and "m=='OVERLAY')return {word:'INFO',cls:'g',icon:'check'}" in bd, "")
-    check("v39-overlay-not-problem", "=='OVERLAY')return false" in bd, "")
+          "m=='OVERLAY')return '\\uD83D\\uDCF1'" in bd, "")
+    check("v39-overlay-not-problem", "function isBad(e)" in bd
+          and "m=='OVERLAY'" in bd
+          and "OVERLAY" not in bd.split("function isBad(e)")[1].split("function pass(e)")[0], "")
     # 7. teks overlay TIDAK di-hardcode di dashboard (datang dari log — raw)
     check("v63-overlay-from-data", "overlay permission OFF" not in bd, "")
 
@@ -1357,36 +1359,31 @@ try:
     check("v49-no-modal", "modal" not in bd.lower() and "openModal" not in bd
           and "detOf" not in bd and "allText" not in bd, "")
     check("v49-stream-no-click", "stream').addEventListener" not in bd, "")
-    # 2. SEMUA keterangan tampil INLINE di tiap entri — label RAW lowercase
-    check("v63-inline-raw", "'s-det','corner','headers:'" in bd
-          and "'s-req','up','request:'" in bd
-          and "'s-res','down','response:'" in bd
-          and "'s-req','up','recv:'" in bd
-          and "'s-res','down','send:'" in bd
-          and "'s-ext','tag','data:'" in bd
-          and "'s-err','x','error:'" in bd, "")
+    # 2. SEMUA keterangan tampil INLINE di tiap entri — ↳ detail v28 (.dl)
+    check("v63-inline-raw", "'request: '+e.reqPreview" in bd
+          and "'response: '+e.respPreview" in bd
+          and "'stack: '+e.stack" in bd
+          and "'sid: '+extra" in bd
+          and "'<div class=dl>'+esc(d[j])+'</div>'" in bd, "")
     # 3. FULL DISCLOSURE: NOL pemotongan preview 200/160 (dulu data disembunyikan)
     check("v63-full-disclosure", "trunc(e.reqPreview,200)" not in bd
           and "trunc(e.respPreview,200)" not in bd
           and "trunc(''+e.extra,160)" not in bd, "")
     # 4. helper trunc + sub-baris bergaya aksen tipis + body panjang menggulir
-    check("v49-trunc", "max-height:300px" in bd and "overflow-y:auto" in bd)  # v16: body panjang menggulir
-    check("v60-sub-style", ".dtl{margin-top:7px" in bd
-          and ".ln.r .dtl{border-left-color:#3a2026}" in bd
-          and "max-height:300px" in bd, "")  # v16: 300px
+    check("v49-trunc", "max-height:420px" in bd and "overflow-y:auto" in bd)  # v28: detail panjang menggulir
+    check("v60-sub-style", ".dtl{margin-top:6px" in bd
+          and ".dl{font-family:" in bd
+          and "max-height:420px" in bd, "")  # v28: detail menggulir
     # v14 — detail kolaps: header .sh klik + isi .sc tersembunyi default
     check("v14-sub-collapse", ".sh{display:flex" not in bd
           and ".sc{display:none" not in bd and "data-o=" not in bd
           and ".dtl{" in bd)  # v15/v16: kolaps dihapus — rincian langsung tampil
     check("v14-sub-sum", "id=sum>" in bd and "id=ftr" in bd
           and "terakhir penting:" in bd, "")  # v16: footer ringkas
-    # 5. salin log = teks mentah persis protokol (time #seq port METHOD path status)
-    check("v63-salin-raw", "'  headers: '+e.headers" in bd
-          and "'  request: '+e.reqPreview" in bd
-          and "'  response: '+e.respPreview" in bd
-          and "'  recv: ('+fmtB(e.reqLen||0)+') " in bd
-          and "'  send: ('+fmtB(e.respLen||0)+') " in bd
-          and "plainLine(e)" in bd, "")  # v16: indent 2 spasi
+    # 5. salin log = teks mentah persis formatter v28 (= pola 81.3)
+    check("v63-salin-raw", "function copyLines(e)" in bd
+          and "entryLines(e,isDup(e))" in bd
+          and "out.join('\\n')" in bd, "")  # v28: join \n
     # 6. v14 — panel "Panduan" DIHAPUS (narasi karangan, arahan owner)
     check("v49-guide-panel", "id=guide" not in bd and "guidebtn" not in bd
           and "ALUR NORMAL BOOT" not in bd, "")
@@ -1428,15 +1425,14 @@ try:
           and "border-left:3px solid" in bd
           and ".ln.g{border-left-color:#3ddc84}" in bd
           and ".ln.r{border-left-color:#ff5d5d" in bd, "")
-    check("v60-meta-right", ".rmeta{margin-left:auto" in bd
-          and "class=rmeta" in bd, "")
-    # 6. RAW main line: method + FULL path (query TIDAK dipangkas) + status angka
-    check("v63-raw-mainline", "function mainLine(e)" in bd
-          and "'<b>'+esc(m||'GET')+'</b> '+esc(p)+' '+stHtml" in bd
-          and "function stHtml(n)" in bd and "c='s5'" in bd and "c='s2'" in bd, "")
-    check("v63-raw-ws", "'<b>WS</b> '+esc(p)" in bd
-          and "p.indexOf('ping->pong')>=0" in bd
-          and "if(m=='WS')return 'WS '+p" in bd, "")
+    check("v60-meta-right", ".ev .tm{color:#55677a" in bd
+          and "class=tm>" in bd, "")  # v28: waktu dim di awal baris
+    # 6. RAW main line: method + FULL path (query TIDAK dipangkas) → status · ms
+    check("v63-raw-mainline", "function mainText(e)" in bd
+          and "' → '+(e.status||0)+' · '+(e.durMs||0)+' ms'" in bd
+          and "function lineHead(e)" in bd, "")
+    check("v63-raw-ws", "if(k!='WS'&&n>=0)" in bd
+          and "else if(n>0)" in bd, "")  # v28: WS ukuran hanya bila ada isi
     # 7. NOL karangan: fungsi naratif lama DIHAPUS + kalimat sintetis hilang
     check("v63-no-describe", "function describe" not in bd and "stLbl" not in bd
           and "function epName" not in bd and "function sdkErr" not in bd
@@ -1447,15 +1443,14 @@ try:
           and "Terima : " not in bd and "Durasi : " not in bd
           and "' RUSAK'" not in bd and "' GAGAL'" not in bd
           and "' ALIH'" not in bd, "")
-    # 8. chip level & komponen berikon
-    check("v60-comp-icon", "name:'CORE',icon:'cpu'" in bd
-          and "name:'CONFIG',icon:'settings'" in bd
-          and "name:'CDN',icon:'globe'" in bd and "name:'SDK',icon:'card'" in bd
-          and "name:'LOGIN',icon:'shield'" in bd
-          and "name:'GAME',icon:'gamepad'" in bd
-          and "name:'MONITOR',icon:'radio'" in bd, "")
-    check("v60-lv-tint", ".l-g{color:#3ddc84;background:rgba(61,220,132,.1)" in bd
-          and ".l-r{color:#ff5d5d;background:rgba(255,93,93,.12)" in bd, "")
+    # 8. emoji peta per port (chip identitas server v28 — arahan emoji penuh Bagian 77-80)
+    check("v60-comp-icon", "if(e.port==9527)return '\\uD83E\\uDDFE'" in bd
+          and "if(e.port==9530)return '\\uD83D\\uDCF2'" in bd
+          and "if(e.port==5050)return '\\uD83D\\uDD11'" in bd
+          and "if(e.port==5051)return '\\uD83D\\uDD79'" in bd
+          and "k=='WATCH'" in bd, "")
+    check("v60-lv-tint", ".ev .etag{color:#ff5d5d" in bd
+          and ".ln.r{border-left-color:#ff5d5d" in bd, "")  # v28: ERROR merah hanya dari field level
     # 9. animasi cantik: fade-in baris baru + toast meluncur + judul gradasi
     check("v60-fade", "@keyframes fadein" in bd and "animation:fadein .2s" in bd, "")
     check("v60-toast-rise", "@keyframes rise" not in bd and "@keyframes fadein" in bd, "")  # v16
@@ -1467,7 +1462,7 @@ try:
     # 11. v14 — panduan DIHAPUS; petunjuk singkat berpindah ke banner
     check("v63-guide", "ALUR NORMAL BOOT" not in bd
           and "klik untuk buka" not in bd
-          and "semua rincian tampil langsung" in bd, "")  # v16: nol klik
+          and "rincian terbuka tanpa klik" in bd, "")  # v28: banner satu alur
     check("v39-overlay-banner-dihapus",
           "IZIN Display over other apps OFF" not in bd
           and "BUKA SETTINGS OVERLAY" not in bd, "")
@@ -1533,7 +1528,7 @@ try:
     st, hd, bd = get400("/")
     check("v16-filter-error-ada", "id=errf" in bd
           and "S.err=!S.err" in bd and "erron" in bd
-          and "if(w!='WARN'&&w!='ERROR')return false" in bd, "")
+          and "function isBad(e)" in bd, "")  # v28: ERROR merah hanya dari field level (isBad)
     check("v16-salin-ada", "$('copy').onclick=doCopy" in bd
           and "navigator.clipboard" in bd
           and "execCommand('copy')" in bd
@@ -1824,14 +1819,15 @@ try:
         js_ok26 = False
     check("v73-dash-js-sintaks-sah", js_ok26,
           "SyntaxError console dashboard (akar log tidak tercetak) — JARING PENGAMAN v26")
-    check("v73-dash-fix-kutip-check", "icon:'check'}}" in dash26
+    check("v73-dash-fix-kutip-check", "function textLines" in dash26
           and "icon:'check}}\n" not in dash26.replace("\r", ""), "")
     check("v73-dash-badge-v26", "m=='longtask'" in dash26
-          and "if(m=='resource'||m=='perf'||m=='lifecycle'||m=='script-start'||m=='media-start')" in dash26
-          and "if(m=='meta')" in dash26, "")
+          and "m=='watchdog'" in dash26
+          and "'stack: '+e.stack" in dash26, "")
     check("v73-dash-subrows-client", "if(k=='CLIENT')" in dash26
-          and "subRow('s-err','corner','stack:',e.stack)" in dash26
-          and "subRow('s-ext','tag','sid:',e.extra)" in dash26, "")
+          and "'request: '+e.reqPreview" in dash26
+          and "'response: '+e.respPreview" in dash26
+          and "'sid: '+extra" in dash26, "")
     # catatan: desktop = class JVM SEBELUM patch marker — ver masih v19;
     # rotasi v19→v26 dibuktikan oleh patch_marker_v26.py + rebuild_v26_raw.py
     check("v73-dash-ver-marker-base", ">v19<" in dash26, "marker versi dasar tidak ada")
@@ -1959,8 +1955,8 @@ try:
     # script-start (MutationObserver — loader tanpa onerror tidak lagi hang
     # senyap) + ExternalInterface hook (saksi jembatan native startGame).
     check("v75-dash-badge-v27", "m=='watchdog'" in dash26
-          and "m=='script-start'||m=='media-start'" in dash26
-          and "CLIENT v3" in dash26, "")
+          and "'request: '+e.reqPreview" in dash26
+          and "CLIENT v3" in dash26, "")  # v28: CLIENT v3 terpetakan apa adanya (formatter v5)
     check("v75-capture-v3-di-halaman", "__dbWorkerReady" in bd_inj
           and "workerMain" in bd_inj
           and "watchdog main thread tidak merespons ~" in bd_inj

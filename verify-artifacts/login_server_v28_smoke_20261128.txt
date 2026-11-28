@@ -1,0 +1,38 @@
+# SMOKE v28 — 294 PASS / 0 FAIL + formatter golden + N1 live + probe CDN (28 Nov 2026)
+
+== 1. FORMATTER v5 — RENDER DUMP DEVICE = TEKS-PER-TEKS 81.3 ==
+dump device owner (66 entri, 21:47:35.626-58.530) + 1 baris N1 (dex v28) dirender formatter v5 dashboard 4000
+(fungsi textLines PERSIS yang live) → dibandingkan pola readme 81.3:
+dashboard html -> /tmp/v28/dashboard.html (25702 chars)
+===== FORMATTER v5: SAMA TEKS-PER-TEKS — 129 baris render vs 129 baris golden =====
+(2 substitusi terdokumentasi 81.2 diterapkan ke dump lama: ' — Bagian 21' + ' (owner edit — seed tidak menimpa; atlas §11 baris 9)' — teks yang dex v28 TIDAK lagi kirim)
+
+== 2. SMOKE DESKTOP PENUH (run_smoke.py) ==
+PASS v75-browser-e2e-v27
+
+===== SMOKE v2: 294 PASS, 0 FAIL =====
+termasuk E2E BROWSER NYATA (Playwright/Chromium): capture v2 27/27 + capture v3 watchdog 24/24 + dashboard render + sintaks JS sah (new Function) + NOL pageerror
+
+== 3. N1 LIVE (end-to-end desktop) ==
+sesi polling 9528 di-open → POST 2probe → TIDAK pernah kirim '5' → watchdog 1 dtk:
+{"seq": 20, "ts": 1795829793596, "time": "2026-11-28 01:36:33.596", "port": 9528, "kind": "WATCH", "method": "N1", "path": "sesi yNcip5LNRLhVG2058F0L diam 10 dtk — client tidak mengirim '5' — upgrade websocket tidak selesai", "status": 200, "durMs": 0, "reqLen": 0, "respLen": 0}
+== 4. PROBE CDN ASLI (tsUrl config bawa: dragon.sjmobilegame.com:82) ==
+6 aset yang 404 di dump device diuji ke CDN ASLI — jaringan sandbox flaky; 3/6 terjangkau:
+cat: cdn_probe.txt: No such file or directory
+→ Instagram_png / Logo18+Full_png / sound_click.mp3 = 404 DI CDN ASLI JUGA.
+→ file itu tidak pernah ada di mana pun (server/ kita, APK assets, CDN asli) →
+  404 server kita = CERMIN KEADAAN ASLI (R23 Bagian 83) — BUKAN placeholder, tidak ada isi asli yang bisa dipulihkan.
+
+== 5. KONTRAK DEX v28 ==
+patch_marker_v28: kontrak warisan v20..v27 UTUH + kontrak v28 (k=='WATCH', m=='N2', teks N1/N2, watchdog-n1-n2, mini-server up, function textLines, function emojiOf) + DILARANG: 'atlas §', 'LOGIN-SERVER-PLAN.md', ' — Bagian 21', 'owner edit — seed tidak menimpa' di teks dex
+
+lanjutan probe (hasil curl per file):
+000FAIL denglujiemianxuanzhejiemiannew21_png
+404 Instagram_png
+000FAIL Telegram_png
+000FAIL Discord_png
+404 Logo18+Full_png (encode %2B)
+404 resource/assets/image/public/sound/sound_click.mp3
+--- retry 3x (timeout jaringan sandbox, tidak selesai) ---
+denglujiemianxuanzhejiemiannew21_png / Telegram_png / Discord_png = koneksi timeout
+(2 probe pertama sesi sebelumnya: Instagram_png 404 214B, Logo18%2BFull_png 404 216B — server asli hidup, jawab 404)

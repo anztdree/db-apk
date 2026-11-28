@@ -96,7 +96,7 @@ public final class ServerCore {
         bindAndServe(LoggerCore.PORT_CONFIG, configHandler, "config bin (mirror configus…:443)");
         bindAndServe(LoggerCore.PORT_CDN, cdnChain, "CDN game + socket.io login + /log/client capture (mirror dragonh5cdn…:443)");
         bindAndServe(LoggerCore.PORT_LOGIN, login, "login socket.io v2.1.2 EIO=3 + loginchecknative (mirror login…:610)");
-        bindAndServe(LoggerCore.PORT_GAME, game, "server game socket.io v2.1.2 EIO=3 (serverItem.url — Bagian 21)");
+        bindAndServe(LoggerCore.PORT_GAME, game, "server game socket.io v2.1.2 EIO=3 (serverItem.url)");
         bindAndServe(LoggerCore.PORT_SDK, sdk, "API SDK t4game (mirror qsdk.t4game.com:80)");
 
         LoggerCore.fallbackLogger = fallback;
@@ -111,6 +111,7 @@ public final class ServerCore {
             LoggerCore.BINDS.put("4000", "bind FAILED (4000 and 4001 both busy)");
         }
         logBinds();
+        LoggerCore.startWatchdog();   // v28: N1 sesi diam + N2 batch client bisu
         return new StartResult(loggerPort, fallback);
     }
 
